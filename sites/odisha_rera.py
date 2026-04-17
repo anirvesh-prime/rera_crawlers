@@ -15,9 +15,7 @@ Strategy:
 """
 from __future__ import annotations
 
-import base64
 import copy
-import json
 import re
 from urllib.parse import urlparse, parse_qs
 
@@ -35,7 +33,6 @@ from core.project_normalizer import (
     build_document_filename,
     build_document_urls,
     document_identity_url,
-    document_result_entry,
     get_machine_context,
     merge_data_sections,
     normalize_project_payload,
@@ -119,19 +116,14 @@ def _parse_label_values(container: BeautifulSoup) -> dict[str, str]:
     return result
 
 
-def _extract_doc_links(
-    soup: BeautifulSoup,
-    doc_name_map: dict[int, str] | None = None,
-) -> list[dict]:
+def _extract_doc_links(soup: BeautifulSoup) -> list[dict]:
     """Collect all reraapps DMS document viewer links anywhere in the page.
 
     Label resolution priority (highest → lowest):
-    1. ``doc_name_map`` — keyed by numeric ``fileId`` from the viewer URL;
-       populated from the ``projectDocument`` API response which is the most
-       authoritative source of document names.
-    2. The ``<a>`` tag text content (e.g. 'Coloured Layout Plan').
-    3. A nearby ``label.label-control`` element found by walking up the DOM.
-    4. Falls back to ``"document"`` when nothing else is found.
+    1. The ``<a>`` tag text content — what the site itself displays next to
+       the link (e.g. 'Coloured Layout Plan', 'Site Plan').
+    2. A nearby ``label.label-control`` element found by walking up the DOM.
+    3. Falls back to ``"document"`` when nothing else is found.
 
     The ``ngbtooltip`` attribute is always the generic 'Download document'
     string and is intentionally ignored.
@@ -144,24 +136,10 @@ def _extract_doc_links(
             continue
         seen.add(href)
 
-        # 1. Try the API-sourced name map (most reliable)
-        label = ""
-        if doc_name_map:
-            href_params = parse_qs(urlparse(href).query)
-            file_id_str = (
-                href_params.get("fileId") or href_params.get("fileid") or [None]
-            )[0]
-            if file_id_str:
-                try:
-                    label = doc_name_map.get(int(file_id_str), "")
-                except (ValueError, TypeError):
-                    pass
+        # 1. Text the site shows next to the link
+        label = a.get_text(strip=True)
 
-        # 2. Fall back to the <a> tag's own text content
-        if not label or label.lower() == "download document":
-            label = a.get_text(strip=True)
-
-        # 3. Walk up the DOM looking for label.label-control
+        # 2. Walk up the DOM for label.label-control
         if not label or label.lower() == "download document":
             label = ""
             el = a
@@ -179,73 +157,6 @@ def _extract_doc_links(
 
         docs.append({"label": label, "url": href})
     return docs
-
-
-_PROJECT_DOC_API = "projectDocument"
-_PROJECT_DOC_SECTIONS = ("result", "projectDocument", "financeDocument", "afsDocuments")
-
-
-def _fetch_doc_name_map(page: Page, logger: CrawlerLogger) -> dict[int, str]:
-    """Return a ``{documentId → documentName}`` map from the projectDocument API.
-
-    The Angular app calls ``/pms/api/project/ProjectBooking/projectDocument``
-    automatically when the Documents tab is activated.  We intercept that
-    response (which is base64-encoded JSON) while the tab content loads and
-    build a complete id→name mapping covering all document sections
-    (registration docs, project docs, finance docs, AFS docs).
-
-    The listener is installed immediately before the tab click and removed
-    (via the returned cleanup) right after the content has settled, so it
-    does not accumulate across projects.
-    """
-    captured: list[str] = []
-
-    def _on_response(response: object) -> None:  # type: ignore[override]
-        try:
-            from playwright.sync_api import Response as PWResponse
-            r: PWResponse = response  # type: ignore[assignment]
-            if _PROJECT_DOC_API in r.url and r.status == 200:
-                captured.append(r.text())
-        except Exception:
-            pass
-
-    page.on("response", _on_response)
-
-    def _stop() -> dict[int, str]:
-        page.remove_listener("response", _on_response)
-        name_map: dict[int, str] = {}
-        for raw in captured:
-            try:
-                parsed = json.loads(raw)
-                # The API wraps the payload in {"RESPONSE_DATA": "<base64>"}.
-                # Handle both the wrapped form and a directly decoded dict.
-                if isinstance(parsed, dict) and "RESPONSE_DATA" in parsed:
-                    b64 = parsed["RESPONSE_DATA"]
-                    b64 += "=" * (-len(b64) % 4)
-                    inner: dict = json.loads(base64.b64decode(b64).decode("utf-8"))
-                elif isinstance(parsed, dict):
-                    inner = parsed
-                else:
-                    logger.warning("Unexpected projectDocument response format — skipping")
-                    continue
-                for section in _PROJECT_DOC_SECTIONS:
-                    section_data = inner.get(section)
-                    if not isinstance(section_data, list):
-                        continue
-                    for entry in section_data:
-                        if not isinstance(entry, dict):
-                            continue
-                        doc_id = entry.get("documentId")
-                        doc_name = (entry.get("documentName") or "").strip()
-                        if doc_id and doc_name:
-                            name_map[int(doc_id)] = doc_name
-            except Exception as exc:
-                logger.warning(f"Could not parse projectDocument API response: {exc}")
-        if name_map:
-            logger.info(f"Fetched {len(name_map)} document names from API")
-        return name_map
-
-    return _stop  # caller invokes _stop() after the tab has loaded
 
 
 def _resolve_dms_viewer_url(page: Page, viewer_url: str, logger: CrawlerLogger) -> str | None:
@@ -601,8 +512,9 @@ def _handle_document(project_key: str, doc: dict, run_id: int,
                         original_url=document_identity_url(doc) or url, s3_key=s3_key,
                         s3_bucket=settings.S3_BUCKET_NAME, file_name=filename,
                         md5_checksum=md5, file_size_bytes=len(content))
+        page_url = doc.get("source_url") or doc.get("url")
         logger.info("Document handled", label=label, s3_key=s3_key)
-        return document_result_entry(doc, s3_url, filename)
+        return {"type": label, "link": page_url, "s3_link": s3_url}
     except Exception as e:
         logger.error(f"Document failed: {e}", url=url)
         insert_crawl_error(run_id, site_id, "S3_UPLOAD_FAILED", str(e),
@@ -709,50 +621,19 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         logger.warning(f"Promoter tab failed for {reg}: {e}")
 
                     # ── Parse Documents tab ───────────────────────────────
-                    doc_name_map: dict[int, str] = {}
                     try:
-                        _dismiss_modal(page)  # dismiss any SweetAlert2 modal first
-                        # Install the API-response listener BEFORE clicking so
-                        # the projectDocument call is captured as the tab loads.
-                        _stop_capture = _fetch_doc_name_map(page, logger)
+                        _dismiss_modal(page)
                         page.click("text=Documents", timeout=8000)
                         page.wait_for_timeout(3000)
                         try:
                             page.wait_for_load_state("networkidle", timeout=10000)
                         except Exception:
                             pass
-                        # Stop listening and parse the captured API response.
-                        doc_name_map = _stop_capture()
-                        extra_docs = _extract_doc_links(
-                            BeautifulSoup(page.content(), "lxml"),
-                            doc_name_map=doc_name_map,
-                        )
-                        # Deduplicate
+                        extra_docs = _extract_doc_links(BeautifulSoup(page.content(), "lxml"))
                         seen_urls = {d["url"] for d in doc_links}
                         doc_links += [d for d in extra_docs if d["url"] not in seen_urls]
                     except Exception as e:
                         logger.warning(f"Documents tab failed for {reg}: {e}")
-
-                    # Re-apply the name map to any links already captured from
-                    # the Overview tab that share a fileId with the API data.
-                    if doc_name_map:
-                        relabelled: list[dict] = []
-                        for doc in doc_links:
-                            href_params = parse_qs(urlparse(doc.get("url", "")).query)
-                            fid_str = (
-                                href_params.get("fileId")
-                                or href_params.get("fileid")
-                                or [None]
-                            )[0]
-                            if fid_str:
-                                try:
-                                    api_name = doc_name_map.get(int(fid_str))
-                                    if api_name:
-                                        doc = {**doc, "label": api_name}
-                                except (ValueError, TypeError):
-                                    pass
-                            relabelled.append(doc)
-                        doc_links = relabelled
 
                     # ── Add registration cert from listing card ───────────
                     if card.get("cert_url"):
@@ -775,7 +656,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         if is_viewer:
                             direct_url = _resolve_dms_viewer_url(page, url, logger)
                             if direct_url:
-                                doc = {**doc, "url": direct_url, "identity_url": url}
+                                doc = {**doc, "url": direct_url, "source_url": url}
                         resolved.append(doc)
                     doc_links = resolved
 
@@ -869,9 +750,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                                 uploaded_documents.append(uploaded_doc)
                                 counts["documents_uploaded"] += 1
                             else:
-                                uploaded_documents.append(doc)
+                                uploaded_documents.append({"type": doc.get("label", "document")})
                         else:
-                            uploaded_documents.append(doc)
+                            uploaded_documents.append({"type": doc.get("label", "document")})
                     if uploaded_documents:
                         upsert_project({
                             "key": db_dict["key"], "url": db_dict["url"],
