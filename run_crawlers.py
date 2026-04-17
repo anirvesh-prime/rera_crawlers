@@ -14,6 +14,8 @@ import importlib
 import json
 import os
 import socket
+import subprocess
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -89,9 +91,28 @@ def _fmt_row(result: dict) -> str:
     )
 
 
+def ensure_playwright_browsers():
+    """Install Playwright Chromium if it isn't already present."""
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            p.chromium.launch(headless=True).close()
+    except Exception:
+        print("Playwright browser not found — installing chromium...")
+        result = subprocess.run(
+            [sys.executable, "-m", "playwright", "install", "chromium"],
+            check=False,
+        )
+        if result.returncode != 0:
+            print("[WARNING] playwright install chromium failed — Odisha crawl may error.")
+        else:
+            print("Playwright chromium installed successfully.")
+
+
 def main():
     args = parse_args()
     Path(settings.LOG_DIR).mkdir(parents=True, exist_ok=True)
+    ensure_playwright_browsers()
 
     sites = [s for s in SITES if s["enabled"]]
     if args.site:
