@@ -1,0 +1,77 @@
+"""
+Master list of all RERA sites to crawl.
+To disable a site without deleting it, set enabled=False.
+To add a new site, append an entry and set enabled=False until tested.
+
+crawler_type options:
+  'static'      - server-rendered HTML, use httpx + BeautifulSoup
+  'api'         - Angular/SPA site with discoverable JSON API, use httpx directly
+  'playwright'  - pure JS SPA with no discoverable API, use Playwright
+"""
+
+SITES: list[dict] = [
+    {
+        "id": "kerala_rera",
+        "name": "Kerala RERA",
+        "state_code": "KL",
+        "state": "Kerala",
+        "domain": "rera.kerala.gov.in",
+        "listing_url": "https://rera.kerala.gov.in/explore-projects",
+        "crawler_module": "sites.kerala_rera",
+        "crawler_type": "static",
+        "enabled": True,
+        "rate_limit_delay": (2, 4),
+        "max_retries": 3,
+        "max_pages": 1,
+        "sentinel_registration_no": "K-RERA/PRJ/ERN/363/2020",
+        "config_id": 1,
+    },
+    {
+        "id": "rajasthan_rera",
+        "name": "Rajasthan RERA",
+        "state_code": "RJ",
+        "state": "Rajasthan",
+        "domain": "rera.rajasthan.gov.in",
+        "listing_url": "https://rera.rajasthan.gov.in/ProjectList?status=3",
+        "crawler_module": "sites.rajasthan_rera",
+        "crawler_type": "api",
+        "enabled": True,
+        "rate_limit_delay": (1, 3),
+        "max_retries": 3,
+        "max_pages": 1,
+        "sentinel_registration_no": "",
+        "config_id": 2,
+    },
+    {
+        "id": "odisha_rera",
+        "name": "Odisha RERA",
+        "state_code": "OD",
+        "state": "Odisha",
+        "domain": "rera.odisha.gov.in",
+        "listing_url": "c",
+        "crawler_module": "sites.odisha_rera",
+        "crawler_type": "playwright",
+        "enabled": True,
+        "rate_limit_delay": (2, 5),
+        "max_retries": 3,
+        "max_pages": 1,
+        "sentinel_registration_no": "",
+        "config_id": 3,
+    },
+    {
+        "id": "pondicherry_rera",
+        "name": "Pondicherry RERA",
+        "state_code": "PY",
+        "state": "Pondicherry",
+        "domain": "prera.py.gov.in",
+        "listing_url": "https://prera.py.gov.in/reraAppOffice/viewDefaulterProjects",
+        "crawler_module": "sites.pondicherry_rera",
+        "crawler_type": "static",
+        "enabled": True,
+        "rate_limit_delay": (2, 4),
+        "max_retries": 3,
+        "max_pages": 1,
+        "sentinel_registration_no": "",
+        "config_id": 4,
+    },
+]
