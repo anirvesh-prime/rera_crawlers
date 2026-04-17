@@ -15,7 +15,9 @@ Strategy:
 """
 from __future__ import annotations
 
+import base64
 import copy
+import json
 import re
 from urllib.parse import urlparse, parse_qs
 
@@ -41,11 +43,13 @@ from core.project_normalizer import (
 from core.s3 import compute_md5, upload_document, get_s3_url
 from core.config import settings
 
-LISTING_URL = "https://rera.odisha.gov.in/projects/project-list"
-BASE_URL    = "https://rera.odisha.gov.in"
-STATE_CODE  = "OD"
-DOMAIN      = "rera.odisha.gov.in"
-DRY_RUN_S3  = settings.DRY_RUN_S3
+LISTING_URL     = "https://rera.odisha.gov.in/projects/project-list"
+BASE_URL        = "https://rera.odisha.gov.in"
+STATE_CODE      = "OD"
+DOMAIN          = "rera.odisha.gov.in"
+DRY_RUN_S3      = settings.DRY_RUN_S3
+DMS_BASE_URL    = "https://reraapps.odisha.gov.in/dms"
+DMS_DECRYPT_URL = DMS_BASE_URL + "/fileDecryptHandlerForPdfPublic"
 
 
 # ── Playwright helpers ────────────────────────────────────────────────────────
@@ -115,8 +119,23 @@ def _parse_label_values(container: BeautifulSoup) -> dict[str, str]:
     return result
 
 
-def _extract_doc_links(soup: BeautifulSoup) -> list[dict]:
-    """Collect all reraapps DMS document viewer links anywhere in the page."""
+def _extract_doc_links(
+    soup: BeautifulSoup,
+    doc_name_map: dict[int, str] | None = None,
+) -> list[dict]:
+    """Collect all reraapps DMS document viewer links anywhere in the page.
+
+    Label resolution priority (highest → lowest):
+    1. ``doc_name_map`` — keyed by numeric ``fileId`` from the viewer URL;
+       populated from the ``projectDocument`` API response which is the most
+       authoritative source of document names.
+    2. The ``<a>`` tag text content (e.g. 'Coloured Layout Plan').
+    3. A nearby ``label.label-control`` element found by walking up the DOM.
+    4. Falls back to ``"document"`` when nothing else is found.
+
+    The ``ngbtooltip`` attribute is always the generic 'Download document'
+    string and is intentionally ignored.
+    """
     seen: set[str] = set()
     docs: list[dict] = []
     for a in soup.find_all("a", href=True):
@@ -124,17 +143,153 @@ def _extract_doc_links(soup: BeautifulSoup) -> list[dict]:
         if "reraapps.odisha.gov.in/dms" not in href or href in seen:
             continue
         seen.add(href)
-        # derive label from tooltip, parent label, or sibling text
-        label = (a.get("ngbtooltip") or a.get("title") or "").strip()
-        if not label:
-            parent = a.find_parent()
-            if parent:
-                lbl_tag = parent.find("label", class_="label-control")
-                label = lbl_tag.get_text(strip=True) if lbl_tag else ""
-        if not label:
+
+        # 1. Try the API-sourced name map (most reliable)
+        label = ""
+        if doc_name_map:
+            href_params = parse_qs(urlparse(href).query)
+            file_id_str = (
+                href_params.get("fileId") or href_params.get("fileid") or [None]
+            )[0]
+            if file_id_str:
+                try:
+                    label = doc_name_map.get(int(file_id_str), "")
+                except (ValueError, TypeError):
+                    pass
+
+        # 2. Fall back to the <a> tag's own text content
+        if not label or label.lower() == "download document":
+            label = a.get_text(strip=True)
+
+        # 3. Walk up the DOM looking for label.label-control
+        if not label or label.lower() == "download document":
+            label = ""
+            el = a
+            for _ in range(8):
+                el = el.parent
+                if el is None:
+                    break
+                lbl_tag = el.find("label", class_="label-control")
+                if lbl_tag:
+                    label = lbl_tag.get_text(strip=True)
+                    break
+
+        if not label or label.lower() == "download document":
             label = "document"
+
         docs.append({"label": label, "url": href})
     return docs
+
+
+_PROJECT_DOC_API = "projectDocument"
+_PROJECT_DOC_SECTIONS = ("result", "projectDocument", "financeDocument", "afsDocuments")
+
+
+def _fetch_doc_name_map(page: Page, logger: CrawlerLogger) -> dict[int, str]:
+    """Return a ``{documentId → documentName}`` map from the projectDocument API.
+
+    The Angular app calls ``/pms/api/project/ProjectBooking/projectDocument``
+    automatically when the Documents tab is activated.  We intercept that
+    response (which is base64-encoded JSON) while the tab content loads and
+    build a complete id→name mapping covering all document sections
+    (registration docs, project docs, finance docs, AFS docs).
+
+    The listener is installed immediately before the tab click and removed
+    (via the returned cleanup) right after the content has settled, so it
+    does not accumulate across projects.
+    """
+    captured: list[str] = []
+
+    def _on_response(response: object) -> None:  # type: ignore[override]
+        try:
+            from playwright.sync_api import Response as PWResponse
+            r: PWResponse = response  # type: ignore[assignment]
+            if _PROJECT_DOC_API in r.url and r.status == 200:
+                captured.append(r.text())
+        except Exception:
+            pass
+
+    page.on("response", _on_response)
+
+    def _stop() -> dict[int, str]:
+        page.remove_listener("response", _on_response)
+        name_map: dict[int, str] = {}
+        for raw in captured:
+            try:
+                parsed = json.loads(raw)
+                # The API wraps the payload in {"RESPONSE_DATA": "<base64>"}.
+                # Handle both the wrapped form and a directly decoded dict.
+                if isinstance(parsed, dict) and "RESPONSE_DATA" in parsed:
+                    b64 = parsed["RESPONSE_DATA"]
+                    b64 += "=" * (-len(b64) % 4)
+                    inner: dict = json.loads(base64.b64decode(b64).decode("utf-8"))
+                elif isinstance(parsed, dict):
+                    inner = parsed
+                else:
+                    logger.warning("Unexpected projectDocument response format — skipping")
+                    continue
+                for section in _PROJECT_DOC_SECTIONS:
+                    section_data = inner.get(section)
+                    if not isinstance(section_data, list):
+                        continue
+                    for entry in section_data:
+                        if not isinstance(entry, dict):
+                            continue
+                        doc_id = entry.get("documentId")
+                        doc_name = (entry.get("documentName") or "").strip()
+                        if doc_id and doc_name:
+                            name_map[int(doc_id)] = doc_name
+            except Exception as exc:
+                logger.warning(f"Could not parse projectDocument API response: {exc}")
+        if name_map:
+            logger.info(f"Fetched {len(name_map)} document names from API")
+        return name_map
+
+    return _stop  # caller invokes _stop() after the tab has loaded
+
+
+def _resolve_dms_viewer_url(page: Page, viewer_url: str, logger: CrawlerLogger) -> str | None:
+    """Resolve a DMS PDF.js viewer URL to a direct downloadable file URL.
+
+    The DMS viewer page uses JavaScript to POST to the decrypt endpoint (with the
+    token from the URL) and receive a temporary ``filePath``.  We replicate that
+    POST using Playwright's request API so that the browser session cookies are
+    included automatically, making the call succeed.
+
+    Args:
+        page: Active Playwright page (must be in the same browser context that
+              loaded the RERA project detail page).
+        viewer_url: Full DMS viewer URL, e.g.
+            ``https://reraapps.odisha.gov.in/dms/public/library/pdfjsnewds/web/
+            viewer.html?fileId=195411&text=5b1c34a…``
+        logger: Crawler logger for warnings.
+
+    Returns:
+        The direct URL of the decrypted PDF/file, or *None* on failure.
+    """
+    parsed = urlparse(viewer_url)
+    params = parse_qs(parsed.query)
+    file_id = (params.get("fileId") or params.get("fileid") or [None])[0]
+    token   = (params.get("text") or [None])[0]
+    if not file_id or not token:
+        logger.warning("Cannot resolve DMS URL — missing fileId or text token", url=viewer_url)
+        return None
+    try:
+        resp = page.request.post(
+            DMS_DECRYPT_URL,
+            form={"fileId": file_id, "logId": "", "token": token},
+            headers={"Authorization": f"bearer {token}"},
+        )
+        data = resp.json()
+        if data.get("status") == 200:
+            file_path = (data.get("result") or {}).get("filePath", "")
+            if file_path:
+                logger.info("Resolved DMS viewer URL", file_id=file_id, resolved=file_path[:80])
+                return file_path
+        logger.warning("DMS decrypt returned non-200", status=data.get("status"), file_id=file_id)
+    except Exception as exc:
+        logger.warning(f"DMS viewer URL resolution failed: {exc}", url=viewer_url)
+    return None
 
 
 def _parse_professionals(soup: BeautifulSoup) -> list[dict]:
@@ -554,26 +709,75 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         logger.warning(f"Promoter tab failed for {reg}: {e}")
 
                     # ── Parse Documents tab ───────────────────────────────
+                    doc_name_map: dict[int, str] = {}
                     try:
                         _dismiss_modal(page)  # dismiss any SweetAlert2 modal first
+                        # Install the API-response listener BEFORE clicking so
+                        # the projectDocument call is captured as the tab loads.
+                        _stop_capture = _fetch_doc_name_map(page, logger)
                         page.click("text=Documents", timeout=8000)
                         page.wait_for_timeout(3000)
                         try:
                             page.wait_for_load_state("networkidle", timeout=10000)
                         except Exception:
                             pass
-                        extra_docs = _extract_doc_links(BeautifulSoup(page.content(), "lxml"))
+                        # Stop listening and parse the captured API response.
+                        doc_name_map = _stop_capture()
+                        extra_docs = _extract_doc_links(
+                            BeautifulSoup(page.content(), "lxml"),
+                            doc_name_map=doc_name_map,
+                        )
                         # Deduplicate
                         seen_urls = {d["url"] for d in doc_links}
                         doc_links += [d for d in extra_docs if d["url"] not in seen_urls]
                     except Exception as e:
                         logger.warning(f"Documents tab failed for {reg}: {e}")
 
+                    # Re-apply the name map to any links already captured from
+                    # the Overview tab that share a fileId with the API data.
+                    if doc_name_map:
+                        relabelled: list[dict] = []
+                        for doc in doc_links:
+                            href_params = parse_qs(urlparse(doc.get("url", "")).query)
+                            fid_str = (
+                                href_params.get("fileId")
+                                or href_params.get("fileid")
+                                or [None]
+                            )[0]
+                            if fid_str:
+                                try:
+                                    api_name = doc_name_map.get(int(fid_str))
+                                    if api_name:
+                                        doc = {**doc, "label": api_name}
+                                except (ValueError, TypeError):
+                                    pass
+                            relabelled.append(doc)
+                        doc_links = relabelled
+
                     # ── Add registration cert from listing card ───────────
                     if card.get("cert_url"):
                         cert_doc = {"label": "registration_certificate", "url": card["cert_url"]}
                         if cert_doc["url"] not in {d["url"] for d in doc_links}:
                             doc_links.insert(0, cert_doc)
+
+                    # ── Resolve DMS viewer URLs → direct PDF URLs ─────────
+                    # DMS links now point to a PDF.js/HTML viewer page.
+                    # We POST to the decrypt endpoint (within the active
+                    # browser session so cookies are valid) to obtain the
+                    # temporary direct file URL before navigating away.
+                    resolved: list[dict] = []
+                    for doc in doc_links:
+                        url = doc.get("url", "")
+                        is_viewer = (
+                            "reraapps.odisha.gov.in/dms" in url
+                            and any(v in url for v in ("viewer.html", "demos-preview.html"))
+                        )
+                        if is_viewer:
+                            direct_url = _resolve_dms_viewer_url(page, url, logger)
+                            if direct_url:
+                                doc = {**doc, "url": direct_url, "identity_url": url}
+                        resolved.append(doc)
+                    doc_links = resolved
 
                     # ── Go back to listing page ───────────────────────────
                     page.go_back()
