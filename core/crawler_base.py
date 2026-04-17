@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import hashlib
+import ctypes
 import random
 import ssl
 import time
@@ -14,10 +14,8 @@ from core.logger import CrawlerLogger
 
 
 def generate_project_key(state_code: str, registration_number: str) -> str:
-    """Deterministic hash key — SHA-256 of STATE_CODE::registration_number."""
-    raw = f"{state_code.strip().upper()}::{registration_number.strip()}"
-    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
-    return str(int(digest[:15], 16))
+    """Hash of project_registration_no using the production method. Requires PYTHONHASHSEED=0."""
+    return str(ctypes.c_size_t(hash(registration_number.strip())).value)
 
 
 def random_delay(min_s: float = 1.0, max_s: float = 3.0) -> None:
