@@ -4,7 +4,9 @@ import copy
 import hashlib
 import re
 import socket
-from datetime import UTC, datetime
+from datetime import datetime, timezone
+
+UTC = timezone.utc
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
