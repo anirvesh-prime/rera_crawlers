@@ -45,7 +45,7 @@ BASE_URL     = "https://prera.py.gov.in"
 APP_BASE     = "https://prera.py.gov.in/reraAppOffice"
 STATE_CODE   = "PY"
 DOMAIN       = "prera.py.gov.in"
-DRY_RUN_S3   = True
+DRY_RUN_S3   = settings.DRY_RUN_S3
 
 
 def _get(url: str, logger: CrawlerLogger):

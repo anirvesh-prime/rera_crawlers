@@ -45,7 +45,7 @@ LISTING_URL = "https://rera.odisha.gov.in/projects/project-list"
 BASE_URL    = "https://rera.odisha.gov.in"
 STATE_CODE  = "OD"
 DOMAIN      = "rera.odisha.gov.in"
-DRY_RUN_S3  = True
+DRY_RUN_S3  = settings.DRY_RUN_S3
 
 
 # ── Playwright helpers ────────────────────────────────────────────────────────

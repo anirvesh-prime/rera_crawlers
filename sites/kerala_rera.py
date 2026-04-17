@@ -37,7 +37,7 @@ BASE_URL = "https://rera.kerala.gov.in"
 EXPLORE_URL = f"{BASE_URL}/explore-projects"
 STATE_CODE = "KL"
 DOMAIN = "rera.kerala.gov.in"
-DRY_RUN_S3 = True  # Set False when real AWS credentials are configured
+DRY_RUN_S3 = settings.DRY_RUN_S3
 
 
 # ── Listing pagination via explore-projects ───────────────────────────────────

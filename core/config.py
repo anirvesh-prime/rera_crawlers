@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     # Crawler
     PYTHONHASHSEED: str = "0"
     LOG_DIR: str = "logs"
+    DRY_RUN_S3: bool = True   # True = skip real S3 upload, generate phantom URLs
 
     @property
     def postgres_dsn(self) -> str:

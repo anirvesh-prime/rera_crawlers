@@ -36,7 +36,7 @@ API_BASE       = "https://reraapi.rajasthan.gov.in/api/web"
 APP_BASE       = "https://reraapp.rajasthan.gov.in"
 STATE_CODE     = "RJ"
 DOMAIN         = "rera.rajasthan.gov.in"
-DRY_RUN_S3     = True
+DRY_RUN_S3     = settings.DRY_RUN_S3
 _API_KEY       = "MySuperSecretApiKey_123"
 _API_HEADERS   = {
     "x-api-key":   _API_KEY,
