@@ -14,8 +14,10 @@ from core.logger import CrawlerLogger
 
 
 def generate_project_key(state_code: str, registration_number: str) -> str:
-    """Key is the registration number itself — human-readable and directly identifiable."""
-    return registration_number.strip()
+    """Deterministic hash key — SHA-256 of STATE_CODE::registration_number."""
+    raw = f"{state_code.strip().upper()}::{registration_number.strip()}"
+    digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+    return str(int(digest[:15], 16))
 
 
 def random_delay(min_s: float = 1.0, max_s: float = 3.0) -> None:
