@@ -327,6 +327,14 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
         try:
             key  = generate_project_key(STATE_CODE, reg_no)
+            logger.set_project(key=key, reg_no=reg_no, url=card.get("detail_url", LISTING_URL))
+
+            if mode == "daily_light" and get_project_by_key(key):
+                logger.info("Skipping — already in DB (daily_light)", step="skip")
+                counts["projects_skipped"] += 1
+                logger.clear_project()
+                continue
+
             data: dict = {
                 "key":                     key,
                 "state":                   config["state"],
@@ -351,45 +359,42 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
 
 
-            # Fetch and merge detail page
             doc_links: list[dict] = []
             if card["detail_url"]:
                 random_delay(*config.get("rate_limit_delay", (1, 3)))
+                logger.info("Fetching detail page", step="detail_fetch")
                 detail = _parse_detail_page(card["detail_url"], logger)
                 doc_links = detail.pop("_doc_links", [])
                 for k, v in detail.items():
                     if v is not None and not k.startswith("_"):
                         data[k] = v
-                data["data"] = merge_data_sections(
-                    {"listing_card": card},
-                    data.get("data"),
-                )
+                data["data"] = merge_data_sections({"listing_card": card}, data.get("data"))
             else:
                 data["data"] = {"listing_card": card}
 
-            # Validate and upsert
+            logger.info("Normalizing and validating", step="normalize")
             try:
                 normalized = normalize_project_payload(data, config, machine_name=machine_name, machine_ip=machine_ip)
                 record  = ProjectRecord(**normalized)
                 db_dict = record.to_db_dict()
             except (ValidationError, ValueError) as e:
-                logger.warning(f"Validation failed for {reg_no}: {e}")
+                logger.warning("Validation failed — using raw fallback", step="normalize", error=str(e))
                 insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(e),
                                    project_key=key, url=data.get("url"), raw_data=data)
                 counts["error_count"] += 1
                 db_dict = normalize_project_payload(
                     {**data, "data": merge_data_sections(data.get("data"), {"validation_fallback": True})},
-                    config,
-                    machine_name=machine_name,
-                    machine_ip=machine_ip,
+                    config, machine_name=machine_name, machine_ip=machine_ip,
                 )
 
+            logger.info("Upserting to DB", step="db_upsert")
             action = upsert_project(db_dict)
             if action == "new":       counts["projects_new"] += 1
             elif action == "updated": counts["projects_updated"] += 1
             else:                     counts["projects_skipped"] += 1
+            logger.info(f"DB result: {action}", step="db_upsert")
 
-            # Documents
+            logger.info(f"Downloading {len(doc_links)} documents", step="documents")
             uploaded_documents = []
             doc_name_counts: dict[str, int] = {}
             for doc in doc_links:
@@ -405,10 +410,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     uploaded_documents.append(doc)
             if uploaded_documents:
                 upsert_project({
-                    "key": db_dict["key"],
-                    "url": db_dict["url"],
-                    "state": db_dict["state"],
-                    "domain": db_dict["domain"],
+                    "key": db_dict["key"], "url": db_dict["url"],
+                    "state": db_dict["state"], "domain": db_dict["domain"],
                     "project_registration_no": db_dict["project_registration_no"],
                     "uploaded_documents": uploaded_documents,
                     "document_urls": build_document_urls(uploaded_documents),
@@ -418,10 +421,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             if i % 50 == 0:
                 save_checkpoint(site_id, mode, i, reg_no, run_id)
 
-        except Exception as e:
-            logger.error(f"Error processing {reg_no}: {e}")
-            insert_crawl_error(run_id, site_id, "project_error", str(e))
+        except Exception as exc:
+            logger.exception("Project processing failed", exc, step="project_loop")
+            insert_crawl_error(run_id, site_id, "PROJECT_ERROR", str(exc),
+                               project_key=key, url=card.get("detail_url"))
             counts["error_count"] += 1
+        finally:
+            logger.clear_project()
 
     reset_checkpoint(site_id, mode)
     logger.info(f"Pondicherry RERA complete: {counts}")

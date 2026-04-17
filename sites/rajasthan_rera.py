@@ -313,15 +313,21 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             counts["projects_skipped"] += 1
             continue
 
+        detail_url = f"{BASE_URL}/ProjectDetail?id={enc_id}" if enc_id else f"{BASE_URL}/ProjectList?status=3"
+        logger.set_project(key=key, reg_no=reg_no, url=detail_url, page=i)
 
+        if mode == "daily_light" and get_project_by_key(key):
+            logger.info("Skipping — already in DB (daily_light)", step="skip")
+            counts["projects_skipped"] += 1
+            logger.clear_project()
+            continue
 
         try:
-            # Base data from listing API
             data: dict = {
                 "key": key,
                 "state": config["state"], "project_state": config["state"],
                 "domain": DOMAIN, "config_id": config["config_id"],
-                "url": f"{BASE_URL}/ProjectDetail?id={enc_id}" if enc_id else f"{BASE_URL}/ProjectList?status=3",
+                "url": detail_url,
                 "is_live": True, "machine_name": machine_name,
                 "crawl_machine_ip": machine_ip,
             }
@@ -330,48 +336,49 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 if val and str(val).strip():
                     data[schema_f] = str(val).strip()
 
-            # Certificate URL from listing
             cert_url = _build_cert_url(proj.get("UploadedCertificatePath", ""))
             doc_links = []
             if cert_url:
                 doc_links.append({"label": "registration_certificate", "url": cert_url})
 
-            # Rich detail data from GetProjectById API (weekly_deep or new project)
             if enc_id:
+                logger.info("Fetching project detail API", step="detail_fetch")
                 detail = _fetch_project_detail(enc_id, logger)
                 data.update({k: v for k, v in detail.items() if k != "data" and v is not None and not k.startswith("_")})
+                logger.info("Fetching project website detail", step="detail_fetch")
                 website_detail = _fetch_project_website_detail(enc_id, logger)
                 if website_detail:
                     doc_links.extend(_extract_project_website_documents(website_detail))
                     data["data"] = merge_data_sections(
-                        data.get("data"),
-                        detail.get("data"),
+                        data.get("data"), detail.get("data"),
                         {"source_api": "ProjectDtlsWebsite", "raw_website": website_detail},
                     )
                 else:
                     data["data"] = merge_data_sections(data.get("data"), detail.get("data"))
 
+            logger.info("Normalizing and validating", step="normalize")
             try:
                 normalized = normalize_project_payload(data, config, machine_name=machine_name, machine_ip=machine_ip)
                 record  = ProjectRecord(**normalized)
                 db_dict = record.to_db_dict()
             except (ValidationError, ValueError) as e:
-                logger.warning(f"Validation failed for {pid}: {e}")
+                logger.warning("Validation failed — using raw fallback", step="normalize", error=str(e))
                 insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(e),
                                    project_key=key, url=data.get("url"), raw_data=data)
                 counts["error_count"] += 1
                 db_dict = normalize_project_payload(
                     {**data, "data": {"validation_fallback": True, "raw": data.get("data")}},
-                    config,
-                    machine_name=machine_name,
-                    machine_ip=machine_ip,
+                    config, machine_name=machine_name, machine_ip=machine_ip,
                 )
 
+            logger.info("Upserting to DB", step="db_upsert")
             action = upsert_project(db_dict)
             if action == "new":       counts["projects_new"] += 1
             elif action == "updated": counts["projects_updated"] += 1
             else:                     counts["projects_skipped"] += 1
+            logger.info(f"DB result: {action}", step="db_upsert")
 
+            logger.info(f"Downloading {len(doc_links)} documents", step="documents")
             uploaded_documents = []
             doc_name_counts: dict[str, int] = {}
             for doc in doc_links:
@@ -387,10 +394,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     uploaded_documents.append(doc)
             if uploaded_documents:
                 upsert_project({
-                    "key": db_dict["key"],
-                    "url": db_dict["url"],
-                    "state": db_dict["state"],
-                    "domain": db_dict["domain"],
+                    "key": db_dict["key"], "url": db_dict["url"],
+                    "state": db_dict["state"], "domain": db_dict["domain"],
                     "project_registration_no": db_dict["project_registration_no"],
                     "uploaded_documents": uploaded_documents,
                     "document_urls": build_document_urls(uploaded_documents),
@@ -399,11 +404,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             if i % 100 == 0:
                 save_checkpoint(site_id, mode, i, key, run_id)
             random_delay(*config.get("rate_limit_delay", (1, 3)))
-        except Exception as e:
-            logger.error(f"Error processing Rajasthan project {pid}: {e}")
-            insert_crawl_error(run_id, site_id, "project_error", str(e),
-                               url=f"{BASE_URL}/ProjectDetail?id={enc_id}")
+
+        except Exception as exc:
+            logger.exception("Project processing failed", exc, step="project_loop",
+                             pid=pid, enc_id=enc_id)
+            insert_crawl_error(run_id, site_id, "PROJECT_ERROR", str(exc),
+                               project_key=key, url=detail_url)
             counts["error_count"] += 1
+        finally:
+            logger.clear_project()
     reset_checkpoint(site_id, mode)
     logger.info(f"Rajasthan RERA complete: {counts}")
     return counts

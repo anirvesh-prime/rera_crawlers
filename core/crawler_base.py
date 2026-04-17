@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import random
 import ssl
 import time
@@ -13,12 +14,8 @@ from core.logger import CrawlerLogger
 
 
 def generate_project_key(state_code: str, registration_number: str) -> str:
-    """
-    Stable unique key for a project.
-    Requires PYTHONHASHSEED=0 in the environment for cross-session stability.
-    """
-    raw = f"{state_code.strip().upper()}::{registration_number.strip()}"
-    return str(abs(hash(raw)))
+    """Key is the registration number itself — human-readable and directly identifiable."""
+    return registration_number.strip()
 
 
 def random_delay(min_s: float = 1.0, max_s: float = 3.0) -> None:

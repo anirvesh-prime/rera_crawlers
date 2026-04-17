@@ -762,88 +762,103 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
             counts["projects_found"] += 1
             key = generate_project_key(STATE_CODE, cert_no)
+            logger.set_project(key=key, reg_no=cert_no, url=card["detail_url"], page=page_num)
 
-            random_delay(delay_min, delay_max)
-            detail_data = _scrape_detail_page(card["detail_url"], logger)
-            if not detail_data:
-                counts["error_count"] += 1
+            if mode == "daily_light" and get_project_by_key(key):
+                logger.info("Skipping — already in DB (daily_light)", step="skip")
+                counts["projects_skipped"] += 1
+                logger.clear_project()
                 continue
 
-            doc_links = detail_data.pop("_doc_links", [])
-            preview_docs = detail_data.get("uploaded_documents")
-            detail_data.pop("_available_units", None)
-            detail_data.pop("_total_units", None)
-
-            # Fallback project name from card if detail page didn't supply it
-            if not detail_data.get("project_name") and card.get("project_name"):
-                detail_data["project_name"] = card["project_name"]
-
-            final_reg = detail_data.get("project_registration_no") or cert_no
-            detail_data["project_registration_no"] = final_reg
-            detail_data["key"] = generate_project_key(STATE_CODE, final_reg)
-            detail_data["state"] = config["state"]
-            detail_data["project_state"] = config["state"]
-            detail_data["domain"] = DOMAIN
-            detail_data["config_id"] = config["config_id"]
-            detail_data["crawl_machine_ip"] = machine_ip
-            detail_data["machine_name"] = machine_name
-            detail_data["is_live"] = True
-            detail_data["data"] = merge_data_sections(
-                {"listing_card": card, "detail_url": card["detail_url"]},
-                detail_data.get("data"),
-            )
-
             try:
-                normalized = normalize_project_payload(detail_data, config, machine_name=machine_name, machine_ip=machine_ip)
-                record  = ProjectRecord(**normalized)
-                db_dict = record.to_db_dict()
-            except (ValidationError, ValueError) as ve:
-                logger.warning("Validation failed — falling back to raw dict",
-                               reg=final_reg, errors=str(ve))
-                insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(ve),
-                                   project_key=key, url=card["detail_url"], raw_data=detail_data)
-                counts["error_count"] += 1
-                db_dict = normalize_project_payload(
-                    {**detail_data, "data": merge_data_sections(detail_data.get("data"), {"validation_fallback": True})},
-                    config,
-                    machine_name=machine_name,
-                    machine_ip=machine_ip,
+                random_delay(delay_min, delay_max)
+                logger.info("Fetching detail page", step="detail_fetch")
+                detail_data = _scrape_detail_page(card["detail_url"], logger)
+                if not detail_data:
+                    logger.error("Detail page returned no data", step="detail_fetch")
+                    counts["error_count"] += 1
+                    continue
+
+                doc_links = detail_data.pop("_doc_links", [])
+                preview_docs = detail_data.get("uploaded_documents")
+                detail_data.pop("_available_units", None)
+                detail_data.pop("_total_units", None)
+
+                if not detail_data.get("project_name") and card.get("project_name"):
+                    detail_data["project_name"] = card["project_name"]
+
+                final_reg = detail_data.get("project_registration_no") or cert_no
+                detail_data["project_registration_no"] = final_reg
+                detail_data["key"] = generate_project_key(STATE_CODE, final_reg)
+                detail_data["state"] = config["state"]
+                detail_data["project_state"] = config["state"]
+                detail_data["domain"] = DOMAIN
+                detail_data["config_id"] = config["config_id"]
+                detail_data["crawl_machine_ip"] = machine_ip
+                detail_data["machine_name"] = machine_name
+                detail_data["is_live"] = True
+                detail_data["data"] = merge_data_sections(
+                    {"listing_card": card, "detail_url": card["detail_url"]},
+                    detail_data.get("data"),
                 )
 
-            action = upsert_project(db_dict)
-            if action == "new":
-                counts["projects_new"] += 1
-            elif action == "updated":
-                counts["projects_updated"] += 1
-            else:
-                counts["projects_skipped"] += 1
+                logger.info("Normalizing and validating", step="normalize")
+                try:
+                    normalized = normalize_project_payload(detail_data, config, machine_name=machine_name, machine_ip=machine_ip)
+                    record  = ProjectRecord(**normalized)
+                    db_dict = record.to_db_dict()
+                except (ValidationError, ValueError) as ve:
+                    logger.warning("Validation failed — using raw fallback", step="normalize",
+                                   error=str(ve))
+                    insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(ve),
+                                       project_key=key, url=card["detail_url"], raw_data=detail_data)
+                    counts["error_count"] += 1
+                    db_dict = normalize_project_payload(
+                        {**detail_data, "data": merge_data_sections(detail_data.get("data"), {"validation_fallback": True})},
+                        config, machine_name=machine_name, machine_ip=machine_ip,
+                    )
 
-            # Documents
-            uploaded_documents = []
-            doc_name_counts: dict[str, int] = {}
-            queued_docs = _document_queue(doc_links, preview_docs)
-            for doc in queued_docs:
-                selected_doc = select_document_for_download(config["state"], doc, doc_name_counts, domain=DOMAIN)
-                if selected_doc:
-                    uploaded_doc = _handle_document(db_dict["key"], selected_doc, run_id, site_id, logger)
-                    if uploaded_doc:
-                        uploaded_documents.append(uploaded_doc)
-                        counts["documents_uploaded"] += 1
+                logger.info("Upserting to DB", step="db_upsert")
+                action = upsert_project(db_dict)
+                if action == "new":       counts["projects_new"] += 1
+                elif action == "updated": counts["projects_updated"] += 1
+                else:                     counts["projects_skipped"] += 1
+                logger.info(f"DB result: {action}", step="db_upsert")
+
+                queued_docs = _document_queue(doc_links, preview_docs)
+                logger.info(f"Downloading {len(queued_docs)} documents", step="documents")
+                uploaded_documents = []
+                doc_name_counts: dict[str, int] = {}
+                for doc in queued_docs:
+                    selected_doc = select_document_for_download(config["state"], doc, doc_name_counts, domain=DOMAIN)
+                    if selected_doc:
+                        uploaded_doc = _handle_document(db_dict["key"], selected_doc, run_id, site_id, logger)
+                        if uploaded_doc:
+                            uploaded_documents.append(uploaded_doc)
+                            counts["documents_uploaded"] += 1
+                        else:
+                            uploaded_documents.append(doc)
                     else:
                         uploaded_documents.append(doc)
-                else:
-                    uploaded_documents.append(doc)
 
-            if uploaded_documents:
-                upsert_project({
-                    "key": db_dict["key"],
-                    "url": db_dict["url"],
-                    "state": db_dict["state"],
-                    "domain": db_dict["domain"],
-                    "project_registration_no": db_dict["project_registration_no"],
-                    "uploaded_documents": uploaded_documents,
-                    "document_urls": build_document_urls(uploaded_documents),
-                })
+                if uploaded_documents:
+                    upsert_project({
+                        "key": db_dict["key"],
+                        "url": db_dict["url"],
+                        "state": db_dict["state"],
+                        "domain": db_dict["domain"],
+                        "project_registration_no": db_dict["project_registration_no"],
+                        "uploaded_documents": uploaded_documents,
+                        "document_urls": build_document_urls(uploaded_documents),
+                    })
+
+            except Exception as exc:
+                logger.exception("Project processing failed", exc, step="project_loop")
+                insert_crawl_error(run_id, site_id, "PROJECT_ERROR", str(exc),
+                                   project_key=key, url=card["detail_url"])
+                counts["error_count"] += 1
+            finally:
+                logger.clear_project()
 
         save_checkpoint(site_id, mode, page_num, None, run_id)
 

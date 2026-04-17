@@ -250,6 +250,21 @@ _SCHEMA_DDL = [
         last_verified TIMESTAMPTZ
     )
     """,
+    """
+    CREATE TABLE IF NOT EXISTS crawl_logs (
+        id SERIAL PRIMARY KEY,
+        run_id INTEGER REFERENCES crawl_runs(id),
+        site_id TEXT,
+        level TEXT NOT NULL,
+        message TEXT NOT NULL,
+        project_key TEXT,
+        registration_no TEXT,
+        step TEXT,
+        traceback TEXT,
+        extra JSONB,
+        logged_at TIMESTAMPTZ DEFAULT now()
+    )
+    """,
 ]
 
 
@@ -381,6 +396,32 @@ def set_checkpoint(site_id: str, run_type: str, last_page: int, last_project_key
             (site_id, run_type, last_page, last_project_key, run_id),
         )
         conn.commit()
+
+
+def insert_log(
+    run_id: int | None,
+    site_id: str,
+    level: str,
+    message: str,
+    project_key: str | None = None,
+    registration_no: str | None = None,
+    step: str | None = None,
+    traceback: str | None = None,
+    extra: dict | None = None,
+):
+    try:
+        with get_connection() as conn:
+            conn.execute(
+                """INSERT INTO crawl_logs
+                   (run_id, site_id, level, message, project_key, registration_no, step, traceback, extra)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                (run_id, site_id, level, message,
+                 project_key, registration_no, step, traceback,
+                 json.dumps(extra or {})),
+            )
+            conn.commit()
+    except Exception:
+        pass  # never let logging break the crawler
 
 
 def clear_checkpoint(site_id: str, run_type: str):

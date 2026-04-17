@@ -516,14 +516,23 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     counts["projects_skipped"] += 1
                     continue
 
+                logger.set_project(key=key, reg_no=reg, page=page_num)
+
+                if mode == "daily_light" and get_project_by_key(key):
+                    logger.info("Skipping — already in DB (daily_light)", step="skip")
+                    counts["projects_skipped"] += 1
+                    logger.clear_project()
+                    continue
 
                 try:
                     # ── Navigate to detail page ───────────────────────────
+                    logger.info("Opening detail page", step="detail_fetch")
                     if not _open_detail_page(page, reg, logger):
-                        logger.warning(f"No View Details button for {reg}")
+                        logger.warning("No View Details button found", step="detail_fetch")
                         continue
                     page.wait_for_url("**/project-details/**", timeout=15000)
                     detail_url = page.url
+                    logger.set_project(key=key, reg_no=reg, url=detail_url, page=page_num)
                     _wait_for_loaders(page)
 
                     # ── Parse Project Overview tab ────────────────────────
@@ -623,27 +632,29 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         elif existing_contact is None:
                             data["promoter_contact_details"] = {"listing_phone": card["phone"]}
 
+                    logger.info("Normalizing and validating", step="normalize")
                     try:
                         normalized = normalize_project_payload(data, config, machine_name=machine_name, machine_ip=machine_ip)
                         record  = ProjectRecord(**normalized)
                         db_dict = record.to_db_dict()
                     except (ValidationError, ValueError) as e:
-                        logger.warning(f"Validation for {reg}: {e}")
+                        logger.warning("Validation failed — using raw fallback", step="normalize", error=str(e))
                         insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(e),
                                            project_key=key, url=detail_url, raw_data=data)
                         counts["error_count"] += 1
                         db_dict = normalize_project_payload(
                             {**data, "data": merge_data_sections(data.get("data"), {"validation_fallback": True})},
-                            config,
-                            machine_name=machine_name,
-                            machine_ip=machine_ip,
+                            config, machine_name=machine_name, machine_ip=machine_ip,
                         )
 
+                    logger.info("Upserting to DB", step="db_upsert")
                     action = upsert_project(db_dict)
                     if action == "new":       counts["projects_new"] += 1
                     elif action == "updated": counts["projects_updated"] += 1
                     else:                     counts["projects_skipped"] += 1
+                    logger.info(f"DB result: {action}", step="db_upsert")
 
+                    logger.info(f"Downloading {len(doc_links)} documents", step="documents")
                     uploaded_documents: list[dict] = []
                     doc_name_counts: dict[str, int] = {}
                     for doc in doc_links:
@@ -659,10 +670,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                             uploaded_documents.append(doc)
                     if uploaded_documents:
                         upsert_project({
-                            "key": db_dict["key"],
-                            "url": db_dict["url"],
-                            "state": db_dict["state"],
-                            "domain": db_dict["domain"],
+                            "key": db_dict["key"], "url": db_dict["url"],
+                            "state": db_dict["state"], "domain": db_dict["domain"],
                             "project_registration_no": db_dict["project_registration_no"],
                             "uploaded_documents": uploaded_documents,
                             "document_urls": build_document_urls(uploaded_documents),
@@ -671,11 +680,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     done_regs.add(reg)
                     random_delay(*config.get("rate_limit_delay", (1, 2)))
 
-                except Exception as e:
-                    logger.error(f"Error for {reg}: {e}")
-                    insert_crawl_error(run_id, site_id, "project_error", str(e))
+                except Exception as exc:
+                    logger.exception("Project processing failed", exc, step="project_loop")
+                    insert_crawl_error(run_id, site_id, "PROJECT_ERROR", str(exc),
+                                       project_key=key, url=detail_url)
                     counts["error_count"] += 1
-                    # Recovery: ensure we're back on listing page
                     if "/project-details/" in page.url:
                         try:
                             page.goto(LISTING_URL, wait_until="networkidle", timeout=20000)
@@ -683,6 +692,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                             _dismiss_modal(page)
                         except Exception:
                             pass
+                finally:
+                    logger.clear_project()
 
             save_checkpoint(site_id, mode, page_num, None, run_id)
 
