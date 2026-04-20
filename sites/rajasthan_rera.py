@@ -143,13 +143,70 @@ def _fetch_all_projects(logger: CrawlerLogger) -> list[dict]:
         return []
 
 
+# Ordered list of hosts to probe when resolving relative document paths.
+# Checked left-to-right; first host that returns HTTP < 400 wins.
+_DOC_HOSTS = [APP_BASE, BASE_URL]
+
+
+def _is_real_document(resp) -> bool:
+    """
+    Return True only if the response body looks like an actual document.
+
+    Government sites routinely serve soft-404 HTML pages with HTTP 200, so
+    status code alone cannot be trusted. We instead peek at the first few bytes:
+      - PDF files start with the magic bytes b'%PDF'
+      - For other content types we reject anything whose Content-Type is HTML
+    """
+    if resp is None:
+        return False
+    content_type = resp.headers.get("Content-Type", "").lower()
+    # Read just enough bytes to check the magic signature without pulling the full file
+    chunk = resp.content[:8] if resp.content else b""
+    if chunk.startswith(b"%PDF"):
+        return True
+    if "text/html" in content_type or "text/plain" in content_type:
+        return False
+    # Non-HTML content type with some body — treat as a real document
+    return len(chunk) > 0
+
+
+def _resolve_relative_url(path: str, hosts: list[str] = _DOC_HOSTS) -> str | None:
+    """
+    Turn a relative path (e.g. '~/Content/uploads/Certificate/Signed_xxx.pdf')
+    into an absolute URL by probing each candidate host.
+
+    Returns the first URL whose response body looks like a real document.
+    Falls back to the first candidate so we never silently discard a URL
+    (e.g. during a transient outage where all probes fail).
+
+    Status codes are deliberately NOT used as the sole signal — government
+    sites commonly return HTTP 200 for soft-404 HTML error pages.
+    """
+    clean = path.replace("~/", "").replace("~\\", "").replace("../", "").replace("..\\", "")
+    if not clean.startswith("/"):
+        clean = f"/{clean}"
+
+    fallback: str | None = None
+    for host in hosts:
+        url = f"{host}{clean}"
+        if fallback is None:
+            fallback = url
+        try:
+            resp = safe_get(url, timeout=10)
+            if _is_real_document(resp):
+                return url
+        except Exception:
+            pass
+    return fallback
+
+
 def _build_cert_url(cert_path: str) -> str | None:
     """Convert relative UploadedCertificatePath to an absolute download URL."""
     if not cert_path or cert_path == "0":
         return None
-    # Paths like "~/Content/uploads/Certificate/Signed_xxx.pdf"
-    clean = cert_path.replace("~/", "").replace("~\\", "")
-    return f"{BASE_URL}/{clean}"
+    if cert_path.startswith("http://") or cert_path.startswith("https://"):
+        return cert_path
+    return _resolve_relative_url(cert_path)
 
 
 def _build_app_url(path: str | None) -> str | None:
@@ -157,10 +214,7 @@ def _build_app_url(path: str | None) -> str | None:
         return None
     if path.startswith("http://") or path.startswith("https://"):
         return path
-    clean = path.replace("~/", "/").replace("~\\", "/").replace("../", "/").replace("..\\", "/")
-    if not clean.startswith("/"):
-        clean = f"/{clean}"
-    return f"{APP_BASE}{clean}"
+    return _resolve_relative_url(path)
 
 
 def _fetch_project_website_detail(enc_id: str, logger: CrawlerLogger) -> dict:

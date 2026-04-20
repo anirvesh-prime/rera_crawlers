@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from urllib.parse import quote_plus
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -32,17 +34,17 @@ class Settings(BaseSettings):
     # Crawler
     PYTHONHASHSEED: str = "0"
     LOG_DIR: str = "logs"
-    DRY_RUN_S3: bool = True   # True = skip real S3 upload, generate phantom URLs
+    DRY_RUN_S3: bool = False
 
     @property
     def postgres_dsn(self) -> str:
         if self.POSTGRES_PASSWORD:
             return (
-                f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+                f"postgresql://{quote_plus(self.POSTGRES_USER)}:{quote_plus(self.POSTGRES_PASSWORD)}"
                 f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
             )
         return (
-            f"postgresql://{self.POSTGRES_USER}"
+            f"postgresql://{quote_plus(self.POSTGRES_USER)}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
 
