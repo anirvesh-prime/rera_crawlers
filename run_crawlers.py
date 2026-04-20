@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-RERA Crawlers Orchestrator — runs all enabled states.
+RERA Crawlers Orchestrator — runs all enabled states in parallel.
 
 Usage:
-    python run_crawlers.py                      # runs all states
+    python run_crawlers.py                      # runs all states in parallel
     python run_crawlers.py --site kerala_rera   # runs one state
     python run_crawlers.py --mode weekly_deep   # explicit mode (default: weekly_deep)
+    python run_crawlers.py --sequential         # disable parallel execution
 """
 from __future__ import annotations
 
@@ -17,6 +18,7 @@ import socket
 import subprocess
 import sys
 import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -44,7 +46,21 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Run only this site_id, e.g. kerala_rera (default: all enabled)",
     )
+    parser.add_argument(
+        "--sequential",
+        action="store_true",
+        default=False,
+        help="Run sites one-by-one instead of in parallel (useful for debugging)",
+    )
     return parser.parse_args()
+
+
+def _worker_init() -> None:
+    """Initialiser run inside every worker process before it executes any task.
+    Re-applies PYTHONHASHSEED=0 so that generate_project_key() stays deterministic
+    even on platforms that use 'spawn' rather than 'fork' for new processes.
+    """
+    os.environ["PYTHONHASHSEED"] = "0"
 
 
 def run_site(site_cfg: dict, mode: str) -> dict:
@@ -121,21 +137,43 @@ def main():
             print(f"[ERROR] Site '{args.site}' not found or not enabled.")
             return
 
+    parallel = not args.sequential and len(sites) > 1
+
     started = datetime.now(timezone.utc)
     print(f"\n{_SEP}")
     print(f"  RERA Crawler Orchestrator")
-    print(f"  Mode   : {args.mode}")
-    print(f"  Host   : {socket.gethostname()}")
-    print(f"  States : {', '.join(s['id'] for s in sites)}")
-    print(f"  Started: {started.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+    print(f"  Mode      : {args.mode}")
+    print(f"  Execution : {'parallel' if parallel else 'sequential'}")
+    print(f"  Workers   : {len(sites)}")
+    print(f"  Host      : {socket.gethostname()}")
+    print(f"  States    : {', '.join(s['id'] for s in sites)}")
+    print(f"  Started   : {started.strftime('%Y-%m-%d %H:%M:%S UTC')}")
     print(f"{_SEP}\n")
 
     summary = []
-    for site_cfg in sites:
-        print(f"→ [{site_cfg['id']}]  {site_cfg['name']}")
-        result = run_site(site_cfg, args.mode)
-        summary.append(result)
-        print(f"{_fmt_row(result)}\n")
+
+    if parallel:
+        print(f"→ Launching {len(sites)} crawlers in parallel...\n")
+        with ProcessPoolExecutor(max_workers=len(sites), initializer=_worker_init) as executor:
+            futures = {
+                executor.submit(run_site, site_cfg, args.mode): site_cfg["id"]
+                for site_cfg in sites
+            }
+            for future in as_completed(futures):
+                site_id = futures[future]
+                try:
+                    result = future.result()
+                    summary.append(result)
+                    print(f"✓ [{site_id}] finished")
+                    print(f"{_fmt_row(result)}\n")
+                except Exception as exc:
+                    print(f"✗ [{site_id}] worker process crashed: {exc}\n")
+    else:
+        for site_cfg in sites:
+            print(f"→ [{site_cfg['id']}]  {site_cfg['name']}")
+            result = run_site(site_cfg, args.mode)
+            summary.append(result)
+            print(f"{_fmt_row(result)}\n")
 
     # Totals
     totals = {k: sum(r.get(k, 0) for r in summary)
