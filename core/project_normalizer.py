@@ -191,49 +191,47 @@ def normalize_document_records(documents: Any) -> list[dict[str, Any]] | None:
         else:
             item = {"link": clean_string(entry)}
 
-        label = clean_string(
-            item.get("label")
-            or item.get("type")
+        doc_type = clean_string(
+            item.get("type")
+            or item.get("label")
             or item.get("document_type")
             or item.get("name")
         )
-        source_url = clean_string(item.get("source_url") or item.get("url"))
-        final_link = clean_string(item.get("s3_url") or item.get("link"))
-        file_name = clean_string(item.get("file_name"))
+        link = clean_string(item.get("link") or item.get("source_url") or item.get("url"))
+        s3_link = clean_string(item.get("s3_link"))
 
-        cleaned_item = clean_json(item) or {}
-        if label:
-            cleaned_item["type"] = label
-            cleaned_item.setdefault("label", label)
-        if source_url:
-            cleaned_item["source_url"] = source_url
-        if final_link:
-            cleaned_item["link"] = final_link
-        if file_name:
-            cleaned_item["file_name"] = file_name
+        cleaned_item: dict[str, Any] = {}
+        if doc_type:
+            cleaned_item["type"] = doc_type
+        if link:
+            cleaned_item["link"] = link
+        if s3_link:
+            cleaned_item["s3_link"] = s3_link
 
-        if cleaned_item:
+        if doc_type and (link or s3_link):
             normalized.append(cleaned_item)
     return normalized or None
 
 
 def build_document_urls(documents: Any) -> list[dict[str, Any]] | None:
-    normalized = normalize_document_records(documents)
-    if not normalized:
+    if not documents:
         return None
 
     result: list[dict[str, Any]] = []
     seen: set[tuple[str, str | None]] = set()
-    for doc in normalized:
-        link = clean_string(doc.get("link"))
-        doc_type = clean_string(doc.get("type") or doc.get("label"))
-        if not link:
+    items = documents if isinstance(documents, list) else [documents]
+    for doc in items:
+        if not isinstance(doc, dict):
             continue
-        marker = (link, doc_type)
+        s3_link = clean_string(doc.get("s3_link"))
+        doc_type = clean_string(doc.get("type") or doc.get("label"))
+        if not s3_link:
+            continue
+        marker = (s3_link, doc_type)
         if marker in seen:
             continue
         seen.add(marker)
-        entry: dict[str, Any] = {"link": link}
+        entry: dict[str, Any] = {"link": s3_link}
         if doc_type:
             entry["type"] = doc_type
         result.append(entry)
@@ -273,16 +271,10 @@ def build_document_filename(doc: dict[str, Any], default_ext: str = ".pdf") -> s
 
 def document_result_entry(doc: dict[str, Any], s3_url: str, file_name: str) -> dict[str, Any]:
     entry = {
-        "label": doc.get("label") or doc.get("type") or "document",
         "type": doc.get("type") or doc.get("label") or "document",
-        "source_url": doc.get("source_url") or doc.get("url"),
-        "link": s3_url,
-        "s3_url": s3_url,
-        "file_name": file_name,
+        "link": doc.get("source_url") or doc.get("url"),
+        "s3_link": s3_url,
     }
-    for key in ("section", "remarks", "upload_date", "source", "category"):
-        if doc.get(key) is not None:
-            entry[key] = doc.get(key)
     return clean_json(entry) or entry
 
 

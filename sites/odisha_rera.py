@@ -750,9 +750,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                                 uploaded_documents.append(uploaded_doc)
                                 counts["documents_uploaded"] += 1
                             else:
-                                uploaded_documents.append({"type": doc.get("label", "document")})
+                                uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label", "document")})
                         else:
-                            uploaded_documents.append({"type": doc.get("label", "document")})
+                            uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label", "document")})
                     if uploaded_documents:
                         upsert_project({
                             "key": db_dict["key"], "url": db_dict["url"],
