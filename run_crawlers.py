@@ -181,7 +181,8 @@ def main():
                         "projects_skipped", "documents_uploaded", "error_count", "elapsed_s")}
 
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%S")
-    summary_path = Path(settings.LOG_DIR) / f"{ts}_orchestrator_summary.json"
+    summary_path = Path(settings.LOG_DIR) / "orchestrator" / f"{ts}_summary.json"
+    summary_path.parent.mkdir(parents=True, exist_ok=True)
     summary_path.write_text(
         json.dumps({"mode": args.mode, "started": started.isoformat(),
                     "sites": summary, "totals": totals}, indent=2, default=str)

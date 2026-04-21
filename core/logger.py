@@ -76,7 +76,7 @@ class CrawlerLogger:
             self._logger.addHandler(ch)
 
             ts = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%S")
-            log_path = Path(settings.LOG_DIR) / f"{ts}_{site_id}.jsonl"
+            log_path = Path(settings.LOG_DIR) / site_id / f"{ts}.jsonl"
             self._logger.addHandler(JsonLineHandler(log_path))
             self._logger.addHandler(DbLogHandler(run_id, site_id))
 
