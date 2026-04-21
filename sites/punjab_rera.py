@@ -25,6 +25,7 @@ from pydantic import ValidationError
 
 from core.checkpoint import reset_checkpoint
 from core.crawler_base import generate_project_key, random_delay
+from core.config import settings
 from core.db import upsert_project, insert_crawl_error
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -96,6 +97,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     projects_skipped=0, documents_uploaded=0, error_count=0)
     machine_name, machine_ip = get_machine_context()
     delay_range = config.get("rate_limit_delay", (2, 4))
+    item_limit = settings.CRAWL_ITEM_LIMIT or 0
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
@@ -115,6 +117,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 pass  # older DataTables may not support -1; rows still in DOM
 
             row_handles = page.query_selector_all(SEL_ROWS)
+            if item_limit:
+                row_handles = row_handles[:item_limit]
+                logger.info(f"Punjab: CRAWL_ITEM_LIMIT={item_limit} applied — processing {len(row_handles)} projects", step="listing")
             counters["projects_found"] = len(row_handles)
             logger.info(f"Found {len(row_handles)} project rows", step="listing")
 

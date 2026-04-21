@@ -9,6 +9,10 @@ crawler_type options:
   'playwright'  - pure JS SPA with no discoverable API, use Playwright
 """
 
+from __future__ import annotations
+
+from collections.abc import Sequence
+
 SITES: list[dict] = [
     {
         "id": "kerala_rera",
@@ -116,3 +120,46 @@ SITES: list[dict] = [
         "config_id": 7,
     },
 ]
+
+
+def parse_site_selection(site_args: Sequence[str] | None) -> list[str]:
+    """Normalize repeated/comma-separated --site arguments into unique site ids."""
+    if not site_args:
+        return []
+
+    selected: list[str] = []
+    seen: set[str] = set()
+
+    for raw_value in site_args:
+        for site_id in raw_value.split(","):
+            normalized = site_id.strip()
+            if not normalized or normalized in seen:
+                continue
+            selected.append(normalized)
+            seen.add(normalized)
+
+    return selected
+
+
+def select_sites(
+    site_args: Sequence[str] | None,
+    catalog: Sequence[dict] | None = None,
+) -> tuple[list[dict], list[str], list[str]]:
+    """
+    Resolve which sites to run.
+
+    Default behavior returns enabled sites only.
+    Explicit site selection can include disabled sites so they can still be tested
+    without joining the default production run.
+    """
+    available_sites = list(catalog or SITES)
+    selected_ids = parse_site_selection(site_args)
+
+    if not selected_ids:
+        return [site for site in available_sites if site["enabled"]], [], []
+
+    sites_by_id = {site["id"]: site for site in available_sites}
+    unknown = [site_id for site_id in selected_ids if site_id not in sites_by_id]
+    selected_sites = [sites_by_id[site_id] for site_id in selected_ids if site_id in sites_by_id]
+    disabled = [site["id"] for site in selected_sites if not site["enabled"]]
+    return selected_sites, unknown, disabled

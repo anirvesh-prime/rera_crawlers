@@ -292,6 +292,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     projects_skipped=0, documents_uploaded=0, error_count=0)
     checkpoint  = load_checkpoint(site_id, mode) or {}
     done_regs: set[str] = set(checkpoint.get("done_regs", []))
+    item_limit = settings.CRAWL_ITEM_LIMIT or 0
 
     if not _sentinel_check(config, run_id, logger):
         insert_crawl_error(run_id, site_id, "SENTINEL_FAILED", "Sentinel check failed")
@@ -308,11 +309,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     soup  = BeautifulSoup(resp.text, "lxml")
     cards = _parse_listing_cards(soup)
-    # max_pages treats every 50 projects as one "page" (single-page site)
-    max_pages = settings.MAX_PAGES
-    if max_pages:
-        cards = cards[:max_pages * 50]
-        logger.info(f"Pondicherry: limiting to first {len(cards)} projects (max_pages={max_pages})")
+    if item_limit:
+        cards = cards[:item_limit]
+        logger.info(f"Pondicherry: CRAWL_ITEM_LIMIT={item_limit} applied — processing {len(cards)} projects")
+    else:
+        # max_pages treats every 50 projects as one "page" (single-page site)
+        max_pages = settings.MAX_PAGES
+        if max_pages:
+            cards = cards[:max_pages * 50]
+            logger.info(f"Pondicherry: limiting to first {len(cards)} projects (max_pages={max_pages})")
     counts["projects_found"] = len(cards)
     logger.info(f"Pondicherry: {len(cards)} project cards found")
 

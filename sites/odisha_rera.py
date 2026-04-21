@@ -533,6 +533,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     # already fully processed, so re-starting there would duplicate work.
     start_page   = checkpoint.get("last_page", 0) + 1
     done_regs: set[str] = set()
+    item_limit   = settings.CRAWL_ITEM_LIMIT or 0
+    items_processed = 0
     max_pages: int | None = settings.MAX_PAGES
     machine_name, machine_ip = get_machine_context()
 
@@ -550,6 +552,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
         page_num = 1
         while True:
+            if item_limit and items_processed >= item_limit:
+                logger.info(f"Item limit {item_limit} reached — stopping.", step="listing")
+                break
+
             # Skip to start_page (resume after checkpoint)
             if page_num < start_page:
                 try:
@@ -577,6 +583,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             counts["projects_found"] += len(cards)
 
             for card in cards:
+                if item_limit and items_processed >= item_limit:
+                    logger.info(f"Item limit {item_limit} reached — stopping.", step="listing")
+                    break
+
                 reg  = card["project_registration_no"]
                 key  = generate_project_key(STATE_CODE, reg)
 
@@ -735,6 +745,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                     logger.info("Upserting to DB", step="db_upsert")
                     action = upsert_project(db_dict)
+                    items_processed += 1
                     if action == "new":       counts["projects_new"] += 1
                     elif action == "updated": counts["projects_updated"] += 1
                     else:                     counts["projects_skipped"] += 1
