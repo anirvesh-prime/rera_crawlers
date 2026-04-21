@@ -34,7 +34,14 @@ class Settings(BaseSettings):
     # Crawler
     PYTHONHASHSEED: str = "0"
     LOG_DIR: str = "logs"
-    DRY_RUN_S3: bool = False
+    # Set to false in production to actually upload to S3.
+    DRY_RUN_S3: bool = True
+    # Cap total projects processed per run. 0 = unlimited.
+    CRAWL_ITEM_LIMIT: int = 0
+    # Set to false to skip detail-page fetches entirely.
+    SCRAPE_DETAILS: bool = True
+    # Cap total pages fetched per crawler. None = unlimited.
+    MAX_PAGES: int | None = None
 
     @property
     def postgres_dsn(self) -> str:

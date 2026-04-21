@@ -43,6 +43,19 @@ def clean_string(value: Any) -> str | None:
 
 
 def parse_datetime(value: Any) -> datetime | None:
+    """
+    Parse a date/datetime value from any format seen on Indian government RERA
+    sites into a timezone-aware UTC datetime.
+
+    Handles:
+    - ISO 8601 and common numeric formats (YYYY-MM-DD, DD/MM/YYYY, etc.)
+    - Abbreviated and full month names ("30 Jun 2025", "30 June 2025")
+    - 2-digit years ("12 Oct 24", "30/06/25")
+    - Dash-month variants ("12-Oct-2024", "12-Oct-24")
+    - Comma variants ("30 Jun, 2025")
+    - Weekday + full timestamp ("Wed Mar 25 16:15:36 IST 2026")
+    - Embedded timezone abbreviations (IST, UTC, GMT, etc.) — stripped before parsing
+    """
     if value in (None, ""):
         return None
     if isinstance(value, datetime):
@@ -52,7 +65,14 @@ def parse_datetime(value: Any) -> datetime | None:
     if not text:
         return None
 
-    iso_candidate = text.replace("Z", "+00:00")
+    # Strip embedded timezone abbreviations (IST, UTC, GMT, PST, …) so formats
+    # like "Wed Mar 25 16:15:36 IST 2026" or "30 Jun 2025 IST" parse cleanly.
+    # Only strip standalone uppercase 2-5 char tokens that look like tz codes.
+    cleaned = re.sub(r"\b[A-Z]{2,5}\b(?=\s|$)", "", text).strip()
+    cleaned = re.sub(r"\s+", " ", cleaned)
+
+    # Try ISO 8601 first (covers YYYY-MM-DD, YYYY-MM-DDTHH:MM:SS, etc.)
+    iso_candidate = cleaned.replace("Z", "+00:00")
     try:
         parsed = datetime.fromisoformat(iso_candidate)
         return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
@@ -60,21 +80,41 @@ def parse_datetime(value: Any) -> datetime | None:
         pass
 
     formats = (
+        # ── Full-year numeric (most specific first) ────────────────────────────
+        "%Y-%m-%d %H:%M:%S",
         "%Y-%m-%d",
+        "%Y/%m/%d",
+        "%d/%m/%Y %H:%M:%S",
         "%d/%m/%Y",
         "%d-%m-%Y",
-        "%Y/%m/%d",
-        "%d %b %Y",
-        "%d %B %Y",
-        "%d %b %Y %H:%M:%S",
-        "%d %B %Y %H:%M:%S",
-        "%Y-%m-%d %H:%M:%S",
-        "%d/%m/%Y %H:%M:%S",
-        "%a %b %d %H:%M:%S %Y",
+        # ── DD Mon YYYY (long-form month names) ───────────────────────────────
+        "%d %b %Y %H:%M:%S",     # "30 Jun 2025 10:00:00"
+        "%d %B %Y %H:%M:%S",     # "30 June 2025 10:00:00"
+        "%d %b %Y",              # "30 Jun 2025"
+        "%d %B %Y",              # "30 June 2025"
+        "%d %b, %Y",             # "30 Jun, 2025"
+        "%d %B, %Y",             # "30 June, 2025"
+        # ── DD-Mon-YYYY (dash separator) ──────────────────────────────────────
+        "%d-%b-%Y",              # "30-Jun-2025"
+        "%d-%B-%Y",              # "30-June-2025"
+        # ── Mon DD, YYYY ──────────────────────────────────────────────────────
+        "%b %d, %Y",             # "Jun 30, 2025"
+        "%B %d, %Y",             # "June 30, 2025"
+        # ── 2-digit year variants (common in legacy government exports) ────────
+        "%d/%m/%y",              # "30/06/25"
+        "%d-%m-%y",              # "30-06-25"
+        "%d %b %y",              # "12 Oct 24"  ← the original reported case
+        "%d %B %y",              # "12 October 24"
+        "%d %b, %y",             # "12 Oct, 24"
+        "%d-%b-%y",              # "12-Oct-24"
+        "%d-%B-%y",              # "12-October-24"
+        # ── Weekday prefix (Pondicherry, some legacy APIs) ────────────────────
+        "%a %b %d %H:%M:%S %Y",  # "Wed Mar 25 16:15:36 2026" (tz already stripped)
+        "%a %B %d %H:%M:%S %Y",  # "Wed March 25 16:15:36 2026"
     )
     for fmt in formats:
         try:
-            return datetime.strptime(text, fmt).replace(tzinfo=UTC)
+            return datetime.strptime(cleaned, fmt).replace(tzinfo=UTC)
         except ValueError:
             continue
     return None

@@ -44,7 +44,6 @@ LISTING_URL     = "https://rera.odisha.gov.in/projects/project-list"
 BASE_URL        = "https://rera.odisha.gov.in"
 STATE_CODE      = "OD"
 DOMAIN          = "rera.odisha.gov.in"
-DRY_RUN_S3      = settings.DRY_RUN_S3
 DMS_BASE_URL    = "https://reraapps.odisha.gov.in/dms"
 DMS_DECRYPT_URL = DMS_BASE_URL + "/fileDecryptHandlerForPdfPublic"
 
@@ -506,7 +505,7 @@ def _handle_document(project_key: str, doc: dict, run_id: int,
             return None
         content = resp.content
         md5     = compute_md5(content)
-        s3_key  = upload_document(project_key, filename, content, dry_run=DRY_RUN_S3)
+        s3_key  = upload_document(project_key, filename, content, dry_run=settings.DRY_RUN_S3)
         s3_url  = get_s3_url(s3_key)
         upsert_document(project_key=project_key, document_type=label,
                         original_url=document_identity_url(doc) or url, s3_key=s3_key,
@@ -530,9 +529,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     counts       = dict(projects_found=0, projects_new=0, projects_updated=0,
                         projects_skipped=0, documents_uploaded=0, error_count=0)
     checkpoint   = load_checkpoint(site_id, mode) or {}
-    start_page   = checkpoint.get("last_page", 1)
+    # Resume from the page AFTER the last completed one — the saved page was
+    # already fully processed, so re-starting there would duplicate work.
+    start_page   = checkpoint.get("last_page", 0) + 1
     done_regs: set[str] = set()
-    max_pages: int | None = config.get("max_pages")
+    max_pages: int | None = settings.MAX_PAGES
     machine_name, machine_ip = get_machine_context()
 
     with sync_playwright() as pw:

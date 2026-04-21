@@ -36,7 +36,6 @@ API_BASE       = "https://reraapi.rajasthan.gov.in/api/web"
 APP_BASE       = "https://reraapp.rajasthan.gov.in"
 STATE_CODE     = "RJ"
 DOMAIN         = "rera.rajasthan.gov.in"
-DRY_RUN_S3     = settings.DRY_RUN_S3
 _API_KEY       = "MySuperSecretApiKey_123"
 _API_HEADERS   = {
     "x-api-key":   _API_KEY,
@@ -318,7 +317,7 @@ def _handle_document(project_key: str, doc: dict, run_id: int,
             return None
         content = resp.content
         md5     = compute_md5(content)
-        s3_key  = upload_document(project_key, filename, content, dry_run=DRY_RUN_S3)
+        s3_key  = upload_document(project_key, filename, content, dry_run=settings.DRY_RUN_S3)
         s3_url  = get_s3_url(s3_key)
         upsert_document(project_key=project_key, document_type=label, original_url=document_identity_url(doc) or url,
                         s3_key=s3_key, s3_bucket=settings.S3_BUCKET_NAME,
@@ -338,6 +337,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     counts = dict(projects_found=0, projects_new=0, projects_updated=0,
                   projects_skipped=0, documents_uploaded=0, error_count=0)
 
+    item_limit    = settings.CRAWL_ITEM_LIMIT or 0  # 0 = unlimited
+    items_processed = 0
+
     if not _sentinel_check(config, run_id, logger):
         insert_crawl_error(run_id, site_id, "SENTINEL_FAILED", "Sentinel check failed")
         return counts
@@ -348,11 +350,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     api_projects = _fetch_all_projects(logger)
     if not api_projects:
         return counts
-    # max_pages treats every 50 projects as one "page" (API returns everything at once)
-    max_pages = config.get("max_pages")
-    if max_pages:
-        api_projects = api_projects[: max_pages * 50]
-        logger.info(f"Rajasthan: limiting to first {len(api_projects)} projects (max_pages={max_pages})")
+    # Apply item_limit before max_pages so the env variable takes precedence
+    if item_limit:
+        api_projects = api_projects[:item_limit]
+        logger.info(f"Rajasthan: CRAWL_ITEM_LIMIT={item_limit} applied — processing {len(api_projects)} projects")
+    else:
+        max_pages = settings.MAX_PAGES
+        if max_pages:
+            api_projects = api_projects[: max_pages * 50]
+            logger.info(f"Rajasthan: limiting to first {len(api_projects)} projects (max_pages={max_pages})")
     counts["projects_found"] = len(api_projects)
     machine_name, machine_ip = get_machine_context()
 
@@ -427,6 +433,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
             logger.info("Upserting to DB", step="db_upsert")
             action = upsert_project(db_dict)
+            items_processed += 1
             if action == "new":       counts["projects_new"] += 1
             elif action == "updated": counts["projects_updated"] += 1
             else:                     counts["projects_skipped"] += 1

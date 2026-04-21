@@ -37,7 +37,6 @@ BASE_URL = "https://rera.kerala.gov.in"
 EXPLORE_URL = f"{BASE_URL}/explore-projects"
 STATE_CODE = "KL"
 DOMAIN = "rera.kerala.gov.in"
-DRY_RUN_S3 = settings.DRY_RUN_S3
 
 
 # ── Listing pagination via explore-projects ───────────────────────────────────
@@ -649,7 +648,7 @@ def _handle_document(project_key: str, doc: dict, run_id: int, site_id: str, log
             return None
         data = resp.content
         md5 = compute_md5(data)
-        s3_key = upload_document(project_key, filename, data, dry_run=DRY_RUN_S3)
+        s3_key = upload_document(project_key, filename, data, dry_run=settings.DRY_RUN_S3)
         s3_url = get_s3_url(s3_key)
         upsert_document(project_key=project_key, document_type=label, original_url=document_identity_url(doc) or url,
                         s3_key=s3_key, s3_bucket=settings.S3_BUCKET_NAME,
@@ -713,12 +712,17 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     counts = {"projects_found": 0, "projects_new": 0, "projects_updated": 0,
               "projects_skipped": 0, "documents_uploaded": 0, "error_count": 0}
 
+    item_limit = settings.CRAWL_ITEM_LIMIT or 0  # 0 = unlimited
+    items_processed = 0
+
     if not _sentinel_check(config, run_id, logger):
         insert_crawl_error(run_id, site_id, "SENTINEL_FAILED", "Sentinel check failed")
         return counts
 
     checkpoint = load_checkpoint(site_id, mode)
-    start_page = checkpoint["last_page"] if checkpoint else 1
+    # Resume from the page AFTER the last completed one — the saved page was
+    # already fully processed, so re-starting there would duplicate work.
+    start_page = (checkpoint["last_page"] + 1) if checkpoint else 1
     if checkpoint:
         logger.info(f"Resuming from checkpoint page {start_page}")
 
@@ -732,14 +736,20 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         return counts
 
     total_pages = _get_total_pages(soup)
-    max_pages = config.get("max_pages")          # None = unlimited
+    max_pages = settings.MAX_PAGES  # None = unlimited
     effective_end = (min(total_pages, start_page + max_pages - 1)
                      if max_pages else total_pages)
-    logger.info(f"Total listing pages: {total_pages} | crawling up to page {effective_end}")
+    logger.info(
+        f"Total listing pages: {total_pages} | crawling up to page {effective_end} "
+        f"| item_limit={item_limit or 'unlimited'}",
+    )
 
     machine_name, machine_ip = get_machine_context()
+    stop_all = False
 
     for page_num in range(start_page, effective_end + 1):
+        if stop_all:
+            break
         logger.info(f"Listing page {page_num}/{effective_end}")
 
         page_soup = soup if page_num == 1 else None
@@ -756,6 +766,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         logger.info(f"  {len(cards)} project cards on page {page_num}")
 
         for card in cards:
+            if item_limit and items_processed >= item_limit:
+                logger.info(f"Item limit {item_limit} reached — stopping", step="listing")
+                stop_all = True
+                break
+
             cert_no = card.get("cert_no_from_card")
             if not cert_no:
                 continue
@@ -820,6 +835,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                 logger.info("Upserting to DB", step="db_upsert")
                 action = upsert_project(db_dict)
+                items_processed += 1
                 if action == "new":       counts["projects_new"] += 1
                 elif action == "updated": counts["projects_updated"] += 1
                 else:                     counts["projects_skipped"] += 1

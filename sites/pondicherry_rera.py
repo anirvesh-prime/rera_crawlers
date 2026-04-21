@@ -45,7 +45,6 @@ BASE_URL     = "https://prera.py.gov.in"
 APP_BASE     = "https://prera.py.gov.in/reraAppOffice"
 STATE_CODE   = "PY"
 DOMAIN       = "prera.py.gov.in"
-DRY_RUN_S3   = settings.DRY_RUN_S3
 
 
 def _get(url: str, logger: CrawlerLogger):
@@ -246,7 +245,7 @@ def _handle_document(project_key: str, doc: dict, run_id: int,
         if not resp or len(resp.content) < 100:
             return None
         md5    = compute_md5(resp.content)
-        s3_key = upload_document(project_key, fname, resp.content, dry_run=DRY_RUN_S3)
+        s3_key = upload_document(project_key, fname, resp.content, dry_run=settings.DRY_RUN_S3)
         s3_url = get_s3_url(s3_key)
         upsert_document(project_key=project_key, document_type=label,
                         original_url=document_identity_url(doc) or url, s3_key=s3_key,
@@ -310,7 +309,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     soup  = BeautifulSoup(resp.text, "lxml")
     cards = _parse_listing_cards(soup)
     # max_pages treats every 50 projects as one "page" (single-page site)
-    max_pages = config.get("max_pages")
+    max_pages = settings.MAX_PAGES
     if max_pages:
         cards = cards[:max_pages * 50]
         logger.info(f"Pondicherry: limiting to first {len(cards)} projects (max_pages={max_pages})")
