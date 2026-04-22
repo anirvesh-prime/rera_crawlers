@@ -9,7 +9,7 @@ from typing import Any
 
 import httpx
 import siphash24
-from playwright.sync_api import sync_playwright, Page, Browser
+from playwright.sync_api import sync_playwright, Browser, BrowserContext, Page
 
 from core.config import settings
 from core.logger import CrawlerLogger
@@ -114,21 +114,28 @@ class PlaywrightSession:
         self.headless = headless
         self._playwright = None
         self._browser: Browser | None = None
+        self._context: BrowserContext | None = None
 
     def __enter__(self) -> "PlaywrightSession":
         self._playwright = sync_playwright().start()
         self._browser = self._playwright.chromium.launch(headless=self.headless)
+        self._context = self._browser.new_context(user_agent=get_random_ua())
         return self
 
     def __exit__(self, *args):
+        if self._context:
+            self._context.close()
         if self._browser:
             self._browser.close()
         if self._playwright:
             self._playwright.stop()
 
     def new_page(self, ua: str | None = None) -> Page:
-        context = self._browser.new_context(user_agent=ua or get_random_ua())
-        return context.new_page()
+        if ua and self._context:
+            page = self._context.new_page()
+            page.set_extra_http_headers({"User-Agent": ua})
+            return page
+        return self._context.new_page()
 
     def fetch_page(self, url: str, wait_selector: str | None = None, timeout: int = 30000) -> Page:
         page = self.new_page()

@@ -705,7 +705,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         "domain":           DOMAIN,
                         "config_id":        config["config_id"],
                         "url":              detail_url,
-                        "is_live":          True,
+                        "is_live":          False,
                         "machine_name":     machine_name,
                         "crawl_machine_ip": machine_ip,
                         **card_data,

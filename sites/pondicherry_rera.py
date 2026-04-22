@@ -351,7 +351,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 "domain":                  DOMAIN,
                 "config_id":               config["config_id"],
                 "url":                     card["detail_url"] or LISTING_URL,
-                "is_live":                 True,
+                "is_live":                 False,
                 "machine_name":            machine_name,
                 "crawl_machine_ip":        machine_ip,
                 "promoter_address_raw": {

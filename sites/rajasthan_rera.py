@@ -605,7 +605,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 "state": config["state"], "project_state": config["state"],
                 "domain": DOMAIN, "config_id": config["config_id"],
                 "url": detail_url,
-                "is_live": True, "machine_name": machine_name,
+                "is_live": False, "machine_name": machine_name,
                 "crawl_machine_ip": machine_ip,
             }
             for api_f, schema_f in _LIST_API_TO_FIELD.items():

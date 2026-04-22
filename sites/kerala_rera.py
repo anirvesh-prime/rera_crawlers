@@ -18,7 +18,7 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import generate_project_key, random_delay, safe_get
+from core.crawler_base import PlaywrightSession, generate_project_key, random_delay, safe_get
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -296,11 +296,14 @@ def _extract_doc_buttons(soup: BeautifulSoup, base_url: str) -> list[dict]:
             doc_name = cells[0].get_text(strip=True) if cells else ""
             if not doc_name or doc_name == section:
                 continue
-            # Find btnShow button (view button carries the file ID)
-            show_btn = row.find("button", id=re.compile(r"^btnShow_"))
+            # Find the paired view/download buttons. The download button is the
+            # most reliable way to retrieve the file because it executes the
+            # same browser-side flow as a real user.
+            show_btn = row.find(["button", "a", "input"], id=re.compile(r"^btnShow_"))
             if not show_btn:
                 continue
             file_id = show_btn["id"].replace("btnShow_", "")
+            download_btn = row.find(["button", "a", "input"], id=re.compile(r"^btnDownloadFile_"))
             if file_id in seen_ids:
                 continue
             seen_ids.add(file_id)
@@ -312,6 +315,10 @@ def _extract_doc_buttons(soup: BeautifulSoup, base_url: str) -> list[dict]:
                 "label":       doc_name,
                 "url":         doc_url,
                 "file_id":     file_id,
+                "show_button_id": show_btn.get("id"),
+                "download_button_id": download_btn.get("id") if download_btn else None,
+                "print_preview_url": base_url,
+                "identity_url": doc_url,
                 "section":     section,
                 "remarks":     remarks,
                 "upload_date": date_val,
@@ -533,6 +540,11 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
         out["_print_preview_docs"] = all_doc_btns
         out["uploaded_documents"] = [
             {"label": d["label"], "url": d["url"],
+             "file_id": d.get("file_id"),
+             "show_button_id": d.get("show_button_id"),
+             "download_button_id": d.get("download_button_id"),
+             "print_preview_url": d.get("print_preview_url"),
+             "identity_url": d.get("identity_url"),
              "section": d["section"], "upload_date": d.get("upload_date"),
              "remarks": d.get("remarks")}
             for d in all_doc_btns
@@ -1084,17 +1096,63 @@ def _scrape_detail_page(url: str, logger: CrawlerLogger) -> dict:
 
 # ── Document download + S3 upload ─────────────────────────────────────────────
 
-def _handle_document(project_key: str, doc: dict, run_id: int, site_id: str, logger: CrawlerLogger) -> dict | None:
+def _download_print_preview_document(
+    browser_session: PlaywrightSession,
+    page_cache: dict[str, Any],
+    doc: dict[str, Any],
+    logger: CrawlerLogger,
+) -> bytes | None:
+    print_preview_url = doc.get("print_preview_url")
+    download_button_id = doc.get("download_button_id")
+    if not print_preview_url or not download_button_id:
+        return None
+
+    selector = f"#{download_button_id}"
+    try:
+        page = page_cache.get(print_preview_url)
+        if page is None:
+            page = browser_session.new_page()
+            page.goto(print_preview_url, wait_until="domcontentloaded", timeout=60_000)
+            page_cache[print_preview_url] = page
+        page.wait_for_selector(selector, timeout=15_000)
+        with page.expect_download(timeout=30_000) as download_info:
+            page.locator(selector).click()
+        download = download_info.value
+        path = download.path()
+        if not path:
+            return None
+        with open(path, "rb") as file_obj:
+            data = file_obj.read()
+        return data if len(data) >= 100 else None
+    except Exception as exc:
+        logger.warning("Playwright download failed; falling back to direct GET", error=str(exc), url=print_preview_url)
+        return None
+
+
+def _handle_document(
+    project_key: str,
+    doc: dict,
+    run_id: int,
+    site_id: str,
+    logger: CrawlerLogger,
+    *,
+    browser_session: PlaywrightSession | None = None,
+    page_cache: dict[str, Any] | None = None,
+) -> dict | None:
     url = doc.get("url")
     if not url:
         return None
     label = doc.get("label", "document")
     filename = build_document_filename(doc)
     try:
-        resp = safe_get(url, logger=logger, timeout=60.0)
-        if not resp or len(resp.content) < 100:
-            return None
-        data = resp.content
+        data = None
+        if browser_session is not None and page_cache is not None:
+            data = _download_print_preview_document(browser_session, page_cache, doc, logger)
+        if data is None:
+            resp = safe_get(url, logger=logger, timeout=60.0)
+            if not resp or len(resp.content) < 100:
+                return None
+            data = resp.content
         md5 = compute_md5(data)
         s3_key = upload_document(project_key, filename, data, dry_run=settings.DRY_RUN_S3)
         s3_url = get_s3_url(s3_key)
@@ -1194,136 +1252,146 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     machine_name, machine_ip = get_machine_context()
     stop_all = False
+    print_preview_pages: dict[str, Any] = {}
 
-    for page_num in range(start_page, effective_end + 1):
-        if stop_all:
-            break
-        logger.info(f"Listing page {page_num}/{effective_end}")
-
-        page_soup = soup if page_num == 1 else None
-        if page_num > 1:
-            random_delay(delay_min, delay_max)
-            page_soup = _get_explore_page(page_num, logger)
-            if not page_soup:
-                logger.error(f"Failed page {page_num}")
-                counts["error_count"] += 1
-                save_checkpoint(site_id, mode, page_num, None, run_id)
-                continue
-
-        cards = _parse_explore_cards(page_soup)
-        logger.info(f"  {len(cards)} project cards on page {page_num}")
-
-        for card in cards:
-            if item_limit and items_processed >= item_limit:
-                logger.info(f"Item limit {item_limit} reached — stopping", step="listing")
-                stop_all = True
+    with PlaywrightSession(headless=True) as browser_session:
+        for page_num in range(start_page, effective_end + 1):
+            if stop_all:
                 break
+            logger.info(f"Listing page {page_num}/{effective_end}")
 
-            cert_no = card.get("cert_no_from_card")
-            if not cert_no:
-                continue
-
-            counts["projects_found"] += 1
-            key = generate_project_key(cert_no)
-            logger.set_project(key=key, reg_no=cert_no, url=card["detail_url"], page=page_num)
-
-            if mode == "daily_light" and get_project_by_key(key):
-                logger.info("Skipping — already in DB (daily_light)", step="skip")
-                counts["projects_skipped"] += 1
-                logger.clear_project()
-                continue
-
-            try:
+            page_soup = soup if page_num == 1 else None
+            if page_num > 1:
                 random_delay(delay_min, delay_max)
-                logger.info("Fetching detail page", step="detail_fetch")
-                detail_data = _scrape_detail_page(card["detail_url"], logger)
-                if not detail_data:
-                    logger.error("Detail page returned no data", step="detail_fetch")
+                page_soup = _get_explore_page(page_num, logger)
+                if not page_soup:
+                    logger.error(f"Failed page {page_num}")
                     counts["error_count"] += 1
+                    save_checkpoint(site_id, mode, page_num, None, run_id)
                     continue
 
-                doc_links = detail_data.pop("_doc_links", [])
-                preview_docs = detail_data.get("uploaded_documents")
-                detail_data.pop("_available_units", None)
-                detail_data.pop("_total_units", None)
+            cards = _parse_explore_cards(page_soup)
+            logger.info(f"  {len(cards)} project cards on page {page_num}")
 
-                if not detail_data.get("project_name") and card.get("project_name"):
-                    detail_data["project_name"] = card["project_name"]
+            for card in cards:
+                if item_limit and items_processed >= item_limit:
+                    logger.info(f"Item limit {item_limit} reached — stopping", step="listing")
+                    stop_all = True
+                    break
 
-                final_reg = detail_data.get("project_registration_no") or cert_no
-                detail_data["project_registration_no"] = final_reg
-                detail_data["key"] = generate_project_key(final_reg)
-                detail_data["state"] = config["state"]
-                detail_data["project_state"] = config["state"]
-                detail_data["domain"] = DOMAIN
-                detail_data["config_id"] = config["config_id"]
-                detail_data["crawl_machine_ip"] = machine_ip
-                detail_data["machine_name"] = machine_name
-                detail_data["is_live"] = True
-                detail_data["data"] = merge_data_sections(
-                    {"listing_card": card, "detail_url": card["detail_url"]},
-                    detail_data.get("data"),
-                )
+                cert_no = card.get("cert_no_from_card")
+                if not cert_no:
+                    continue
 
-                logger.info("Normalizing and validating", step="normalize")
+                counts["projects_found"] += 1
+                key = generate_project_key(cert_no)
+                logger.set_project(key=key, reg_no=cert_no, url=card["detail_url"], page=page_num)
+
+                if mode == "daily_light" and get_project_by_key(key):
+                    logger.info("Skipping — already in DB (daily_light)", step="skip")
+                    counts["projects_skipped"] += 1
+                    logger.clear_project()
+                    continue
+
                 try:
-                    normalized = normalize_project_payload(detail_data, config, machine_name=machine_name, machine_ip=machine_ip)
-                    record  = ProjectRecord(**normalized)
-                    db_dict = apply_kerala_legacy_shape(record.to_db_dict())
-                except (ValidationError, ValueError) as ve:
-                    logger.warning("Validation failed — using raw fallback", step="normalize",
-                                   error=str(ve))
-                    insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(ve),
-                                       project_key=key, url=card["detail_url"], raw_data=detail_data)
-                    counts["error_count"] += 1
-                    db_dict = apply_kerala_legacy_shape(
-                        normalize_project_payload(
-                            {**detail_data, "data": merge_data_sections(detail_data.get("data"), {"validation_fallback": True})},
-                            config, machine_name=machine_name, machine_ip=machine_ip,
-                        )
+                    random_delay(delay_min, delay_max)
+                    logger.info("Fetching detail page", step="detail_fetch")
+                    detail_data = _scrape_detail_page(card["detail_url"], logger)
+                    if not detail_data:
+                        logger.error("Detail page returned no data", step="detail_fetch")
+                        counts["error_count"] += 1
+                        continue
+
+                    doc_links = detail_data.pop("_doc_links", [])
+                    preview_docs = detail_data.get("uploaded_documents")
+                    detail_data.pop("_available_units", None)
+                    detail_data.pop("_total_units", None)
+
+                    if not detail_data.get("project_name") and card.get("project_name"):
+                        detail_data["project_name"] = card["project_name"]
+
+                    final_reg = detail_data.get("project_registration_no") or cert_no
+                    detail_data["project_registration_no"] = final_reg
+                    detail_data["key"] = generate_project_key(final_reg)
+                    detail_data["state"] = config["state"]
+                    detail_data["project_state"] = config["state"]
+                    detail_data["domain"] = DOMAIN
+                    detail_data["config_id"] = config["config_id"]
+                    detail_data["crawl_machine_ip"] = machine_ip
+                    detail_data["machine_name"] = machine_name
+                    detail_data["is_live"] = False
+                    detail_data["data"] = merge_data_sections(
+                        {"listing_card": card, "detail_url": card["detail_url"]},
+                        detail_data.get("data"),
                     )
 
-                logger.info("Upserting to DB", step="db_upsert")
-                action = upsert_project(db_dict)
-                items_processed += 1
-                if action == "new":       counts["projects_new"] += 1
-                elif action == "updated": counts["projects_updated"] += 1
-                else:                     counts["projects_skipped"] += 1
-                logger.info(f"DB result: {action}", step="db_upsert")
+                    logger.info("Normalizing and validating", step="normalize")
+                    try:
+                        normalized = normalize_project_payload(detail_data, config, machine_name=machine_name, machine_ip=machine_ip)
+                        record  = ProjectRecord(**normalized)
+                        db_dict = apply_kerala_legacy_shape(record.to_db_dict())
+                    except (ValidationError, ValueError) as ve:
+                        logger.warning("Validation failed — using raw fallback", step="normalize",
+                                       error=str(ve))
+                        insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(ve),
+                                           project_key=key, url=card["detail_url"], raw_data=detail_data)
+                        counts["error_count"] += 1
+                        db_dict = apply_kerala_legacy_shape(
+                            normalize_project_payload(
+                                {**detail_data, "data": merge_data_sections(detail_data.get("data"), {"validation_fallback": True})},
+                                config, machine_name=machine_name, machine_ip=machine_ip,
+                            )
+                        )
 
-                queued_docs = _document_queue(doc_links, preview_docs)
-                logger.info(f"Downloading {len(queued_docs)} documents", step="documents")
-                uploaded_doc_results: list[dict] = []
-                doc_name_counts: dict[str, int] = {}
-                for doc in queued_docs:
-                    selected_doc = select_document_for_download(config["state"], doc, doc_name_counts, domain=DOMAIN)
-                    if selected_doc:
-                        uploaded_doc = _handle_document(db_dict["key"], selected_doc, run_id, site_id, logger)
-                        if uploaded_doc:
-                            uploaded_doc_results.append(uploaded_doc)
-                            counts["documents_uploaded"] += 1
-                uploaded_documents = build_kerala_legacy_uploaded_documents(preview_docs, doc_links, uploaded_doc_results)
+                    logger.info("Upserting to DB", step="db_upsert")
+                    action = upsert_project(db_dict)
+                    items_processed += 1
+                    if action == "new":       counts["projects_new"] += 1
+                    elif action == "updated": counts["projects_updated"] += 1
+                    else:                     counts["projects_skipped"] += 1
+                    logger.info(f"DB result: {action}", step="db_upsert")
 
-                if uploaded_documents:
-                    upsert_project({
-                        "key": db_dict["key"],
-                        "url": db_dict["url"],
-                        "state": db_dict["state"],
-                        "domain": db_dict["domain"],
-                        "project_registration_no": db_dict["project_registration_no"],
-                        "uploaded_documents": uploaded_documents,
-                        "document_urls": build_document_urls(uploaded_documents),
-                    })
+                    queued_docs = _document_queue(doc_links, preview_docs)
+                    logger.info(f"Downloading {len(queued_docs)} documents", step="documents")
+                    uploaded_doc_results: list[dict] = []
+                    doc_name_counts: dict[str, int] = {}
+                    for doc in queued_docs:
+                        selected_doc = select_document_for_download(config["state"], doc, doc_name_counts, domain=DOMAIN)
+                        if selected_doc:
+                            uploaded_doc = _handle_document(
+                                db_dict["key"],
+                                selected_doc,
+                                run_id,
+                                site_id,
+                                logger,
+                                browser_session=browser_session,
+                                page_cache=print_preview_pages,
+                            )
+                            if uploaded_doc:
+                                uploaded_doc_results.append(uploaded_doc)
+                                counts["documents_uploaded"] += 1
+                    uploaded_documents = build_kerala_legacy_uploaded_documents(preview_docs, doc_links, uploaded_doc_results)
 
-            except Exception as exc:
-                logger.exception("Project processing failed", exc, step="project_loop")
-                insert_crawl_error(run_id, site_id, "PROJECT_ERROR", str(exc),
-                                   project_key=key, url=card["detail_url"])
-                counts["error_count"] += 1
-            finally:
-                logger.clear_project()
+                    if uploaded_documents:
+                        upsert_project({
+                            "key": db_dict["key"],
+                            "url": db_dict["url"],
+                            "state": db_dict["state"],
+                            "domain": db_dict["domain"],
+                            "project_registration_no": db_dict["project_registration_no"],
+                            "uploaded_documents": uploaded_documents,
+                            "document_urls": build_document_urls(uploaded_documents),
+                        })
 
-        save_checkpoint(site_id, mode, page_num, None, run_id)
+                except Exception as exc:
+                    logger.exception("Project processing failed", exc, step="project_loop")
+                    insert_crawl_error(run_id, site_id, "PROJECT_ERROR", str(exc),
+                                       project_key=key, url=card["detail_url"])
+                    counts["error_count"] += 1
+                finally:
+                    logger.clear_project()
+
+            save_checkpoint(site_id, mode, page_num, None, run_id)
 
     reset_checkpoint(site_id, mode)
     logger.info("Kerala RERA crawl finished", **counts)
