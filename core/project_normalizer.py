@@ -397,8 +397,8 @@ def normalize_project_payload(
     normalized.setdefault("is_duplicate", False)
 
     reg_no = normalized.get("project_registration_no")
-    if reg_no and not normalized.get("key") and config.get("state_code"):
-        normalized["key"] = generate_project_key(config["state_code"], reg_no)
+    if reg_no and not normalized.get("key"):
+        normalized["key"] = generate_project_key(reg_no)
 
     merged_raw = merge_data_sections(raw_snapshot)
     if unmapped_fields:

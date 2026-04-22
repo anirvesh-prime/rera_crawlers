@@ -496,7 +496,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 counters["error_count"] += 1
                 continue
 
-            key         = generate_project_key(STATE_CODE, reg_no)
+            key         = generate_project_key(reg_no)
             detail_url  = raw.pop("view_details_url", None)
             cert_id     = raw.pop("certificate_id", None)
             project_url = detail_url or url

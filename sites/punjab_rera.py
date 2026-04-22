@@ -140,7 +140,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     counters["error_count"] += 1
                     continue
 
-                key = generate_project_key(STATE_CODE, reg_no)
+                key = generate_project_key(reg_no)
 
                 try:
                     # ── Open modal and extract labeled fields ────────────────

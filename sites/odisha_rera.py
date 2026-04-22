@@ -478,7 +478,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger, page: Page
     if not sentinel_reg:
         logger.warning("No sentinel configured — skipping")
         return True
-    key = generate_project_key(STATE_CODE, sentinel_reg)
+    key = generate_project_key(sentinel_reg)
     if not get_project_by_key(key):
         logger.warning("Sentinel not in DB yet — skipping check")
         return True
@@ -588,7 +588,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     break
 
                 reg  = card["project_registration_no"]
-                key  = generate_project_key(STATE_CODE, reg)
+                key  = generate_project_key(reg)
 
                 if reg in done_regs:
                     counts["projects_skipped"] += 1
@@ -712,6 +712,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         **overview_data,
                         **promoter_data,
                         "data": merge_data_sections(
+                            # PROD-compatible metadata — must be first so raw sections don't overwrite
+                            {
+                                "govt_type":   "state",
+                                "is_processed": False,
+                            },
                             {
                                 "source_url": detail_url,
                                 "page_num": page_num,

@@ -1,21 +1,38 @@
 from __future__ import annotations
 
-import ctypes
+import logging
+import os
 import random
 import ssl
 import time
 from typing import Any
 
 import httpx
+import siphash24
 from playwright.sync_api import sync_playwright, Page, Browser
 
 from core.config import settings
 from core.logger import CrawlerLogger
 
 
-def generate_project_key(state_code: str, registration_number: str) -> str:
-    """Hash of project_registration_no using the production method. Requires PYTHONHASHSEED=0."""
-    return str(ctypes.c_size_t(hash(registration_number.strip())).value)
+_UINT64_MASK = (1 << 64) - 1
+
+
+def _project_hash_seed() -> bytes:
+    seed_text = os.environ.get("PYTHONHASHSEED", settings.PYTHONHASHSEED)
+    try:
+        seed = int(seed_text)
+    except ValueError:
+        logging.warning("Invalid PYTHONHASHSEED %r; defaulting project-key seed to 0", seed_text)
+        seed = 0
+    return seed.to_bytes(16, byteorder="little", signed=False)
+
+
+def generate_project_key(registration_number: str) -> str:
+    """Generate a deterministic unsigned project key from the stripped registration number."""
+    key_string = registration_number.strip()
+    int_hash = siphash24.siphash24(key_string.encode("utf-8"), key=_project_hash_seed()).intdigest()
+    return str(int_hash & _UINT64_MASK)
 
 
 def random_delay(min_s: float = 1.0, max_s: float = 3.0) -> None:

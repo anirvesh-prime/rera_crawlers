@@ -267,7 +267,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     if not sentinel_reg:
         logger.warning("No sentinel configured — skipping")
         return True
-    key = generate_project_key(STATE_CODE, sentinel_reg)
+    key = generate_project_key(sentinel_reg)
     existing = get_project_by_key(key)
     if not existing:
         logger.warning("Sentinel not in DB yet — skipping check")
@@ -330,7 +330,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             continue
 
         try:
-            key  = generate_project_key(STATE_CODE, reg_no)
+            key  = generate_project_key(reg_no)
             logger.set_project(key=key, reg_no=reg_no, url=card.get("detail_url", LISTING_URL))
 
             if mode == "daily_light" and get_project_by_key(key):

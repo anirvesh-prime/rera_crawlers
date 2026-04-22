@@ -1,0 +1,373 @@
+[
+  {
+    "key": "15559348299304863353",
+    "project_name": "SHRI KRISHANA VIHAR – V",
+    "project_type": "PLOTTED",
+    "promoter_name": "Sacred Housing Private Limited",
+    "project_registration_no": "RAJ/P/2025/4090",
+    "status_of_the_project": "INPROGRESS",
+    "acknowledgement_no": "RAJ-RERA-APP-P-2025-10857",
+    "project_pin_code": null,
+    "project_city": null,
+    "project_state": null,
+    "project_location_raw": {
+      "state": "Rajasthan",
+      "taluk": "Sanganer",
+      "village": "Mahapura",
+      "district": "Mahapura",
+      "pin_code": "302026",
+      "raw_address": "Khasra No./ Plot No.Khasra No. 2276/1161, 2315/2278, 2316/2278 , Village- Mahapura , , Jaipur - 302026 (Rajasthan)",
+      "house_no_building_name": "2276/1161, 2315/2278, 2316/2278"
+    },
+    "promoter_address_raw": {
+      "state": "Rajasthan",
+      "taluk": "Sanganer",
+      "village": "Village-Ratlya",
+      "district": "Jaipur",
+      "locality": "Jaisinghpura Virndavan City Ext, Bhankrota, Ajmer Road",
+      "pin_code": "302026",
+      "house_no_building_name": "R7"
+    },
+    "promoter_contact_details": {
+      "email": "                         SACREDHOUSING16@GMAIL.COM",
+      "phone": "                         7300100005"
+    },
+    "submitted_date": "2025-07-30 00:00:00+00:00",
+    "last_modified": null,
+    "estimated_commencement_date": "2025-02-05 00:00:00+00:00",
+    "actual_commencement_date": "2025-02-05 00:00:00+00:00",
+    "estimated_finish_date": "2026-01-11 00:00:00+00:00",
+    "actual_finish_date": null,
+    "approved_on_date": null,
+    "past_experience_of_promoter": null,
+    "bank_details": [
+      {
+        "IFSC": "ICIC0004303",
+        "branch": "Patrakar Colony Branch",
+        "address": "Shop No. 5-6, Sitaram Vihar, Patrakar Colony, Jaipur, Rajasthan- 302020",
+        "bank_name": "ICICI Bank Ltd.",
+        "account_no": "777705430313",
+        "account_name": "M/S. SACRED HOUSING PVT LTD SHRI KRISHANA VIHAR-V COLLECTION ACCOUNT"
+      },
+      {
+        "IFSC": "ICIC0004303",
+        "branch": "Patrakar Colony Branch",
+        "address": "Shop No. 5-6, Sitaram Vihar, Patrakar Colony, Jaipur, Rajasthan- 302020",
+        "bank_name": "ICICI Bank Ltd.",
+        "account_no": "777705430314",
+        "account_name": "M/S. SACRED HOUSING PVT LTD SHRI KRISHANA VIHAR-V RETENTION ACCOUNT"
+      },
+      {
+        "IFSC": "ICIC0004303",
+        "branch": "Patrakar Colony Branch",
+        "address": "Shop No. 5-6, Sitaram Vihar, Patrakar Colony, Jaipur, Rajasthan- 302020",
+        "bank_name": "ICICI Bank Ltd.",
+        "account_no": "777705430315",
+        "account_name": "M/S. SACRED HOUSING PVT LTD SHRI KRISHANA VIHAR-V PROMOTER'S ACCOUNT"
+      }
+    ],
+    "land_area": 2450.0,
+    "construction_area": null,
+    "total_floor_area_under_commercial_or_other_uses": null,
+    "total_floor_area_under_residential": null,
+    "project_cost_detail": {
+      "cost_of_land": "12513800.00",
+      "estimated_construction_cost": "7350000.00"
+    },
+    "number_of_residential_units": null,
+    "number_of_commercial_units": null,
+    "building_details": [
+      {
+        "carpet_area": "117.15",
+        "no_of_units": "1"
+      },
+      {
+        "carpet_area": "79.78",
+        "no_of_units": "11"
+      },
+      {
+        "carpet_area": "47.98",
+        "no_of_units": "1"
+      },
+      {
+        "carpet_area": "66.04",
+        "no_of_units": "1"
+      },
+      {
+        "carpet_area": "47.98",
+        "no_of_units": "2"
+      }
+    ],
+    "complaints_litigation_details": null,
+    "uploaded_documents": [
+      {
+        "link": "https://rera.rajasthan.gov.in/app/Content/uploads/Certificate/abff5f06-bb04-447a-b72a-ce9f168f35d7.pdf",
+        "type": "Registration Certificate 1",
+        "s3_link": "http://docs.primetenders.com/documents/15559348299304863353/Registration_Certificate_1.pdf"
+      },
+      {
+        "link": "https://rera.rajasthan.gov.in/app//Content/uploads/9fc6eac3-0639-41bb-aa0a-27ea63c92f86.pdf",
+        "type": "Copy of the legal title report for project land",
+        "dated_on": "2025-07-07 00:00:00+00:00"
+      },
+      {
+        "link": "https://rera.rajasthan.gov.in/app//Content/uploads/ce3c3707-9e57-4277-a246-b1a645c95c0d.pdf",
+        "type": "Signed Proforma of the allotment letter and agreement for sale for project (As per RAJ-RERA Rules and FORM G)",
+        "dated_on": "2025-07-07 00:00:00+00:00"
+      },
+      {
+        "link": "https://rera.rajasthan.gov.in/app//Content/uploads/62fc136f-6bcc-463d-b47d-731daccdf833.pdf",
+        "type": "Declaration in FORM B (As per RAJ-RERA Rules)",
+        "dated_on": "2025-07-07 00:00:00+00:00"
+      },
+      {
+        "link": "https://rera.rajasthan.gov.in/app//Content/uploads/8b517c51-bb37-428b-9d43-925cf458deb8.pdf",
+        "type": "Building Plan 1",
+        "s3_link": "http://docs.primetenders.com/documents/15559348299304863353/Building_Plan_1.pdf",
+        "dated_on": "2025-07-07 00:00:00+00:00"
+      },
+      {
+        "link": "https://rera.rajasthan.gov.in/app//Content/uploads/54842e0f-4e75-4974-9089-37ec02653a55.pdf",
+        "type": "Other approvals as may be required and obtained for the project",
+        "dated_on": "2025-07-07 00:00:00+00:00"
+      },
+      {
+        "link": "https://rera.rajasthan.gov.in/app//Content/uploads/4ced27fd-a695-4ce9-8486-e9179ce4f0ba.pdf",
+        "type": "Location with Demarcation 1",
+        "s3_link": "http://docs.primetenders.com/documents/15559348299304863353/Location_with_Demarcation_1.pdf",
+        "dated_on": "2025-07-07 00:00:00+00:00"
+      },
+      {
+        "link": "https://rera.rajasthan.gov.in/app//Content/uploads/bfe053bd-2cb8-4259-8d2f-a9f1790971c7.pdf",
+        "type": "Approved Site Plan 1",
+        "s3_link": "http://docs.primetenders.com/documents/15559348299304863353/Approved_Site_Plan_1.pdf",
+        "dated_on": "2025-07-07 00:00:00+00:00"
+      },
+      {
+        "link": "https://rera.rajasthan.gov.in/app//Content/uploads/d59dc1c6-26e5-4ec5-8e35-8ce559764ce2.pdf",
+        "type": "Gantt Chart 1",
+        "s3_link": "http://docs.primetenders.com/documents/15559348299304863353/Gantt_Chart_1.pdf",
+        "dated_on": "2025-07-07 00:00:00+00:00"
+      }
+    ],
+    "authorised_signatory_details": null,
+    "co_promoter_details": [
+      {
+        "name": "No Record Found"
+      }
+    ],
+    "project_description": "1.) 12.5% of the total saleable plots has been mortgaged by the Jaipur Development Authority, Jaipur against the internal development work of the project those plots are plot no. 13, 14, and 15 admeasuring 162 SqM. 2.) Open area of the project is 1,245.19 sq. mtr. The same is calculated by considering road area as 1072.69 sq. mtr. , Park area as 122.50 sq. mtr., and S.W.M area as 50 sq. mtr.",
+    "provided_faciltiy": null,
+    "professional_information": [
+      {
+        "name": "Laxman Choudhary",
+        "role": "Director",
+        "photo": "https://rera.rajasthan.gov.in/app//Content/uploads//c39cebb8-9b02-4381-9fdf-d7dabb447d89.jpg"
+      },
+      {
+        "name": "Asha Choudhary",
+        "role": "Director",
+        "photo": "https://rera.rajasthan.gov.in/app//Content/uploads//9d359cd6-b5bf-413f-a73e-b4a02cbd8f4e.jpg"
+      },
+      {
+        "name": "Ar Narendra yadav",
+        "role": "ARCHITECT",
+        "email": "narenyadav376@gmail.com",
+        "phone": "9828473456",
+        "address": "Office - 104, navik architects neelkanth building Gandhi path road vaishali nagar Jaipur Rajasthan"
+      }
+    ],
+    "development_agreement_detail": null,
+    "construction_progress": [
+      {
+        "title": "Water Supply",
+        "status": "Yes",
+        "progress_percentage": "0"
+      },
+      {
+        "title": "Rain Water Harvesting/ Recharging",
+        "status": "Yes",
+        "progress_percentage": "0"
+      },
+      {
+        "title": "Sanitation(Storm Water Drainage, Sewerage, STP, Solid Water Disposal etc)",
+        "status": "Yes",
+        "progress_percentage": "0"
+      },
+      {
+        "title": "Electrification(Transformer, Solar Energy etc)",
+        "status": "Yes",
+        "progress_percentage": "0"
+      },
+      {
+        "title": "Fire Fighting Provision",
+        "status": "Not Applicable",
+        "progress_percentage": "0"
+      },
+      {
+        "title": "Others",
+        "status": "No",
+        "progress_percentage": "0"
+      }
+    ],
+    "land_detail": null,
+    "document_urls": [
+      {
+        "link": "http://docs.primetenders.com/documents/15559348299304863353/Registration_Certificate_1.pdf",
+        "type": "Registration Certificate 1"
+      },
+      {
+        "link": "http://docs.primetenders.com/documents/15559348299304863353/Building_Plan_1.pdf",
+        "type": "Building Plan 1"
+      },
+      {
+        "link": "http://docs.primetenders.com/documents/15559348299304863353/Location_with_Demarcation_1.pdf",
+        "type": "Location with Demarcation 1"
+      },
+      {
+        "link": "http://docs.primetenders.com/documents/15559348299304863353/Approved_Site_Plan_1.pdf",
+        "type": "Approved Site Plan 1"
+      },
+      {
+        "link": "http://docs.primetenders.com/documents/15559348299304863353/Gantt_Chart_1.pdf",
+        "type": "Gantt Chart 1"
+      }
+    ],
+    "members_details": null,
+    "retrieved_on": "2025-07-31 04:47:35.127468+00:00",
+    "config_id": 14590,
+    "data": {
+      "govt_type": "state",
+      "raw_address": "Khasra No./ Plot No.Khasra No. 2276/1161, 2315/2278, 2316/2278 , Village- Mahapura , , Jaipur - 302026 (Rajasthan)",
+      "details_page": "https://rera.rajasthan.gov.in/view-project-summary?id=0BBHuU50cPk=&type=U",
+      "is_processed": false,
+      "plot_details": [
+        {
+          "carpet_area": "117.15",
+          "no_of_units": "1"
+        },
+        {
+          "carpet_area": "79.78",
+          "no_of_units": "11"
+        },
+        {
+          "carpet_area": "47.98",
+          "no_of_units": "1"
+        },
+        {
+          "carpet_area": "66.04",
+          "no_of_units": "1"
+        },
+        {
+          "carpet_area": "47.98",
+          "no_of_units": "2"
+        }
+      ],
+      "land_area_unit": "In sq. meters",
+      "promoter_block": [
+        "Sacred Housing Private Limited",
+        "                         7300100005",
+        "                         SACREDHOUSING16@GMAIL.COM"
+      ]
+    },
+    "promoters_details": {
+      "type_of_firm": "Company"
+    },
+    "domain": "rera.rajasthan.gov.in",
+    "state": "rajasthan",
+    "crawl_machine_ip": "52.140.81.10",
+    "machine_name": "dashboard-rera-14590-rajasthan-74b57f5d5c-czj2s",
+    "is_updated": false,
+    "is_duplicate": false,
+    "url": "https://rera.rajasthan.gov.in/project-view/?id=0BBHuU50cPk=",
+    "last_updated": null,
+    "updated_fields": [
+      "uploaded_documents",
+      "document_urls"
+    ],
+    "project_images": null,
+    "detail_images": null,
+    "lister_images": null,
+    "images": null,
+    "old_updates": [
+      {
+        "updated_on": "2025-09-08 12:05:25.024999+0000",
+        "document_urls": "None",
+        "uploaded_documents": "None"
+      },
+      {
+        "updated_on": "2025-07-31 04:51:13.448605+0000",
+        "status_update": "None"
+      }
+    ],
+    "status_update": [
+      {
+        "building_details": [
+          {
+            "carpet_area": "117.15",
+            "no_of_units": "1"
+          },
+          {
+            "carpet_area": "79.78",
+            "no_of_units": "11"
+          },
+          {
+            "carpet_area": "47.98",
+            "no_of_units": "1"
+          },
+          {
+            "carpet_area": "66.04",
+            "no_of_units": "1"
+          },
+          {
+            "carpet_area": "47.98",
+            "no_of_units": "2"
+          }
+        ],
+        "construction_progress": [
+          {
+            "title": "Water Supply",
+            "status": "Yes",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Rain Water Harvesting/ Recharging",
+            "status": "Yes",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Sanitation(Storm Water Drainage, Sewerage, STP, Solid Water Disposal etc)",
+            "status": "Yes",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Electrification(Transformer, Solar Energy etc)",
+            "status": "Yes",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Fire Fighting Provision",
+            "status": "Not Applicable",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Others",
+            "status": "No",
+            "progress_percentage": "0"
+          }
+        ]
+      }
+    ],
+    "iw_part_processed": true,
+    "iw_processed": true,
+    "last_crawled_date": "2025-07-31 04:47:29.150380+00:00",
+    "land_area_details": null,
+    "doc_ocr_url": null,
+    "proposed_timeline": null,
+    "checked_updates": true,
+    "checked_updates_date": "2025-09-08 12:05:27.553491+00:00",
+    "rera_housing_found": false,
+    "is_live": false,
+    "alternative_rera_ids": null
+  }
+]

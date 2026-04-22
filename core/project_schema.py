@@ -79,6 +79,7 @@ PROJECT_COLUMN_SET = set(PROJECT_COLUMNS)
 
 REQUIRED_PROJECT_FIELDS = {
     "key",
+    "project_name",
     "project_registration_no",
     "url",
     "state",

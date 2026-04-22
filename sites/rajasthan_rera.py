@@ -261,20 +261,230 @@ def _iter_website_documents(node, *, docs: list[dict], seen: set[str], section: 
             _iter_website_documents(item, docs=docs, seen=seen, section=section)
 
 
-def _extract_project_website_documents(website_data: dict) -> list[dict]:
+def _fetch_last_updated_date(logger: CrawlerLogger) -> str:
+    """Fetch the global 'Updated project details as on' date from the RERA app API."""
+    resp = safe_get(
+        f"{APP_BASE}/HomeWebsite/GetPatchLastUpdatedDateWebSite/",
+        logger=logger, timeout=15,
+    )
+    if not resp:
+        return ""
+    try:
+        return resp.json().get("data", "") or ""
+    except Exception:
+        return ""
+
+
+def _fetch_view_project_data(project_id: str, doc_type: str, logger: CrawlerLogger) -> dict:
+    """
+    Call ViewProjectWebsite?id=<project_id>&type=<O|U>.
+    type=U → current/updated project data (primary source for DB fields and documents).
+    type=O → snapshot at the time of registration (secondary, used only for extra historic docs).
+    """
+    resp = safe_get(
+        f"{APP_BASE}/HomeWebsite/ViewProjectWebsite?id={project_id}&type={doc_type}",
+        logger=logger, timeout=30,
+    )
+    if not resp:
+        return {}
+    try:
+        data = resp.json()
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _iter_view_project_documents(
+    node, *, docs: list[dict], seen: set[str], section: str | None = None
+) -> None:
+    """
+    Traverse a ViewProjectWebsite JSON tree and collect document URLs.
+    Handles all document URL fields not covered by _iter_website_documents:
+      - CertiPath         → RERA Registration Certificate
+      - DrawingsFileURL   → Common Area Drawing
+      - Url + DocumentName → Building plan PDFs (only when DocumentName is present)
+      - DocumentUrl       → standard uploaded documents (same as _iter_website_documents)
+    """
+    if isinstance(node, dict):
+        # Registration certificate
+        certi = _build_app_url(node.get("CertiPath"))
+        if certi and certi not in seen:
+            seen.add(certi)
+            docs.append({"label": "RERA Registration Certificate", "url": certi,
+                         "category": "certificate"})
+
+        # Common area drawings
+        drawing = _build_app_url(node.get("DrawingsFileURL"))
+        if drawing and drawing not in seen:
+            seen.add(drawing)
+            docs.append({"label": "Common Area Drawing", "url": drawing,
+                         "category": section or "ProjectCommanArea"})
+
+        # Building plan documents (Url field paired with DocumentName)
+        bldg_url = _build_app_url(node.get("Url"))
+        bldg_name = node.get("DocumentName")
+        if bldg_url and bldg_name and bldg_url not in seen:
+            seen.add(bldg_url)
+            docs.append({"label": str(bldg_name).strip(), "url": bldg_url,
+                         "category": section or "GetBuildingDetails"})
+
+        # Standard uploaded documents (ApplicationDocumentName / DocumentName / DocumentUrl)
+        doc_url = _build_app_url(node.get("DocumentUrl"))
+        if doc_url and doc_url not in seen:
+            seen.add(doc_url)
+            label = (
+                node.get("ApplicationDocumentName")
+                or node.get("DocumentName")
+                or node.get("MasterType")
+                or section
+                or "document"
+            )
+            entry = {
+                "label": str(label).strip(), "url": doc_url,
+                "remarks": node.get("DocumentName"),
+                "upload_date": node.get("CreatedOn"),
+                "category": node.get("MasterType") or section,
+            }
+            docs.append({k: v for k, v in entry.items() if v not in (None, "")})
+
+        for key, value in node.items():
+            next_section = section
+            if isinstance(key, str) and (
+                (key.startswith("Get") and key.endswith(("List", "Details")))
+                or key in ("ProjectCommanArea", "ProjectDocuments", "PromoterDocumentList",
+                           "ProjectCommanAreaNew")
+            ):
+                next_section = key
+            _iter_view_project_documents(value, docs=docs, seen=seen, section=next_section)
+    elif isinstance(node, list):
+        for item in node:
+            _iter_view_project_documents(item, docs=docs, seen=seen, section=section)
+
+
+def _extract_view_project_fields(view_data: dict) -> dict:
+    """
+    Extract structured DB fields from a ViewProjectWebsite (type=U) response.
+    Returns only fields that have a non-empty value.
+
+    Also extracts PROD-compatible metadata fields:
+      - raw_address  — constructed from GetProjectBasic location parts
+      - plot_details — list of {carpet_area, no_of_units} from PlotDetails
+    """
+    out: dict = {}
+
+    # GetProjectBasic may be a dict (new API) or a list with one item (old API).
+    basic_raw = view_data.get("GetProjectBasic")
+    if isinstance(basic_raw, list) and basic_raw:
+        basic: dict = basic_raw[0]
+    elif isinstance(basic_raw, dict):
+        basic = basic_raw
+    else:
+        basic = {}
+
+    if basic:
+        for api_f, schema_f in (
+            ("ActualCommencementDate", "actual_commencement_date"),
+            ("ActualfinishDate",       "actual_finish_date"),
+        ):
+            val = basic.get(api_f)
+            if val and str(val).strip() not in ("null", "None", ""):
+                out[schema_f] = str(val).strip()
+
+        # Build raw_address from GetProjectBasic location fields
+        plot_no   = (basic.get("PlotNo") or "").strip()
+        village   = (basic.get("VillageName") or "").strip()
+        district  = (basic.get("DistrictName") or "").strip()
+        pin_code  = (basic.get("PinCode") or "").strip()
+        state_name = (basic.get("StateName") or "Rajasthan").strip() or "Rajasthan"
+        if plot_no or village or district:
+            parts = []
+            if plot_no:
+                parts.append(f"Khasra No./ Plot No.{plot_no}")
+            if village:
+                parts.append(f"Village- {village}")
+            location = f"{district} - {pin_code}" if pin_code else district
+            if location:
+                parts.append(f", {location} ({state_name})")
+            out["raw_address"] = " , ".join(parts)
+
+    # plot_details from PlotDetails list
+    plot_details_raw = view_data.get("PlotDetails")
+    if isinstance(plot_details_raw, list):
+        plot_details = []
+        for item in plot_details_raw:
+            if not isinstance(item, dict):
+                continue
+            plot_area  = item.get("PlotArea")
+            total_plots = item.get("TotalPlots")
+            if plot_area is not None:
+                plot_details.append({
+                    "carpet_area": str(plot_area),
+                    "no_of_units": str(total_plots) if total_plots is not None else "0",
+                })
+        if plot_details:
+            out["plot_details"] = plot_details
+
+    # Cost details
+    cost = view_data.get("GetProjectCostDetail")
+    if cost:
+        out["project_cost_detail"] = cost
+
+    # Professional information (Architect, Engineer, Contractor)
+    professionals = view_data.get("ProjectProFessionAlDetail")
+    if professionals:
+        out["professional_information"] = professionals
+
+    # Common area facilities
+    facilities = view_data.get("GetProjectAreaFacilities")
+    if facilities:
+        out["provided_faciltiy"] = facilities
+
+    # Litigation / complaints details
+    litigations = view_data.get("ProjectLitigations")
+    if litigations:
+        out["complaints_litigation_details"] = litigations
+
+    return out
+
+
+def _extract_project_website_documents(
+    website_data: dict,
+    updated_date: str = "",
+) -> list[dict]:
     docs: list[dict] = []
     seen: set[str] = set()
 
     project_id = website_data.get("ProjectId")
+    reg_date = website_data.get("DateofRegistration", "")
+
     if project_id:
-        for label, doc_type in (
-            ("project_details_at_registration", "O"),
-            ("updated_project_details", "U"),
-        ):
-            url = f"{BASE_URL}/ViewProject?id={project_id}&type={doc_type}"
-            if url not in seen:
-                seen.add(url)
-                docs.append({"label": label, "url": url})
+        # "Project details as at the time of registration dated <date>" (type=O)
+        reg_label = (
+            f"Project details as at the time of registration dated {reg_date}"
+            if reg_date
+            else "project_details_at_registration"
+        )
+        url_o = f"{BASE_URL}/ViewProject?id={project_id}&type=O"
+        if url_o not in seen:
+            seen.add(url_o)
+            entry: dict = {"label": reg_label, "url": url_o}
+            if reg_date:
+                entry["date"] = reg_date
+            docs.append(entry)
+
+        # "Updated project details as on <date>" (type=U)
+        upd_label = (
+            f"Updated project details as on {updated_date}"
+            if updated_date
+            else "updated_project_details"
+        )
+        url_u = f"{BASE_URL}/ViewProject?id={project_id}&type=U"
+        if url_u not in seen:
+            seen.add(url_u)
+            entry_u: dict = {"label": upd_label, "url": url_u}
+            if updated_date:
+                entry_u["date"] = updated_date
+            docs.append(entry_u)
 
     _iter_website_documents(website_data, docs=docs, seen=seen)
     return docs
@@ -286,7 +496,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     if not sentinel_reg:
         logger.warning("No sentinel configured — skipping")
         return True
-    key = generate_project_key(STATE_CODE, sentinel_reg)
+    key = generate_project_key(sentinel_reg)
     existing = get_project_by_key(key)
     if not existing:
         logger.warning("Sentinel not in DB yet — skipping check")
@@ -362,11 +572,18 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     counts["projects_found"] = len(api_projects)
     machine_name, machine_ip = get_machine_context()
 
+    # Fetch the global "Updated project details as on <date>" label once per run
+    updated_date = _fetch_last_updated_date(logger)
+    if updated_date:
+        logger.info(f"Rajasthan: updated_project_details date = {updated_date}")
+    else:
+        logger.warning("Rajasthan: could not fetch last-updated date; labels will use generic text")
+
     for i, proj in enumerate(api_projects):
         pid    = str(proj.get("Id", ""))
         enc_id = proj.get("EncryptedProjectId", "")
         reg_no = proj.get("REGISTRATIONNO") or f"RJ-{pid}"
-        key = generate_project_key(STATE_CODE, reg_no)
+        key = generate_project_key(reg_no)
         if resume_pending:
             if key == resume_after_key:
                 resume_pending = False
@@ -401,20 +618,86 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             if cert_url:
                 doc_links.append({"label": "registration_certificate", "url": cert_url})
 
+            # PROD-compatible metadata fields (always present for all projects)
+            prod_data_fields: dict = {
+                "govt_type":   "state",
+                "is_processed": False,
+            }
+
             if enc_id:
                 logger.info("Fetching project detail API", step="detail_fetch")
                 detail = _fetch_project_detail(enc_id, logger)
                 data.update({k: v for k, v in detail.items() if k != "data" and v is not None and not k.startswith("_")})
+
+                # Build promoter_block array matching PROD format:
+                # [promoter_name, phone, email] — sourced from GetProjectById API
+                _pb_name  = data.get("promoter_name", "")
+                _pb_contact = data.get("promoter_contact_details") or {}
+                _pb_phone = _pb_contact.get("mobile", "")
+                _pb_email = _pb_contact.get("email", "")
+                _promoter_block = [x for x in [_pb_name, _pb_phone, _pb_email] if x]
+                if _promoter_block:
+                    prod_data_fields["promoter_block"] = _promoter_block
+
                 logger.info("Fetching project website detail", step="detail_fetch")
                 website_detail = _fetch_project_website_detail(enc_id, logger)
+
+                # details_page and land_area_unit are present for all enc_id projects
+                prod_data_fields["details_page"] = (
+                    f"https://rera.rajasthan.gov.in/view-project-summary?id={enc_id}&type=U"
+                )
+                prod_data_fields["land_area_unit"] = "In sq. meters"
+
                 if website_detail:
-                    doc_links.extend(_extract_project_website_documents(website_detail))
+                    doc_links.extend(_extract_project_website_documents(website_detail, updated_date=updated_date))
+
+                    # Fetch ViewProjectWebsite for additional documents and structured data.
+                    # type=U (updated) is primary; type=O (registration snapshot) adds historic docs.
+                    project_id = website_detail.get("ProjectId")
+                    vp_updated: dict = {}
+                    vp_original: dict = {}
+                    if project_id:
+                        # Build shared seen-set so ViewProject docs don't duplicate existing ones
+                        vp_seen: set[str] = {d["url"] for d in doc_links if d.get("url")}
+
+                        logger.info("Fetching ViewProjectWebsite (updated)", step="detail_fetch")
+                        vp_updated = _fetch_view_project_data(project_id, "U", logger)
+                        if vp_updated:
+                            vp_docs: list[dict] = []
+                            _iter_view_project_documents(vp_updated, docs=vp_docs, seen=vp_seen)
+                            doc_links.extend(vp_docs)
+                            # Populate structured DB fields (don't overwrite already-set values)
+                            vp_fields = _extract_view_project_fields(vp_updated)
+                            for field, val in vp_fields.items():
+                                if field not in ("raw_address", "plot_details") and (field not in data or not data[field]):
+                                    data[field] = val
+                            # raw_address and plot_details go into the data JSONB, not top-level columns
+                            if vp_fields.get("raw_address"):
+                                prod_data_fields["raw_address"] = vp_fields["raw_address"]
+                            if vp_fields.get("plot_details"):
+                                prod_data_fields["plot_details"] = vp_fields["plot_details"]
+
+                        logger.info("Fetching ViewProjectWebsite (at registration)", step="detail_fetch")
+                        vp_original = _fetch_view_project_data(project_id, "O", logger)
+                        if vp_original:
+                            vp_orig_docs: list[dict] = []
+                            _iter_view_project_documents(vp_original, docs=vp_orig_docs, seen=vp_seen)
+                            doc_links.extend(vp_orig_docs)
+
                     data["data"] = merge_data_sections(
+                        prod_data_fields,
                         data.get("data"), detail.get("data"),
-                        {"source_api": "ProjectDtlsWebsite", "raw_website": website_detail},
+                        {
+                            "source_api": "ProjectDtlsWebsite",
+                            "raw_website": website_detail,
+                            "raw_view_updated": vp_updated or None,
+                            "raw_view_original": vp_original or None,
+                        },
                     )
                 else:
-                    data["data"] = merge_data_sections(data.get("data"), detail.get("data"))
+                    data["data"] = merge_data_sections(prod_data_fields, data.get("data"), detail.get("data"))
+            else:
+                data["data"] = merge_data_sections(prod_data_fields, data.get("data"))
 
             logger.info("Normalizing and validating", step="normalize")
             try:

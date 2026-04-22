@@ -14,20 +14,22 @@ Usage:
 """
 from __future__ import annotations
 
-import argparse
-import importlib
 import json
 import os
+import sys
+if os.environ.get("PYTHONHASHSEED") != "0":
+    env = dict(os.environ)
+    env["PYTHONHASHSEED"] = "0"
+    os.execvpe(sys.executable, [sys.executable, *sys.argv], env)
+
+import argparse
+import importlib
 import socket
 import subprocess
-import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
-
-# Must be set before any import that uses hash()
-os.environ.setdefault("PYTHONHASHSEED", "0")
 
 from core.config import settings
 from core.db import insert_crawl_run, update_crawl_run, insert_crawl_error

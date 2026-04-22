@@ -68,10 +68,10 @@ rera_crawlers/
 │   ├── __init__.py
 │   ├── config.py                  # Pydantic-settings config loader
 │   ├── db.py                      # PostgreSQL connection + helpers (psycopg3)
-│   ├── s3.py                      # S3 upload, checksum, key generation
+│   ├── s3.py                      # S3 upload and checksum helpers
 │   ├── logger.py                  # Structured JSON logger
 │   ├── models.py                  # Pydantic models for project + document
-│   ├── crawler_base.py            # Shared utilities (delays, UA rotation, retries)
+│   ├── crawler_base.py            # Shared utilities (delays, UA rotation, retries, key generation)
 │   └── checkpoint.py              # Crawl checkpoint read/write helpers
 │
 ├── sites/                         # One script per site
@@ -468,25 +468,25 @@ Every project record uses a stable hash-based primary key.
 
 ```python
 import os
-import hashlib
+import siphash24
 
-# Set PYTHONHASHSEED=0 in cron environment for determinism
-# Use Python's built-in hash() with fixed seed via env var
-# Implementation:
-os.environ["PYTHONHASHSEED"] = "0"
+UINT64_MASK = (1 << 64) - 1
 
-def generate_project_key(state_code: str, registration_number: str) -> str:
+def generate_project_key(registration_number: str) -> str:
     """
-    Generates a stable unique key for a project.
-    Uses Python built-in hash() — requires PYTHONHASHSEED=0 in environment.
-    Returns a positive integer string.
+    Generates the production project key.
+    Uses siphash24 over the stripped registration number, seeded from
+    PYTHONHASHSEED, then renders the 64-bit result as an unsigned decimal string.
     """
-    raw = f"{state_code.strip().upper()}::{registration_number.strip()}"
-    return str(abs(hash(raw)))
+    seed = int(os.environ.get("PYTHONHASHSEED", "0"))
+    key = seed.to_bytes(16, byteorder="little")
+    raw = registration_number.strip().encode("utf-8")
+    digest = siphash24.siphash24(raw, key=key).intdigest()
+    return str(digest & UINT64_MASK)
 ```
 
-- `state_code`: short uppercase code, e.g. `KL`, `RJ`, `OD`, `PY`
-- `registration_number`: the official RERA registration number as it appears on the site
+- `registration_number`: the official RERA registration number as it appears on the site; whitespace is stripped before hashing
+- The hashed input is the stripped registration number only
 - The `key` column in `projects` table stores this value
 - The same key is used as the S3 path prefix: `s3://bucket/{key}/filename.pdf`
 
@@ -530,7 +530,7 @@ s3://{BUCKET_NAME}/
 - Runs every night at a configured time via cron
 - Hits listing/search pages only (no detail page visits)
 - For each project found on listing:
-  - Compute `key = generate_project_key(state, reg_no)`
+  - Compute `key = generate_project_key(reg_no)`
   - Query `projects` table for this key
   - **Not found** → add to deep crawl queue immediately
   - **Found, `last_modified` unchanged** → skip
@@ -551,7 +551,7 @@ s3://{BUCKET_NAME}/
 
 ### Project-level
 ```
-hash_key = generate_project_key(state_code, registration_number)
+hash_key = generate_project_key(registration_number)
 
 if key NOT IN projects table:
     → full deep crawl (detail page + all documents)
@@ -722,6 +722,7 @@ class Settings(BaseSettings):
     S3_BUCKET_NAME: str
 
     # Crawler
+    # Fixed SipHash seed used for deterministic project-key generation.
     PYTHONHASHSEED: str = "0"
     LOG_DIR: str = "logs"
     USER_AGENTS: list[str] = [...]   # pool of real browser UA strings
@@ -810,6 +811,7 @@ LOG_DIR=logs
 
 ```cron
 # Daily light crawl — every night at 2:00 AM
+# Keep PYTHONHASHSEED fixed so project keys stay stable across runs.
 0 2 * * * PYTHONHASHSEED=0 cd /path/to/rera_crawlers && /path/to/venv/bin/python run_crawlers.py --mode daily_light >> /path/to/rera_crawlers/logs/cron.log 2>&1
 
 # Weekly deep crawl — every Sunday at 1:00 AM
@@ -928,7 +930,7 @@ run_crawlers.py --mode daily_light/weekly_deep
 
 ## 21. Known Constraints & Notes
 
-- `PYTHONHASHSEED=0` **must** be set in the cron environment. Without it, `hash()` produces different values across Python processes, breaking key stability.
+- Keep `PYTHONHASHSEED` fixed across environments and cron runs. It is used as the SipHash seed for deterministic project-key generation.
 - Playwright requires Chromium to be installed: `playwright install chromium`
 - PostgreSQL is running locally for development; for production it will be AWS RDS PostgreSQL
 - No AI/LLM calls are made at any point during crawling. All extraction is rule-based (CSS selectors, regex, JSON path).

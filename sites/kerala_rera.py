@@ -10,7 +10,9 @@ Strategy:
 from __future__ import annotations
 
 import re
-from urllib.parse import urljoin
+from datetime import timezone
+from typing import Any
+from urllib.parse import parse_qs, urljoin, urlparse
 
 from bs4 import BeautifulSoup
 from pydantic import ValidationError
@@ -29,6 +31,7 @@ from core.project_normalizer import (
     get_machine_context,
     merge_data_sections,
     normalize_project_payload,
+    parse_datetime,
 )
 from core.s3 import compute_md5, upload_document, get_s3_url
 from core.config import settings
@@ -37,6 +40,9 @@ BASE_URL = "https://rera.kerala.gov.in"
 EXPLORE_URL = f"{BASE_URL}/explore-projects"
 STATE_CODE = "KL"
 DOMAIN = "rera.kerala.gov.in"
+LEGACY_DOMAIN = "reraonline.kerala.gov.in"
+LEGACY_CONFIG_ID = 14521
+_LEGACY_SKIP_DOC_LABELS = {"complete_project_details", "quarterly_progress_report"}
 
 
 # ── Listing pagination via explore-projects ───────────────────────────────────
@@ -154,6 +160,8 @@ def _label_value_from_el(lbl) -> tuple[str, str]:
         return key, val
 
     raw = lbl.get_text(strip=True)
+    parent = lbl.parent
+    parent_text = parent.get_text(separator=" ", strip=True) if parent else ""
 
     # Pattern 3: value is embedded inline — "Key :Value"
     # Detect by checking whether anything follows the first colon inside the label
@@ -161,13 +169,14 @@ def _label_value_from_el(lbl) -> tuple[str, str]:
         first_colon = raw.index(":")
         possible_key = raw[:first_colon].strip()
         inline_val   = raw[first_colon + 1:].strip()
+        sibling_val = parent_text[len(raw):].lstrip(": ").strip() if parent_text.startswith(raw) else ""
+        if sibling_val:
+            return raw.strip(), sibling_val
         if inline_val and possible_key:
             return possible_key, inline_val
 
     # Pattern 2: value lives outside the label as a text node of its parent
     key = raw.rstrip(": ").strip()
-    parent = lbl.parent
-    parent_text = parent.get_text(separator=" ", strip=True) if parent else ""
     val = parent_text[len(raw):].lstrip(": ").strip()
     return key, val
 
@@ -485,12 +494,17 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
             val_col  = tbl["headers"][1] if len(tbl["headers"]) > 1 else "col_1"
             pct_col  = next((h for h in tbl["headers"]
                              if "percent" in h.lower() or "progress" in h.lower()), "col_2")
+            details_col = next((h for h in tbl["headers"] if "detail" in h.lower() or "remark" in h.lower()), None)
             for r in rows:
                 fname = r.get(name_col, "").rstrip(": ").strip()
                 fval  = r.get(val_col, "")
                 fpct  = r.get(pct_col, "")
+                fdetails = r.get(details_col, "") if details_col else ""
                 if fname:
-                    facility_dict[fname] = {"proposed": fval, "completion_pct": fpct}
+                    entry = {"proposed": fval, "completion_pct": fpct}
+                    if fdetails and fdetails != "NA":
+                        entry["details"] = fdetails
+                    facility_dict[fname] = entry
             if facility_dict:
                 out["provided_faciltiy"] = facility_dict
 
@@ -544,6 +558,440 @@ def _extract_number(text: str) -> float | None:
         return None
     m = re.search(r"[\d,]+\.?\d*", text.replace(",", ""))
     return float(m.group(0)) if m else None
+
+
+def _legacy_view_file_url(url: str | None) -> str | None:
+    if not url:
+        return None
+    parsed = urlparse(url)
+    query = parse_qs(parsed.query)
+    file_id = next(
+        (
+            values[0]
+            for key in ("ID", "id", "DOC_ID", "doc_id")
+            for values in [query.get(key)]
+            if values and values[0]
+        ),
+        None,
+    )
+    if file_id and "Preview/GetDocument" in url:
+        return f"{BASE_URL}/view-file/{file_id}"
+    return url
+
+
+def _legacy_doc_identity(doc: dict[str, Any]) -> str | None:
+    link = _legacy_view_file_url(document_identity_url(doc) or doc.get("link") or doc.get("url"))
+    if link:
+        return link
+    label = doc.get("label") or doc.get("type")
+    return str(label).strip().lower() if label else None
+
+
+def _compact_kerala_members(rows: Any) -> list[dict[str, Any]] | None:
+    if not isinstance(rows, list):
+        return None
+    out = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        name = row.get("Member Name") or row.get("name")
+        position = row.get("Designation") or row.get("position")
+        if name or position:
+            entry = {}
+            if name:
+                entry["name"] = str(name).strip()
+            if position:
+                entry["position"] = str(position).strip()
+            out.append(entry)
+    return out or None
+
+
+def _compact_kerala_co_promoters(rows: Any) -> list[dict[str, Any]] | None:
+    if not isinstance(rows, list):
+        return None
+    out = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        entry = {
+            "name": row.get("Land owner Name") or row.get("name"),
+            "office_no": row.get("Office Number (With area code)") or row.get("office_no"),
+            "owner_type": row.get("Type of Land Owner") or row.get("owner_type"),
+            "agreement_type": row.get("Type of Agreement/ Arrangement") or row.get("agreement_type"),
+        }
+        entry = {k: str(v).strip() for k, v in entry.items() if v not in (None, "", "NA")}
+        if entry:
+            out.append(entry)
+    return out or None
+
+
+def _compact_kerala_professionals(rows: Any) -> list[dict[str, Any]] | None:
+    if not isinstance(rows, list):
+        return None
+    out = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        entry = {
+            "name": row.get("Professional Name") or row.get("name"),
+            "role": row.get("Professional Type") or row.get("role"),
+            "address": row.get("Address of the firm") or row.get("address"),
+            "registration_no": row.get("Registration Number") or row.get("registration_no"),
+            "key_real_estate_projects": row.get("Key projects completed") or row.get("key_real_estate_projects"),
+        }
+        entry = {k: str(v).strip() for k, v in entry.items() if v not in (None, "", "NA")}
+        if entry:
+            out.append(entry)
+    return out or None
+
+
+def _legacy_utc_timestamp(value: Any) -> str | None:
+    parsed = parse_datetime(value)
+    if not parsed:
+        return None
+    return parsed.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M:%S+00:00")
+
+
+def _legacy_promoter_address(record: dict[str, Any], labels: dict[str, Any]) -> dict[str, Any] | None:
+    promoter_addr = record.get("promoter_address_raw")
+    if isinstance(promoter_addr, dict):
+        communication = promoter_addr.get("communication_address")
+        registered = promoter_addr.get("registered_address")
+        if isinstance(communication, dict) and communication:
+            return communication
+        if isinstance(registered, dict) and registered:
+            return registered
+
+    fallback = {
+        "State/ UT": labels.get("State/ UT") or labels.get("State"),
+        "Taluk": labels.get("Taluk"),
+        "District": labels.get("District"),
+        "Locality": labels.get("Locality"),
+        "Pin Code": labels.get("Pin Code"),
+        "House Number/ Building Name": labels.get("House Number/ Building Name"),
+    }
+    fallback = {k: v for k, v in fallback.items() if v not in (None, "", "NA")}
+    return fallback or None
+
+
+def _build_kerala_legacy_facility_progress(facilities: Any) -> list[dict[str, Any]] | None:
+    if not isinstance(facilities, dict):
+        return None
+    preferred_order = [
+        "Water conservation, Rain water harvesting",
+        "Gymnasium",
+        "Open parking",
+        "Water supply",
+        "Electrical meter room, Sub-station, Receiving station",
+        "Internal Roads & Footpaths",
+        "Security",
+        "Solar systems",
+        "Swimming pool",
+        "Fire protection and Fire safety requirements",
+        "Party Hall",
+        "Security cameras",
+        "Sewerage (Chamber, Lines, Septic tank, STP)",
+        "Storm water drains",
+        "Street lighting",
+        "Visitors Parking",
+    ]
+    out = []
+    for name in preferred_order + [k for k in facilities.keys() if k not in preferred_order]:
+        raw = facilities.get(name)
+        if not isinstance(raw, dict):
+            continue
+        pct = raw.get("completion_pct")
+        if pct in (None, ""):
+            continue
+        out.append({"title": str(name).strip(), "progress_percentage": f" {str(pct).strip()}"})
+    if out:
+        out.append({"title": "total_completion_percentage", "progress_percentage": " 0"})
+    return out or None
+
+
+def _build_kerala_legacy_status_update(
+    record: dict[str, Any],
+    building: dict[str, Any] | None,
+    tasks: list[dict[str, Any]] | None,
+    facilities: dict[str, Any] | None,
+) -> list[dict[str, Any]] | None:
+    building = building or {}
+    tasks = tasks or []
+    facilities = facilities or {}
+    project_name = record.get("project_name")
+
+    # Prefer building_details.unit_types; fall back to the unit-type table in
+    # data.all_tables (present when building_details was not extracted directly).
+    unit_type_rows: list[dict] = list(building.get("unit_types", [])) if isinstance(building, dict) else []
+    if not unit_type_rows:
+        for table in record.get("data", {}).get("all_tables", []) if isinstance(record.get("data"), dict) else []:
+            if not isinstance(table, dict):
+                continue
+            if table.get("section") != "Building Details":
+                continue
+            first_row = table.get("first_row", {})
+            if isinstance(first_row, dict) and "Apartment/Villa Type" in first_row:
+                # Reconstruct row list from first_row (all_tables only stores the first row)
+                unit_type_rows = [first_row]
+                # Also include additional rows if stored
+                for extra in table.get("rows", []):
+                    if isinstance(extra, dict) and "Apartment/Villa Type" in extra:
+                        unit_type_rows.append(extra)
+                break
+
+    booking_details = []
+    for row in unit_type_rows:
+        if not isinstance(row, dict):
+            continue
+        flat_type = row.get("Apartment/Villa Type")
+        area = row.get("Carpet Area")
+        total_available = row.get("Proposed number of apartments")
+        booked = row.get("Number of apartments Booked /Sold /Allotted")
+        if flat_type or area or total_available or booked:
+            booking_details.append(
+                {
+                    "block": project_name,
+                    "flat_type": flat_type,
+                    "area": area,
+                    "total_available": total_available,
+                    "booked_flats": booked,
+                }
+            )
+
+    building_detail = []
+    for table in record.get("data", {}).get("all_tables", []) if isinstance(record.get("data"), dict) else []:
+        if not isinstance(table, dict):
+            continue
+        if table.get("section") != "Building Details":
+            continue
+        first_row = table.get("first_row")
+        if not isinstance(first_row, dict) or "Building Name" not in first_row:
+            continue
+        building_detail.append(
+            {
+                "flat_name": first_row.get("Building Name") or project_name,
+                "completion_date": first_row.get("Proposed Date of Completion (As committed to allottees)"),
+                "no_basement": first_row.get("Number of Basements"),
+                "no_podium": first_row.get("Number of Podiums"),
+                "no_super_struct": first_row.get("Number of Slab of Super Structure"),
+                "no_stilt": first_row.get("Number of Stilts"),
+            }
+        )
+        break
+
+    progress = []
+    for row in tasks:
+        if not isinstance(row, dict):
+            continue
+        title = row.get("Tasks / Activity")
+        pct = row.get("Percentage of Work")
+        if not title:
+            continue
+        progress.append(
+            {
+                "block": project_name,
+                "title": str(title).strip(),
+                "progress_percentage": str(pct).strip() if pct not in (None, "") else "0",
+            }
+        )
+        if "Common Areas work for each building" in str(title):
+            break
+    if progress:
+        progress.extend([{"block": project_name}, {"block": project_name}])
+    for name, raw in facilities.items():
+        if not isinstance(raw, dict):
+            continue
+        pct = raw.get("completion_pct")
+        if pct in (None, ""):
+            continue
+        entry = {"title": f"{str(name).strip()} :", "progress_percentage": str(pct).strip()}
+        details = raw.get("details")
+        if details not in (None, "", "NA"):
+            entry["remarks"] = str(details).strip()
+        progress.append(entry)
+
+    if not booking_details and not building_detail and not progress:
+        return None
+
+    status_update: dict[str, Any] = {"updated": True}
+    if booking_details:
+        status_update["booking_details"] = booking_details
+    if building_detail:
+        status_update["building_detail"] = building_detail
+    if progress:
+        status_update["construction_progress"] = progress
+    return [status_update]
+
+
+def apply_kerala_legacy_shape(record: dict[str, Any]) -> dict[str, Any]:
+    out = dict(record)
+    labels = out.get("data", {}).get("all_labels", {}) if isinstance(out.get("data"), dict) else {}
+    original_building = out.get("building_details") if isinstance(out.get("building_details"), dict) else {}
+    original_task_progress = out.get("construction_progress") if isinstance(out.get("construction_progress"), list) else []
+    original_facilities = out.get("provided_faciltiy") if isinstance(out.get("provided_faciltiy"), dict) else {}
+    chosen_addr = _legacy_promoter_address(out, labels) or {}
+
+    out["state"] = "kerala"
+    out["project_state"] = str(labels.get("State") or out.get("project_state") or "KERALA").upper()
+    out["domain"] = LEGACY_DOMAIN
+    out["config_id"] = LEGACY_CONFIG_ID
+
+    preview_source_url = out.get("data", {}).get("source_url") if isinstance(out.get("data"), dict) else None
+    if preview_source_url:
+        out["url"] = preview_source_url
+
+    if out.get("estimated_commencement_date") and not out.get("actual_commencement_date"):
+        out["actual_commencement_date"] = out["estimated_commencement_date"]
+    if out.get("estimated_finish_date") and not out.get("actual_finish_date"):
+        out["actual_finish_date"] = out["estimated_finish_date"]
+    out["actual_commencement_date"] = _legacy_utc_timestamp(out.get("actual_commencement_date"))
+    out["actual_finish_date"] = _legacy_utc_timestamp(out.get("actual_finish_date"))
+    out["last_modified"] = _legacy_utc_timestamp(out.get("last_modified"))
+    out["estimated_commencement_date"] = None
+    out["estimated_finish_date"] = None
+
+    raw_location = out.get("project_location_raw") if isinstance(out.get("project_location_raw"), dict) else {}
+    legacy_location = {
+        "state": labels.get("State") or labels.get("State/ UT") or raw_location.get("State") or raw_location.get("State/ UT"),
+        "taluk": labels.get("Taluk") or raw_location.get("Taluk"),
+        "plot_no": (
+            labels.get("Patta No:/ Thandapper Details")
+            or labels.get("Patta No")
+            or raw_location.get("Patta No:/ Thandapper Details")
+            or raw_location.get("Patta No")
+        ),
+        "village": labels.get("Village") or raw_location.get("Village"),
+        "district": labels.get("District") or raw_location.get("District"),
+        "pin_code": labels.get("Pin Code") or raw_location.get("Pin Code"),
+        "survey_resurvey_number": labels.get("Survey/ Resurvey Number(s)") or raw_location.get("Survey/ Resurvey Number(s)"),
+    }
+    legacy_location = {k: v for k, v in legacy_location.items() if v not in (None, "", "NA", "/ Thandapper Details")}
+    if legacy_location:
+        out["project_location_raw"] = [legacy_location]
+
+    legacy_promoter_address = {
+        "state": chosen_addr.get("State/ UT"),
+        "taluk": chosen_addr.get("Taluk"),
+        "district": chosen_addr.get("District"),
+        "locality": chosen_addr.get("Locality"),
+        "pin_code": chosen_addr.get("Pin Code"),
+        "house_no_building_name": chosen_addr.get("House Number/ Building Name"),
+    }
+    legacy_promoter_address = {k: v for k, v in legacy_promoter_address.items() if v not in (None, "", "NA")}
+    if legacy_promoter_address:
+        out["promoter_address_raw"] = [legacy_promoter_address]
+
+    if out.get("land_area") is not None or out.get("construction_area") is not None:
+        out["land_area_details"] = {
+            "land_area": str(out.get("land_area")) if out.get("land_area") is not None else None,
+            "land_area_unit": "Sqmts",
+            "construction_area": str(out.get("construction_area")) if out.get("construction_area") is not None else None,
+            "construction_area_unit": "in Sqmts",
+        }
+
+    compact_members = _compact_kerala_members(out.get("members_details"))
+    if compact_members:
+        out["members_details"] = compact_members
+    compact_promoters = _compact_kerala_co_promoters(out.get("co_promoter_details"))
+    if compact_promoters:
+        out["co_promoter_details"] = compact_promoters
+    compact_professionals = _compact_kerala_professionals(out.get("professional_information"))
+    if compact_professionals:
+        out["professional_information"] = compact_professionals
+
+    legacy_progress = _build_kerala_legacy_facility_progress(original_facilities)
+    if legacy_progress:
+        out["construction_progress"] = legacy_progress
+
+    legacy_status_update = _build_kerala_legacy_status_update(
+        out,
+        original_building,
+        original_task_progress,
+        original_facilities,
+    )
+    if legacy_status_update:
+        out["status_update"] = legacy_status_update
+
+    out["project_city"] = None
+    out["authorised_signatory_details"] = None
+    out["provided_faciltiy"] = None
+    out["building_details"] = None
+    out["land_detail"] = None
+
+    # Ensure PROD-required fields are present in data, preserving any extra DEV fields
+    existing_data = out.get("data") if isinstance(out.get("data"), dict) else {}
+    out["data"] = {
+        "govt_type": "state",
+        "is_processed": False,
+        "land_area_unit": "Sqmts",
+        "construction_area_unit": "in Sqmts",
+        **existing_data,
+    }
+    return out
+
+
+def build_kerala_legacy_uploaded_documents(
+    preview_docs: list[dict] | None,
+    doc_links: list[dict] | None,
+    uploaded_docs: list[dict] | None,
+) -> list[dict]:
+    raw_entries: list[dict] = []
+    by_identity: dict[str, dict] = {}
+
+    preview_docs = preview_docs or []
+    doc_links = doc_links or []
+    uploaded_docs = uploaded_docs or []
+
+    for doc in [*doc_links, *preview_docs]:
+        if not isinstance(doc, dict):
+            continue
+        raw_label = str(doc.get("label") or doc.get("type") or "").strip()
+        if not raw_label or raw_label in _LEGACY_SKIP_DOC_LABELS:
+            continue
+        legacy_label = (
+            "Rera Registration Certificate"
+            if raw_label == "registration_certificate" or raw_label.startswith("Registration Certificate")
+            else raw_label
+        )
+        legacy_link = _legacy_view_file_url(doc.get("url") or doc.get("link"))
+        if not legacy_link:
+            continue
+        identity = _legacy_doc_identity(doc)
+        if not identity or identity in by_identity:
+            continue
+        entry = {"link": legacy_link, "type": legacy_label}
+        dated_on = doc.get("upload_date")
+        if dated_on not in (None, "", "NA"):
+            utc_dated_on = _legacy_utc_timestamp(dated_on)
+            entry["dated_on"] = utc_dated_on if utc_dated_on else dated_on
+        raw_entries.append(entry)
+        by_identity[identity] = entry
+
+    final_entries = list(raw_entries)
+
+    for doc in uploaded_docs:
+        if not isinstance(doc, dict):
+            continue
+        identity = _legacy_doc_identity(doc)
+        legacy_link = _legacy_view_file_url(doc.get("link"))
+        legacy_type = str(doc.get("type") or "").strip()
+        if legacy_type.startswith("Registration Certificate"):
+            legacy_type = "Rera Registration Certificate"
+        if identity and identity in by_identity:
+            if doc.get("s3_link"):
+                by_identity[identity]["s3_link"] = doc["s3_link"]
+            if by_identity[identity].get("type") == legacy_type:
+                continue
+        entry = {"type": legacy_type, "s3_link": doc.get("s3_link")}
+        if legacy_link:
+            entry["link"] = legacy_link
+        if identity and identity in by_identity and by_identity[identity].get("dated_on"):
+            entry["dated_on"] = by_identity[identity]["dated_on"]
+        entry = {k: v for k, v in entry.items() if v not in (None, "", "NA")}
+        if entry:
+            final_entries.append(entry)
+
+    return final_entries
 
 
 # ── Detail page scraping ──────────────────────────────────────────────────────
@@ -687,7 +1135,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     if not sentinel_reg:
         logger.warning("No sentinel configured — skipping")
         return True
-    key = generate_project_key(STATE_CODE, sentinel_reg)
+    key = generate_project_key(sentinel_reg)
     existing = get_project_by_key(key)
     if not existing:
         logger.warning("Sentinel not in DB yet — skipping check")
@@ -776,7 +1224,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 continue
 
             counts["projects_found"] += 1
-            key = generate_project_key(STATE_CODE, cert_no)
+            key = generate_project_key(cert_no)
             logger.set_project(key=key, reg_no=cert_no, url=card["detail_url"], page=page_num)
 
             if mode == "daily_light" and get_project_by_key(key):
@@ -804,7 +1252,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                 final_reg = detail_data.get("project_registration_no") or cert_no
                 detail_data["project_registration_no"] = final_reg
-                detail_data["key"] = generate_project_key(STATE_CODE, final_reg)
+                detail_data["key"] = generate_project_key(final_reg)
                 detail_data["state"] = config["state"]
                 detail_data["project_state"] = config["state"]
                 detail_data["domain"] = DOMAIN
@@ -821,16 +1269,18 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 try:
                     normalized = normalize_project_payload(detail_data, config, machine_name=machine_name, machine_ip=machine_ip)
                     record  = ProjectRecord(**normalized)
-                    db_dict = record.to_db_dict()
+                    db_dict = apply_kerala_legacy_shape(record.to_db_dict())
                 except (ValidationError, ValueError) as ve:
                     logger.warning("Validation failed — using raw fallback", step="normalize",
                                    error=str(ve))
                     insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(ve),
                                        project_key=key, url=card["detail_url"], raw_data=detail_data)
                     counts["error_count"] += 1
-                    db_dict = normalize_project_payload(
-                        {**detail_data, "data": merge_data_sections(detail_data.get("data"), {"validation_fallback": True})},
-                        config, machine_name=machine_name, machine_ip=machine_ip,
+                    db_dict = apply_kerala_legacy_shape(
+                        normalize_project_payload(
+                            {**detail_data, "data": merge_data_sections(detail_data.get("data"), {"validation_fallback": True})},
+                            config, machine_name=machine_name, machine_ip=machine_ip,
+                        )
                     )
 
                 logger.info("Upserting to DB", step="db_upsert")
@@ -843,19 +1293,16 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                 queued_docs = _document_queue(doc_links, preview_docs)
                 logger.info(f"Downloading {len(queued_docs)} documents", step="documents")
-                uploaded_documents = []
+                uploaded_doc_results: list[dict] = []
                 doc_name_counts: dict[str, int] = {}
                 for doc in queued_docs:
                     selected_doc = select_document_for_download(config["state"], doc, doc_name_counts, domain=DOMAIN)
                     if selected_doc:
                         uploaded_doc = _handle_document(db_dict["key"], selected_doc, run_id, site_id, logger)
                         if uploaded_doc:
-                            uploaded_documents.append(uploaded_doc)
+                            uploaded_doc_results.append(uploaded_doc)
                             counts["documents_uploaded"] += 1
-                        else:
-                            uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label") or doc.get("type", "document")})
-                    else:
-                        uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label") or doc.get("type", "document")})
+                uploaded_documents = build_kerala_legacy_uploaded_documents(preview_docs, doc_links, uploaded_doc_results)
 
                 if uploaded_documents:
                     upsert_project({

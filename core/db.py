@@ -14,7 +14,7 @@ from psycopg.sql import SQL, Identifier
 from psycopg.types.json import Jsonb
 
 from core.config import settings
-from core.project_schema import JSONB_FIELDS
+from core.project_schema import JSONB_FIELDS, REQUIRED_PROJECT_FIELDS
 
 log = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ def _field_differs(column: str, old_val: Any, new_val: Any) -> bool:
 
 _SCHEMA_DDL = [
     """
-    CREATE TABLE IF NOT EXISTS rera_projects_dedicated (
+    CREATE TABLE IF NOT EXISTS rera_projects (
         key TEXT NOT NULL PRIMARY KEY,
         project_name TEXT,
         project_type TEXT,
@@ -292,6 +292,19 @@ def _db_value(value: Any, column: str = "") -> Any:
     return value
 
 
+def _missing_required_project_fields(data: Mapping[str, Any]) -> list[str]:
+    missing: list[str] = []
+    for field in sorted(REQUIRED_PROJECT_FIELDS):
+        value = data.get(field)
+        if isinstance(value, str):
+            if not value.strip():
+                missing.append(field)
+            continue
+        if _is_none_equiv(value):
+            missing.append(field)
+    return missing
+
+
 # crawl_runs
 
 def insert_crawl_run(site_id: str, run_type: str) -> int:
@@ -437,7 +450,7 @@ def clear_checkpoint(site_id: str, run_type: str):
 
 def get_project_by_key(key: str) -> dict | None:
     with get_connection() as conn:
-        return conn.execute("SELECT * FROM rera_projects_dedicated WHERE key = %s", (key,)).fetchone()
+        return conn.execute("SELECT * FROM rera_projects WHERE key = %s", (key,)).fetchone()
 
 
 def upsert_project(data: dict[str, Any]) -> str:
@@ -520,8 +533,14 @@ def _parse_old_updates(raw: Any) -> list[dict]:
 
 
 def _insert_project(data: dict[str, Any]):
+    missing = _missing_required_project_fields(data)
+    if missing:
+        raise ValueError(
+            f"Refusing to insert project without required fields: {', '.join(missing)}"
+        )
+
     columns = list(data.keys())
-    query = SQL("INSERT INTO rera_projects_dedicated ({fields}) VALUES ({values})").format(
+    query = SQL("INSERT INTO rera_projects ({fields}) VALUES ({values})").format(
         fields=SQL(", ").join(Identifier(c) for c in columns),
         values=SQL(", ").join(SQL("%s") for _ in columns),
     )
@@ -534,7 +553,7 @@ def _touch_project(key: str):
     """No meaningful change — only refresh last_crawled_date, clear updated_fields."""
     with get_connection() as conn:
         conn.execute(
-            "UPDATE rera_projects_dedicated SET last_crawled_date = now(), updated_fields = NULL WHERE key = %s",
+            "UPDATE rera_projects SET last_crawled_date = now(), updated_fields = NULL WHERE key = %s",
             (key,),
         )
         conn.commit()
@@ -571,7 +590,7 @@ def _update_project_fields(
     assignments = SQL(", ").join(
         SQL("{} = %s").format(Identifier(c)) for c in all_columns
     )
-    query = SQL("UPDATE rera_projects_dedicated SET {assignments} WHERE key = %s").format(
+    query = SQL("UPDATE rera_projects SET {assignments} WHERE key = %s").format(
         assignments=assignments,
     )
     values = [_db_value(write[c], c) for c in all_columns]
