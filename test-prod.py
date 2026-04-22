@@ -17,7 +17,7 @@ def main():
             rows = cur.fetchall()
 
         # Write JSON
-        with open("rera_projects_prod.json", "w", encoding="utf-8") as f:
+        with open("VISTA_DELRIO_prod_new.json", "w", encoding="utf-8") as f:
             json.dump(rows, f, indent=2, default=str, ensure_ascii=False)
 
         print(f"Fetched {len(rows)} row(s)")

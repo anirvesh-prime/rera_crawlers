@@ -1,0 +1,924 @@
+[
+  {
+    "key": "17186159861670388125",
+    "project_name": "VISTA DELRIO",
+    "project_type": "Residential (Apartment)",
+    "promoter_name": "VISTA DELRIO LLP",
+    "project_registration_no": "K-RERA/PRJ/KKD/051/2026",
+    "status_of_the_project": "In Progress",
+    "acknowledgement_no": null,
+    "project_pin_code": "673661",
+    "project_city": null,
+    "project_state": "KERALA",
+    "project_location_raw": [
+      {
+        "state": "KERALA",
+        "taluk": "Kozhikode",
+        "plot_no": "5812",
+        "village": "KODIYATHUR",
+        "district": "Kozhikode",
+        "pin_code": "673661",
+        "survey_resurvey_number": "23/15, 23/16"
+      }
+    ],
+    "promoter_address_raw": [
+      {
+        "state": "KERALA",
+        "taluk": "Kozhikode",
+        "district": "Kozhikode",
+        "locality": "CHERUVADI",
+        "pin_code": "673661",
+        "house_no_building_name": "13/80/AA, ARTECH DESIGN AND BUILD"
+      }
+    ],
+    "promoter_contact_details": null,
+    "submitted_date": null,
+    "last_modified": "2026-03-13 00:00:00+00:00",
+    "estimated_commencement_date": null,
+    "actual_commencement_date": "2026-01-01 00:00:00+00:00",
+    "estimated_finish_date": null,
+    "actual_finish_date": "2029-03-31 00:00:00+00:00",
+    "approved_on_date": null,
+    "past_experience_of_promoter": null,
+    "bank_details": null,
+    "land_area": 2654.87,
+    "construction_area": 8582.89,
+    "total_floor_area_under_commercial_or_other_uses": 0.0,
+    "total_floor_area_under_residential": 8582.89,
+    "project_cost_detail": null,
+    "number_of_residential_units": 76,
+    "number_of_commercial_units": 0,
+    "building_details": null,
+    "complaints_litigation_details": null,
+    "uploaded_documents": [
+      {
+        "link": "https://rera.kerala.gov.in/view-file/191590",
+        "type": "Copy of Sanctioned Plans (Provide a clear remark for each drawing such as ground floor ,1st floor, elevation ,section etc)",
+        "s3_link": "http://docs.primetenders.com/documents/17186159861670388125/Copy_of_Sanctioned_Plans_(Provide_a_clear_remark_for_each_drawing_such_as_ground_floor_,1st_floor,_elevation_,section_etc).pdf",
+        "updated": true,
+        "dated_on": "2026-03-13"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/191599",
+        "type": "Proforma of Agreement for Sale (As per Annexure A) Note - Promoter is directed to stick on original clauses of Annexure A. No alterations/additions/omissions are allowed in words/sentences/clauses.",
+        "updated": true,
+        "dated_on": "2026-03-13"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/191520",
+        "type": "Proforma of Allotment Letter (As per the Authority order No. K-RERA/T1/1657/2024 dated 26/11/2024)",
+        "updated": true,
+        "dated_on": "2026-03-12"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190125",
+        "type": "In the case of ‘authorised signatory’, Resolution of the entity authorising such person-Max size-3MB",
+        "updated": true,
+        "dated_on": "2026-02-24"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190144",
+        "type": "The annual report including audited profit and loss account, balance sheet, cash flow statement, directors report and auditor's report of the promoter for the immediately preceding three financial years and where annual report is not available then the audited profit and loss account, balance sheet, cash flow statement and the auditor's report of the promoter for immediately preceding three financial years and in case of newly incorporated or registered entity, such information shall be disclosed for the parent entity.-Max size-5MB",
+        "updated": true,
+        "dated_on": "2026-02-24"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190143",
+        "type": "Income tax returns for all three preceding financial years-Max size-3MB",
+        "updated": true,
+        "dated_on": "2026-02-24"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190136",
+        "type": "Consent to establish (Clearance from Pollution Control Board) -Max size-1MB",
+        "updated": true,
+        "dated_on": "2026-02-24"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190138",
+        "type": "Environment Clearance  -Max size-1MB",
+        "updated": true,
+        "dated_on": "2026-02-24"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190140",
+        "type": "Permission from Water and sewerage department-Max size-1MB",
+        "updated": true,
+        "dated_on": "2026-02-24"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190129",
+        "type": "Clearance from Airport Authority of India -Max size-1MB",
+        "updated": true,
+        "dated_on": "2026-02-24"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190133",
+        "type": "Clearance from National Highways / Railways / Other Relevant Departments -Max size-1MB",
+        "updated": true,
+        "dated_on": "2026-02-24"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190130",
+        "type": "Clearance from Coastal Zone Management Authority -Max size-1MB",
+        "updated": true,
+        "dated_on": "2026-02-24"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190135",
+        "type": "Concurrence / Layout Approval of LSG planning department-Max size-5MB",
+        "s3_link": "http://docs.primetenders.com/documents/17186159861670388125/Concurrence___Layout_Approval_of_LSG_planning_department-Max_size-5MB.pdf",
+        "updated": true,
+        "dated_on": "2026-02-24"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190139",
+        "type": "If the project is proposed to be developed in Phases, an authenticated copy of license or land use permission, Building sanction plan or building permit for each of such phases  (If applicable)-Max size-5MB",
+        "s3_link": "http://docs.primetenders.com/documents/17186159861670388125/If_the_project_is_proposed_to_be_developed_in_Phases,_an_authenticated_copy_of_license_or_land_use_permission,_Building_sanction_plan_or_building_permit_for_each_of_such_phases__(If_applicable)-Max_size-5MB.pdf",
+        "updated": true,
+        "dated_on": "2026-02-24"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190126",
+        "type": "Proforma of Allotment Letter (As per the Authority order No. K-RERA/T1/1657/2024 dated 26/11/2024)-Max size-3MB",
+        "updated": true,
+        "dated_on": "2026-02-24"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190154",
+        "type": "Proforma of Agreement for Sale (As per Annexure A) Note - Promoter is directed to stick on original clauses of Annexure A. No alterations/additions/omissions are allowed in words/sentences/clauses.-Max size-5MB",
+        "updated": true,
+        "dated_on": "2026-02-24"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190153",
+        "type": "Proforma of Conveyance Deed / Sales Deed-Max size-3MB",
+        "updated": true,
+        "dated_on": "2026-02-24"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190141",
+        "type": "Copy of front page of Bank passbook-Max size-1MB",
+        "updated": true,
+        "dated_on": "2026-02-24"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190127",
+        "type": "Certificate from Bank in Form No 1-Max size-1MB",
+        "updated": true,
+        "dated_on": "2026-02-24"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190124",
+        "type": "Declaration / Affidavit in Form B-Max size-3MB",
+        "updated": true,
+        "dated_on": "2026-02-23"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190123",
+        "type": "Copy of PAN card-Max size-1MB",
+        "updated": true,
+        "dated_on": "2026-02-23"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/189992",
+        "type": "Initial NOC from Fire and Rescue department -Max size-1MB",
+        "updated": true,
+        "dated_on": "2026-02-23"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/189988",
+        "type": "Site Plan / Site Map-Max size-5MB",
+        "s3_link": "http://docs.primetenders.com/documents/17186159861670388125/Site_Plan___Site_Map-Max_size-5MB.pdf",
+        "updated": true,
+        "dated_on": "2026-02-23"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/189986",
+        "type": "Copy of Valid Building Permit-Max size-1MB",
+        "updated": true,
+        "dated_on": "2026-02-23"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190113",
+        "type": "Copy of Valid Development Permit (For villa projects & plot development pojects)-Max size-1MB",
+        "updated": true,
+        "dated_on": "2026-02-23"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/189985",
+        "type": "Copy of Sanctioned Plans (Provide a clear remark for each drawing suxh as ground floor ,1st floor, elevation ,section etc)-Max size-7MB",
+        "s3_link": "http://docs.primetenders.com/documents/17186159861670388125/Copy_of_Sanctioned_Plans_(Provide_a_clear_remark_for_each_drawing_suxh_as_ground_floor_,1st_floor,_elevation_,section_etc)-Max_size-7MB.pdf",
+        "updated": true,
+        "dated_on": "2026-02-23"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190115",
+        "type": "Copy of Title Deed-Max size-3MB",
+        "updated": true,
+        "dated_on": "2026-02-23"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190119",
+        "type": "Land title search report (From an advocate as specified in Rule 17)-Max size-3MB",
+        "updated": true,
+        "dated_on": "2026-02-23"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/view-file/190114",
+        "type": "Copy of latest Land Tax Receipt-Max size-1MB",
+        "updated": true,
+        "dated_on": "2026-02-23"
+      },
+      {
+        "link": "https://rera.kerala.gov.in/signed-certificate/2825",
+        "type": "Rera Registration Certificate",
+        "s3_link": "http://docs.primetenders.com/documents/17186159861670388125/Rera_Registration_Certificate.pdf",
+        "updated": true
+      },
+      {
+        "type": "Copy of Valid Building Permit",
+        "dated_on": "2026-02-23 11:06:18+00:00"
+      },
+      {
+        "type": "Detailed Technical specifications 1",
+        "s3_link": "http://docs.primetenders.com/documents/17186159861670388125/Detailed_Technical_specifications_1.pdf",
+        "updated": true,
+        "dated_on": "2026-02-23 11:07:10+00:00"
+      },
+      {
+        "type": "Location details 1",
+        "s3_link": "http://docs.primetenders.com/documents/17186159861670388125/Location_details_1.pdf",
+        "updated": true,
+        "dated_on": "2026-02-23 11:09:47+00:00"
+      },
+      {
+        "type": "Sanctioned Plan 1",
+        "s3_link": "http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_1.pdf",
+        "updated": true,
+        "dated_on": "2026-02-23 11:07:28+00:00"
+      },
+      {
+        "type": "Copy of latest Land Tax Receipt",
+        "dated_on": "2026-02-23 23:28:45+00:00"
+      },
+      {
+        "type": "Copy of Title Deed",
+        "dated_on": "2026-02-23 23:46:31+00:00"
+      },
+      {
+        "type": "Land title search report (From an advocate as specified in Rule 17)",
+        "dated_on": "2026-02-23 23:52:53+00:00"
+      },
+      {
+        "type": "Proforma of Conveyance Deed / Sales Deed",
+        "dated_on": "2026-02-24 10:28:31+00:00"
+      },
+      {
+        "type": "Declaration / Affidavit in Form B",
+        "dated_on": "2026-02-23 23:59:13+00:00"
+      },
+      {
+        "type": "The annual report including audited profit and loss account, balance sheet, cash flow statement, directors report and auditor's report of the promoter for the immediately preceding three financial years and where annual report is not available then the audited profit and loss account, balance sheet, cash flow statement and the auditor's report of the promoter for immediately preceding three financial years and in case of newly incorporated or registered entity, such information shall be disclosed for the parent entity.",
+        "dated_on": "2026-02-24 00:45:52+00:00"
+      },
+      {
+        "type": "Proforma of Agreement for Sale (As per Annexure A) Note - Promoter is directed to stick on original clauses of Annexure A. No alterations/additions/omissions are allowed in words/sentences/clauses.",
+        "dated_on": "2026-03-13 18:07:56+00:00"
+      },
+      {
+        "type": "Proforma of Allotment Letter (As per the Authority order No. K-RERA/T1/1657/2024 dated 26/11/2024)",
+        "dated_on": "2026-03-12 17:42:18+00:00"
+      },
+      {
+        "type": "Clearance from Airport Authority of India",
+        "dated_on": "2026-02-24 00:22:32+00:00"
+      },
+      {
+        "type": "Clearance from Airport Authority of India",
+        "dated_on": "2026-02-24 00:24:01+00:00"
+      },
+      {
+        "type": "Clearance from Coastal Zone Management Authority",
+        "dated_on": "2026-02-24 00:22:52+00:00"
+      },
+      {
+        "type": "Clearance from Coastal Zone Management Authority",
+        "dated_on": "2026-02-24 00:24:08+00:00"
+      },
+      {
+        "type": "Clearance from Coastal Zone Management Authority",
+        "dated_on": "2026-02-24 00:33:07+00:00"
+      },
+      {
+        "type": "Clearance from National Highways / Railways / Other Relevant Departments",
+        "dated_on": "2026-02-24 00:26:35+00:00"
+      },
+      {
+        "type": "Clearance from National Highways / Railways / Other Relevant Departments",
+        "dated_on": "2026-02-24 00:34:48+00:00"
+      },
+      {
+        "type": "Sanctioned Plan 2",
+        "s3_link": "http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_2.pdf",
+        "updated": true,
+        "dated_on": "2026-02-24 00:33:54+00:00"
+      },
+      {
+        "type": "Consent to establish (Clearance from Pollution Control Board)",
+        "dated_on": "2026-02-24 00:34:21+00:00"
+      },
+      {
+        "type": "Environment Clearance",
+        "dated_on": "2026-02-24 00:35:04+00:00"
+      },
+      {
+        "type": "Sanctioned Plan 3",
+        "s3_link": "http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_3.pdf",
+        "updated": true,
+        "dated_on": "2026-02-24 00:35:49+00:00"
+      },
+      {
+        "type": "Initial NOC from Fire and Rescue department",
+        "dated_on": "2026-02-23 11:27:47+00:00"
+      },
+      {
+        "type": "Permission from Water and sewerage department",
+        "dated_on": "2026-02-24 00:36:26+00:00"
+      },
+      {
+        "type": "Chart 1",
+        "s3_link": "http://docs.primetenders.com/documents/17186159861670388125/Chart_1.pdf",
+        "updated": true,
+        "dated_on": "2026-02-23 11:22:26+00:00"
+      },
+      {
+        "type": "List and details of common amenities 1",
+        "s3_link": "http://docs.primetenders.com/documents/17186159861670388125/List_and_details_of_common_amenities_1.pdf",
+        "updated": true,
+        "dated_on": "2026-02-24 00:39:12+00:00"
+      },
+      {
+        "type": "Sanctioned Plan 4",
+        "s3_link": "http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_4.pdf",
+        "updated": true,
+        "dated_on": "2026-02-23 12:24:09+00:00"
+      },
+      {
+        "type": "Sanctioned Plan 5",
+        "s3_link": "http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_5.pdf",
+        "updated": true,
+        "dated_on": "2026-02-23 15:53:03+00:00"
+      },
+      {
+        "type": "Registered Joint Development Agreement",
+        "dated_on": "2026-02-23 23:03:20+00:00"
+      },
+      {
+        "type": "Registered Joint Development Agreement",
+        "dated_on": "2026-02-23 23:04:34+00:00"
+      },
+      {
+        "type": "Registered Joint Development Agreement",
+        "dated_on": "2026-02-23 23:05:11+00:00"
+      },
+      {
+        "type": "Registered Joint Development Agreement",
+        "dated_on": "2026-02-23 23:06:26+00:00"
+      },
+      {
+        "type": "Registered Joint Development Agreement",
+        "dated_on": "2026-02-23 23:07:59+00:00"
+      },
+      {
+        "type": "Registered Joint Development Agreement",
+        "dated_on": "2026-02-23 23:09:16+00:00"
+      },
+      {
+        "type": "Registered Joint Development Agreement",
+        "dated_on": "2026-02-23 23:09:56+00:00"
+      },
+      {
+        "type": "Registered Joint Development Agreement",
+        "dated_on": "2026-02-23 23:21:49+00:00"
+      },
+      {
+        "type": "Registered Joint Development Agreement",
+        "dated_on": "2026-02-24 00:52:45+00:00"
+      }
+    ],
+    "authorised_signatory_details": null,
+    "co_promoter_details": [
+      {
+        "name": "ABDURAHIMAN K P",
+        "office_no": "08943368580",
+        "owner_type": "Individual",
+        "agreement_type": "RevenueShare"
+      },
+      {
+        "name": "E K Naseer",
+        "office_no": "08943368580",
+        "owner_type": "Individual",
+        "agreement_type": "RevenueShare"
+      },
+      {
+        "name": "Jamal E K",
+        "office_no": "08943368580",
+        "owner_type": "Individual",
+        "agreement_type": "RevenueShare"
+      },
+      {
+        "name": "Suneer Babu",
+        "office_no": "08943368580",
+        "owner_type": "Individual",
+        "agreement_type": "RevenueShare"
+      },
+      {
+        "name": "KAMARBANU",
+        "office_no": "08943368580",
+        "owner_type": "Individual",
+        "agreement_type": "RevenueShare"
+      },
+      {
+        "name": "SHAMLA SUNEER BABU",
+        "office_no": "08943368580",
+        "owner_type": "Individual",
+        "agreement_type": "RevenueShare"
+      },
+      {
+        "name": "FAIZAL K",
+        "office_no": "08943368580",
+        "owner_type": "Individual",
+        "agreement_type": "RevenueShare"
+      },
+      {
+        "name": "MARIYUMA K M",
+        "office_no": "08943368580",
+        "owner_type": "Individual",
+        "agreement_type": "RevenueShare"
+      },
+      {
+        "name": "ASEENA K",
+        "office_no": "08943368580",
+        "owner_type": "Individual",
+        "agreement_type": "RevenueShare"
+      }
+    ],
+    "project_description": null,
+    "provided_faciltiy": null,
+    "professional_information": [
+      {
+        "name": "Nahfa P",
+        "role": "Architect",
+        "address": "Self",
+        "registration_no": "CA/2023/157666",
+        "key_real_estate_projects": "0"
+      },
+      {
+        "name": "Shihas KP",
+        "role": "Engineer",
+        "address": "Self",
+        "registration_no": "E-2050/08/17579/KKD/226/2020/EA",
+        "key_real_estate_projects": "0"
+      },
+      {
+        "name": "Sidharth S",
+        "role": "Chartered Accountant",
+        "address": "2nd Floor, R Alis Arcade, Cherootty Road, Kozhikode - 673032",
+        "registration_no": "237921",
+        "key_real_estate_projects": "Secura Centre Kannur"
+      }
+    ],
+    "development_agreement_detail": null,
+    "construction_progress": [
+      {
+        "title": "Water conservation, Rain water harvesting",
+        "progress_percentage": " 0"
+      },
+      {
+        "title": "Gymnasium",
+        "progress_percentage": " 0"
+      },
+      {
+        "title": "Open parking",
+        "progress_percentage": " 0"
+      },
+      {
+        "title": "Water supply",
+        "progress_percentage": " 0"
+      },
+      {
+        "title": "Electrical meter room, Sub-station, Receiving station",
+        "progress_percentage": " 0"
+      },
+      {
+        "title": "Internal Roads & Footpaths",
+        "progress_percentage": " 0"
+      },
+      {
+        "title": "Security",
+        "progress_percentage": " 0"
+      },
+      {
+        "title": "Solar systems",
+        "progress_percentage": " 0"
+      },
+      {
+        "title": "Swimming pool",
+        "progress_percentage": " 0"
+      },
+      {
+        "title": "Fire protection and Fire safety requirements",
+        "progress_percentage": " 0"
+      },
+      {
+        "title": "Party Hall",
+        "progress_percentage": " 0"
+      },
+      {
+        "title": "Security cameras",
+        "progress_percentage": " 0"
+      },
+      {
+        "title": "Sewerage (Chamber, Lines, Septic tank, STP)",
+        "progress_percentage": " 0"
+      },
+      {
+        "title": "Storm water drains",
+        "progress_percentage": " 0"
+      },
+      {
+        "title": "Street lighting",
+        "progress_percentage": " 0"
+      },
+      {
+        "title": "Visitors Parking",
+        "progress_percentage": " 0"
+      },
+      {
+        "title": "total_completion_percentage",
+        "progress_percentage": " 0"
+      }
+    ],
+    "land_detail": null,
+    "document_urls": [
+      {
+        "link": "http://docs.primetenders.com/documents/17186159861670388125/Copy_of_Sanctioned_Plans_(Provide_a_clear_remark_for_each_drawing_such_as_ground_floor_,1st_floor,_elevation_,section_etc).pdf",
+        "type": "Copy of Sanctioned Plans (Provide a clear remark for each drawing such as ground floor ,1st floor, elevation ,section etc)",
+        "updated": true
+      },
+      {
+        "link": "http://docs.primetenders.com/documents/17186159861670388125/Concurrence___Layout_Approval_of_LSG_planning_department-Max_size-5MB.pdf",
+        "type": "Concurrence / Layout Approval of LSG planning department-Max size-5MB",
+        "updated": true
+      },
+      {
+        "link": "http://docs.primetenders.com/documents/17186159861670388125/If_the_project_is_proposed_to_be_developed_in_Phases,_an_authenticated_copy_of_license_or_land_use_permission,_Building_sanction_plan_or_building_permit_for_each_of_such_phases__(If_applicable)-Max_size-5MB.pdf",
+        "type": "If the project is proposed to be developed in Phases, an authenticated copy of license or land use permission, Building sanction plan or building permit for each of such phases  (If applicable)-Max size-5MB",
+        "updated": true
+      },
+      {
+        "link": "http://docs.primetenders.com/documents/17186159861670388125/Site_Plan___Site_Map-Max_size-5MB.pdf",
+        "type": "Site Plan / Site Map-Max size-5MB",
+        "updated": true
+      },
+      {
+        "link": "http://docs.primetenders.com/documents/17186159861670388125/Copy_of_Sanctioned_Plans_(Provide_a_clear_remark_for_each_drawing_suxh_as_ground_floor_,1st_floor,_elevation_,section_etc)-Max_size-7MB.pdf",
+        "type": "Copy of Sanctioned Plans (Provide a clear remark for each drawing suxh as ground floor ,1st floor, elevation ,section etc)-Max size-7MB",
+        "updated": true
+      },
+      {
+        "link": "http://docs.primetenders.com/documents/17186159861670388125/Rera_Registration_Certificate.pdf",
+        "type": "Rera Registration Certificate",
+        "updated": true
+      },
+      {
+        "link": "http://docs.primetenders.com/documents/17186159861670388125/Detailed_Technical_specifications_1.pdf",
+        "type": "Detailed Technical specifications 1",
+        "updated": true
+      },
+      {
+        "link": "http://docs.primetenders.com/documents/17186159861670388125/Location_details_1.pdf",
+        "type": "Location details 1",
+        "updated": true
+      },
+      {
+        "link": "http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_1.pdf",
+        "type": "Sanctioned Plan 1",
+        "updated": true
+      },
+      {
+        "link": "http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_2.pdf",
+        "type": "Sanctioned Plan 2",
+        "updated": true
+      },
+      {
+        "link": "http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_3.pdf",
+        "type": "Sanctioned Plan 3",
+        "updated": true
+      },
+      {
+        "link": "http://docs.primetenders.com/documents/17186159861670388125/Chart_1.pdf",
+        "type": "Chart 1",
+        "updated": true
+      },
+      {
+        "link": "http://docs.primetenders.com/documents/17186159861670388125/List_and_details_of_common_amenities_1.pdf",
+        "type": "List and details of common amenities 1",
+        "updated": true
+      },
+      {
+        "link": "http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_4.pdf",
+        "type": "Sanctioned Plan 4",
+        "updated": true
+      },
+      {
+        "link": "http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_5.pdf",
+        "type": "Sanctioned Plan 5",
+        "updated": true
+      }
+    ],
+    "members_details": [
+      {
+        "name": "Muhammed  Nihad P",
+        "position": "Authorized Signatory"
+      }
+    ],
+    "retrieved_on": "2026-03-30 05:52:55.296510+00:00",
+    "config_id": 14521,
+    "data": {
+      "govt_type": "state",
+      "is_processed": false,
+      "land_area_unit": "Sqmts",
+      "construction_area_unit": "in Sqmts"
+    },
+    "promoters_details": null,
+    "domain": "reraonline.kerala.gov.in",
+    "state": "kerala",
+    "crawl_machine_ip": "98.70.112.166",
+    "machine_name": "dashboard-rera-14521-kerala-756b5758fd-6gw6v",
+    "is_updated": true,
+    "is_duplicate": false,
+    "url": "https://reraonline.kerala.gov.in/PrintPreview/PrintPreview?q=6Y5GIAJwre01apRKUmEECS8L0lyR5a4uBcK%2BCqnmVU8IMawx5UnP7cH1cXptxc4dRHsjNgqji6qlSVqfHLYY5gnMlikEtGOowJH6fM%2BqKSv1BjNclfMEwS%2FmVndA9pitgE2hfO1o0Ql0Sj4QH2zCsM3bafR5YSVjAKEjdTXzhzaFN9sGbOc0qg%3D%3D",
+    "last_updated": "2026-04-22 10:16:44.308457+00:00",
+    "updated_fields": [
+      "uploaded_documents",
+      "document_urls"
+    ],
+    "project_images": null,
+    "detail_images": null,
+    "lister_images": null,
+    "images": null,
+    "old_updates": [
+      {
+        "updated_on": "2026-04-22 10:18:19.863592+0000",
+        "document_urls": "[{'link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/registration_certificate_1_b206a7e2d642.pdf', 'type': 'Rera Registration Certificate'}, {'link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/detailed_technical_specifications_1_0fba5f873cba.pdf', 'type': 'Detailed technical specifications to be adopted in the project'}, {'link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/location_details_1_046f6eef9ff7.pdf', 'type': 'Location details of the project with clear demarcation of land with boundaries including Latitude and Longitude of end points'}, {'link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/site_plan_1_7549830a16dc.pdf', 'type': 'Site Plan / Site Map'}, {'link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/chart_1_58e72af0939e.pdf', 'type': 'Charts and the project schedule'}, {'link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/list_and_details_of_common_amenities_1_67eacccfba78.pdf', 'type': 'List and details of common amenities'}, {'link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/detailed_technical_specifications_1_0fba5f873cba.pdf', 'type': 'Detailed Technical specifications 1'}, {'link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/location_details_1_046f6eef9ff7.pdf', 'type': 'Location details 1'}, {'link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/site_plan_1_7549830a16dc.pdf', 'type': 'Site Plan 1'}, {'link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/chart_1_58e72af0939e.pdf', 'type': 'Chart 1'}, {'link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/list_and_details_of_common_amenities_1_67eacccfba78.pdf', 'type': 'List and details of common amenities 1'}]",
+        "uploaded_documents": "[{'link': 'https://rera.kerala.gov.in/signed-certificate/2825', 'type': 'Rera Registration Certificate', 's3_link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/registration_certificate_1_b206a7e2d642.pdf'}, {'link': 'https://rera.kerala.gov.in/view-file/189986', 'type': 'Copy of Valid Building Permit', 'dated_on': '2026-02-23 11:06:18+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/189987', 'type': 'Detailed technical specifications to be adopted in the project', 's3_link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/detailed_technical_specifications_1_0fba5f873cba.pdf', 'dated_on': '2026-02-23 11:07:10+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/189989', 'type': 'Location details of the project with clear demarcation of land with boundaries including Latitude   and Longitude of end points', 's3_link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/location_details_1_046f6eef9ff7.pdf', 'dated_on': '2026-02-23 11:09:47+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/189988', 'type': 'Site Plan / Site Map', 's3_link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/site_plan_1_7549830a16dc.pdf', 'dated_on': '2026-02-23 11:07:28+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190114', 'type': 'Copy of latest Land Tax Receipt', 'dated_on': '2026-02-23 23:28:45+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190115', 'type': 'Copy of Title Deed', 'dated_on': '2026-02-23 23:46:31+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190119', 'type': 'Land title search report (From an advocate as specified in Rule 17)', 'dated_on': '2026-02-23 23:52:53+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190153', 'type': 'Proforma of Conveyance Deed / Sales Deed', 'dated_on': '2026-02-24 10:28:31+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190124', 'type': 'Declaration / Affidavit in Form B', 'dated_on': '2026-02-23 23:59:13+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190144', 'type': \"The annual report including audited profit and loss account, balance sheet, cash flow statement, directors report and auditor's report of the promoter for the immediately preceding three financial years and where annual report is not available then the audited profit and loss account, balance sheet, cash flow statement and the auditor's report of the promoter for immediately preceding three financial years and in case of newly incorporated or registered entity, such information shall be disclosed for the parent entity.\", 'dated_on': '2026-02-24 00:45:52+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/191599', 'type': 'Proforma of Agreement for Sale (As per Annexure A) Note - Promoter is directed to stick on original clauses of Annexure A. No alterations/additions/omissions are allowed in words/sentences/clauses.', 'dated_on': '2026-03-13 18:07:56+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/191520', 'type': 'Proforma of Allotment Letter (As per the Authority order No. K-RERA/T1/1657/2024 dated 26/11/2024)', 'dated_on': '2026-03-12 17:42:18+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190129', 'type': 'Clearance from Airport Authority of India', 'dated_on': '2026-02-24 00:22:32+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190131', 'type': 'Clearance from Airport Authority of India', 'dated_on': '2026-02-24 00:24:01+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190130', 'type': 'Clearance from Coastal Zone Management Authority', 'dated_on': '2026-02-24 00:22:52+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190132', 'type': 'Clearance from Coastal Zone Management Authority', 'dated_on': '2026-02-24 00:24:08+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190134', 'type': 'Clearance from Coastal Zone Management Authority', 'dated_on': '2026-02-24 00:33:07+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190133', 'type': 'Clearance from National Highways / Railways / Other Relevant Departments', 'dated_on': '2026-02-24 00:26:35+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190137', 'type': 'Clearance from National Highways / Railways / Other Relevant Departments', 'dated_on': '2026-02-24 00:34:48+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190135', 'type': 'Concurrence / Layout Approval of LSG planning department', 'dated_on': '2026-02-24 00:33:54+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190136', 'type': 'Consent to establish (Clearance from Pollution Control Board)', 'dated_on': '2026-02-24 00:34:21+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190138', 'type': 'Environment Clearance', 'dated_on': '2026-02-24 00:35:04+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190139', 'type': 'If the project is proposed to be developed in Phases, an authenticated copy of license or land use permission, Building sanction plan or building permit for each of such phases  (If applicable)', 'dated_on': '2026-02-24 00:35:49+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/189992', 'type': 'Initial NOC from Fire and Rescue department', 'dated_on': '2026-02-23 11:27:47+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190140', 'type': 'Permission from Water and sewerage department', 'dated_on': '2026-02-24 00:36:26+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/189991', 'type': 'Charts and the project schedule', 's3_link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/chart_1_58e72af0939e.pdf', 'dated_on': '2026-02-23 11:22:26+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190142', 'type': 'List and details of common amenities', 's3_link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/list_and_details_of_common_amenities_1_67eacccfba78.pdf', 'dated_on': '2026-02-24 00:39:12+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/189997', 'type': 'Plan of firefighting to be executed in the proposed project', 'dated_on': '2026-02-23 12:24:09+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190061', 'type': 'Plan of Use of renewable energy to be executed in the proposed project', 'dated_on': '2026-02-23 15:53:03+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/6945', 'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:03:20+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/6946', 'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:04:34+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/6947', 'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:05:11+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/6948', 'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:06:26+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/6949', 'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:07:59+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/6950', 'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:09:16+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/6951', 'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:09:56+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/6952', 'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:21:49+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/6953', 'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-24 00:52:45+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/189987', 'type': 'Detailed Technical specifications 1', 's3_link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/detailed_technical_specifications_1_0fba5f873cba.pdf', 'dated_on': '2026-02-23 11:07:10+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/189989', 'type': 'Location details 1', 's3_link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/location_details_1_046f6eef9ff7.pdf', 'dated_on': '2026-02-23 11:09:47+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/189988', 'type': 'Site Plan 1', 's3_link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/site_plan_1_7549830a16dc.pdf', 'dated_on': '2026-02-23 11:07:28+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/189991', 'type': 'Chart 1', 's3_link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/chart_1_58e72af0939e.pdf', 'dated_on': '2026-02-23 11:22:26+00:00'}, {'link': 'https://rera.kerala.gov.in/view-file/190142', 'type': 'List and details of common amenities 1', 's3_link': 'https://docs.primetenders.com.s3.ap-south-1.amazonaws.com/17186159861670388125/list_and_details_of_common_amenities_1_67eacccfba78.pdf', 'dated_on': '2026-02-24 00:39:12+00:00'}]"
+      },
+      {
+        "updated_on": "2026-04-22 10:16:44.308337+0000",
+        "document_urls": "[{'link': 'http://docs.primetenders.com/documents/17186159861670388125/Copy_of_Sanctioned_Plans_(Provide_a_clear_remark_for_each_drawing_such_as_ground_floor_,1st_floor,_elevation_,section_etc).pdf', 'type': 'Copy of Sanctioned Plans (Provide a clear remark for each drawing such as ground floor ,1st floor, elevation ,section etc)'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Concurrence___Layout_Approval_of_LSG_planning_department-Max_size-5MB.pdf', 'type': 'Concurrence / Layout Approval of LSG planning department-Max size-5MB'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/If_the_project_is_proposed_to_be_developed_in_Phases,_an_authenticated_copy_of_license_or_land_use_permission,_Building_sanction_plan_or_building_permit_for_each_of_such_phases__(If_applicable)-Max_size-5MB.pdf', 'type': 'If the project is proposed to be developed in Phases, an authenticated copy of license or land use permission, Building sanction plan or building permit for each of such phases  (If applicable)-Max size-5MB'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Site_Plan___Site_Map-Max_size-5MB.pdf', 'type': 'Site Plan / Site Map-Max size-5MB'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Copy_of_Sanctioned_Plans_(Provide_a_clear_remark_for_each_drawing_suxh_as_ground_floor_,1st_floor,_elevation_,section_etc)-Max_size-7MB.pdf', 'type': 'Copy of Sanctioned Plans (Provide a clear remark for each drawing suxh as ground floor ,1st floor, elevation ,section etc)-Max size-7MB'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Rera_Registration_Certificate.pdf', 'type': 'Rera Registration Certificate'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Detailed_Technical_specifications_1.pdf', 'type': 'Detailed Technical specifications 1', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Location_details_1.pdf', 'type': 'Location details 1', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_1.pdf', 'type': 'Sanctioned Plan 1', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_2.pdf', 'type': 'Sanctioned Plan 2', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_3.pdf', 'type': 'Sanctioned Plan 3', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Chart_1.pdf', 'type': 'Chart 1', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/List_and_details_of_common_amenities_1.pdf', 'type': 'List and details of common amenities 1', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_4.pdf', 'type': 'Sanctioned Plan 4', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_5.pdf', 'type': 'Sanctioned Plan 5', 'updated': True}]",
+        "uploaded_documents": "[{'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=189986', 'type': 'Copy of Valid Building Permit'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=189987', 'type': 'Detailed technical specifications to be adopted in the project'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=189989', 'type': 'Location details of the project with clear demarcation of land with boundaries including Latitude and Longitude of end points'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=189988', 'type': 'Site Plan / Site Map'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190114', 'type': 'Copy of latest Land Tax Receipt'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190115', 'type': 'Copy of Title Deed'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190119', 'type': 'Land title search report (From an advocate as specified in Rule 17)'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190153', 'type': 'Proforma of Conveyance Deed / Sales Deed'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190124', 'type': 'Declaration / Affidavit in Form B'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190144', 'type': \"The annual report including audited profit and loss account, balance sheet, cash flow statement, directors report and auditor's report of the promoter for the immediately preceding three financial years and where annual report is not available then the audited profit and loss account, balance sheet, cash flow statement and the auditor's report of the promoter for immediately preceding three financial years and in case of newly incorporated or registered entity, such information shall be disclosed for the parent entity.\"}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=191599', 'type': 'Proforma of Agreement for Sale (As per Annexure A) Note - Promoter is directed to stick on original clauses of Annexure A. No alterations/additions/omissions are allowed in words/sentences/clauses.'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=191520', 'type': 'Proforma of Allotment Letter (As per the Authority order No. K-RERA/T1/1657/2024 dated 26/11/2024)'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190129', 'type': 'Clearance from Airport Authority of India'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190131', 'type': 'Clearance from Airport Authority of India'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190130', 'type': 'Clearance from Coastal Zone Management Authority'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190132', 'type': 'Clearance from Coastal Zone Management Authority'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190134', 'type': 'Clearance from Coastal Zone Management Authority'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190133', 'type': 'Clearance from National Highways / Railways / Other Relevant Departments'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190137', 'type': 'Clearance from National Highways / Railways / Other Relevant Departments'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190135', 'type': 'Concurrence / Layout Approval of LSG planning department'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190136', 'type': 'Consent to establish (Clearance from Pollution Control Board)'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190138', 'type': 'Environment Clearance'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190139', 'type': 'If the project is proposed to be developed in Phases, an authenticated copy of license or land use permission, Building sanction plan or building permit for each of such phases (If applicable)'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=189992', 'type': 'Initial NOC from Fire and Rescue department'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190140', 'type': 'Permission from Water and sewerage department'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=189991', 'type': 'Charts and the project schedule'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190142', 'type': 'List and details of common amenities'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=189997', 'type': 'Plan of firefighting to be executed in the proposed project'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=190061', 'type': 'Plan of Use of renewable energy to be executed in the proposed project'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=6945', 'type': 'Registered Joint Development Agreement'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=6946', 'type': 'Registered Joint Development Agreement'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=6947', 'type': 'Registered Joint Development Agreement'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=6948', 'type': 'Registered Joint Development Agreement'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=6949', 'type': 'Registered Joint Development Agreement'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=6950', 'type': 'Registered Joint Development Agreement'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=6951', 'type': 'Registered Joint Development Agreement'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=6952', 'type': 'Registered Joint Development Agreement'}, {'link': 'https://reraonline.kerala.gov.in/Preview/GetDocument?ID=6953', 'type': 'Registered Joint Development Agreement'}]"
+      },
+      {
+        "is_updated": "True",
+        "updated_on": "2026-04-22 10:15:25.321862+0000",
+        "checked_updates": "True",
+        "uploaded_documents": "[{'link': 'https://rera.kerala.gov.in/view-file/191590', 'type': 'Copy of Sanctioned Plans (Provide a clear remark for each drawing such as ground floor ,1st floor, elevation ,section etc)', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Copy_of_Sanctioned_Plans_(Provide_a_clear_remark_for_each_drawing_such_as_ground_floor_,1st_floor,_elevation_,section_etc).pdf', 'dated_on': '2026-03-13'}, {'link': 'https://rera.kerala.gov.in/view-file/191599', 'type': 'Proforma of Agreement for Sale (As per Annexure A) Note - Promoter is directed to stick on original clauses of Annexure A. No alterations/additions/omissions are allowed in words/sentences/clauses.', 'dated_on': '2026-03-13'}, {'link': 'https://rera.kerala.gov.in/view-file/191520', 'type': 'Proforma of Allotment Letter (As per the Authority order No. K-RERA/T1/1657/2024 dated 26/11/2024)', 'dated_on': '2026-03-12'}, {'link': 'https://rera.kerala.gov.in/view-file/190125', 'type': 'In the case of ‘authorised signatory’, Resolution of the entity authorising such person-Max size-3MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190144', 'type': \"The annual report including audited profit and loss account, balance sheet, cash flow statement, directors report and auditor's report of the promoter for the immediately preceding three financial years and where annual report is not available then the audited profit and loss account, balance sheet, cash flow statement and the auditor's report of the promoter for immediately preceding three financial years and in case of newly incorporated or registered entity, such information shall be disclosed for the parent entity.-Max size-5MB\", 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190143', 'type': 'Income tax returns for all three preceding financial years-Max size-3MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190136', 'type': 'Consent to establish (Clearance from Pollution Control Board) -Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190138', 'type': 'Environment Clearance  -Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190140', 'type': 'Permission from Water and sewerage department-Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190129', 'type': 'Clearance from Airport Authority of India -Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190133', 'type': 'Clearance from National Highways / Railways / Other Relevant Departments -Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190130', 'type': 'Clearance from Coastal Zone Management Authority -Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190135', 'type': 'Concurrence / Layout Approval of LSG planning department-Max size-5MB', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Concurrence___Layout_Approval_of_LSG_planning_department-Max_size-5MB.pdf', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190139', 'type': 'If the project is proposed to be developed in Phases, an authenticated copy of license or land use permission, Building sanction plan or building permit for each of such phases  (If applicable)-Max size-5MB', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/If_the_project_is_proposed_to_be_developed_in_Phases,_an_authenticated_copy_of_license_or_land_use_permission,_Building_sanction_plan_or_building_permit_for_each_of_such_phases__(If_applicable)-Max_size-5MB.pdf', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190126', 'type': 'Proforma of Allotment Letter (As per the Authority order No. K-RERA/T1/1657/2024 dated 26/11/2024)-Max size-3MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190154', 'type': 'Proforma of Agreement for Sale (As per Annexure A) Note - Promoter is directed to stick on original clauses of Annexure A. No alterations/additions/omissions are allowed in words/sentences/clauses.-Max size-5MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190153', 'type': 'Proforma of Conveyance Deed / Sales Deed-Max size-3MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190141', 'type': 'Copy of front page of Bank passbook-Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190127', 'type': 'Certificate from Bank in Form No 1-Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190124', 'type': 'Declaration / Affidavit in Form B-Max size-3MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/190123', 'type': 'Copy of PAN card-Max size-1MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/189992', 'type': 'Initial NOC from Fire and Rescue department -Max size-1MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/189988', 'type': 'Site Plan / Site Map-Max size-5MB', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Site_Plan___Site_Map-Max_size-5MB.pdf', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/189986', 'type': 'Copy of Valid Building Permit-Max size-1MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/190113', 'type': 'Copy of Valid Development Permit (For villa projects & plot development pojects)-Max size-1MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/189985', 'type': 'Copy of Sanctioned Plans (Provide a clear remark for each drawing suxh as ground floor ,1st floor, elevation ,section etc)-Max size-7MB', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Copy_of_Sanctioned_Plans_(Provide_a_clear_remark_for_each_drawing_suxh_as_ground_floor_,1st_floor,_elevation_,section_etc)-Max_size-7MB.pdf', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/190115', 'type': 'Copy of Title Deed-Max size-3MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/190119', 'type': 'Land title search report (From an advocate as specified in Rule 17)-Max size-3MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/190114', 'type': 'Copy of latest Land Tax Receipt-Max size-1MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/signed-certificate/2825', 'type': 'Rera Registration Certificate', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Rera_Registration_Certificate.pdf'}, {'type': 'Copy of Valid Building Permit', 'dated_on': '2026-02-23 11:06:18+00:00'}, {'type': 'Detailed Technical specifications 1', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Detailed_Technical_specifications_1.pdf', 'updated': True, 'dated_on': '2026-02-23 11:07:10+00:00'}, {'type': 'Location details 1', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Location_details_1.pdf', 'updated': True, 'dated_on': '2026-02-23 11:09:47+00:00'}, {'type': 'Sanctioned Plan 1', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_1.pdf', 'updated': True, 'dated_on': '2026-02-23 11:07:28+00:00'}, {'type': 'Copy of latest Land Tax Receipt', 'dated_on': '2026-02-23 23:28:45+00:00'}, {'type': 'Copy of Title Deed', 'dated_on': '2026-02-23 23:46:31+00:00'}, {'type': 'Land title search report (From an advocate as specified in Rule 17)', 'dated_on': '2026-02-23 23:52:53+00:00'}, {'type': 'Proforma of Conveyance Deed / Sales Deed', 'dated_on': '2026-02-24 10:28:31+00:00'}, {'type': 'Declaration / Affidavit in Form B', 'dated_on': '2026-02-23 23:59:13+00:00'}, {'type': \"The annual report including audited profit and loss account, balance sheet, cash flow statement, directors report and auditor's report of the promoter for the immediately preceding three financial years and where annual report is not available then the audited profit and loss account, balance sheet, cash flow statement and the auditor's report of the promoter for immediately preceding three financial years and in case of newly incorporated or registered entity, such information shall be disclosed for the parent entity.\", 'dated_on': '2026-02-24 00:45:52+00:00'}, {'type': 'Proforma of Agreement for Sale (As per Annexure A) Note - Promoter is directed to stick on original clauses of Annexure A. No alterations/additions/omissions are allowed in words/sentences/clauses.', 'dated_on': '2026-03-13 18:07:56+00:00'}, {'type': 'Proforma of Allotment Letter (As per the Authority order No. K-RERA/T1/1657/2024 dated 26/11/2024)', 'dated_on': '2026-03-12 17:42:18+00:00'}, {'type': 'Clearance from Airport Authority of India', 'dated_on': '2026-02-24 00:22:32+00:00'}, {'type': 'Clearance from Airport Authority of India', 'dated_on': '2026-02-24 00:24:01+00:00'}, {'type': 'Clearance from Coastal Zone Management Authority', 'dated_on': '2026-02-24 00:22:52+00:00'}, {'type': 'Clearance from Coastal Zone Management Authority', 'dated_on': '2026-02-24 00:24:08+00:00'}, {'type': 'Clearance from Coastal Zone Management Authority', 'dated_on': '2026-02-24 00:33:07+00:00'}, {'type': 'Clearance from National Highways / Railways / Other Relevant Departments', 'dated_on': '2026-02-24 00:26:35+00:00'}, {'type': 'Clearance from National Highways / Railways / Other Relevant Departments', 'dated_on': '2026-02-24 00:34:48+00:00'}, {'type': 'Sanctioned Plan 2', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_2.pdf', 'updated': True, 'dated_on': '2026-02-24 00:33:54+00:00'}, {'type': 'Consent to establish (Clearance from Pollution Control Board)', 'dated_on': '2026-02-24 00:34:21+00:00'}, {'type': 'Environment Clearance', 'dated_on': '2026-02-24 00:35:04+00:00'}, {'type': 'Sanctioned Plan 3', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_3.pdf', 'updated': True, 'dated_on': '2026-02-24 00:35:49+00:00'}, {'type': 'Initial NOC from Fire and Rescue department', 'dated_on': '2026-02-23 11:27:47+00:00'}, {'type': 'Permission from Water and sewerage department', 'dated_on': '2026-02-24 00:36:26+00:00'}, {'type': 'Chart 1', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Chart_1.pdf', 'updated': True, 'dated_on': '2026-02-23 11:22:26+00:00'}, {'type': 'List and details of common amenities 1', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/List_and_details_of_common_amenities_1.pdf', 'updated': True, 'dated_on': '2026-02-24 00:39:12+00:00'}, {'type': 'Sanctioned Plan 4', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_4.pdf', 'updated': True, 'dated_on': '2026-02-23 12:24:09+00:00'}, {'type': 'Sanctioned Plan 5', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_5.pdf', 'updated': True, 'dated_on': '2026-02-23 15:53:03+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:03:20+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:04:34+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:05:11+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:06:26+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:07:59+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:09:16+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:09:56+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:21:49+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-24 00:52:45+00:00'}]"
+      },
+      {
+        "updated_on": "2026-04-15 07:14:55.496028+0000",
+        "document_urls": "[{'link': 'http://docs.primetenders.com/documents/17186159861670388125/Copy_of_Sanctioned_Plans_(Provide_a_clear_remark_for_each_drawing_such_as_ground_floor_,1st_floor,_elevation_,section_etc).pdf', 'type': 'Copy of Sanctioned Plans (Provide a clear remark for each drawing such as ground floor ,1st floor, elevation ,section etc)'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Concurrence___Layout_Approval_of_LSG_planning_department-Max_size-5MB.pdf', 'type': 'Concurrence / Layout Approval of LSG planning department-Max size-5MB'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/If_the_project_is_proposed_to_be_developed_in_Phases,_an_authenticated_copy_of_license_or_land_use_permission,_Building_sanction_plan_or_building_permit_for_each_of_such_phases__(If_applicable)-Max_size-5MB.pdf', 'type': 'If the project is proposed to be developed in Phases, an authenticated copy of license or land use permission, Building sanction plan or building permit for each of such phases  (If applicable)-Max size-5MB'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Site_Plan___Site_Map-Max_size-5MB.pdf', 'type': 'Site Plan / Site Map-Max size-5MB'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Copy_of_Sanctioned_Plans_(Provide_a_clear_remark_for_each_drawing_suxh_as_ground_floor_,1st_floor,_elevation_,section_etc)-Max_size-7MB.pdf', 'type': 'Copy of Sanctioned Plans (Provide a clear remark for each drawing suxh as ground floor ,1st floor, elevation ,section etc)-Max size-7MB'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Rera_Registration_Certificate.pdf', 'type': 'Rera Registration Certificate', 'updated': True}]",
+        "status_update": "{'booking_details': [{'area': '61.73', 'block': 'VISTA DELRIO', 'flat_type': '2BHK', 'booked_flats': '0', 'total_available': '13'}, {'area': '79.08', 'block': 'VISTA DELRIO', 'flat_type': '3BHK', 'booked_flats': '0', 'total_available': '13'}, {'area': '79.09', 'block': 'VISTA DELRIO', 'flat_type': '3BHK', 'booked_flats': '0', 'total_available': '13'}, {'area': '62.77', 'block': 'VISTA DELRIO', 'flat_type': '2BHK', 'booked_flats': '0', 'total_available': '13'}, {'area': '65.15', 'block': 'VISTA DELRIO', 'flat_type': '2BHK', 'booked_flats': '0', 'total_available': '12'}, {'area': '63.32', 'block': 'VISTA DELRIO', 'flat_type': '2BHK', 'booked_flats': '0', 'total_available': '12'}], 'building_detail': [{'no_stilt': '0', 'flat_name': 'VISTA DELRIO', 'no_podium': '0', 'no_basement': '0', 'completion_date': '25/01/2029', 'no_super_struct': '14'}], 'construction_progress': [{'block': 'VISTA DELRIO', 'title': 'Excavation', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Basement(s) and Plinth', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Slabs of Super Structure', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Internal walls, Internal Plastering, Floorings inside the building, Doors and Windows to each Buildings', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Sanitary Fittings', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Electrical Fittings', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Staircases, Lifts Wells', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Overhead and Underground Water Tanks.', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'The external plumbing and external plastering', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Completion of terraces floor each building', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Installation of lifts, water pumps etc', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Fire Fighting Fittings and Equipment', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Common Areas work for each building like electrical fittings and other finishing works such as paving of common area etc', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO'}, {'block': 'VISTA DELRIO'}, {'title': 'Water conservation, Rain water harvesting :', 'remarks': 'cum', 'progress_percentage': '0'}, {'title': 'Gymnasium :', 'remarks': 'sqm', 'progress_percentage': '0'}, {'title': 'Open parking :', 'progress_percentage': '0'}, {'title': 'Water supply :', 'remarks': 'open well with 4 mtr dia', 'progress_percentage': '0'}, {'title': 'Fire protection and Fire safety requirements :', 'remarks': 'Initial Fire NOC obtained', 'progress_percentage': '0'}, {'title': 'Party Hall :', 'progress_percentage': '0'}, {'title': 'Security cameras :', 'remarks': '26 numbers provided in common areas', 'progress_percentage': '0'}, {'title': 'Sewerage (Chamber, Lines, Septic tank, STP) :', 'progress_percentage': '0'}, {'title': 'Storm water drains :', 'remarks': 'Drain trenches provided', 'progress_percentage': '0'}, {'title': 'Street lighting :', 'remarks': '6 Nos provided at pathways', 'progress_percentage': '0'}, {'title': 'Visitors Parking :', 'remarks': '8 Nos of parking provided for visitors', 'progress_percentage': '0'}, {'title': 'Electrical meter room, Sub-station, Receiving station :', 'progress_percentage': '0'}, {'title': 'Internal Roads & Footpaths :', 'progress_percentage': '0'}, {'title': 'Security :', 'remarks': '24 hour security', 'progress_percentage': '0'}, {'title': 'Solar systems :', 'remarks': 'As required', 'progress_percentage': '0'}, {'title': 'Swimming pool :', 'progress_percentage': '0'}]}",
+        "uploaded_documents": "[{'link': 'https://rera.kerala.gov.in/view-file/191590', 'type': 'Copy of Sanctioned Plans (Provide a clear remark for each drawing such as ground floor ,1st floor, elevation ,section etc)', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Copy_of_Sanctioned_Plans_(Provide_a_clear_remark_for_each_drawing_such_as_ground_floor_,1st_floor,_elevation_,section_etc).pdf', 'dated_on': '2026-03-13'}, {'link': 'https://rera.kerala.gov.in/view-file/191599', 'type': 'Proforma of Agreement for Sale (As per Annexure A) Note - Promoter is directed to stick on original clauses of Annexure A. No alterations/additions/omissions are allowed in words/sentences/clauses.', 'dated_on': '2026-03-13'}, {'link': 'https://rera.kerala.gov.in/view-file/191520', 'type': 'Proforma of Allotment Letter (As per the Authority order No. K-RERA/T1/1657/2024 dated 26/11/2024)', 'dated_on': '2026-03-12'}, {'link': 'https://rera.kerala.gov.in/view-file/190125', 'type': 'In the case of ‘authorised signatory’, Resolution of the entity authorising such person-Max size-3MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190144', 'type': \"The annual report including audited profit and loss account, balance sheet, cash flow statement, directors report and auditor's report of the promoter for the immediately preceding three financial years and where annual report is not available then the audited profit and loss account, balance sheet, cash flow statement and the auditor's report of the promoter for immediately preceding three financial years and in case of newly incorporated or registered entity, such information shall be disclosed for the parent entity.-Max size-5MB\", 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190143', 'type': 'Income tax returns for all three preceding financial years-Max size-3MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190136', 'type': 'Consent to establish (Clearance from Pollution Control Board) -Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190138', 'type': 'Environment Clearance  -Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190140', 'type': 'Permission from Water and sewerage department-Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190129', 'type': 'Clearance from Airport Authority of India -Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190133', 'type': 'Clearance from National Highways / Railways / Other Relevant Departments -Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190130', 'type': 'Clearance from Coastal Zone Management Authority -Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190135', 'type': 'Concurrence / Layout Approval of LSG planning department-Max size-5MB', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Concurrence___Layout_Approval_of_LSG_planning_department-Max_size-5MB.pdf', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190139', 'type': 'If the project is proposed to be developed in Phases, an authenticated copy of license or land use permission, Building sanction plan or building permit for each of such phases  (If applicable)-Max size-5MB', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/If_the_project_is_proposed_to_be_developed_in_Phases,_an_authenticated_copy_of_license_or_land_use_permission,_Building_sanction_plan_or_building_permit_for_each_of_such_phases__(If_applicable)-Max_size-5MB.pdf', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190126', 'type': 'Proforma of Allotment Letter (As per the Authority order No. K-RERA/T1/1657/2024 dated 26/11/2024)-Max size-3MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190154', 'type': 'Proforma of Agreement for Sale (As per Annexure A) Note - Promoter is directed to stick on original clauses of Annexure A. No alterations/additions/omissions are allowed in words/sentences/clauses.-Max size-5MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190153', 'type': 'Proforma of Conveyance Deed / Sales Deed-Max size-3MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190141', 'type': 'Copy of front page of Bank passbook-Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190127', 'type': 'Certificate from Bank in Form No 1-Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190124', 'type': 'Declaration / Affidavit in Form B-Max size-3MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/190123', 'type': 'Copy of PAN card-Max size-1MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/189992', 'type': 'Initial NOC from Fire and Rescue department -Max size-1MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/189988', 'type': 'Site Plan / Site Map-Max size-5MB', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Site_Plan___Site_Map-Max_size-5MB.pdf', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/189986', 'type': 'Copy of Valid Building Permit-Max size-1MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/190113', 'type': 'Copy of Valid Development Permit (For villa projects & plot development pojects)-Max size-1MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/189985', 'type': 'Copy of Sanctioned Plans (Provide a clear remark for each drawing suxh as ground floor ,1st floor, elevation ,section etc)-Max size-7MB', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Copy_of_Sanctioned_Plans_(Provide_a_clear_remark_for_each_drawing_suxh_as_ground_floor_,1st_floor,_elevation_,section_etc)-Max_size-7MB.pdf', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/190115', 'type': 'Copy of Title Deed-Max size-3MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/190119', 'type': 'Land title search report (From an advocate as specified in Rule 17)-Max size-3MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/190114', 'type': 'Copy of latest Land Tax Receipt-Max size-1MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/signed-certificate/2825', 'type': 'Rera Registration Certificate', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Rera_Registration_Certificate.pdf', 'updated': True}, {'type': 'Copy of Valid Building Permit', 'dated_on': '2026-02-23 11:06:18+00:00'}, {'type': 'Detailed technical specifications to be adopted in the project', 'updated': True, 'dated_on': '2026-02-23 11:07:10+00:00'}, {'type': 'Location details of the project with clear demarcation of land with boundaries including Latitude and Longitude of end points', 'updated': True, 'dated_on': '2026-02-23 11:09:47+00:00'}, {'type': 'Site Plan / Site Map', 'updated': True, 'dated_on': '2026-02-23 11:07:28+00:00'}, {'type': 'Copy of latest Land Tax Receipt', 'dated_on': '2026-02-23 23:28:45+00:00'}, {'type': 'Copy of Title Deed', 'dated_on': '2026-02-23 23:46:31+00:00'}, {'type': 'Land title search report (From an advocate as specified in Rule 17)', 'dated_on': '2026-02-23 23:52:53+00:00'}, {'type': 'Proforma of Conveyance Deed / Sales Deed', 'dated_on': '2026-02-24 10:28:31+00:00'}, {'type': 'Declaration / Affidavit in Form B', 'dated_on': '2026-02-23 23:59:13+00:00'}, {'type': \"The annual report including audited profit and loss account, balance sheet, cash flow statement, directors report and auditor's report of the promoter for the immediately preceding three financial years and where annual report is not available then the audited profit and loss account, balance sheet, cash flow statement and the auditor's report of the promoter for immediately preceding three financial years and in case of newly incorporated or registered entity, such information shall be disclosed for the parent entity.\", 'dated_on': '2026-02-24 00:45:52+00:00'}, {'type': 'Proforma of Agreement for Sale (As per Annexure A) Note - Promoter is directed to stick on original clauses of Annexure A. No alterations/additions/omissions are allowed in words/sentences/clauses.', 'dated_on': '2026-03-13 18:07:56+00:00'}, {'type': 'Proforma of Allotment Letter (As per the Authority order No. K-RERA/T1/1657/2024 dated 26/11/2024)', 'dated_on': '2026-03-12 17:42:18+00:00'}, {'type': 'Clearance from Airport Authority of India', 'dated_on': '2026-02-24 00:22:32+00:00'}, {'type': 'Clearance from Airport Authority of India', 'dated_on': '2026-02-24 00:24:01+00:00'}, {'type': 'Clearance from Coastal Zone Management Authority', 'dated_on': '2026-02-24 00:22:52+00:00'}, {'type': 'Clearance from Coastal Zone Management Authority', 'dated_on': '2026-02-24 00:24:08+00:00'}, {'type': 'Clearance from Coastal Zone Management Authority', 'dated_on': '2026-02-24 00:33:07+00:00'}, {'type': 'Clearance from National Highways / Railways / Other Relevant Departments', 'dated_on': '2026-02-24 00:26:35+00:00'}, {'type': 'Clearance from National Highways / Railways / Other Relevant Departments', 'dated_on': '2026-02-24 00:34:48+00:00'}, {'type': 'Concurrence / Layout Approval of LSG planning department', 'updated': True, 'dated_on': '2026-02-24 00:33:54+00:00'}, {'type': 'Consent to establish (Clearance from Pollution Control Board)', 'dated_on': '2026-02-24 00:34:21+00:00'}, {'type': 'Environment Clearance', 'dated_on': '2026-02-24 00:35:04+00:00'}, {'type': 'If the project is proposed to be developed in Phases, an authenticated copy of license or land use permission, Building sanction plan or building permit for each of such phases (If applicable)', 'updated': True, 'dated_on': '2026-02-24 00:35:49+00:00'}, {'type': 'Initial NOC from Fire and Rescue department', 'dated_on': '2026-02-23 11:27:47+00:00'}, {'type': 'Permission from Water and sewerage department', 'dated_on': '2026-02-24 00:36:26+00:00'}, {'type': 'Charts and the project schedule', 'updated': True, 'dated_on': '2026-02-23 11:22:26+00:00'}, {'type': 'List and details of common amenities', 'updated': True, 'dated_on': '2026-02-24 00:39:12+00:00'}, {'type': 'Plan of firefighting to be executed in the proposed project', 'updated': True, 'dated_on': '2026-02-23 12:24:09+00:00'}, {'type': 'Plan of Use of renewable energy to be executed in the proposed project', 'updated': True, 'dated_on': '2026-02-23 15:53:03+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:03:20+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:04:34+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:05:11+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:06:26+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:07:59+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:09:16+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:09:56+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:21:49+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-24 00:52:45+00:00'}]"
+      },
+      {
+        "updated_on": "2026-04-06 07:02:06.203964+0000",
+        "document_urls": "[{'link': 'http://docs.primetenders.com/documents/17186159861670388125/Copy_of_Sanctioned_Plans_(Provide_a_clear_remark_for_each_drawing_such_as_ground_floor_,1st_floor,_elevation_,section_etc).pdf', 'type': 'Copy of Sanctioned Plans (Provide a clear remark for each drawing such as ground floor ,1st floor, elevation ,section etc)'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Concurrence___Layout_Approval_of_LSG_planning_department-Max_size-5MB.pdf', 'type': 'Concurrence / Layout Approval of LSG planning department-Max size-5MB'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/If_the_project_is_proposed_to_be_developed_in_Phases,_an_authenticated_copy_of_license_or_land_use_permission,_Building_sanction_plan_or_building_permit_for_each_of_such_phases__(If_applicable)-Max_size-5MB.pdf', 'type': 'If the project is proposed to be developed in Phases, an authenticated copy of license or land use permission, Building sanction plan or building permit for each of such phases  (If applicable)-Max size-5MB'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Site_Plan___Site_Map-Max_size-5MB.pdf', 'type': 'Site Plan / Site Map-Max size-5MB'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Copy_of_Sanctioned_Plans_(Provide_a_clear_remark_for_each_drawing_suxh_as_ground_floor_,1st_floor,_elevation_,section_etc)-Max_size-7MB.pdf', 'type': 'Copy of Sanctioned Plans (Provide a clear remark for each drawing suxh as ground floor ,1st floor, elevation ,section etc)-Max size-7MB'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Detailed_Technical_specifications_1.pdf', 'type': 'Detailed Technical specifications 1'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Location_details_1.pdf', 'type': 'Location details 1'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_1.pdf', 'type': 'Sanctioned Plan 1'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_2.pdf', 'type': 'Sanctioned Plan 2'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_3.pdf', 'type': 'Sanctioned Plan 3'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Chart_1.pdf', 'type': 'Chart 1'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/List_and_details_of_common_amenities_1.pdf', 'type': 'List and details of common amenities 1'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_4.pdf', 'type': 'Sanctioned Plan 4'}, {'link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_5.pdf', 'type': 'Sanctioned Plan 5'}]",
+        "status_update": "[{'updated': True, 'booking_details': [{'area': '61.73', 'block': 'VISTA DELRIO', 'flat_type': '2BHK', 'booked_flats': '0', 'total_available': '13'}, {'area': '79.08', 'block': 'VISTA DELRIO', 'flat_type': '3BHK', 'booked_flats': '0', 'total_available': '13'}, {'area': '79.09', 'block': 'VISTA DELRIO', 'flat_type': '3BHK', 'booked_flats': '0', 'total_available': '13'}, {'area': '62.77', 'block': 'VISTA DELRIO', 'flat_type': '2BHK', 'booked_flats': '0', 'total_available': '13'}, {'area': '65.15', 'block': 'VISTA DELRIO', 'flat_type': '2BHK', 'booked_flats': '0', 'total_available': '12'}, {'area': '63.32', 'block': 'VISTA DELRIO', 'flat_type': '2BHK', 'booked_flats': '0', 'total_available': '12'}], 'building_detail': [{'no_stilt': '0', 'flat_name': 'VISTA DELRIO', 'no_podium': '0', 'no_basement': '0', 'completion_date': '25/01/2029', 'no_super_struct': '14'}], 'construction_progress': [{'block': 'VISTA DELRIO', 'title': 'Excavation', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Basement(s) and Plinth', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Slabs of Super Structure', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Internal walls, Internal Plastering, Floorings inside the building, Doors and Windows to each Buildings', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Sanitary Fittings', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Electrical Fittings', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Staircases, Lifts Wells', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Overhead and Underground Water Tanks.', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'The external plumbing and external plastering', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Completion of terraces floor each building', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Installation of lifts, water pumps etc', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Fire Fighting Fittings and Equipment', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO', 'title': 'Common Areas work for each building like electrical fittings and other finishing works such as paving of common area etc', 'progress_percentage': '0'}, {'block': 'VISTA DELRIO'}, {'block': 'VISTA DELRIO'}, {'title': 'Water conservation, Rain water harvesting :', 'remarks': 'cum', 'progress_percentage': '0'}, {'title': 'Fire protection and Fire safety requirements :', 'remarks': 'Initial Fire NOC obtained', 'progress_percentage': '0'}, {'title': 'Party Hall :', 'progress_percentage': '0'}, {'title': 'Security cameras :', 'remarks': '26 numbers provided in common areas', 'progress_percentage': '0'}, {'title': 'Sewerage (Chamber, Lines, Septic tank, STP) :', 'progress_percentage': '0'}, {'title': 'Storm water drains :', 'remarks': 'Drain trenches provided', 'progress_percentage': '0'}, {'title': 'Street lighting :', 'remarks': '6 Nos provided at pathways', 'progress_percentage': '0'}, {'title': 'Visitors Parking :', 'remarks': '8 Nos of parking provided for visitors', 'progress_percentage': '0'}, {'title': 'Gymnasium :', 'remarks': 'sqm', 'progress_percentage': '0'}, {'title': 'Open parking :', 'progress_percentage': '0'}, {'title': 'Water supply :', 'remarks': 'open well with 4 mtr dia', 'progress_percentage': '0'}, {'title': 'Electrical meter room, Sub-station, Receiving station :', 'progress_percentage': '0'}, {'title': 'Internal Roads & Footpaths :', 'progress_percentage': '0'}, {'title': 'Security :', 'remarks': '24 hour security', 'progress_percentage': '0'}, {'title': 'Solar systems :', 'remarks': 'As required', 'progress_percentage': '0'}, {'title': 'Swimming pool :', 'progress_percentage': '0'}]}]",
+        "uploaded_documents": "[{'link': 'https://rera.kerala.gov.in/view-file/191590', 'type': 'Copy of Sanctioned Plans (Provide a clear remark for each drawing such as ground floor ,1st floor, elevation ,section etc)', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Copy_of_Sanctioned_Plans_(Provide_a_clear_remark_for_each_drawing_such_as_ground_floor_,1st_floor,_elevation_,section_etc).pdf', 'dated_on': '2026-03-13'}, {'link': 'https://rera.kerala.gov.in/view-file/191599', 'type': 'Proforma of Agreement for Sale (As per Annexure A) Note - Promoter is directed to stick on original clauses of Annexure A. No alterations/additions/omissions are allowed in words/sentences/clauses.', 'dated_on': '2026-03-13'}, {'link': 'https://rera.kerala.gov.in/view-file/191520', 'type': 'Proforma of Allotment Letter (As per the Authority order No. K-RERA/T1/1657/2024 dated 26/11/2024)', 'dated_on': '2026-03-12'}, {'link': 'https://rera.kerala.gov.in/view-file/190125', 'type': 'In the case of ‘authorised signatory’, Resolution of the entity authorising such person-Max size-3MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190144', 'type': \"The annual report including audited profit and loss account, balance sheet, cash flow statement, directors report and auditor's report of the promoter for the immediately preceding three financial years and where annual report is not available then the audited profit and loss account, balance sheet, cash flow statement and the auditor's report of the promoter for immediately preceding three financial years and in case of newly incorporated or registered entity, such information shall be disclosed for the parent entity.-Max size-5MB\", 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190143', 'type': 'Income tax returns for all three preceding financial years-Max size-3MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190136', 'type': 'Consent to establish (Clearance from Pollution Control Board) -Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190138', 'type': 'Environment Clearance  -Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190140', 'type': 'Permission from Water and sewerage department-Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190129', 'type': 'Clearance from Airport Authority of India -Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190133', 'type': 'Clearance from National Highways / Railways / Other Relevant Departments -Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190130', 'type': 'Clearance from Coastal Zone Management Authority -Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190135', 'type': 'Concurrence / Layout Approval of LSG planning department-Max size-5MB', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Concurrence___Layout_Approval_of_LSG_planning_department-Max_size-5MB.pdf', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190139', 'type': 'If the project is proposed to be developed in Phases, an authenticated copy of license or land use permission, Building sanction plan or building permit for each of such phases  (If applicable)-Max size-5MB', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/If_the_project_is_proposed_to_be_developed_in_Phases,_an_authenticated_copy_of_license_or_land_use_permission,_Building_sanction_plan_or_building_permit_for_each_of_such_phases__(If_applicable)-Max_size-5MB.pdf', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190126', 'type': 'Proforma of Allotment Letter (As per the Authority order No. K-RERA/T1/1657/2024 dated 26/11/2024)-Max size-3MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190154', 'type': 'Proforma of Agreement for Sale (As per Annexure A) Note - Promoter is directed to stick on original clauses of Annexure A. No alterations/additions/omissions are allowed in words/sentences/clauses.-Max size-5MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190153', 'type': 'Proforma of Conveyance Deed / Sales Deed-Max size-3MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190141', 'type': 'Copy of front page of Bank passbook-Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190127', 'type': 'Certificate from Bank in Form No 1-Max size-1MB', 'dated_on': '2026-02-24'}, {'link': 'https://rera.kerala.gov.in/view-file/190124', 'type': 'Declaration / Affidavit in Form B-Max size-3MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/190123', 'type': 'Copy of PAN card-Max size-1MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/189992', 'type': 'Initial NOC from Fire and Rescue department -Max size-1MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/189988', 'type': 'Site Plan / Site Map-Max size-5MB', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Site_Plan___Site_Map-Max_size-5MB.pdf', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/189986', 'type': 'Copy of Valid Building Permit-Max size-1MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/190113', 'type': 'Copy of Valid Development Permit (For villa projects & plot development pojects)-Max size-1MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/189985', 'type': 'Copy of Sanctioned Plans (Provide a clear remark for each drawing suxh as ground floor ,1st floor, elevation ,section etc)-Max size-7MB', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Copy_of_Sanctioned_Plans_(Provide_a_clear_remark_for_each_drawing_suxh_as_ground_floor_,1st_floor,_elevation_,section_etc)-Max_size-7MB.pdf', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/190115', 'type': 'Copy of Title Deed-Max size-3MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/190119', 'type': 'Land title search report (From an advocate as specified in Rule 17)-Max size-3MB', 'dated_on': '2026-02-23'}, {'link': 'https://rera.kerala.gov.in/view-file/190114', 'type': 'Copy of latest Land Tax Receipt-Max size-1MB', 'dated_on': '2026-02-23'}, {'type': 'Copy of Valid Building Permit', 'dated_on': '2026-02-23 11:06:18+00:00'}, {'type': 'Detailed Technical specifications 1', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Detailed_Technical_specifications_1.pdf', 'dated_on': '2026-02-23 11:07:10+00:00'}, {'type': 'Location details 1', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Location_details_1.pdf', 'dated_on': '2026-02-23 11:09:47+00:00'}, {'type': 'Sanctioned Plan 1', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_1.pdf', 'dated_on': '2026-02-23 11:07:28+00:00'}, {'type': 'Copy of latest Land Tax Receipt', 'dated_on': '2026-02-23 23:28:45+00:00'}, {'type': 'Copy of Title Deed', 'dated_on': '2026-02-23 23:46:31+00:00'}, {'type': 'Land title search report (From an advocate as specified in Rule 17)', 'dated_on': '2026-02-23 23:52:53+00:00'}, {'type': 'Proforma of Conveyance Deed / Sales Deed', 'dated_on': '2026-02-24 10:28:31+00:00'}, {'type': 'Declaration / Affidavit in Form B', 'dated_on': '2026-02-23 23:59:13+00:00'}, {'type': \"The annual report including audited profit and loss account, balance sheet, cash flow statement, directors report and auditor's report of the promoter for the immediately preceding three financial years and where annual report is not available then the audited profit and loss account, balance sheet, cash flow statement and the auditor's report of the promoter for immediately preceding three financial years and in case of newly incorporated or registered entity, such information shall be disclosed for the parent entity.\", 'dated_on': '2026-02-24 00:45:52+00:00'}, {'type': 'Proforma of Agreement for Sale (As per Annexure A) Note - Promoter is directed to stick on original clauses of Annexure A. No alterations/additions/omissions are allowed in words/sentences/clauses.', 'dated_on': '2026-03-13 18:07:56+00:00'}, {'type': 'Proforma of Allotment Letter (As per the Authority order No. K-RERA/T1/1657/2024 dated 26/11/2024)', 'dated_on': '2026-03-12 17:42:18+00:00'}, {'type': 'Clearance from Airport Authority of India', 'dated_on': '2026-02-24 00:22:32+00:00'}, {'type': 'Clearance from Airport Authority of India', 'dated_on': '2026-02-24 00:24:01+00:00'}, {'type': 'Clearance from Coastal Zone Management Authority', 'dated_on': '2026-02-24 00:22:52+00:00'}, {'type': 'Clearance from Coastal Zone Management Authority', 'dated_on': '2026-02-24 00:24:08+00:00'}, {'type': 'Clearance from Coastal Zone Management Authority', 'dated_on': '2026-02-24 00:33:07+00:00'}, {'type': 'Clearance from National Highways / Railways / Other Relevant Departments', 'dated_on': '2026-02-24 00:26:35+00:00'}, {'type': 'Clearance from National Highways / Railways / Other Relevant Departments', 'dated_on': '2026-02-24 00:34:48+00:00'}, {'type': 'Sanctioned Plan 2', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_2.pdf', 'dated_on': '2026-02-24 00:33:54+00:00'}, {'type': 'Consent to establish (Clearance from Pollution Control Board)', 'dated_on': '2026-02-24 00:34:21+00:00'}, {'type': 'Environment Clearance', 'dated_on': '2026-02-24 00:35:04+00:00'}, {'type': 'Sanctioned Plan 3', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_3.pdf', 'dated_on': '2026-02-24 00:35:49+00:00'}, {'type': 'Initial NOC from Fire and Rescue department', 'dated_on': '2026-02-23 11:27:47+00:00'}, {'type': 'Permission from Water and sewerage department', 'dated_on': '2026-02-24 00:36:26+00:00'}, {'type': 'Chart 1', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Chart_1.pdf', 'dated_on': '2026-02-23 11:22:26+00:00'}, {'type': 'List and details of common amenities 1', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/List_and_details_of_common_amenities_1.pdf', 'dated_on': '2026-02-24 00:39:12+00:00'}, {'type': 'Sanctioned Plan 4', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_4.pdf', 'dated_on': '2026-02-23 12:24:09+00:00'}, {'type': 'Sanctioned Plan 5', 's3_link': 'http://docs.primetenders.com/documents/17186159861670388125/Sanctioned_Plan_5.pdf', 'dated_on': '2026-02-23 15:53:03+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:03:20+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:04:34+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:05:11+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:06:26+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:07:59+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:09:16+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:09:56+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-23 23:21:49+00:00'}, {'type': 'Registered Joint Development Agreement', 'dated_on': '2026-02-24 00:52:45+00:00'}]"
+      }
+    ],
+    "status_update": [
+      {
+        "booking_details": [
+          {
+            "area": "61.73",
+            "block": "VISTA DELRIO",
+            "flat_type": "2BHK",
+            "booked_flats": "0",
+            "total_available": "13"
+          },
+          {
+            "area": "79.08",
+            "block": "VISTA DELRIO",
+            "flat_type": "3BHK",
+            "booked_flats": "0",
+            "total_available": "13"
+          },
+          {
+            "area": "79.09",
+            "block": "VISTA DELRIO",
+            "flat_type": "3BHK",
+            "booked_flats": "0",
+            "total_available": "13"
+          },
+          {
+            "area": "62.77",
+            "block": "VISTA DELRIO",
+            "flat_type": "2BHK",
+            "booked_flats": "0",
+            "total_available": "13"
+          },
+          {
+            "area": "65.15",
+            "block": "VISTA DELRIO",
+            "flat_type": "2BHK",
+            "booked_flats": "0",
+            "total_available": "12"
+          },
+          {
+            "area": "63.32",
+            "block": "VISTA DELRIO",
+            "flat_type": "2BHK",
+            "booked_flats": "0",
+            "total_available": "12"
+          }
+        ],
+        "building_detail": [
+          {
+            "no_stilt": "0",
+            "flat_name": "VISTA DELRIO",
+            "no_podium": "0",
+            "no_basement": "0",
+            "completion_date": "25/01/2029",
+            "no_super_struct": "14"
+          }
+        ],
+        "construction_progress": [
+          {
+            "block": "VISTA DELRIO",
+            "title": "Excavation",
+            "progress_percentage": "0"
+          },
+          {
+            "block": "VISTA DELRIO",
+            "title": "Basement(s) and Plinth",
+            "progress_percentage": "0"
+          },
+          {
+            "block": "VISTA DELRIO",
+            "title": "Slabs of Super Structure",
+            "progress_percentage": "0"
+          },
+          {
+            "block": "VISTA DELRIO",
+            "title": "Internal walls, Internal Plastering, Floorings inside the building, Doors and Windows to each Buildings",
+            "progress_percentage": "0"
+          },
+          {
+            "block": "VISTA DELRIO",
+            "title": "Sanitary Fittings",
+            "progress_percentage": "0"
+          },
+          {
+            "block": "VISTA DELRIO",
+            "title": "Electrical Fittings",
+            "progress_percentage": "0"
+          },
+          {
+            "block": "VISTA DELRIO",
+            "title": "Staircases, Lifts Wells",
+            "progress_percentage": "0"
+          },
+          {
+            "block": "VISTA DELRIO",
+            "title": "Overhead and Underground Water Tanks.",
+            "progress_percentage": "0"
+          },
+          {
+            "block": "VISTA DELRIO",
+            "title": "The external plumbing and external plastering",
+            "progress_percentage": "0"
+          },
+          {
+            "block": "VISTA DELRIO",
+            "title": "Completion of terraces floor each building",
+            "progress_percentage": "0"
+          },
+          {
+            "block": "VISTA DELRIO",
+            "title": "Installation of lifts, water pumps etc",
+            "progress_percentage": "0"
+          },
+          {
+            "block": "VISTA DELRIO",
+            "title": "Fire Fighting Fittings and Equipment",
+            "progress_percentage": "0"
+          },
+          {
+            "block": "VISTA DELRIO",
+            "title": "Common Areas work for each building like electrical fittings and other finishing works such as paving of common area etc",
+            "progress_percentage": "0"
+          },
+          {
+            "block": "VISTA DELRIO"
+          },
+          {
+            "block": "VISTA DELRIO"
+          },
+          {
+            "title": "Gymnasium :",
+            "remarks": "sqm",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Open parking :",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Water supply :",
+            "remarks": "open well with 4 mtr dia",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Water conservation, Rain water harvesting :",
+            "remarks": "cum",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Fire protection and Fire safety requirements :",
+            "remarks": "Initial Fire NOC obtained",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Party Hall :",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Security cameras :",
+            "remarks": "26 numbers provided in common areas",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Sewerage (Chamber, Lines, Septic tank, STP) :",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Storm water drains :",
+            "remarks": "Drain trenches provided",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Street lighting :",
+            "remarks": "6 Nos provided at pathways",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Visitors Parking :",
+            "remarks": "8 Nos of parking provided for visitors",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Electrical meter room, Sub-station, Receiving station :",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Internal Roads & Footpaths :",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Security :",
+            "remarks": "24 hour security",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Solar systems :",
+            "remarks": "As required",
+            "progress_percentage": "0"
+          },
+          {
+            "title": "Swimming pool :",
+            "progress_percentage": "0"
+          }
+        ]
+      }
+    ],
+    "iw_part_processed": null,
+    "iw_processed": true,
+    "last_crawled_date": "2026-04-22 10:16:44.308458+00:00",
+    "land_area_details": {
+      "land_area": "2654.87",
+      "land_area_unit": "Sqmts",
+      "construction_area": "8582.89",
+      "construction_area_unit": "in Sqmts"
+    },
+    "doc_ocr_url": null,
+    "proposed_timeline": null,
+    "checked_updates": true,
+    "checked_updates_date": "2026-04-22 10:18:22.557874+00:00",
+    "rera_housing_found": false,
+    "is_live": false,
+    "alternative_rera_ids": null
+  }
+]

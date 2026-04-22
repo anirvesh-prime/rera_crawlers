@@ -9,7 +9,9 @@ Strategy:
 """
 from __future__ import annotations
 
+import os
 import re
+import tempfile
 from datetime import timezone
 from typing import Any
 from urllib.parse import parse_qs, urljoin, urlparse
@@ -43,6 +45,8 @@ DOMAIN = "rera.kerala.gov.in"
 LEGACY_DOMAIN = "reraonline.kerala.gov.in"
 LEGACY_CONFIG_ID = 14521
 _LEGACY_SKIP_DOC_LABELS = {"complete_project_details", "quarterly_progress_report"}
+_PLAYWRIGHT_PAGE_TIMEOUT_MS = 60_000
+_PLAYWRIGHT_DOWNLOAD_START_TIMEOUT_MS = 120_000
 
 
 # ── Listing pagination via explore-projects ───────────────────────────────────
@@ -1112,18 +1116,28 @@ def _download_print_preview_document(
         page = page_cache.get(print_preview_url)
         if page is None:
             page = browser_session.new_page()
-            page.goto(print_preview_url, wait_until="domcontentloaded", timeout=60_000)
+            page.goto(print_preview_url, wait_until="domcontentloaded", timeout=_PLAYWRIGHT_PAGE_TIMEOUT_MS)
             page_cache[print_preview_url] = page
         page.wait_for_selector(selector, timeout=15_000)
-        with page.expect_download(timeout=30_000) as download_info:
+        with page.expect_download(timeout=_PLAYWRIGHT_DOWNLOAD_START_TIMEOUT_MS) as download_info:
             page.locator(selector).click()
         download = download_info.value
-        path = download.path()
-        if not path:
-            return None
-        with open(path, "rb") as file_obj:
-            data = file_obj.read()
-        return data if len(data) >= 100 else None
+        suggested_name = download.suggested_filename or "document.pdf"
+        suffix = os.path.splitext(suggested_name)[1] or ".pdf"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+            temp_path = temp_file.name
+        try:
+            # save_as() waits for the download to complete; do not fall back
+            # early while the browser is still transferring bytes.
+            download.save_as(temp_path)
+            with open(temp_path, "rb") as file_obj:
+                data = file_obj.read()
+            return data if len(data) >= 100 else None
+        finally:
+            try:
+                os.unlink(temp_path)
+            except OSError:
+                pass
     except Exception as exc:
         logger.warning("Playwright download failed; falling back to direct GET", error=str(exc), url=print_preview_url)
         return None
