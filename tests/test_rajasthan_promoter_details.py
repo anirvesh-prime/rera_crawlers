@@ -56,7 +56,12 @@ _FULL_VIEW_DATA = {
     "PlotDetails": [{"PlotArea": 100.5, "TotalPlots": 20}, {"PlotArea": 50.0, "TotalPlots": 10}],
     "GetProjectCostDetail": {"TotalCost": 5000000},
     "ProjectProFessionAlDetail": [{"Name": "Arch Ltd", "Role": "Architect"}],
-    "GetProjectAreaFacilities": [{"Facility": "Gym"}],
+    # provided_faciltiy is now sourced from ProjectCommanArea
+    "ProjectCommanArea": {
+        "ProjectDevelopementWork": [{"Name": "Water Supply", "Proposed": 1, "Completion": 0}],
+        "CommonAreaItemsCharged": None,
+        "ProjectCommonAreaDetails": None,
+    },
     "ProjectLitigations": [{"CaseNo": "123"}],
     "PromoterDetails": _PROMOTER_DETAILS,
 }
@@ -180,9 +185,13 @@ class TestFetchProjectDetail(unittest.TestCase):
         self.assertEqual(result["project_name"],            "Sky Homes 5")
         self.assertEqual(result["promoter_name"],           "Akshat Apts")
         self.assertEqual(result["project_registration_no"], "RAJ/P/2025/4508")
-        self.assertEqual(result["approved_on_date"],        "17-04-2026")
-        self.assertEqual(result["project_type"],            "Group Housing")
-        self.assertEqual(result["estimated_finish_date"],   "31-12-2027")
+        # DateofRegistration → submitted_date (registration date shown in site header),
+        # normalised from dd-mm-yyyy to ISO YYYY-MM-DD HH:MM:SS+00:00
+        self.assertEqual(result["submitted_date"],          "2026-04-17 00:00:00+00:00")
+        self.assertNotIn("approved_on_date", result)  # approved_on_date comes from listing APPROVEDON
+        self.assertEqual(result["project_type"],            "group-housing")
+        # RevisedDateOfComplation normalised from dd-mm-yyyy to ISO
+        self.assertEqual(result["estimated_finish_date"],   "2027-12-31 00:00:00+00:00")
 
     @patch("sites.rajasthan_rera.safe_post")
     def test_promoter_contact_extracted(self, mock_post):
@@ -498,8 +507,39 @@ class TestExtractViewProjectFields(unittest.TestCase):
         self.assertEqual(result[0]["phone"], "1234567890")
 
     def test_provided_facility_extracted(self):
-        r = self._x({"GetProjectAreaFacilities": [{"Facility": "Gym"}]})
-        self.assertEqual(r["provided_faciltiy"], [{"Facility": "Gym"}])
+        # provided_faciltiy is now sourced from ProjectCommanArea.ProjectDevelopementWork
+        r = self._x({"ProjectCommanArea": {
+            "ProjectDevelopementWork": [{"Name": "Water Supply", "Proposed": 1, "Completion": 0}],
+        }})
+        fac = r.get("provided_faciltiy") or {}
+        self.assertIn("amenities", fac)
+        self.assertEqual(fac["amenities"][0]["name"], "Water Supply")
+        self.assertTrue(fac["amenities"][0]["proposed"])
+
+    def test_provided_facility_common_areas(self):
+        r = self._x({"CommonAreaItemsCharged": [
+            {"Items": "Swimming Pool", "Checked": True},
+            {"Items": "Gym", "Checked": False},
+        ]})
+        fac = r.get("provided_faciltiy") or {}
+        self.assertIn("common_areas", fac)
+        names = [ca["name"] for ca in fac["common_areas"]]
+        self.assertIn("Swimming Pool", names)
+        self.assertIn("Gym", names)
+
+    def test_provided_facility_parking(self):
+        r = self._x({"ProjectCommanArea": {
+            "ProjectCommonAreaDetails": [
+                {"TypeName": "Stilt Area", "NoOfCars": 10, "NoOfTwoWeelers": 20,
+                 "NoOfCycles": 0, "MechanicalCarParking": 0,
+                 "NoOfVisitorCarParking": 2, "NoOfVisitorScooterParking": 3,
+                 "CarParkingAllocated": 0, "ScooterParkingAllocated": 0},
+            ],
+        }})
+        fac = r.get("provided_faciltiy") or {}
+        self.assertIn("parking", fac)
+        self.assertEqual(fac["parking"][0]["type"], "Stilt Area")
+        self.assertEqual(fac["parking"][0]["cars"], 10)
 
     def test_complaints_litigation_extracted(self):
         r = self._x({"ProjectLitigations": [{"CaseNo": "123"}]})
@@ -645,6 +685,11 @@ class TestNewFieldsExtraction(unittest.TestCase):
         r = self._x({"GetProjectBasic": {"ProjectDescription": ""}})
         self.assertNotIn("project_description", r)
 
+    def test_project_description_from_project_remark(self):
+        # Many projects store description in ProjectRemark, not ProjectDescription
+        r = self._x({"GetProjectBasic": {"ProjectRemark": "Servant rooms sold to allottees only."}})
+        self.assertEqual(r["project_description"], "Servant rooms sold to allottees only.")
+
     # ── rich building_details list ────────────────────────────────────────────
 
     def test_building_details_from_get_building_details_key(self):
@@ -671,6 +716,33 @@ class TestNewFieldsExtraction(unittest.TestCase):
     def test_empty_building_detail_item_skipped(self):
         r = self._x({"GetBuildingDetails": [{}]})
         self.assertNotIn("building_details", r)
+
+    def test_open_area_zero_emitted_as_decimal_string(self):
+        # open_area must always be present, even when 0.0 (the 'or' short-circuit bug was fixed)
+        r = self._x({"GetBuildingDetails": [
+            {"Name": "B1", "GetAppartmentDetails": [
+                {"ApartmentType": "2BHK", "CarpetArea": 75.0, "AreaOfVerandah": 0.0},
+            ]},
+        ]})
+        self.assertIn("open_area", r["building_details"][0])
+        self.assertEqual(r["building_details"][0]["open_area"], "0.00")
+
+    def test_open_area_nonzero_emitted_as_decimal_string(self):
+        r = self._x({"GetBuildingDetails": [
+            {"Name": "B1", "GetAppartmentDetails": [
+                {"ApartmentType": "Penthouse", "CarpetArea": 200.0, "AreaOfVerandah": 231.3},
+            ]},
+        ]})
+        self.assertEqual(r["building_details"][0]["open_area"], "231.30")
+
+    def test_open_area_absent_in_api_defaults_to_zero_string(self):
+        # When AreaOfVerandah/OpenArea are not present at all, default to "0.00"
+        r = self._x({"GetBuildingDetails": [
+            {"Name": "B1", "GetAppartmentDetails": [
+                {"ApartmentType": "1BHK", "CarpetArea": 50.0},
+            ]},
+        ]})
+        self.assertEqual(r["building_details"][0]["open_area"], "0.00")
 
     # ── construction_progress ─────────────────────────────────────────────────
 
@@ -703,7 +775,7 @@ class TestNewFieldsExtraction(unittest.TestCase):
         self.assertEqual(bd["IFSC"],         "SBIN0001234")
         self.assertEqual(bd["account_no"],   "123456789")
         self.assertEqual(bd["branch"],       "Jaipur Main")
-        self.assertEqual(bd["account_type"], "collection")
+        self.assertEqual(bd["account_type"], "Collection Account (100%)")
 
     def test_bank_details_three_account_types(self):
         # All three account types (collection, retention, promoter) are extracted
@@ -713,9 +785,9 @@ class TestNewFieldsExtraction(unittest.TestCase):
             "BankNamePromoter":  "ICICI", "BankAccountNoPromoter": "333",
         }})
         types = [bd["account_type"] for bd in r["bank_details"]]
-        self.assertIn("collection", types)
-        self.assertIn("retention",  types)
-        self.assertIn("promoter",   types)
+        self.assertIn("Collection Account (100%)",  types)
+        self.assertIn("RERA Retention Account (70%)", types)
+        self.assertIn("Promoter's Account",          types)
 
     # ── co_promoter_details ───────────────────────────────────────────────────
 
@@ -746,7 +818,8 @@ class TestNewFieldsExtraction(unittest.TestCase):
             "OrgType": "Private Limited Company",
         }})
         self.assertIn("promoters_details", r)
-        self.assertEqual(r["promoters_details"]["name"],        "Akshat Apartments Pvt Ltd")
+        # name is captured in top-level promoter_name; only type_of_firm in promoters_details
+        self.assertNotIn("name", r["promoters_details"])
         self.assertEqual(r["promoters_details"]["type_of_firm"], "Private Limited Company")
 
     def test_promoters_details_absent_when_org_name_missing(self):

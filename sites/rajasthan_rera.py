@@ -10,7 +10,7 @@ Strategy:
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import httpx
 
@@ -33,6 +33,70 @@ from core.project_normalizer import (
 )
 from core.s3 import compute_md5, upload_document, get_s3_url
 from core.config import settings
+
+# Rajasthan is in IST (UTC+5:30). /Date(ms)/ timestamps from the RERA API are
+# stored as midnight IST values, so we must interpret them in IST and then
+# write the result with a "+00:00" suffix (matching production convention).
+_IST = timezone(timedelta(hours=5, minutes=30))
+
+
+def _normalize_project_type(raw: str) -> str:
+    """Normalize project type string to lowercase-hyphenated format.
+
+    Examples: 'GROUP HOUSING' → 'group-housing', 'Residential' → 'residential'
+    """
+    return raw.strip().lower().replace(" ", "-")
+
+
+def _normalize_date_str(val) -> str | None:
+    """Normalize any date representation from the Rajasthan RERA APIs to the
+    canonical ISO string ``YYYY-MM-DD HH:MM:SS+00:00`` (or ``+00:00`` suffix
+    for existing ISO strings).  Returns *None* for invalid / empty / pre-epoch
+    sentinel values so callers can skip them cleanly.
+
+    Handled formats
+    ---------------
+    * ``/Date(<ms>)/``  — .NET JSON date; interpreted in IST (UTC+5:30)
+    * ``dd-mm-yyyy``    — plain date string from GetProjectById
+    * ``dd/mm/yyyy``    — alternate separator from listing API
+    * ``YYYY-MM-DDTHH:MM:SS[.sss]`` — ISO with "T" separator (listing APPROVEDON)
+    * ``YYYY-MM-DD HH:MM:SS``       — already-normalised (append ``+00:00``)
+    """
+    if val is None:
+        return None
+    v = str(val).strip()
+    if v in ("", "null", "None", "0"):
+        return None
+
+    # /Date(ms)/ — .NET JSON format
+    m = re.match(r"^/Date\((-?\d+)\)/$", v)
+    if m:
+        ms = int(m.group(1))
+        if ms <= 0:
+            return None  # sentinel for year 0001 or invalid
+        try:
+            dt = datetime.fromtimestamp(ms / 1000, tz=_IST)
+            return dt.strftime("%Y-%m-%d %H:%M:%S") + "+00:00"
+        except (ValueError, OSError):
+            return None
+
+    # dd-mm-yyyy  or  dd/mm/yyyy
+    m = re.match(r"^(\d{2})[-/](\d{2})[-/](\d{4})$", v)
+    if m:
+        return f"{m.group(3)}-{m.group(2)}-{m.group(1)} 00:00:00+00:00"
+
+    # YYYY-MM-DDTHH:MM:SS[.sss…]  (ISO with 'T' separator)
+    m = re.match(r"^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})", v)
+    if m:
+        return f"{m.group(1)} {m.group(2)}+00:00"
+
+    # Already YYYY-MM-DD HH:MM:SS (with or without timezone suffix)
+    if re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}", v):
+        return v if "+" in v else v + "+00:00"
+
+    # Unrecognised — return as-is so we don't silently discard data
+    return v
+
 
 def _format_inr(amount: float) -> str:
     """Format a float as Indian currency string: ₹X,XX,XX,XXX.XX"""
@@ -79,7 +143,7 @@ _DETAIL_API_TO_FIELD: dict[str, str] = {
     "ProjectName":          "project_name",
     "PromoterName":         "promoter_name",
     "RevisedDateOfComplation": "estimated_finish_date",
-    "DateofRegistration":   "approved_on_date",
+    "DateofRegistration":   "submitted_date",   # registration/submission date shown on site header
     "ProjectCategory":      "project_type",
     "RegistrationNo":       "project_registration_no",
 }
@@ -106,7 +170,13 @@ def _fetch_project_detail(enc_id: str, logger: CrawlerLogger,
     for api_f, schema_f in _DETAIL_API_TO_FIELD.items():
         val = proj.get(api_f)
         if val is not None and str(val).strip() and str(val) not in ("0", "None"):
-            out[schema_f] = str(val).strip()
+            v = str(val).strip()
+            # Normalise date fields to canonical ISO format
+            if schema_f.endswith("_date"):
+                v = _normalize_date_str(v) or v
+            elif schema_f == "project_type":
+                v = _normalize_project_type(v)
+            out[schema_f] = v
 
     if proj.get("ProjectLocation"):
         out["project_location_raw"] = {"project_location": proj.get("ProjectLocation")}
@@ -407,13 +477,18 @@ def _extract_view_project_fields(view_data: dict) -> dict:  # noqa: C901
         basic = {}
 
     if basic:
-        # Date fields — try multiple API key variants; first non-empty wins
+        # Date fields — try multiple API key variants; first non-empty, valid date wins.
+        # Candidate tuples: (schema_field, api_key_1, api_key_2, …)
+        # DateOfComplation  = the date the project was proposed to start (estimated commencement).
+        # ApprovedOn        = timestamp when RERA approved; fallback for submitted_date.
         _date_candidates: list[tuple[str, ...]] = [
             ("actual_commencement_date", "ActualCommencementDate"),
             ("actual_finish_date",       "ActualfinishDate"),
-            ("estimated_commencement_date", "CommencementDate", "ProposedStartDate",
+            ("estimated_commencement_date",
+             "DateOfComplation", "CommencementDate", "ProposedStartDate",
              "ProposedCommencementDate", "EstimatedStartDate"),
-            ("submitted_date", "ApplicationDate", "DateofApplication",
+            ("submitted_date",
+             "ApprovedOn", "ApplicationDate", "DateofApplication",
              "SubmittedDate", "RegistrationDate"),
         ]
         for row in _date_candidates:
@@ -422,17 +497,11 @@ def _extract_view_project_fields(view_data: dict) -> dict:  # noqa: C901
                 continue
             for api_f in api_keys:
                 val = basic.get(api_f)
-                if val and str(val).strip() not in ("null", "None", "0", ""):
-                    v_str = str(val).strip()
-                    # Parse .NET JSON date: /Date(<ms>)/
-                    _dotnet = re.match(r'^/Date\((-?\d+)\)/$', v_str)
-                    if _dotnet:
-                        try:
-                            dt = datetime.fromtimestamp(int(_dotnet.group(1)) / 1000, tz=timezone.utc)
-                            v_str = dt.strftime("%Y-%m-%d %H:%M:%S+00:00")
-                        except (ValueError, OSError):
-                            pass
-                    out[schema_f] = v_str
+                if not val or str(val).strip() in ("null", "None", "0", ""):
+                    continue
+                normalized = _normalize_date_str(str(val).strip())
+                if normalized:
+                    out[schema_f] = normalized
                     break
 
         # Unit counts
@@ -452,9 +521,11 @@ def _extract_view_project_fields(view_data: dict) -> dict:  # noqa: C901
                     break
 
         # Area fields
+        # BuiltUpAreaFSI = "Total built up area / saleable area" shown on the site.
+        # SaleableArea is a direct saleable area field (populated on some projects).
         for api_f_list, schema_f in (
             (("BuiltupArea", "TotalBuiltupArea", "ConstructionArea", "TotalConstArea",
-              "BuiltUpArea", "TotalBuiltUpArea"), "construction_area"),
+              "BuiltUpArea", "TotalBuiltUpArea", "BuiltUpAreaFSI", "SaleableArea"), "construction_area"),
             (("Rectified_PhaseArea", "PhaseArea", "Area", "LandArea",
               "TotalLandArea", "PlotArea"), "land_area"),
         ):
@@ -467,9 +538,21 @@ def _extract_view_project_fields(view_data: dict) -> dict:  # noqa: C901
                         pass
                     break
 
-        # Project description
+        # AggregateAreaOpenSpace = "Open Area (In sq. meters)" shown on the site
+        agg_open = basic.get("AggregateAreaOpenSpace")
+        if agg_open is not None:
+            try:
+                _open_f = float(agg_open)
+                if _open_f > 0:
+                    ld = out.get("land_area_details") or {}
+                    ld["open_space_area"] = _open_f
+                    out["land_area_details"] = ld
+            except (ValueError, TypeError):
+                pass
+
+        # Project description — ProjectRemark is the field used on VENTURA and most projects
         desc = (basic.get("ProjectDescription") or basic.get("Description") or
-                basic.get("ProjectDesc") or "").strip()
+                basic.get("ProjectDesc") or basic.get("ProjectRemark") or "").strip()
         if desc and desc.lower() not in ("null", "none"):
             out["project_description"] = desc
 
@@ -501,7 +584,9 @@ def _extract_view_project_fields(view_data: dict) -> dict:  # noqa: C901
              and not str(basic.get(k, "")).strip().isdigit()),
             ""
         )
-        house_no   = _s("HouseNo", "HouseName", "BuildingNo")
+        # ProjectPlotNo holds the site-display plot number (e.g. "PLOT NO O-35A"),
+        # often cleaner than PlotNo which may include area tags like "Khasra No./".
+        house_no   = _s("HouseNo", "HouseName", "BuildingNo", "ProjectPlotNo")
 
         if plot_no or village or district:
             # Legacy address string (stored in prod_data_fields for backward compat)
@@ -523,7 +608,11 @@ def _extract_view_project_fields(view_data: dict) -> dict:  # noqa: C901
             if house_no:
                 loc["house_no_building_name"] = house_no
             elif plot_no:
-                loc["house_no_building_name"] = f"PLOT NO {plot_no}"
+                # Avoid a double "PLOT NO" prefix if PlotNo already carries one
+                if re.match(r"^(PLOT|KHASRA|SURVEY|FLAT|BLOCK)\b", plot_no, re.IGNORECASE):
+                    loc["house_no_building_name"] = plot_no
+                else:
+                    loc["house_no_building_name"] = f"PLOT NO {plot_no}"
             if village:
                 loc["village"] = village
             if locality:
@@ -538,14 +627,17 @@ def _extract_view_project_fields(view_data: dict) -> dict:  # noqa: C901
             loc["raw_address"] = raw_addr_str
             out["project_location_raw"] = loc
 
-        # Bank details — stored as three flat account sets in GetProjectBasic
+        # Bank details — stored as three flat account sets in GetProjectBasic.
+        # Account-type labels match what the Rajasthan RERA website shows users.
         _BANK_ACCOUNTS = [
-            ("collection", "BankName", "BranchName", "IFSCCode", "BankAccountNo",
-             "BankAddress", "AccountHolderName"),
-            ("retention", "BankNameRetention", "BranchNameRetention", "IFSCCodeRetention",
-             "BankAccountNoRetention", "BankAddressRetention", "AccountHolderNameRetention"),
-            ("promoter", "BankNamePromoter", "BranchNamePromoter", "IFSCCodePromoter",
-             "BankAccountNoPromoter", "BankAddressPromoter", "AccountHolderNamePromoter"),
+            ("Collection Account (100%)", "BankName", "BranchName", "IFSCCode",
+             "BankAccountNo", "BankAddress", "AccountHolderName"),
+            ("RERA Retention Account (70%)", "BankNameRetention", "BranchNameRetention",
+             "IFSCCodeRetention", "BankAccountNoRetention",
+             "BankAddressRetention", "AccountHolderNameRetention"),
+            ("Promoter's Account", "BankNamePromoter", "BranchNamePromoter",
+             "IFSCCodePromoter", "BankAccountNoPromoter",
+             "BankAddressPromoter", "AccountHolderNamePromoter"),
         ]
         _bank_list = []
         for _acct_type, _bn, _br, _ifsc, _ano, _baddr, _holder in _BANK_ACCOUNTS:
@@ -595,6 +687,34 @@ def _extract_view_project_fields(view_data: dict) -> dict:  # noqa: C901
                 if not isinstance(bldg_item, dict):
                     continue
                 bldg_name = (bldg_item.get("Name") or bldg_item.get("BuildingName") or "").strip()
+
+                # ── Floor structure from GetBuildingDetails (site shows "Number of Floors") ──
+                # NumberOfSlabOfSS = slabs of superstructure = upper habitable floors.
+                # When this is 0, try to parse from NumberOfBlocksString ("blocks,floors,...").
+                _n_basement = int(bldg_item.get("NumberOfBaseMent") or 0)
+                _n_plinth   = int(bldg_item.get("NumberOfPlinth")   or 0)
+                _n_podium   = int(bldg_item.get("NumberOfPodium")   or 0)
+                _n_stilt    = int(bldg_item.get("NumberOfStilts")   or 0)
+                _n_upper    = int(bldg_item.get("NumberOfSlabOfSS") or 0)
+                # Fallback: second token of comma-separated NumberOfBlocksString encodes floors
+                if _n_upper == 0:
+                    _nbs = str(bldg_item.get("NumberOfBlocksString") or "")
+                    _parts = [p.strip() for p in _nbs.split(",") if p.strip().isdigit()]
+                    if len(_parts) >= 2:
+                        try:
+                            _n_upper = int(_parts[1])
+                        except (ValueError, IndexError):
+                            pass
+                _floor_meta: dict = {}
+                if _n_basement:  _floor_meta["basement_floors"] = _n_basement
+                if _n_plinth:    _floor_meta["plinth_floors"]   = _n_plinth
+                if _n_podium:    _floor_meta["podium_floors"]   = _n_podium
+                if _n_stilt:     _floor_meta["stilt_floors"]    = _n_stilt
+                if _n_upper:     _floor_meta["upper_floors"]    = _n_upper
+                _total_floors = _n_basement + _n_plinth + _n_podium + _n_stilt + _n_upper
+                if _total_floors:
+                    _floor_meta["total_floors"] = _total_floors
+
                 # Nested apartment/unit type details are in GetAppartmentDetails
                 apt_raw = (bldg_item.get("GetAppartmentDetails") or
                            bldg_item.get("GetAppartmentDetailsNew") or [])
@@ -607,7 +727,10 @@ def _extract_view_project_fields(view_data: dict) -> dict:  # noqa: C901
                                      apt.get("UnitType") or "")
                         carpet    = apt.get("CarpetArea") or apt.get("Carpetarea")
                         balcony   = apt.get("AreaOfBalconyVaramda") or apt.get("BalconyArea")
-                        open_a    = apt.get("AreaOfVerandah") or apt.get("OpenArea")
+                        # open_a: must NOT use 'or' — 0.0 is valid and means "no open area"
+                        open_a    = apt.get("AreaOfVerandah")
+                        if open_a is None:
+                            open_a = apt.get("OpenArea")
                         no_units  = apt.get("NumberOfApartments") or apt.get("NoOfUnit")
                         no_booked = apt.get("NumberOfApartmentsBooked")
                         block     = (apt.get("BulidingBlockText") or apt.get("BlockName") or
@@ -618,8 +741,11 @@ def _extract_view_project_fields(view_data: dict) -> dict:  # noqa: C901
                             entry["carpet_area"] = str(carpet)
                         if balcony is not None:
                             entry["balcony_area"] = str(balcony)
-                        if open_a is not None:
-                            entry["open_area"] = str(open_a)
+                        # Always emit open_area as a formatted decimal string (even when 0.00)
+                        try:
+                            entry["open_area"] = f"{float(open_a):.2f}" if open_a is not None else "0.00"
+                        except (ValueError, TypeError):
+                            entry["open_area"] = str(open_a) if open_a is not None else "0.00"
                         if no_units is not None:
                             entry["no_of_units"] = str(no_units)
                             try:
@@ -630,6 +756,9 @@ def _extract_view_project_fields(view_data: dict) -> dict:  # noqa: C901
                             entry["no_of_units_booked"] = str(no_booked)
                         if str(block).strip():
                             entry["block_name"] = str(block).strip()
+                        # Attach building-level floor structure to each apartment entry
+                        if _floor_meta:
+                            entry.update(_floor_meta)
                         if entry:
                             bldg_list.append(entry)
                 else:
@@ -831,14 +960,88 @@ def _extract_view_project_fields(view_data: dict) -> dict:  # noqa: C901
         if normalized_profs:
             out["professional_information"] = normalized_profs
 
-    # ── Common area facilities ────────────────────────────────────────────────
-    facilities = view_data.get("GetProjectAreaFacilities")
-    if facilities:
-        # API wraps items under {"ProjectId": ..., "ProjectDetail": [...]}
-        if isinstance(facilities, dict) and "ProjectDetail" in facilities:
-            facilities = facilities.get("ProjectDetail") or facilities
-        if facilities:
-            out["provided_faciltiy"] = facilities
+    # ── Common area facilities — sourced from ProjectCommanArea ─────────────────
+    # The site's "Common Amenities" section renders from ProjectDevelopementWork
+    # (infrastructure like Water Supply, Sanitation, Electrification, …).
+    # "Common Area" checkboxes come from CommonAreaItemsCharged.
+    # "Parking Area" table comes from ProjectCommonAreaDetails.
+    # GetProjectAreaFacilities.ProjectDetail is only counts of garages/covered parking
+    # (much less informative) and is NOT used here.
+    fac_out: dict = {}
+
+    # 1. Infrastructure / development works (Water Supply, Rain Water Harvesting, etc.)
+    _pca = view_data.get("ProjectCommanArea")
+    _pca = _pca if isinstance(_pca, dict) else {}
+    dev_works_raw = _pca.get("ProjectDevelopementWork") or []
+    if isinstance(dev_works_raw, list) and dev_works_raw:
+        amenities = []
+        for _dw in dev_works_raw:
+            if not isinstance(_dw, dict):
+                continue
+            _name = str(_dw.get("Name") or "").strip()
+            if not _name:
+                continue
+            _proposed = bool(_dw.get("Proposed"))
+            _completion = _dw.get("Completion")
+            item: dict = {"name": _name, "proposed": _proposed}
+            if _completion is not None:
+                try:
+                    item["completion_percent"] = float(_completion)
+                except (ValueError, TypeError):
+                    pass
+            amenities.append(item)
+        if amenities:
+            fac_out["amenities"] = amenities
+
+    # 2. Common area items (checked = included in project)
+    _caic = view_data.get("CommonAreaItemsCharged") or []
+    if not _caic:
+        _caic = _pca.get("CommonAreaItemsCharged") or []
+    if isinstance(_caic, list) and _caic:
+        common_areas = [
+            {"name": str(_ca.get("Items") or "").strip(),
+             "included": bool(_ca.get("Checked"))}
+            for _ca in _caic
+            if isinstance(_ca, dict) and str(_ca.get("Items") or "").strip()
+        ]
+        if common_areas:
+            fac_out["common_areas"] = common_areas
+
+    # 3. Parking details per location type (Open Area, Stilt, Basement, etc.)
+    _park_raw = _pca.get("ProjectCommonAreaDetails") or []
+    if isinstance(_park_raw, list) and _park_raw:
+        parking = []
+        for _pr in _park_raw:
+            if not isinstance(_pr, dict):
+                continue
+            _type = str(_pr.get("TypeName") or "").strip()
+            if not _type:
+                continue
+            _cars   = int(_pr.get("NoOfCars") or 0)
+            _two    = int(_pr.get("NoOfTwoWeelers") or 0)
+            _cycles = int(_pr.get("NoOfCycles") or 0)
+            _mech   = int(_pr.get("MechanicalCarParking") or 0)
+            _vis_c  = int(_pr.get("NoOfVisitorCarParking") or 0)
+            _vis_s  = int(_pr.get("NoOfVisitorScooterParking") or 0)
+            _alloc_c = int(_pr.get("CarParkingAllocated") or 0)
+            _alloc_s = int(_pr.get("ScooterParkingAllocated") or 0)
+            # Only include rows that have at least one non-zero count
+            if any(v > 0 for v in (_cars, _two, _cycles, _mech, _vis_c, _vis_s, _alloc_c, _alloc_s)):
+                pentry: dict = {"type": _type}
+                if _cars:    pentry["cars"] = _cars
+                if _two:     pentry["two_wheelers"] = _two
+                if _cycles:  pentry["cycles"] = _cycles
+                if _mech:    pentry["mechanical"] = _mech
+                if _vis_c:   pentry["visitor_cars"] = _vis_c
+                if _vis_s:   pentry["visitor_two_wheelers"] = _vis_s
+                if _alloc_c: pentry["allocated_cars"] = _alloc_c
+                if _alloc_s: pentry["allocated_two_wheelers"] = _alloc_s
+                parking.append(pentry)
+        if parking:
+            fac_out["parking"] = parking
+
+    if fac_out:
+        out["provided_faciltiy"] = fac_out
 
     # ── Litigation / complaints ───────────────────────────────────────────────
     litigations = view_data.get("ProjectLitigations")
@@ -918,12 +1121,10 @@ def _extract_view_project_fields(view_data: dict) -> dict:  # noqa: C901
                     org_type = _info_type_map.get(int(_it), "")
                 except (ValueError, TypeError):
                     org_type = ""
-        org_name = (promoter_raw.get("OrgName") or "").strip()
+        # org_name is already captured in top-level promoter_name; omit from promoters_details
         prom_d: dict = {}
         if org_type and org_type.lower() not in ("null", "none"):
             prom_d["type_of_firm"] = org_type
-        if org_name and org_name.lower() not in ("null", "none"):
-            prom_d["name"] = org_name
         if prom_d:
             out["promoters_details"] = prom_d
 
@@ -1101,7 +1302,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             for api_f, schema_f in _LIST_API_TO_FIELD.items():
                 val = proj.get(api_f)
                 if val and str(val).strip():
-                    data[schema_f] = str(val).strip()
+                    v = str(val).strip()
+                    # Normalise date strings from the listing API to canonical ISO format
+                    if schema_f.endswith("_date"):
+                        v = _normalize_date_str(v) or v
+                    elif schema_f == "project_type":
+                        v = _normalize_project_type(v)
+                    data[schema_f] = v
 
             cert_url = _build_cert_url(proj.get("UploadedCertificatePath", ""))
             doc_links = []
@@ -1157,14 +1364,24 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                             vp_docs: list[dict] = []
                             _iter_view_project_documents(vp_updated, docs=vp_docs, seen=vp_seen)
                             doc_links.extend(vp_docs)
-                            # Populate structured DB fields (don't overwrite already-set values)
+                            # Populate structured DB fields.
+                            # ViewProject (type=U) holds richer data than GetProjectById for
+                            # several fields — allow it to overwrite the simpler values.
                             vp_fields = _extract_view_project_fields(vp_updated)
                             for field, val in vp_fields.items():
                                 if field in ("raw_address", "plot_details"):
                                     continue
-                                # Allow the structured dict from ViewProject to overwrite
-                                # a simpler string value set earlier by GetProjectById
+                                # Structured dict from ViewProject always replaces the plain
+                                # "project_location" string stored by GetProjectById.
                                 if field == "project_location_raw" and isinstance(val, dict):
+                                    data[field] = val
+                                # Structured address list from ViewProject (PromoterDetails.Address)
+                                # replaces the flat {"details_of_promoter": …} dict.
+                                elif field == "promoter_address_raw" and isinstance(val, list):
+                                    data[field] = val
+                                # Unit-level building list from ViewProject (GetAppartmentDetails)
+                                # replaces the aggregate count dict from GetProjectById.
+                                elif field == "building_details" and isinstance(val, list):
                                     data[field] = val
                                 elif field not in data or not data[field]:
                                     data[field] = val
@@ -1178,9 +1395,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                     # ── data JSONB enrichment (temp / type / no_of_plots) ─────────
                     _reg_no = data.get("project_registration_no", "")
-                    _aod    = data.get("approved_on_date", "")
-                    # Convert dd-mm-yyyy → dd/mm/yyyy for the temp stamp
-                    _date_stamp = _aod.replace("-", "/") if _aod else ""
+                    # data.temp date stamp: prefer submitted_date (registration date shown
+                    # in the site's project header), fall back to approved_on_date.
+                    # Extract the YYYY-MM-DD portion and reformat as dd/mm/yyyy.
+                    _temp_iso = data.get("submitted_date") or data.get("approved_on_date", "")
+                    _date_stamp = ""
+                    if _temp_iso:
+                        _dm = re.match(r"^(\d{4})-(\d{2})-(\d{2})", str(_temp_iso))
+                        if _dm:
+                            _date_stamp = f"{_dm.group(3)}/{_dm.group(2)}/{_dm.group(1)}"
                     if _reg_no:
                         prod_data_fields["temp"] = (
                             f"{_reg_no} ({_date_stamp})" if _date_stamp else _reg_no
