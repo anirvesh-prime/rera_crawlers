@@ -1,0 +1,1212 @@
+{
+  "key": "15109980823510950852",
+  "project_name": "120 DWELLING AFFORDABLE HOUSING PROJECT AT NAWADIH - BHERWA",
+  "project_type": "Residential",
+  "promoter_name": "MADHUPUR",
+  "project_registration_no": "JHARERA/PROJECT/146/2022",
+  "status_of_the_project": null,
+  "acknowledgement_no": null,
+  "project_pin_code": null,
+  "project_city": null,
+  "project_state": null,
+  "project_location_raw": {
+    "city": "deoghar",
+    "state": "jharkhand",
+    "raw_address": "bherwa - nawadih, madhupur, madhupur, deoghar, jharkhand, 815353 .",
+    "processed_latitude": 24.272031,
+    "processed_longitude": 86.6487745
+  },
+  "promoter_address_raw": null,
+  "promoter_contact_details": {
+    "email": "nagarparshadmadhupur@gmail.com"
+  },
+  "submitted_date": null,
+  "last_modified": null,
+  "estimated_commencement_date": null,
+  "actual_commencement_date": "2022-05-07 00:00:00+00:00",
+  "estimated_finish_date": null,
+  "actual_finish_date": null,
+  "approved_on_date": null,
+  "past_experience_of_promoter": null,
+  "bank_details": [
+    {
+      "IFSC": "EXECUTIVE OFFICER V3",
+      "account_no": "CANARA BANK",
+      "account_name": "4902201000263"
+    }
+  ],
+  "land_area": null,
+  "construction_area": null,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "project_cost_detail": {
+    "estimated_project_cost": "73000000.00"
+  },
+  "number_of_residential_units": null,
+  "number_of_commercial_units": null,
+  "building_details": [
+    {
+      "flat_name": "C12",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A16",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A22",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D21",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D23",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A03",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D19",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C32",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A12",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D03",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D07",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A17",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C30",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D01",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C29",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B11",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D16",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A06",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A09",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B14",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A23",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D24",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D15",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A08",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C21",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C17",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A32",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A20",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A14",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A18",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A21",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A11",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A26",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B17",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A10",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A04",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B20",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B06",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A13",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B18",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B23",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B12",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B03",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A01",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D08",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C03",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B29",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C02",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D02",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C19",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C09",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D17",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D05",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C15",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C16",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D14",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C11",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D12",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B16",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D06",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A31",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B19",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B07",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B28",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A28",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B04",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B08",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B01",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A03",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A25",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B09",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B32",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B25",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A27",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B05",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B13",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A05",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A07",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A02",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A24",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B10",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B02",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B16",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B21",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B22",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A15",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B24",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A19",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D18",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D04",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C31",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C13",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D11",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C24",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C23",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B31",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D10",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A26",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B27",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B30",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D13",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A29",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D22",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D09",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C25",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "B26",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "A30",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C22",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C27",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C28",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C14",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "D20",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C05",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C18",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C20",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C04",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C10",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C08",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C01",
+      "carpet_area": "29.37"
+    },
+    {
+      "flat_name": "C07",
+      "carpet_area": "29.37"
+    }
+  ],
+  "complaints_litigation_details": null,
+  "uploaded_documents": [
+    {
+      "link": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97592",
+      "type": "MAP"
+    },
+    {
+      "link": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97591",
+      "type": "Permit/Sanction Letter"
+    },
+    {
+      "link": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97593",
+      "type": "Allotment Letter"
+    },
+    {
+      "link": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument",
+      "type": "Brochure",
+      "s3_link": "http://docs.primetenders.com/documents/15109980823510950852/Brochure",
+      "updated": true
+    },
+    {
+      "link": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/101149",
+      "type": "Agreement for sale"
+    },
+    {
+      "link": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/101150",
+      "type": "Conveyence Deed"
+    },
+    {
+      "link": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument",
+      "type": "Gant Chart",
+      "s3_link": "http://docs.primetenders.com/documents/15109980823510950852/Gant_Chart",
+      "updated": true
+    },
+    {
+      "link": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument",
+      "type": "Details of all Past real estate Details"
+    },
+    {
+      "link": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97596",
+      "type": "Road"
+    },
+    {
+      "link": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97597",
+      "type": "Supply Water"
+    },
+    {
+      "link": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97598",
+      "type": "Seawage and Drainage System"
+    },
+    {
+      "link": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97599",
+      "type": "Electricity Supply and Transformer/Sub Station"
+    },
+    {
+      "link": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97600",
+      "type": "Solid Waste Management and Disposal"
+    },
+    {
+      "link": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97601",
+      "type": "Fire Fighting Facility"
+    },
+    {
+      "link": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97602",
+      "type": "Drinking Water Facility"
+    },
+    {
+      "link": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97603",
+      "type": "Emergency Evacuation Service"
+    },
+    {
+      "link": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97604",
+      "type": "Use of Renewable Energy"
+    },
+    {
+      "link": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97605",
+      "type": "Rain Water Harvesting"
+    }
+  ],
+  "authorised_signatory_details": null,
+  "co_promoter_details": [
+    {
+      "name": "ABHAY KUMAR JHA",
+      "role": "Partner",
+      "email": "nagarparishadmadhupur@gmail.com",
+      "photo": "https://jharera.jharkhand.gov.in/Home/ViewDocument/101159",
+      "present_address": "FLOOR PUNAM APARTMENT, MOHAN BAGAN IMALI CHOUK, NEAR SHIV MANDIR, JOJOBERA"
+    }
+  ],
+  "project_description": null,
+  "provided_faciltiy": null,
+  "professional_information": [
+    {
+      "name": "RANVIR KUMAR",
+      "role": "Contractor",
+      "email": "kranvirsingh1@gmail.com",
+      "mobile": "7992407019",
+      "pan_no": "AMEPK2849P",
+      "address": "DEOGHAR"
+    },
+    {
+      "name": "JIGYASHU KUMAR",
+      "role": "Archiect",
+      "email": "jigyashukumar@gmail.com",
+      "mobile": "7050331733",
+      "pan_no": "AMDPK3936E",
+      "address": "RAMGARH"
+    },
+    {
+      "name": "SHAMSHER AHMAD",
+      "role": "Structural Engineer",
+      "email": "shamsheer.ahmad.alex@gmail.com",
+      "mobile": "7762924403",
+      "pan_no": "BNAPA6679M",
+      "address": "RANCHI"
+    }
+  ],
+  "development_agreement_detail": null,
+  "construction_progress": null,
+  "land_detail": [
+    {
+      "plot_no": "359",
+      "khata_no": "49/24",
+      "sale_deed": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97565",
+      "title_holder_name": "MADHUPUR NAGAR PARISHAD"
+    }
+  ],
+  "document_urls": [
+    {
+      "link": "http://docs.primetenders.com/documents/15109980823510950852/Brochure",
+      "type": "Brochure"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/15109980823510950852/Gant_Chart",
+      "type": "Gant Chart"
+    }
+  ],
+  "members_details": null,
+  "retrieved_on": "2024-12-19 08:18:52.911034+00:00",
+  "config_id": 14209,
+  "data": {
+    "govt_type": "state",
+    "is_processed": false
+  },
+  "promoters_details": {
+    "pan_no": "RCHM00841B",
+    "registration_no": "685/6-5"
+  },
+  "domain": "jharera.jharkhand.gov.in",
+  "state": "jharkhand",
+  "crawl_machine_ip": "98.70.112.127",
+  "machine_name": "dashboard-india-crawlers-546d4b9dbf-fr6tr",
+  "is_updated": true,
+  "is_duplicate": false,
+  "url": "https://jharera.jharkhand.gov.in/Home/ViewProjectProfile/2464",
+  "last_updated": "2025-06-01 08:27:17.579386+00:00",
+  "updated_fields": null,
+  "project_images": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": [
+    "'",
+    "[",
+    "]",
+    ":",
+    "j",
+    "s",
+    "o",
+    "n",
+    "b",
+    {
+      "updated_on": "2025-06-01 08:27:17.579386+0000",
+      "building_details": "None"
+    },
+    {
+      "updated_on": "2025-07-20 07:01:59.347821+0000",
+      "status_update": "None",
+      "uploaded_documents": "[{'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97592', 'type': 'map'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97596', 'type': 'Road'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97597', 'type': 'Supply Water'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97598', 'type': 'Seawage and Drainage System'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97599', 'type': 'Electricity Supply and Transformer/Sub Station'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97600', 'type': 'Solid Waste Management and Disposal'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97601', 'type': 'Fire Fighting Facility'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97602', 'type': 'Drinking Water Facility'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97603', 'type': 'Emergency Evacuation Service'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97604', 'type': 'Use of Renewable Energy'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97605', 'type': 'Rain Water Harvesting'}]"
+    },
+    {
+      "updated_on": "2025-07-31 18:14:46.717418+0000",
+      "document_urls": "None",
+      "uploaded_documents": "[{'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97592', 'type': 'MAP'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97591', 'type': 'Permit/Sanction Letter'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97593', 'type': 'Allotment Letter'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument', 'type': 'Brochure', 's3_link': None}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/101149', 'type': 'Agreement for sale'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/101150', 'type': 'Conveyence Deed'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument', 'type': 'Gant Chart', 's3_link': None}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument', 'type': 'Details of all Past real estate Details'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97596', 'type': 'Road'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97597', 'type': 'Supply Water'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97598', 'type': 'Seawage and Drainage System'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97599', 'type': 'Electricity Supply and Transformer/Sub Station'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97600', 'type': 'Solid Waste Management and Disposal'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97601', 'type': 'Fire Fighting Facility'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97602', 'type': 'Drinking Water Facility'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97603', 'type': 'Emergency Evacuation Service'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97604', 'type': 'Use of Renewable Energy'}, {'link': 'https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/97605', 'type': 'Rain Water Harvesting'}]"
+    }
+  ],
+  "status_update": [
+    {
+      "building_details": [
+        {
+          "flat_name": "C12",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A16",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A22",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D21",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D23",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A03",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D19",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C32",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A12",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D03",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D07",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A17",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C30",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D01",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C29",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B11",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D16",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A06",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A09",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B14",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A23",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D24",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D15",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A08",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C21",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C17",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A32",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A20",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A14",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A18",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A21",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A11",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A26",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B17",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A10",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A04",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B20",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B06",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A13",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B18",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B23",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B12",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B03",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A01",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D08",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C03",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B29",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C02",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D02",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C19",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C09",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D17",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D05",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C15",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C16",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D14",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C11",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D12",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B16",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D06",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A31",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B19",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B07",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B28",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A28",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B04",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B08",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B01",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A03",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A25",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B09",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B32",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B25",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A27",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B05",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B13",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A05",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A07",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A02",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A24",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B10",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B02",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B16",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B21",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B22",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A15",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B24",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A19",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D18",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D04",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C31",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C13",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D11",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C24",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C23",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B31",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D10",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A26",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B27",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B30",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D13",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A29",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D22",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D09",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C25",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "B26",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "A30",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C22",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C27",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C28",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C14",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "D20",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C05",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C18",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C20",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C04",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C10",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C08",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C01",
+          "carpet_area": "29.37"
+        },
+        {
+          "flat_name": "C07",
+          "carpet_area": "29.37"
+        }
+      ]
+    }
+  ],
+  "iw_part_processed": true,
+  "iw_processed": true,
+  "last_crawled_date": "2026-04-21 20:07:27.702492+00:00",
+  "land_area_details": null,
+  "doc_ocr_url": null,
+  "proposed_timeline": null,
+  "checked_updates": true,
+  "checked_updates_date": "2025-07-31 18:14:52.562142+00:00",
+  "rera_housing_found": false,
+  "is_live": true,
+  "alternative_rera_ids": null
+}

@@ -9,27 +9,57 @@ from pathlib import Path
 from core.config import settings
 
 
+_FLUSH_SIZE = 25  # flush to DB after this many buffered entries
+
+
 class DbLogHandler(logging.Handler):
-    """Writes INFO+ log entries to crawl_logs with full structured context."""
+    """Writes INFO+ log entries to crawl_logs in batches.
+
+    Previously every logger.info() opened a new Postgres connection, executed
+    an INSERT, and closed the connection — blocking the crawler on every log
+    call.  This handler buffers entries in memory and flushes them as a single
+    executemany round-trip when the buffer is full, at the end of each project
+    (clear_project), or when the handler is closed (process exit).
+    """
 
     def __init__(self, run_id: int | None, site_id: str):
         super().__init__(level=logging.INFO)
         self._run_id  = run_id
         self._site_id = site_id
+        self._buffer: list[dict] = []
+
+    def _make_entry(self, record: logging.LogRecord) -> dict:
+        return {
+            "run_id":          getattr(record, "run_id", self._run_id),
+            "site_id":         getattr(record, "site_id", self._site_id),
+            "level":           record.levelname,
+            "message":         record.getMessage(),
+            "project_key":     getattr(record, "project_key", None),
+            "registration_no": getattr(record, "registration_no", None),
+            "step":            getattr(record, "step", None),
+            "traceback":       getattr(record, "traceback", None),
+            "extra":           getattr(record, "extra", {}),
+        }
 
     def emit(self, record: logging.LogRecord) -> None:
-        from core.db import insert_log  # late import — avoids circular dependency
-        insert_log(
-            run_id=getattr(record, "run_id", self._run_id),
-            site_id=getattr(record, "site_id", self._site_id),
-            level=record.levelname,
-            message=record.getMessage(),
-            project_key=getattr(record, "project_key", None),
-            registration_no=getattr(record, "registration_no", None),
-            step=getattr(record, "step", None),
-            traceback=getattr(record, "traceback", None),
-            extra=getattr(record, "extra", {}),
-        )
+        self._buffer.append(self._make_entry(record))
+        if len(self._buffer) >= _FLUSH_SIZE:
+            self.flush()
+
+    def flush(self) -> None:
+        if not self._buffer:
+            return
+        entries, self._buffer = self._buffer, []
+        from core.db import bulk_insert_logs  # late import — avoids circular dependency
+        bulk_insert_logs(entries)
+
+    def close(self) -> None:
+        """Flush remaining buffered entries before the handler is torn down.
+        The logging module calls close() on all handlers at process exit via
+        logging.shutdown() (registered as an atexit hook), so buffered entries
+        are never silently dropped on a clean exit."""
+        self.flush()
+        super().close()
 
 
 class JsonLineHandler(logging.Handler):
@@ -91,8 +121,25 @@ class CrawlerLogger:
         }.items() if v is not None}
 
     def clear_project(self):
-        """Clear project context after a project is fully processed."""
+        """Clear project context and flush buffered DB log entries.
+        Called after every project is fully processed, ensuring logs reach
+        the database in near-real-time rather than only at process exit."""
         self._ctx = {}
+        self._flush_db()
+
+    def _flush_db(self) -> None:
+        for handler in self._logger.handlers:
+            if isinstance(handler, DbLogHandler):
+                handler.flush()
+
+    def close(self) -> None:
+        """Flush all buffered entries and close file handles.
+        Call this explicitly at the end of a crawler run for a clean shutdown.
+        The logging atexit hook also calls this on normal process exit."""
+        for handler in list(self._logger.handlers):
+            handler.flush()
+            handler.close()
+            self._logger.removeHandler(handler)
 
     # ── Internal ──────────────────────────────────────────────────────────────
 

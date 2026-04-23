@@ -1,0 +1,555 @@
+{
+  "key": "2176179351295726697",
+  "project_name": "The Residency-City Centre Patna",
+  "project_type": "Residential/Group Housing",
+  "promoter_name": "UTKARSH SFATIK LIMITED",
+  "project_registration_no": "BRERAP05734-1/994/R-766/2019",
+  "status_of_the_project": "Completed",
+  "acknowledgement_no": null,
+  "project_pin_code": "700160",
+  "project_city": "Patna",
+  "project_state": "Bihar",
+  "project_location_raw": {
+    "state": "Bihar",
+    "taluk": "अङरा",
+    "plot_no": "On a portion of plot nos. 157, 158, 159-P, 160, 161, 162 AND 60-P",
+    "village": "Lodhipur",
+    "district": "Patna",
+    "latitude": "25.375",
+    "longitude": "85.083",
+    "raw_address": "Lodhipur, Budha Marg, Patna",
+    "processed_latitude": 25.375,
+    "processed_longitude": 85.083
+  },
+  "promoter_address_raw": {
+    "raw_address": "Ecospace Business Park, Block-4B, Action Area-II, New Town, Kolkata"
+  },
+  "promoter_contact_details": {
+    "email": "USL.compliance@ambujaneotia.com",
+    "phone": "9835027474",
+    "telephone_no": "3340406060"
+  },
+  "submitted_date": "2019-05-29 01:11:31+00:00",
+  "last_modified": null,
+  "estimated_commencement_date": "2012-06-01 00:00:00+00:00",
+  "actual_commencement_date": null,
+  "estimated_finish_date": "2022-03-30 00:00:00+00:00",
+  "actual_finish_date": null,
+  "approved_on_date": null,
+  "past_experience_of_promoter": null,
+  "bank_details": {
+    "IFSC": "RATN0000161",
+    "branch": "Thapar House, 25 Brabourne Road, Kolkata",
+    "bank_name": "Ratnakar Bank Ltd",
+    "account_no": "409001025508",
+    "scan_copy_of_cheque": "https://rera.bihar.gov.in/PassBook/RERAP0316201910573405271247082019.pdf"
+  },
+  "land_area": 8102.6,
+  "construction_area": 25778.15,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "project_cost_detail": {
+    "cost_of_land": "215.81",
+    "estimated_construction_cost": "3447.38"
+  },
+  "number_of_residential_units": null,
+  "number_of_commercial_units": null,
+  "building_details": [
+    {
+      "flat_type": "4 BHK",
+      "open_area": "0.00",
+      "block_name": "Tower-A G+17",
+      "carpet_area": "2413.00",
+      "no_of_units": "1",
+      "balcony_area": "248.00"
+    },
+    {
+      "flat_type": "3 BHK",
+      "open_area": "0.00",
+      "block_name": "Tower-A G+17",
+      "carpet_area": "1327.00",
+      "no_of_units": "1",
+      "balcony_area": "167.00"
+    },
+    {
+      "flat_type": "6 BHK",
+      "open_area": "0.00",
+      "block_name": "Tower-A G+17",
+      "carpet_area": "3141.00",
+      "no_of_units": "1",
+      "balcony_area": "510.00"
+    },
+    {
+      "flat_type": "3 BHK",
+      "open_area": "0.00",
+      "block_name": "Tower-A G+17",
+      "carpet_area": "1184.00",
+      "no_of_units": "1",
+      "balcony_area": "153.00"
+    },
+    {
+      "flat_type": "3 BHK",
+      "open_area": "0.00",
+      "block_name": "Tower-A G+17",
+      "carpet_area": "1159.00",
+      "no_of_units": "1",
+      "balcony_area": "150.00"
+    },
+    {
+      "flat_type": "3 BHK",
+      "open_area": "0.00",
+      "block_name": "Tower-A G+17",
+      "carpet_area": "19728.00",
+      "no_of_units": "16",
+      "balcony_area": "2448.00"
+    },
+    {
+      "flat_type": "3 BHK",
+      "open_area": "0.00",
+      "block_name": "Tower-A G+17",
+      "carpet_area": "20000.00",
+      "no_of_units": "16",
+      "balcony_area": "1488.00"
+    },
+    {
+      "flat_type": "4 BHK",
+      "open_area": "0.00",
+      "block_name": "Tower-A G+17",
+      "carpet_area": "26144.00",
+      "no_of_units": "16",
+      "balcony_area": "3360.00"
+    },
+    {
+      "flat_type": "3 BHK",
+      "open_area": "0.00",
+      "block_name": "Tower-A G+17",
+      "carpet_area": "19344.00",
+      "no_of_units": "16",
+      "balcony_area": "2400.00"
+    },
+    {
+      "flat_type": "3 BHK",
+      "open_area": "0.00",
+      "block_name": "Tower-A G+17",
+      "carpet_area": "10616.00",
+      "no_of_units": "8",
+      "balcony_area": "1336.00"
+    },
+    {
+      "flat_type": "4 BHK",
+      "open_area": "0.00",
+      "block_name": "Tower-B G+17",
+      "carpet_area": "2391.00",
+      "no_of_units": "1",
+      "balcony_area": "148.00"
+    },
+    {
+      "flat_type": "5 BHK",
+      "open_area": "68.00",
+      "block_name": "Tower-B G+17",
+      "carpet_area": "2837.00",
+      "no_of_units": "1",
+      "balcony_area": "157.00"
+    },
+    {
+      "flat_type": "3 BHK",
+      "open_area": "0.00",
+      "block_name": "Tower-B G+17",
+      "carpet_area": "23184.00",
+      "no_of_units": "16",
+      "balcony_area": "2288.00"
+    },
+    {
+      "flat_type": "3 BHK",
+      "open_area": "0.00",
+      "block_name": "Tower-B G+17",
+      "carpet_area": "24000.00",
+      "no_of_units": "16",
+      "balcony_area": "2288.00"
+    },
+    {
+      "flat_type": "4 BHK",
+      "open_area": "0.00",
+      "block_name": "Tower-B G+17",
+      "carpet_area": "19128.00",
+      "no_of_units": "8",
+      "balcony_area": "1352.00"
+    },
+    {
+      "flat_type": "4 BHK",
+      "open_area": "0.00",
+      "block_name": "Tower-B G+17",
+      "carpet_area": "19128.00",
+      "no_of_units": "8",
+      "balcony_area": "1184.00"
+    }
+  ],
+  "complaints_litigation_details": null,
+  "uploaded_documents": [
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1ProjectRelatedDocuments.pdf",
+      "type": "Any other Project Related Documents(enviromental clearance, NOCs, IT Return etc.)"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1ApprovedLayoutPlan.pdf",
+      "type": "Approved Layout Plan",
+      "s3_link": "http://docs.primetenders.com/documents/2176179351295726697/Approved_Layout_Plan.pdf"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1AreaDevelopmentPlan.pdf",
+      "type": "Area Development Plan",
+      "s3_link": "http://docs.primetenders.com/documents/2176179351295726697/Area_Development_Plan.pdf",
+      "updated": true
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1DeclarationFormB.pdf",
+      "type": "Declaration (Form B)"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1EncumbranceCertificate.pdf",
+      "type": "Encumbrance Certificate"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1LandDeedAgreement.pdf",
+      "type": "Land Deed Agreement"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1LanddocumentsLocation.pdf",
+      "type": "Land documents & Location"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1PANCard.pdf",
+      "type": "PAN Card"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1ProformaforSaleofAgreement.pdf",
+      "type": "Proforma for Sale of Agreement"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1ProformaofAllotmentLetter.pdf",
+      "type": "Proforma of Allotment Letter"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1SanctionedbuildingPlan.pdf",
+      "type": "Sanctioned building Plan",
+      "s3_link": "http://docs.primetenders.com/documents/2176179351295726697/Sanctioned_building_Plan.pdf"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1SanctionedLayoutPlan.pdf",
+      "type": "Sanctioned Layout Plan",
+      "s3_link": "http://docs.primetenders.com/documents/2176179351295726697/Sanctioned_Layout_Plan.pdf"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/Registration_Certificate/RERAP03162019105734.pdf",
+      "type": "Registration Certificate",
+      "s3_link": "http://docs.primetenders.com/documents/2176179351295726697/Registration_Certificate.pdf"
+    }
+  ],
+  "authorised_signatory_details": null,
+  "co_promoter_details": null,
+  "project_description": "Proposed residential building of Utkarsh Sfatik Ltd at Patna",
+  "provided_faciltiy": null,
+  "professional_information": [
+    {
+      "name": "SALIENT",
+      "role": "Architects",
+      "address": "Ecostation, BP-7, 8th Floor, sector V, Salt Lake City, Kolkata",
+      "effective_date": "2005",
+      "key_real_estate_projects": "City Centre-Raipur, City Centre-Haldia, Anaya Kutir-Raichak, Frengipani-Raichak, Club Montana Vista-Siliguri, Auto Mall-Newtown, Media City-Salt Lake, Holiday Inn-Uluberia, Kolkata Police Housing"
+    },
+    {
+      "name": "M. N. Consultants Pvt. Ltd.",
+      "role": "Engineers",
+      "address": "MNC House, 1516, Rajdanga Main Road, Kolkata 700107",
+      "effective_date": "1989",
+      "key_real_estate_projects": "Atmosphere-Kolkata, Godrej Platinum-Kolkata, Siddha Suburbia-Kolkata, Vatika Seeven Elements, Tata Eden Court"
+    },
+    {
+      "name": "Simples Infrastructures Limited",
+      "role": "Contractors",
+      "address": "Simplex House, 27, Shakespeare Sarani, Kolkata",
+      "effective_date": "1924",
+      "key_real_estate_projects": "Airport Terminal-Udaipur, Imphal High Court Building, Beaumonde Towers-Mumbai"
+    }
+  ],
+  "development_agreement_detail": null,
+  "construction_progress": null,
+  "land_detail": null,
+  "document_urls": [
+    {
+      "link": "http://docs.primetenders.com/documents/2176179351295726697/Approved_Layout_Plan.pdf",
+      "type": "Approved Layout Plan"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/2176179351295726697/Area_Development_Plan.pdf",
+      "type": "Area Development Plan",
+      "updated": true
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/2176179351295726697/Sanctioned_building_Plan.pdf",
+      "type": "Sanctioned building Plan"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/2176179351295726697/Sanctioned_Layout_Plan.pdf",
+      "type": "Sanctioned Layout Plan"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/2176179351295726697/Registration_Certificate.pdf",
+      "type": "Registration Certificate"
+    }
+  ],
+  "members_details": [
+    {
+      "name": "PRAMOD RANJAN DWIVEDI",
+      "phone": "9831255455",
+      "photo": "https://rera.bihar.gov.in/Member_Photo/RERAP0316201910573416320191127.jpg",
+      "position": "Director"
+    },
+    {
+      "name": "SANJAY KUMAR SINGH",
+      "phone": "9331020778",
+      "photo": "https://rera.bihar.gov.in/Member_Photo/RERAP0316201910573416320191130.jpg",
+      "position": "Director"
+    },
+    {
+      "name": "SADAY KRISHNA KANORIA",
+      "phone": "9955576043",
+      "photo": "https://rera.bihar.gov.in/Member_Photo/RERAP0316201910573416320191133.jpg",
+      "position": "Director"
+    },
+    {
+      "name": "ABHAY KRISHNA KANORIA",
+      "phone": "9835023930",
+      "photo": "https://rera.bihar.gov.in/Member_Photo/RERAP0316201910573416320191135.jpg",
+      "position": "Director"
+    },
+    {
+      "name": "TARUN GUPTA",
+      "phone": "9835027474",
+      "photo": "https://rera.bihar.gov.in/Member_Photo/RERAP0316201910573416320191138.jpg",
+      "position": "Director"
+    },
+    {
+      "name": "RAJESH KUMAR JAIN",
+      "phone": "9836080488",
+      "photo": "https://rera.bihar.gov.in/Member_Photo/RERAP0316201910573416320191141.jpg",
+      "position": "Director"
+    },
+    {
+      "name": "CHANDRA PRAKASH KAKARANIA",
+      "phone": "9831388201",
+      "photo": "https://rera.bihar.gov.in/Member_Photo/RERAP031620191057348420191118.jpg",
+      "position": "Director"
+    }
+  ],
+  "retrieved_on": "2024-10-24 08:25:28.195712+00:00",
+  "config_id": 14354,
+  "data": {
+    "link": "https://rera.bihar.gov.in/Registration_Certificate/RERAP03162019105734.pdf",
+    "type": "Registration Certificate",
+    "govt_type": "state",
+    "land_area_unit": "Total Area of Land (Sq mt)",
+    "construction_area_unit": "Total Builtup Area (Sq. Mtr.)"
+  },
+  "promoters_details": {
+    "pan_no": "AAACU8592J",
+    "type_of_firm": "Company",
+    "registration_no": "U14101WB1992PLC195097"
+  },
+  "domain": "rera.bihar.gov.in",
+  "state": "bihar",
+  "crawl_machine_ip": "148.113.37.208",
+  "machine_name": "dashboard-rera-14354-bihar-bc87fdcbd-npq4z",
+  "is_updated": true,
+  "is_duplicate": false,
+  "url": "https://rera.bihar.gov.in",
+  "last_updated": "2026-04-21 20:35:06.908732+00:00",
+  "updated_fields": [
+    "uploaded_documents",
+    "document_urls",
+    "updated_fields",
+    "last_updated",
+    "last_crawled_date",
+    "old_updates",
+    "config_id",
+    "is_updated"
+  ],
+  "project_images": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": [
+    {
+      "updated_on": "2026-04-21 20:35:06.908732+0000",
+      "document_urls": "[{'link': 'http://docs.primetenders.com/documents/2176179351295726697/Approved_Layout_Plan.pdf', 'type': 'Approved Layout Plan'}, {'link': 'http://docs.primetenders.com/documents/2176179351295726697/Sanctioned_building_Plan.pdf', 'type': 'Sanctioned building Plan'}, {'link': 'http://docs.primetenders.com/documents/2176179351295726697/Sanctioned_Layout_Plan.pdf', 'type': 'Sanctioned Layout Plan'}, {'link': 'http://docs.primetenders.com/documents/2176179351295726697/Registration_Certificate.pdf', 'type': 'Registration Certificate'}, 'http://docs.primetenders.com/documents/rera/projects/bihar/2176179351295726697/RERAP0316201910573405271247082019.pdf']",
+      "uploaded_documents": "[{'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1ProjectRelatedDocuments.pdf', 'type': 'Any other Project Related Documents(enviromental clearance, NOCs, IT Return etc.)'}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1ApprovedLayoutPlan.pdf', 'type': 'Approved Layout Plan', 's3_link': 'http://docs.primetenders.com/documents/2176179351295726697/Approved_Layout_Plan.pdf', 'updated': True}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1AreaDevelopmentPlan.pdf', 'type': 'Area Development Plan'}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1DeclarationFormB.pdf', 'type': 'Declaration (Form B)'}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1EncumbranceCertificate.pdf', 'type': 'Encumbrance Certificate'}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1LandDeedAgreement.pdf', 'type': 'Land Deed Agreement'}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1LanddocumentsLocation.pdf', 'type': 'Land documents & Location'}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1PANCard.pdf', 'type': 'PAN Card'}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1ProformaforSaleofAgreement.pdf', 'type': 'Proforma for Sale of Agreement'}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1ProformaofAllotmentLetter.pdf', 'type': 'Proforma of Allotment Letter'}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1SanctionedbuildingPlan.pdf', 'type': 'Sanctioned building Plan', 's3_link': 'http://docs.primetenders.com/documents/2176179351295726697/Sanctioned_building_Plan.pdf', 'updated': True}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1SanctionedLayoutPlan.pdf', 'type': 'Sanctioned Layout Plan', 's3_link': 'http://docs.primetenders.com/documents/2176179351295726697/Sanctioned_Layout_Plan.pdf', 'updated': True}, {'link': 'https://rera.bihar.gov.in/Registration_Certificate/RERAP03162019105734.pdf', 'type': 'Registration Certificate', 's3_link': 'http://docs.primetenders.com/documents/2176179351295726697/Registration_Certificate.pdf', 'updated': True}]"
+    },
+    {
+      "updated_on": "2025-07-21 10:55:22.994329+0000",
+      "uploaded_documents": "[{'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1ProjectRelatedDocuments.pdf', 'type': 'Any other Project Related Documents(enviromental clearance, NOCs, IT Return etc.)'}, {'key': '2176179351295726697', 'link': 'http://docs.primetenders.com/documents/2176179351295726697/Approved_Layout_Plan.pdf', 'type': 'Approved Layout Plan'}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1AreaDevelopmentPlan.pdf', 'type': 'Area Development Plan'}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1DeclarationFormB.pdf', 'type': 'Declaration (Form B)'}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1EncumbranceCertificate.pdf', 'type': 'Encumbrance Certificate'}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1LandDeedAgreement.pdf', 'type': 'Land Deed Agreement'}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1LanddocumentsLocation.pdf', 'type': 'Land documents & Location'}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1PANCard.pdf', 'type': 'PAN Card'}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1ProformaforSaleofAgreement.pdf', 'type': 'Proforma for Sale of Agreement'}, {'link': 'https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1ProformaofAllotmentLetter.pdf', 'type': 'Proforma of Allotment Letter'}, {'key': '2176179351295726697', 'link': 'http://docs.primetenders.com/documents/2176179351295726697/Sanctioned_building_Plan.pdf', 'type': 'Sanctioned building Plan'}, {'key': '2176179351295726697', 'link': 'http://docs.primetenders.com/documents/2176179351295726697/Sanctioned_Layout_Plan.pdf', 'type': 'Sanctioned Layout Plan'}, {'key': '2176179351295726697', 'link': 'http://docs.primetenders.com/documents/2176179351295726697/Registration_Certificate.pdf', 'type': 'Registration Certificate'}]"
+    },
+    {
+      "updated_on": "2025-07-18 17:01:53.901507+0000",
+      "status_update": "None"
+    },
+    {
+      "updated_on": "2025-01-20 11:07:50.486230+0000",
+      "project_location_raw": "{'city': 'patna', 'state': 'bihar', 'plot_no': 'on a portion of plot nos. 157, 158, 159-p, 160, 161, 162 and 60-p', 'district': 'patna', 'latitude': '25.375', 'longitude': '85.083', 'raw_address': 'lodhipur, budha marg, patna', 'processed_latitude': 25.375, 'processed_longitude': 85.083}"
+    },
+    {
+      "land_area": "8102.6",
+      "updated_on": "2024-12-20 10:52:00.371715+0000",
+      "project_location_raw": "{'city': 'patna', 'state': 'bihar', 'plot_no': 'on a portion of plot nos. 157, 158, 159-p, 160, 161, 162 and 60-p', 'district': 'patna', 'latitude': '25.375', 'longitude': '85.083', 'raw_address': 'lodhipur, budha marg, patna', 'processed_latitude': 25.375, 'processed_longitude': 85.083}"
+    }
+  ],
+  "status_update": [
+    {
+      "building_details": [
+        {
+          "flat_type": "4 BHK",
+          "open_area": "0.00",
+          "block_name": "Tower-A G+17",
+          "carpet_area": "2413.00",
+          "no_of_units": "1",
+          "balcony_area": "248.00"
+        },
+        {
+          "flat_type": "3 BHK",
+          "open_area": "0.00",
+          "block_name": "Tower-A G+17",
+          "carpet_area": "1327.00",
+          "no_of_units": "1",
+          "balcony_area": "167.00"
+        },
+        {
+          "flat_type": "6 BHK",
+          "open_area": "0.00",
+          "block_name": "Tower-A G+17",
+          "carpet_area": "3141.00",
+          "no_of_units": "1",
+          "balcony_area": "510.00"
+        },
+        {
+          "flat_type": "3 BHK",
+          "open_area": "0.00",
+          "block_name": "Tower-A G+17",
+          "carpet_area": "1184.00",
+          "no_of_units": "1",
+          "balcony_area": "153.00"
+        },
+        {
+          "flat_type": "3 BHK",
+          "open_area": "0.00",
+          "block_name": "Tower-A G+17",
+          "carpet_area": "1159.00",
+          "no_of_units": "1",
+          "balcony_area": "150.00"
+        },
+        {
+          "flat_type": "3 BHK",
+          "open_area": "0.00",
+          "block_name": "Tower-A G+17",
+          "carpet_area": "19728.00",
+          "no_of_units": "16",
+          "balcony_area": "2448.00"
+        },
+        {
+          "flat_type": "3 BHK",
+          "open_area": "0.00",
+          "block_name": "Tower-A G+17",
+          "carpet_area": "20000.00",
+          "no_of_units": "16",
+          "balcony_area": "1488.00"
+        },
+        {
+          "flat_type": "4 BHK",
+          "open_area": "0.00",
+          "block_name": "Tower-A G+17",
+          "carpet_area": "26144.00",
+          "no_of_units": "16",
+          "balcony_area": "3360.00"
+        },
+        {
+          "flat_type": "3 BHK",
+          "open_area": "0.00",
+          "block_name": "Tower-A G+17",
+          "carpet_area": "19344.00",
+          "no_of_units": "16",
+          "balcony_area": "2400.00"
+        },
+        {
+          "flat_type": "3 BHK",
+          "open_area": "0.00",
+          "block_name": "Tower-A G+17",
+          "carpet_area": "10616.00",
+          "no_of_units": "8",
+          "balcony_area": "1336.00"
+        },
+        {
+          "flat_type": "4 BHK",
+          "open_area": "0.00",
+          "block_name": "Tower-B G+17",
+          "carpet_area": "2391.00",
+          "no_of_units": "1",
+          "balcony_area": "148.00"
+        },
+        {
+          "flat_type": "5 BHK",
+          "open_area": "68.00",
+          "block_name": "Tower-B G+17",
+          "carpet_area": "2837.00",
+          "no_of_units": "1",
+          "balcony_area": "157.00"
+        },
+        {
+          "flat_type": "3 BHK",
+          "open_area": "0.00",
+          "block_name": "Tower-B G+17",
+          "carpet_area": "23184.00",
+          "no_of_units": "16",
+          "balcony_area": "2288.00"
+        },
+        {
+          "flat_type": "3 BHK",
+          "open_area": "0.00",
+          "block_name": "Tower-B G+17",
+          "carpet_area": "24000.00",
+          "no_of_units": "16",
+          "balcony_area": "2288.00"
+        },
+        {
+          "flat_type": "4 BHK",
+          "open_area": "0.00",
+          "block_name": "Tower-B G+17",
+          "carpet_area": "19128.00",
+          "no_of_units": "8",
+          "balcony_area": "1352.00"
+        },
+        {
+          "flat_type": "4 BHK",
+          "open_area": "0.00",
+          "block_name": "Tower-B G+17",
+          "carpet_area": "19128.00",
+          "no_of_units": "8",
+          "balcony_area": "1184.00"
+        }
+      ]
+    }
+  ],
+  "iw_part_processed": true,
+  "iw_processed": true,
+  "last_crawled_date": "2026-04-21 20:35:06.909821+00:00",
+  "land_area_details": {
+    "land_area": "8102.60",
+    "land_area_unit": "Total Area of Land (Sq mt)",
+    "construction_area": "25778.15",
+    "construction_area_unit": "Total Builtup Area (Sq. Mtr.)"
+  },
+  "doc_ocr_url": null,
+  "proposed_timeline": null,
+  "checked_updates": true,
+  "checked_updates_date": "2025-07-21 10:55:25.629089+00:00",
+  "rera_housing_found": false,
+  "is_live": true,
+  "alternative_rera_ids": null
+}

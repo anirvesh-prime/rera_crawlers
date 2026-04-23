@@ -1,0 +1,1027 @@
+{
+  "key": "1682578984026406157",
+  "project_name": "DIVYA LAYOUT",
+  "project_type": "Plotted Development",
+  "promoter_name": "LALITHA D",
+  "project_registration_no": "PRM/KA/RERA/1248/469/PR/050723/006033",
+  "status_of_the_project": "Ongoing",
+  "acknowledgement_no": "ACK/KA/RERA/1248/469/PR/110223/006823",
+  "project_pin_code": null,
+  "project_city": "BALLARI",
+  "project_state": null,
+  "project_location_raw": {
+    "taluk": "Ballari",
+    "district": "Ballari",
+    "latitude": "15.137786431275998",
+    "pin_code": "583103",
+    "longitude": "76.94399625812802",
+    "raw_address": "DIVYA LAYOUT, SY NO. 820/3 , Ballari Hobli, Ballari Village , BALLARI , Ballari (Bellary), Karnataka - 583103 , Ballari , Ballari, Karnataka - 583103",
+    "processed_latitude": 15.137786431275998,
+    "processed_longitude": 76.94399625812802,
+    "survey_resurvey_number": "820/3"
+  },
+  "promoter_address_raw": {
+    "state": "Karnataka",
+    "taluk": "Ballari",
+    "district": "Ballari",
+    "pin_code": "583101",
+    "raw_address": "C/O Gurusantappa D, Plot No. 9 Ward No. 19,,Ganesh Colony, S N Pet ,Ballari ,Ballari-583101"
+  },
+  "promoter_contact_details": {
+    "website": "NOT APPLICABLE"
+  },
+  "submitted_date": null,
+  "last_modified": null,
+  "estimated_commencement_date": null,
+  "actual_commencement_date": "2021-05-15 00:00:00+00:00",
+  "estimated_finish_date": "2024-03-23 00:00:00+00:00",
+  "actual_finish_date": "2024-03-23 00:00:00+00:00",
+  "approved_on_date": "2023-07-05 00:00:00+00:00",
+  "past_experience_of_promoter": null,
+  "bank_details": {
+    "IFSC": "KKBK0008228",
+    "state": "Karnataka",
+    "branch": "Ballari Branch",
+    "district": "Ballari",
+    "pin_code": "583101",
+    "bank_name": "KOTAK MAHINDRA BANK",
+    "account_no": "9646521238",
+    "account_name": "Lalitha D-RERA Designated Account for Divya Layout"
+  },
+  "land_area": 8094.0,
+  "construction_area": null,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "project_cost_detail": {
+    "cost_of_land": "6127785",
+    "total_project_cost": "14127785",
+    "estimated_construction_cost": "8000000"
+  },
+  "number_of_residential_units": null,
+  "number_of_commercial_units": null,
+  "building_details": [
+    {
+      "updated": true,
+      "flat_type": "CORNER",
+      "total_area": "149.10"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "108"
+    },
+    {
+      "updated": true,
+      "flat_type": "CORNER",
+      "total_area": "72.24"
+    },
+    {
+      "updated": true,
+      "flat_type": "CORNER",
+      "total_area": "177.575"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "121.14"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "121.73"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "122.85"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "123.75"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "124.65"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "125.505"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "126.36"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "127.26"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "128.115"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "128.97"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "129.87"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "130.725"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "131.58"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "132.48"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "133.38"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "134.68"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "135.54"
+    },
+    {
+      "updated": true,
+      "flat_type": "INTERMEDIATE",
+      "total_area": "135.99"
+    },
+    {
+      "flat_type": "CORNER",
+      "total_area": "180.17"
+    }
+  ],
+  "complaints_litigation_details": null,
+  "uploaded_documents": [
+    {
+      "link": "https://rera.karnataka.gov.in/certificate?CER_NO=PRM/KA/RERA/1248/469/PR/050723/006033",
+      "type": "Rera Registration Certificate 1",
+      "s3_link": "http://docs.primetenders.com/documents/1682578984026406157/Rera_Registration_Certificate_1.pdf",
+      "updated": true
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=yuHjmnMP%2BprKvpe5MhimUQ%3D%3D",
+      "type": "Registration Certificate",
+      "updated": true
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=%2FS3ofjgzNyfEaLzqqh70yQ%3D%3D",
+      "type": "PAN Card"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=aL23knhTKkt9PheBVl15Dg%3D%3D",
+      "type": "Address Proof"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=rhhQjVALH8hftRSaJNEgtQ%3D%3D",
+      "type": "PAN Card"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=IfD9OcBMvtw32RujdzaBdw%3D%3D",
+      "type": "Certificate from Chartered Account"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=ZgD7EAGFpUa37TdJCYM5yA%3D%3D",
+      "type": "Site release order Copies(1st,2nd phase and final release order)"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=WX12KtlVxKgxl3KKtL6gRg%3D%3D",
+      "type": "Certificate issued by P.W.D/ Panchayath Raj/Urban Local Bodies for completion of Road"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=wuuLbxs8dWhbIdm5LIyLUg%3D%3D",
+      "type": "Certificate issued by the concerned power supply(ESCOM'S)"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=1mUm0IpqKNxUGydKN4kJiw%3D%3D",
+      "type": "Certificate issued by KSPCB, consent for operation of STP plant"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=hZSwGueqRQpWvZ2xuVZbdw%3D%3D",
+      "type": "Brief description of Water supply and Underground drainage works"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=jxQduRIAa7GqT5i7f9%2F1AA%3D%3D",
+      "type": "Chartered Accountant Certificate (Form-4)"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=g4RCdPjqYNdTjK18%2FvxnpA%3D%3D",
+      "type": "Engineer Certificate 1",
+      "s3_link": "http://docs.primetenders.com/documents/1682578984026406157/Engineer_Certificate_1.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=g4RCdPjqYNdTjK18%2FvxnpA%3D%3D",
+      "type": "Engineer Certificate 2",
+      "s3_link": "http://docs.primetenders.com/documents/1682578984026406157/Engineer_Certificate_2.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=%2FS3ofjgzNyfEaLzqqh70yQ%3D%3D",
+      "type": "Self Attested PAN Card* ( Annexure - 66 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=AoHZibdDseUP23%2FG%2Fjk%2BZQ%3D%3D",
+      "type": "Electricity Permission Letter* ( Annexure - 68 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=U9%2Ba82i%2Fjqgf75jVpaycTQ%3D%3D",
+      "type": "Layout Plan 1",
+      "s3_link": "http://docs.primetenders.com/documents/1682578984026406157/Layout_Plan_1.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=uXY0mLl9cegEf5BX%2FXFNmg%3D%3D",
+      "type": "Layout Plan 2",
+      "s3_link": "http://docs.primetenders.com/documents/1682578984026406157/Layout_Plan_2.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=JJ8xTs0%2FbCrOIY7DuQeVgw%3D%3D",
+      "type": "Sectional Drawing 1",
+      "s3_link": "http://docs.primetenders.com/documents/1682578984026406157/Sectional_Drawing_1.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=gCRR6N2fhz%2F7cv0ytm8xqQ%3D%3D",
+      "type": "Approved Building 1",
+      "s3_link": "http://docs.primetenders.com/documents/1682578984026406157/Approved_Building_1.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=VnvPMuqrLn7xYcx5qXiUpg%3D%3D",
+      "type": "Approved Building 2",
+      "s3_link": "http://docs.primetenders.com/documents/1682578984026406157/Approved_Building_2.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=DSAvis1wDPsX8N5Ek7b%2FMg%3D%3D",
+      "type": "Annexure 80 1",
+      "s3_link": "http://docs.primetenders.com/documents/1682578984026406157/Annexure_80_1.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=0NWxmR61DwugVsHjMrsnvQ%3D%3D",
+      "type": "Change of Land Use* ( Annexure - 82 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=8xupj%2FPyuEyqhnLNqiEFkw%3D%3D",
+      "type": "Conversion Certificate under section 95 of the KLR Act 1964* ( Annexure - 84 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=arTC9OwnLomUbR6kugPu8Q%3D%3D",
+      "type": "Proforma of Agreement for Sale* ( Annexure - 86 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=",
+      "type": "Proforma For Sale Deed* ( Annexure - 88 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=6yA4I3nEqA60oMWJ32oDtQ%3D%3D",
+      "type": "Declaration (Form B)* ( Annexure - 90 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=D53xh2s85UbSH9yNBNtThg%3D%3D",
+      "type": "JD AFFIDAVIT CUM DECLARATION* ( Annexure - 92 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=JlabbWxaB7O8jDDRv5DKoQ%3D%3D",
+      "type": "Utilisation certificate ( Annexure - 108 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=3KbyibSyBcWk1MlVYV3CIA%3D%3D",
+      "type": "Relinquishment Deed ( Annexure - 110 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=WHq5YjS5zi89XUSbs6zhZA%3D%3D",
+      "type": "Commencement Certificate 1",
+      "s3_link": "http://docs.primetenders.com/documents/1682578984026406157/Commencement_Certificate_1.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=lta8L5fq9lHcVwzBCvGg0A%3D%3D",
+      "type": "Water Permission Letter* ( Annexure - 69 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=AFPRWVS2AY%2FEdrB5qYtAmw%3D%3D",
+      "type": "Approved Building 3",
+      "s3_link": "http://docs.primetenders.com/documents/1682578984026406157/Approved_Building_3.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=lRVEtOJQPESY5PIwdBzhiA%3D%3D",
+      "type": "Section Plan 1",
+      "s3_link": "http://docs.primetenders.com/documents/1682578984026406157/Section_Plan_1.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=eT3GP1Hun4zP6jFqqOzrVQ%3D%3D",
+      "type": "Project Specification 1",
+      "s3_link": "http://docs.primetenders.com/documents/1682578984026406157/Project_Specification_1.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=E53wtU7OzFGr2DNiUI4jwg%3D%3D",
+      "type": "Area Development Plan 1",
+      "s3_link": "http://docs.primetenders.com/documents/1682578984026406157/Area_Development_Plan_1.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=RLLeh4j0A3t8BH7wbOJDog%3D%3D",
+      "type": "Advocate Search Report* ( Annexure - 79 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=oV0DPjQNzQmZM4lwiIZHqQ%3D%3D",
+      "type": "Collaboration Agreement/Development Agreement/Joint Development Agreement/Other Agreement* ( Annexure - 81 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=fi%2FDZXo6LwX%2BJF7gIaLy3Q%3D%3D",
+      "type": "District Magistrate* ( Annexure - 83 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=9HW7orXIkrYrFCzfVQx1jw%3D%3D",
+      "type": "Any other document (Rights/Title/Interest/Name)* ( Annexure - 85 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=V8GqE2qZma5NQiTZ9d2QWw%3D%3D",
+      "type": "Proforma of Allotment Letter* ( Annexure - 87 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=wHQJgeq%2Bky44wT%2B69EDwcg%3D%3D",
+      "type": "Brochure 1",
+      "s3_link": "http://docs.primetenders.com/documents/1682578984026406157/Brochure_1.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=nNC73CLFDsvprHF%2BiiKRZw%3D%3D",
+      "type": "Section 3(1) Notarized Affidavit* ( Annexure - 91 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=i1RcpDPYvT9bZ1U0RpRmOg%3D%3D",
+      "type": "Transfer of development rights certificate ( Annexure - 109 )"
+    },
+    {
+      "type": "Project Photo"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=nZXK5KJKWq4%2BOXT8956zPQ%3D%3D",
+      "type": "CDP.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=slB4y%2FcfIBQcUvTZ6T9y3w%3D%3D",
+      "type": "GPA.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=nYa8DLYYlUFFG2Cnr%2FhPcQ%3D%3D",
+      "type": "Guidance Value.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=L%2F5Fdl1rtO%2B5CSg0fxtfJg%3D%3D",
+      "type": "Modified Conversion Order.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=H%2FKIVctSroAQDW6LUJQm7w%3D%3D",
+      "type": "UGD Demarcation.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=WCqHiuAIy4O7zqrb%2FTCCgA%3D%3D",
+      "type": "06-03-2023"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=xPuBGlfAYwNtYgX59FFR2A%3D%3D",
+      "type": "06-03-2023"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=rUSfedNl5%2BXUqCu%2BEgNzDg%3D%3D",
+      "type": "06-03-2023"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=8N%2Bc7udi0Hqvr03sZY6vIw%3D%3D",
+      "type": "06-03-2023"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=kNNCMR5iO6wzj2Ej2viz7Q%3D%3D",
+      "type": "06-03-2023"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=y31o14KbDV5yFcG3ryMVWw%3D%3D",
+      "type": "06-03-2023"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=Cdk1W54kpXmiw36iUtf9KA%3D%3D",
+      "type": "06-03-2023"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=PqVayCmaN0asfjeKSdjN%2Bw%3D%3D",
+      "type": "06-03-2023"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=pJJ9NGLzJIVpPspy8uEF2Q%3D%3D",
+      "type": "06-03-2023"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=hV185aKUcXT7VLOtwxPRhg%3D%3D",
+      "type": "06-03-2023"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=phBAU2S1qFpAWaY2yss8zg%3D%3D",
+      "type": "06-03-2023"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=rnBPiqkmlBBPwi5L%2BwhFxw%3D%3D",
+      "type": "06-03-2023"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=yKfoBLl6UyDmEsUBMCuXug%3D%3D",
+      "type": "06-03-2023"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=vAalcpm79bJs16%2Bd%2B2eBqg%3D%3D",
+      "type": "06-03-2023"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=iP2%2FMbOXwtPa5Qz0Fjlhmg%3D%3D",
+      "type": "06-03-2023"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=MMR3a0T%2Bj0t115p%2B0zxGPA%3D%3D",
+      "type": "24-05-2023"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=6FBsw2%2BirfFvblrj81mj3g%3D%3D",
+      "type": "24-05-2023"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=WCqHiuAIy4O7zqrb%2FTCCgA%3D%3D",
+      "type": "Balance Sheet 2020",
+      "dated_on": "2023-03-06 00:00:00+00:00"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=xPuBGlfAYwNtYgX59FFR2A%3D%3D",
+      "type": "Balance Sheet 2021",
+      "dated_on": "2023-03-06 00:00:00+00:00"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=rUSfedNl5%2BXUqCu%2BEgNzDg%3D%3D",
+      "type": "Balance Sheet 2022",
+      "dated_on": "2023-03-06 00:00:00+00:00"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=8N%2Bc7udi0Hqvr03sZY6vIw%3D%3D",
+      "type": "Profit and Loss Account 2020",
+      "dated_on": "2023-03-06 00:00:00+00:00"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=kNNCMR5iO6wzj2Ej2viz7Q%3D%3D",
+      "type": "Profit and Loss Account 2021",
+      "dated_on": "2023-03-06 00:00:00+00:00"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=y31o14KbDV5yFcG3ryMVWw%3D%3D",
+      "type": "Profit and Loss Account 2022",
+      "dated_on": "2023-03-06 00:00:00+00:00"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=Cdk1W54kpXmiw36iUtf9KA%3D%3D",
+      "type": "Means of Finance",
+      "dated_on": "2023-03-06 00:00:00+00:00"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=PqVayCmaN0asfjeKSdjN%2Bw%3D%3D",
+      "type": "EC",
+      "dated_on": "2023-03-06 00:00:00+00:00"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=pJJ9NGLzJIVpPspy8uEF2Q%3D%3D",
+      "type": "Civil Works Order",
+      "dated_on": "2023-03-06 00:00:00+00:00"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=hV185aKUcXT7VLOtwxPRhg%3D%3D",
+      "type": "Village Map",
+      "dated_on": "2023-03-06 00:00:00+00:00"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=phBAU2S1qFpAWaY2yss8zg%3D%3D",
+      "type": "Engineer Certificate 3",
+      "s3_link": "http://docs.primetenders.com/documents/1682578984026406157/Engineer_Certificate_3.pdf",
+      "dated_on": "2023-03-06 00:00:00+00:00"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=rnBPiqkmlBBPwi5L%2BwhFxw%3D%3D",
+      "type": "Letter showing Engg license need not be renewed every year",
+      "dated_on": "2023-03-06 00:00:00+00:00"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=yKfoBLl6UyDmEsUBMCuXug%3D%3D",
+      "type": "Proforma Allotment Letter",
+      "dated_on": "2023-03-06 00:00:00+00:00"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=vAalcpm79bJs16%2Bd%2B2eBqg%3D%3D",
+      "type": "Estimated Cost of Construction",
+      "dated_on": "2023-03-06 00:00:00+00:00"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=iP2%2FMbOXwtPa5Qz0Fjlhmg%3D%3D",
+      "type": "Affidavit 3(1)",
+      "dated_on": "2023-03-06 00:00:00+00:00"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=MMR3a0T%2Bj0t115p%2B0zxGPA%3D%3D",
+      "type": "Encumbrance Certificate",
+      "dated_on": "2023-05-24 00:00:00+00:00"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=6FBsw2%2BirfFvblrj81mj3g%3D%3D",
+      "type": "Brief Estimated Cost of Construction",
+      "dated_on": "2023-05-24 00:00:00+00:00"
+    }
+  ],
+  "authorised_signatory_details": {
+    "name": "Lalitha D",
+    "pan_no": "PAN:",
+    "raw_address": "C/O Gurusantappa D, Plot No. 9 Ward No. 19, Ganesh Colony, S N Pet , Ballari , Karnataka - 583101",
+    "present_address": "C/O Gurusantappa D, Plot No. 9 Ward No. 19, Ganesh Colony, S N Pet , Ballari , Karnataka - 583101",
+    "official_address": "C/O Gurusantappa D, Plot No. 9 Ward No. 19, Ganesh Colony, S N Pet , Ballari , Karnataka - 583101",
+    "permanent_address": "C/O Gurusantappa D, Plot No. 9 Ward No. 19, Ganesh Colony, S N Pet , Ballari , Karnataka - 583101"
+  },
+  "co_promoter_details": [
+    {
+      "name": "D lalitha",
+      "survey_no": "820/3",
+      "land_share": "50.0",
+      "comm_address": "C/O: Gurusanthappa D, Plot No 9 Ward No 19 , Ganeh Colony, S N Pet , Ballari, Karnataka - 583101",
+      "present_address": "C/O: Gurusanthappa D, Plot No 9 Ward No 19 , Ganeh Colony, S N Pet , Ballari, Karnataka - 583101"
+    },
+    {
+      "name": "Pundareeka Divya",
+      "survey_no": "820/3",
+      "land_share": "50.0",
+      "comm_address": "W/O P. Lokesh Babu, Villa No. 15, sunshine Signature , Doddakannelli, Janatha colony, Opp Carmelaram Railway Station , Bengaluru Rural, Karnataka - 560035",
+      "present_address": "W/O P. Lokesh Babu, Villa No. 15, sunshine Signature , Doddakannelli, Janatha colony, Opp Carmelaram Railway Station , Bengaluru Rural, Karnataka - 560035"
+    }
+  ],
+  "project_description": "Residential Layout in SY No.820/3  Ballari (R) Village, Ballari Taluk and Ballari District.",
+  "provided_faciltiy": null,
+  "professional_information": [
+    {
+      "name": "CHINTHAKUNTA BOMMANAPATI SRINIVASA REDDYSRI CHARAN P",
+      "role": "Engineers",
+      "address": "SAI SRINIVASA RESIDENCY, RENUKA NAGAR , , BESIDE C B GOVINDAPPA KALYANA MANTAPA, TALUR ROADBallari (Bellary) , Karnataka - 583103 , Ballari , Karnataka - 583103",
+      "effective_date": "2016",
+      "key_real_estate_projects": "21/CCIT-2/BANG/2016-17"
+    },
+    {
+      "name": "SIRIGERI PANNA RAJ",
+      "role": "Accountant",
+      "address": "No.15/16, WARD NO 18, SIDDARTHA COLONY 2ND CROSS , OPP BUDA PARK, MOKA ROAD, GANDHI NAGAR , Ballari , Karnataka - 583103",
+      "effective_date": "1987",
+      "key_real_estate_projects": "026366"
+    }
+  ],
+  "development_agreement_detail": null,
+  "construction_progress": [
+    {
+      "title": "total_completion_percentage",
+      "progress_percentage": "85 %"
+    }
+  ],
+  "land_detail": null,
+  "document_urls": [
+    {
+      "link": "http://docs.primetenders.com/documents/1682578984026406157/Rera_Registration_Certificate_1.pdf",
+      "type": "Rera Registration Certificate 1",
+      "updated": true
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/1682578984026406157/Engineer_Certificate_1.pdf",
+      "type": "Engineer Certificate 1"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/1682578984026406157/Engineer_Certificate_2.pdf",
+      "type": "Engineer Certificate 2"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/1682578984026406157/Layout_Plan_1.pdf",
+      "type": "Layout Plan 1"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/1682578984026406157/Layout_Plan_2.pdf",
+      "type": "Layout Plan 2"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/1682578984026406157/Sectional_Drawing_1.pdf",
+      "type": "Sectional Drawing 1"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/1682578984026406157/Approved_Building_1.pdf",
+      "type": "Approved Building 1"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/1682578984026406157/Approved_Building_2.pdf",
+      "type": "Approved Building 2"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/1682578984026406157/Annexure_80_1.pdf",
+      "type": "Annexure 80 1"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/1682578984026406157/Commencement_Certificate_1.pdf",
+      "type": "Commencement Certificate 1"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/1682578984026406157/Approved_Building_3.pdf",
+      "type": "Approved Building 3"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/1682578984026406157/Section_Plan_1.pdf",
+      "type": "Section Plan 1"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/1682578984026406157/Project_Specification_1.pdf",
+      "type": "Project Specification 1"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/1682578984026406157/Area_Development_Plan_1.pdf",
+      "type": "Area Development Plan 1"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/1682578984026406157/Brochure_1.pdf",
+      "type": "Brochure 1"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/1682578984026406157/Engineer_Certificate_3.pdf",
+      "type": "Engineer Certificate 3"
+    }
+  ],
+  "members_details": null,
+  "retrieved_on": "2025-01-17 09:19:49.681151+00:00",
+  "config_id": 12843,
+  "data": {
+    "status": "APPROVED",
+    "district": "Vijayanagara",
+    "START_PAGE": "0",
+    "link_download": "if needed set the col to uploaded_documents and method to links_download",
+    "links_download": "if needed set the col to uploaded_documents and method to links_download",
+    "project_district": "BALLARI",
+    "total_completion_percentage": "85 %"
+  },
+  "promoters_details": {
+    "gst_no": "NOT APPLICABLE",
+    "pan_no": "ABEPL1920H",
+    "objective": "Development of Plotted sites, sale of the same and other Connected Business.",
+    "registration_no": "BLY-TL-342357-2021-22"
+  },
+  "domain": "rera.karnataka.gov.in",
+  "state": "karnataka",
+  "crawl_machine_ip": "148.113.37.208",
+  "machine_name": "dashboard-rera-12843-bagalkot-0-recrawler-5fb7f88459-sw7r6",
+  "is_updated": true,
+  "is_duplicate": false,
+  "url": "https://rera.karnataka.gov.in/projectViewDetails",
+  "last_updated": "2026-04-21 20:14:01.549222+00:00",
+  "updated_fields": [
+    "uploaded_documents",
+    "document_urls",
+    "project_images",
+    "updated_fields",
+    "last_updated",
+    "last_crawled_date",
+    "old_updates",
+    "config_id",
+    "is_updated"
+  ],
+  "project_images": [
+    "https://rera.karnataka.gov.in/download_jc?DOC_ID=bA9mSBZbOeXmS6RrokJYkg%3D%3D"
+  ],
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": [
+    {
+      "updated_on": "2026-04-21 20:14:01.549222+0000",
+      "document_urls": "[{'link': 'http://docs.primetenders.com/documents/1682578984026406157/Registration_Certificate_1.pdf', 'type': 'Registration Certificate 1', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Registration_Certificate_2.pdf', 'type': 'Registration Certificate 2', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Engineer_Certificate_1.pdf', 'type': 'Engineer Certificate 1', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Registration_Certificate_3.pdf', 'type': 'Registration Certificate 3', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Engineer_Certificate_2.pdf', 'type': 'Engineer Certificate 2', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Layout_Plan_1.pdf', 'type': 'Layout Plan 1', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Layout_Plan_2.pdf', 'type': 'Layout Plan 2', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Sectional_Drawing_1.pdf', 'type': 'Sectional Drawing 1', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Approved_Building_1.pdf', 'type': 'Approved Building 1', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Approved_Building_2.pdf', 'type': 'Approved Building 2', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Annexure_80_1.pdf', 'type': 'Annexure 80 1', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Commencement_Certificate_1.pdf', 'type': 'Commencement Certificate 1', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Approved_Building_3.pdf', 'type': 'Approved Building 3', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Section_Plan_1.pdf', 'type': 'Section Plan 1', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Project_Specification_1.pdf', 'type': 'Project Specification 1', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Area_Development_Plan_1.pdf', 'type': 'Area Development Plan 1', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Brochure_1.pdf', 'type': 'Brochure 1', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Engineer_Certificate_3.pdf', 'type': 'Engineer Certificate 3', 'updated': True}]",
+      "project_images": "['https://rera.karnataka.gov.in/download_jc?DOC_ID=2895063']",
+      "uploaded_documents": "[{'link': 'https://rera.karnataka.gov.in/certificate?CER_NO=PRM/KA/RERA/1248/469/PR/050723/006033', 'type': 'Registration Certificate 1', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Registration_Certificate_1.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=yuHjmnMP%2BprKvpe5MhimUQ%3D%3D', 'type': 'Registration Certificate 2', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Registration_Certificate_2.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=%2FS3ofjgzNyfEaLzqqh70yQ%3D%3D', 'type': 'PAN Card'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=aL23knhTKkt9PheBVl15Dg%3D%3D', 'type': 'Address Proof'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=rhhQjVALH8hftRSaJNEgtQ%3D%3D', 'type': 'PAN Card'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=IfD9OcBMvtw32RujdzaBdw%3D%3D', 'type': 'Certificate from Chartered Account'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=ZgD7EAGFpUa37TdJCYM5yA%3D%3D', 'type': 'Site release order Copies(1st,2nd phase and final release order)'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=WX12KtlVxKgxl3KKtL6gRg%3D%3D', 'type': 'Certificate issued by P.W.D/ Panchayath Raj/Urban Local Bodies for completion of Road'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=wuuLbxs8dWhbIdm5LIyLUg%3D%3D', 'type': \"Certificate issued by the concerned power supply(ESCOM'S)\"}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=1mUm0IpqKNxUGydKN4kJiw%3D%3D', 'type': 'Certificate issued by KSPCB, consent for operation of STP plant'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=hZSwGueqRQpWvZ2xuVZbdw%3D%3D', 'type': 'Brief description of Water supply and Underground drainage works'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=jxQduRIAa7GqT5i7f9%2F1AA%3D%3D', 'type': 'Chartered Accountant Certificate (Form-4)'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=g4RCdPjqYNdTjK18%2FvxnpA%3D%3D', 'type': 'Engineer Certificate 1', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Engineer_Certificate_1.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=yuHjmnMP%2BprKvpe5MhimUQ%3D%3D', 'type': 'Registration Certificate 3', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Registration_Certificate_3.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=g4RCdPjqYNdTjK18%2FvxnpA%3D%3D', 'type': 'Engineer Certificate 2', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Engineer_Certificate_2.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=%2FS3ofjgzNyfEaLzqqh70yQ%3D%3D', 'type': 'Self Attested PAN Card* ( Annexure - 66 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=AoHZibdDseUP23%2FG%2Fjk%2BZQ%3D%3D', 'type': 'Electricity Permission Letter* ( Annexure - 68 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=U9%2Ba82i%2Fjqgf75jVpaycTQ%3D%3D', 'type': 'Layout Plan 1', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Layout_Plan_1.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=uXY0mLl9cegEf5BX%2FXFNmg%3D%3D', 'type': 'Layout Plan 2', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Layout_Plan_2.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=JJ8xTs0%2FbCrOIY7DuQeVgw%3D%3D', 'type': 'Sectional Drawing 1', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Sectional_Drawing_1.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=gCRR6N2fhz%2F7cv0ytm8xqQ%3D%3D', 'type': 'Approved Building 1', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Approved_Building_1.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=VnvPMuqrLn7xYcx5qXiUpg%3D%3D', 'type': 'Approved Building 2', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Approved_Building_2.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=DSAvis1wDPsX8N5Ek7b%2FMg%3D%3D', 'type': 'Annexure 80 1', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Annexure_80_1.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=0NWxmR61DwugVsHjMrsnvQ%3D%3D', 'type': 'Change of Land Use* ( Annexure - 82 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=8xupj%2FPyuEyqhnLNqiEFkw%3D%3D', 'type': 'Conversion Certificate under section 95 of the KLR Act 1964* ( Annexure - 84 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=arTC9OwnLomUbR6kugPu8Q%3D%3D', 'type': 'Proforma of Agreement for Sale* ( Annexure - 86 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=', 'type': 'Proforma For Sale Deed* ( Annexure - 88 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=6yA4I3nEqA60oMWJ32oDtQ%3D%3D', 'type': 'Declaration (Form B)* ( Annexure - 90 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=D53xh2s85UbSH9yNBNtThg%3D%3D', 'type': 'JD AFFIDAVIT CUM DECLARATION* ( Annexure - 92 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=JlabbWxaB7O8jDDRv5DKoQ%3D%3D', 'type': 'Utilisation certificate ( Annexure - 108 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=3KbyibSyBcWk1MlVYV3CIA%3D%3D', 'type': 'Relinquishment Deed ( Annexure - 110 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=WHq5YjS5zi89XUSbs6zhZA%3D%3D', 'type': 'Commencement Certificate 1', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Commencement_Certificate_1.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=lta8L5fq9lHcVwzBCvGg0A%3D%3D', 'type': 'Water Permission Letter* ( Annexure - 69 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=AFPRWVS2AY%2FEdrB5qYtAmw%3D%3D', 'type': 'Approved Building 3', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Approved_Building_3.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=lRVEtOJQPESY5PIwdBzhiA%3D%3D', 'type': 'Section Plan 1', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Section_Plan_1.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=eT3GP1Hun4zP6jFqqOzrVQ%3D%3D', 'type': 'Project Specification 1', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Project_Specification_1.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=E53wtU7OzFGr2DNiUI4jwg%3D%3D', 'type': 'Area Development Plan 1', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Area_Development_Plan_1.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=RLLeh4j0A3t8BH7wbOJDog%3D%3D', 'type': 'Advocate Search Report* ( Annexure - 79 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=oV0DPjQNzQmZM4lwiIZHqQ%3D%3D', 'type': 'Collaboration Agreement/Development Agreement/Joint Development Agreement/Other Agreement* ( Annexure - 81 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=fi%2FDZXo6LwX%2BJF7gIaLy3Q%3D%3D', 'type': 'District Magistrate* ( Annexure - 83 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=9HW7orXIkrYrFCzfVQx1jw%3D%3D', 'type': 'Any other document (Rights/Title/Interest/Name)* ( Annexure - 85 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=V8GqE2qZma5NQiTZ9d2QWw%3D%3D', 'type': 'Proforma of Allotment Letter* ( Annexure - 87 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=wHQJgeq%2Bky44wT%2B69EDwcg%3D%3D', 'type': 'Brochure 1', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Brochure_1.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=nNC73CLFDsvprHF%2BiiKRZw%3D%3D', 'type': 'Section 3(1) Notarized Affidavit* ( Annexure - 91 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=i1RcpDPYvT9bZ1U0RpRmOg%3D%3D', 'type': 'Transfer of development rights certificate ( Annexure - 109 )'}, {'type': 'Project Photo'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=nZXK5KJKWq4%2BOXT8956zPQ%3D%3D', 'type': 'CDP.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=slB4y%2FcfIBQcUvTZ6T9y3w%3D%3D', 'type': 'GPA.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=nYa8DLYYlUFFG2Cnr%2FhPcQ%3D%3D', 'type': 'Guidance Value.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=L%2F5Fdl1rtO%2B5CSg0fxtfJg%3D%3D', 'type': 'Modified Conversion Order.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=H%2FKIVctSroAQDW6LUJQm7w%3D%3D', 'type': 'UGD Demarcation.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=WCqHiuAIy4O7zqrb%2FTCCgA%3D%3D', 'type': '06-03-2023'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=xPuBGlfAYwNtYgX59FFR2A%3D%3D', 'type': '06-03-2023'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=rUSfedNl5%2BXUqCu%2BEgNzDg%3D%3D', 'type': '06-03-2023'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=8N%2Bc7udi0Hqvr03sZY6vIw%3D%3D', 'type': '06-03-2023'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=kNNCMR5iO6wzj2Ej2viz7Q%3D%3D', 'type': '06-03-2023'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=y31o14KbDV5yFcG3ryMVWw%3D%3D', 'type': '06-03-2023'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=Cdk1W54kpXmiw36iUtf9KA%3D%3D', 'type': '06-03-2023'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=PqVayCmaN0asfjeKSdjN%2Bw%3D%3D', 'type': '06-03-2023'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=pJJ9NGLzJIVpPspy8uEF2Q%3D%3D', 'type': '06-03-2023'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=hV185aKUcXT7VLOtwxPRhg%3D%3D', 'type': '06-03-2023'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=phBAU2S1qFpAWaY2yss8zg%3D%3D', 'type': '06-03-2023'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=rnBPiqkmlBBPwi5L%2BwhFxw%3D%3D', 'type': '06-03-2023'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=yKfoBLl6UyDmEsUBMCuXug%3D%3D', 'type': '06-03-2023'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=vAalcpm79bJs16%2Bd%2B2eBqg%3D%3D', 'type': '06-03-2023'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=iP2%2FMbOXwtPa5Qz0Fjlhmg%3D%3D', 'type': '06-03-2023'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=MMR3a0T%2Bj0t115p%2B0zxGPA%3D%3D', 'type': '24-05-2023'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=6FBsw2%2BirfFvblrj81mj3g%3D%3D', 'type': '24-05-2023'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=WCqHiuAIy4O7zqrb%2FTCCgA%3D%3D', 'type': 'Balance Sheet 2020', 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=xPuBGlfAYwNtYgX59FFR2A%3D%3D', 'type': 'Balance Sheet 2021', 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=rUSfedNl5%2BXUqCu%2BEgNzDg%3D%3D', 'type': 'Balance Sheet 2022', 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=8N%2Bc7udi0Hqvr03sZY6vIw%3D%3D', 'type': 'Profit and Loss Account 2020', 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=kNNCMR5iO6wzj2Ej2viz7Q%3D%3D', 'type': 'Profit and Loss Account 2021', 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=y31o14KbDV5yFcG3ryMVWw%3D%3D', 'type': 'Profit and Loss Account 2022', 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=Cdk1W54kpXmiw36iUtf9KA%3D%3D', 'type': 'Means of Finance', 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=PqVayCmaN0asfjeKSdjN%2Bw%3D%3D', 'type': 'EC', 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=pJJ9NGLzJIVpPspy8uEF2Q%3D%3D', 'type': 'Civil Works Order', 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=hV185aKUcXT7VLOtwxPRhg%3D%3D', 'type': 'Village Map', 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=phBAU2S1qFpAWaY2yss8zg%3D%3D', 'type': 'Engineer Certificate 3', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Engineer_Certificate_3.pdf', 'updated': True, 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=rnBPiqkmlBBPwi5L%2BwhFxw%3D%3D', 'type': 'Letter showing Engg license need not be renewed every year', 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=yKfoBLl6UyDmEsUBMCuXug%3D%3D', 'type': 'Proforma Allotment Letter', 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=vAalcpm79bJs16%2Bd%2B2eBqg%3D%3D', 'type': 'Estimated Cost of Construction', 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=iP2%2FMbOXwtPa5Qz0Fjlhmg%3D%3D', 'type': 'Affidavit 3(1)', 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=MMR3a0T%2Bj0t115p%2B0zxGPA%3D%3D', 'type': 'Encumbrance Certificate', 'dated_on': '2023-05-24 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=6FBsw2%2BirfFvblrj81mj3g%3D%3D', 'type': 'Brief Estimated Cost of Construction', 'dated_on': '2023-05-24 00:00:00+00:00'}]"
+    },
+    {
+      "updated_on": "2025-09-09 16:53:47.152103+0000",
+      "document_urls": "[{'link': 'http://docs.primetenders.com/documents/1682578984026406157/Rera_Registration_Certificate.pdf', 'type': 'Rera Registration Certificate', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Registration_Certificate.pdf', 'type': 'Registration Certificate'}, {'link': \"http://docs.primetenders.com/documents/1682578984026406157/Engineer's_Certificate_(Form-6).pdf\", 'type': \"Engineer's Certificate (Form-6)\", 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Registration_Certificate.pdf', 'type': 'Registration Certificate'}, {'link': \"http://docs.primetenders.com/documents/1682578984026406157/Engineer's_Certificate_(Form-6).pdf\", 'type': \"Engineer's Certificate (Form-6)\", 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Approved_Layout_Plan*_(_Annexure_-_70_).pdf', 'type': 'Approved Layout Plan* ( Annexure - 70 )'}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Existing_Layout_Plan_(_Annexure_-_72_).pdf', 'type': 'Existing Layout Plan ( Annexure - 72 )'}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Sectional_Drawing_of_the_apartments*_(_Annexure_-_74_).pdf', 'type': 'Sectional Drawing of the apartments* ( Annexure - 74 )'}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Approved_Section_Of_Building_Infrastructure_Plan_of_Plotting*_(_Annexure_-_76_).pdf', 'type': 'Approved Section Of Building/Infrastructure Plan of Plotting* ( Annexure - 76 )'}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Certificate_from_Registered_Engineer_indicating_the_structural_safety_of_the_building*_(_Annexure_-_78_).pdf', 'type': 'Certificate from Registered Engineer indicating the structural safety of the building* ( Annexure - 78 )', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Urban_Land_Ceiling*_(_Annexure_-_80_).pdf', 'type': 'Urban Land Ceiling* ( Annexure - 80 )', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Commencement_Certificate*_(_Annexure_-_67_).pdf', 'type': 'Commencement Certificate* ( Annexure - 67 )', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Approved_Building_Plotting_Plan*_(_Annexure_-_71_).pdf', 'type': 'Approved Building/Plotting Plan* ( Annexure - 71 )', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Existing_Section_Plan_and_Specification_(_Annexure_-_73_).pdf', 'type': 'Existing Section Plan and Specification ( Annexure - 73 )', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Project_Specifications*_(_Annexure_-_75_).pdf', 'type': 'Project Specifications* ( Annexure - 75 )', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Area_Development_Plan_Of_Project_Area*_(_Annexure_-_77_).pdf', 'type': 'Area Development Plan Of Project Area* ( Annexure - 77 )', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Brochure*_(_Annexure_-_89_).pdf', 'type': 'Brochure* ( Annexure - 89 )', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Engineers_License.pdf', 'type': 'Engineers License', 'updated': True}]",
+      "status_update": "[{'updated': True, 'building_details': [{'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}], 'proposed_timeline': [{'title': 'Ground Clearance/Formation Of Plots', 'status': 'Yes', 'proposed_end_date': '2021-08-31 00:00:00+00:00'}, {'title': 'Formation Of Road, Footpath', 'status': 'Yes', 'proposed_end_date': '2023-12-27 00:00:00+00:00'}, {'title': 'Construction Of Water Supply Infrastucture', 'status': 'Yes', 'proposed_end_date': '2021-12-31 00:00:00+00:00'}, {'title': 'Construction Of Sewage System Infrastucture', 'status': 'Yes', 'proposed_end_date': '2021-12-31 00:00:00+00:00'}, {'title': 'Power Supply Work(Transformer & Substation)', 'status': 'Yes', 'proposed_end_date': '2023-11-20 00:00:00+00:00'}, {'title': 'Construction Of Storm Water Drainage', 'status': 'Yes', 'proposed_end_date': '2022-03-31 00:00:00+00:00'}, {'title': 'Tree Plantation And LandScape Work', 'status': 'Yes', 'proposed_end_date': '2023-12-26 00:00:00+00:00'}, {'title': 'Street Lighting', 'status': 'Yes', 'proposed_end_date': '2023-12-28 00:00:00+00:00'}, {'title': 'Other Miscellaneous Work', 'status': 'Yes', 'proposed_end_date': '2023-12-27 00:00:00+00:00'}], 'construction_progress': [{'title': 'total_completion_percentage', 'progress_percentage': '85 %'}]}]",
+      "building_details": "[{'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}, {'flat_type': 'CORNER', 'total_area': '180.17'}]",
+      "uploaded_documents": "[{'link': 'https://rera.karnataka.gov.in/certificate?CER_NO=PRM/KA/RERA/1248/469/PR/050723/006033', 'type': 'Rera Registration Certificate', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Rera_Registration_Certificate.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=yuHjmnMP%2BprKvpe5MhimUQ%3D%3D', 'type': 'Registration Certificate', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Registration_Certificate.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=%2FS3ofjgzNyfEaLzqqh70yQ%3D%3D', 'type': 'PAN Card'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=aL23knhTKkt9PheBVl15Dg%3D%3D', 'type': 'Address Proof'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=rhhQjVALH8hftRSaJNEgtQ%3D%3D', 'type': 'PAN Card'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=IfD9OcBMvtw32RujdzaBdw%3D%3D', 'type': 'Certificate from Chartered Account'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=ZgD7EAGFpUa37TdJCYM5yA%3D%3D', 'type': 'Site release order Copies(1st,2nd phase and final release order)'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=WX12KtlVxKgxl3KKtL6gRg%3D%3D', 'type': 'Certificate issued by P.W.D/ Panchayath Raj/Urban Local Bodies for completion of Road'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=wuuLbxs8dWhbIdm5LIyLUg%3D%3D', 'type': \"Certificate issued by the concerned power supply(ESCOM'S)\"}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=1mUm0IpqKNxUGydKN4kJiw%3D%3D', 'type': 'Certificate issued by KSPCB, consent for operation of STP plant'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=hZSwGueqRQpWvZ2xuVZbdw%3D%3D', 'type': 'Brief description of Water supply and Underground drainage works'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=jxQduRIAa7GqT5i7f9%2F1AA%3D%3D', 'type': 'Chartered Accountant Certificate (Form-4)'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=g4RCdPjqYNdTjK18%2FvxnpA%3D%3D', 'type': \"Engineer's Certificate (Form-6)\", 's3_link': \"http://docs.primetenders.com/documents/1682578984026406157/Engineer's_Certificate_(Form-6).pdf\", 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=yuHjmnMP%2BprKvpe5MhimUQ%3D%3D', 'type': 'Registration Certificate', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Registration_Certificate.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=%2FS3ofjgzNyfEaLzqqh70yQ%3D%3D', 'type': 'PAN Card'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=aL23knhTKkt9PheBVl15Dg%3D%3D', 'type': 'Address Proof'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=rhhQjVALH8hftRSaJNEgtQ%3D%3D', 'type': 'PAN Card'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=IfD9OcBMvtw32RujdzaBdw%3D%3D', 'type': 'Certificate from Chartered Account'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=ZgD7EAGFpUa37TdJCYM5yA%3D%3D', 'type': 'Site release order Copies(1st,2nd phase and final release order)'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=WX12KtlVxKgxl3KKtL6gRg%3D%3D', 'type': 'Certificate issued by P.W.D/ Panchayath Raj/Urban Local Bodies for completion of Road'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=wuuLbxs8dWhbIdm5LIyLUg%3D%3D', 'type': \"Certificate issued by the concerned power supply(ESCOM'S)\"}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=1mUm0IpqKNxUGydKN4kJiw%3D%3D', 'type': 'Certificate issued by KSPCB, consent for operation of STP plant'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=hZSwGueqRQpWvZ2xuVZbdw%3D%3D', 'type': 'Brief description of Water supply and Underground drainage works'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=jxQduRIAa7GqT5i7f9%2F1AA%3D%3D', 'type': 'Chartered Accountant Certificate (Form-4)'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=g4RCdPjqYNdTjK18%2FvxnpA%3D%3D', 'type': \"Engineer's Certificate (Form-6)\", 's3_link': \"http://docs.primetenders.com/documents/1682578984026406157/Engineer's_Certificate_(Form-6).pdf\", 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=%2FS3ofjgzNyfEaLzqqh70yQ%3D%3D', 'type': 'Self Attested PAN Card* ( Annexure - 66 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=AoHZibdDseUP23%2FG%2Fjk%2BZQ%3D%3D', 'type': 'Electricity Permission Letter* ( Annexure - 68 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=U9%2Ba82i%2Fjqgf75jVpaycTQ%3D%3D', 'type': 'Approved Layout Plan* ( Annexure - 70 )', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Approved_Layout_Plan*_(_Annexure_-_70_).pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=uXY0mLl9cegEf5BX%2FXFNmg%3D%3D', 'type': 'Existing Layout Plan ( Annexure - 72 )', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Existing_Layout_Plan_(_Annexure_-_72_).pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=JJ8xTs0%2FbCrOIY7DuQeVgw%3D%3D', 'type': 'Sectional Drawing of the apartments* ( Annexure - 74 )', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Sectional_Drawing_of_the_apartments*_(_Annexure_-_74_).pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=gCRR6N2fhz%2F7cv0ytm8xqQ%3D%3D', 'type': 'Approved Section Of Building/Infrastructure Plan of Plotting* ( Annexure - 76 )', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Approved_Section_Of_Building_Infrastructure_Plan_of_Plotting*_(_Annexure_-_76_).pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=VnvPMuqrLn7xYcx5qXiUpg%3D%3D', 'type': 'Certificate from Registered Engineer indicating the structural safety of the building* ( Annexure - 78 )', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Certificate_from_Registered_Engineer_indicating_the_structural_safety_of_the_building*_(_Annexure_-_78_).pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=DSAvis1wDPsX8N5Ek7b%2FMg%3D%3D', 'type': 'Urban Land Ceiling* ( Annexure - 80 )', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Urban_Land_Ceiling*_(_Annexure_-_80_).pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=0NWxmR61DwugVsHjMrsnvQ%3D%3D', 'type': 'Change of Land Use* ( Annexure - 82 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=8xupj%2FPyuEyqhnLNqiEFkw%3D%3D', 'type': 'Conversion Certificate under section 95 of the KLR Act 1964* ( Annexure - 84 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=arTC9OwnLomUbR6kugPu8Q%3D%3D', 'type': 'Proforma of Agreement for Sale* ( Annexure - 86 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=', 'type': 'Proforma For Sale Deed* ( Annexure - 88 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=6yA4I3nEqA60oMWJ32oDtQ%3D%3D', 'type': 'Declaration (Form B)* ( Annexure - 90 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=D53xh2s85UbSH9yNBNtThg%3D%3D', 'type': 'JD AFFIDAVIT CUM DECLARATION* ( Annexure - 92 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=JlabbWxaB7O8jDDRv5DKoQ%3D%3D', 'type': 'Utilisation certificate ( Annexure - 108 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=3KbyibSyBcWk1MlVYV3CIA%3D%3D', 'type': 'Relinquishment Deed ( Annexure - 110 )'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=WHq5YjS5zi89XUSbs6zhZA%3D%3D', 'type': 'Commencement Certificate* ( Annexure - 67 )', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Commencement_Certificate*_(_Annexure_-_67_).pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=lta8L5fq9lHcVwzBCvGg0A%3D%3D', 'type': 'Water Permission Letter* ( Annexure - 69 )', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=AFPRWVS2AY%2FEdrB5qYtAmw%3D%3D', 'type': 'Approved Building/Plotting Plan* ( Annexure - 71 )', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Approved_Building_Plotting_Plan*_(_Annexure_-_71_).pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=lRVEtOJQPESY5PIwdBzhiA%3D%3D', 'type': 'Existing Section Plan and Specification ( Annexure - 73 )', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Existing_Section_Plan_and_Specification_(_Annexure_-_73_).pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=eT3GP1Hun4zP6jFqqOzrVQ%3D%3D', 'type': 'Project Specifications* ( Annexure - 75 )', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Project_Specifications*_(_Annexure_-_75_).pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=E53wtU7OzFGr2DNiUI4jwg%3D%3D', 'type': 'Area Development Plan Of Project Area* ( Annexure - 77 )', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Area_Development_Plan_Of_Project_Area*_(_Annexure_-_77_).pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=RLLeh4j0A3t8BH7wbOJDog%3D%3D', 'type': 'Advocate Search Report* ( Annexure - 79 )', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=oV0DPjQNzQmZM4lwiIZHqQ%3D%3D', 'type': 'Collaboration Agreement/Development Agreement/Joint Development Agreement/Other Agreement* ( Annexure - 81 )', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=fi%2FDZXo6LwX%2BJF7gIaLy3Q%3D%3D', 'type': 'District Magistrate* ( Annexure - 83 )', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=9HW7orXIkrYrFCzfVQx1jw%3D%3D', 'type': 'Any other document (Rights/Title/Interest/Name)* ( Annexure - 85 )', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=V8GqE2qZma5NQiTZ9d2QWw%3D%3D', 'type': 'Proforma of Allotment Letter* ( Annexure - 87 )', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=wHQJgeq%2Bky44wT%2B69EDwcg%3D%3D', 'type': 'Brochure* ( Annexure - 89 )', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Brochure*_(_Annexure_-_89_).pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=nNC73CLFDsvprHF%2BiiKRZw%3D%3D', 'type': 'Section 3(1) Notarized Affidavit* ( Annexure - 91 )', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=i1RcpDPYvT9bZ1U0RpRmOg%3D%3D', 'type': 'Transfer of development rights certificate ( Annexure - 109 )', 'updated': True}, {'type': 'Project Photo', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=nZXK5KJKWq4%2BOXT8956zPQ%3D%3D', 'type': 'CDP.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=slB4y%2FcfIBQcUvTZ6T9y3w%3D%3D', 'type': 'GPA.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=nYa8DLYYlUFFG2Cnr%2FhPcQ%3D%3D', 'type': 'Guidance Value.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=L%2F5Fdl1rtO%2B5CSg0fxtfJg%3D%3D', 'type': 'Modified Conversion Order.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=H%2FKIVctSroAQDW6LUJQm7w%3D%3D', 'type': 'UGD Demarcation.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=WCqHiuAIy4O7zqrb%2FTCCgA%3D%3D', 'type': '06-03-2023', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=xPuBGlfAYwNtYgX59FFR2A%3D%3D', 'type': '06-03-2023', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=rUSfedNl5%2BXUqCu%2BEgNzDg%3D%3D', 'type': '06-03-2023', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=8N%2Bc7udi0Hqvr03sZY6vIw%3D%3D', 'type': '06-03-2023', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=kNNCMR5iO6wzj2Ej2viz7Q%3D%3D', 'type': '06-03-2023', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=y31o14KbDV5yFcG3ryMVWw%3D%3D', 'type': '06-03-2023', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=Cdk1W54kpXmiw36iUtf9KA%3D%3D', 'type': '06-03-2023', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=PqVayCmaN0asfjeKSdjN%2Bw%3D%3D', 'type': '06-03-2023', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=pJJ9NGLzJIVpPspy8uEF2Q%3D%3D', 'type': '06-03-2023', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=hV185aKUcXT7VLOtwxPRhg%3D%3D', 'type': '06-03-2023', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=phBAU2S1qFpAWaY2yss8zg%3D%3D', 'type': '06-03-2023', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=rnBPiqkmlBBPwi5L%2BwhFxw%3D%3D', 'type': '06-03-2023', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=yKfoBLl6UyDmEsUBMCuXug%3D%3D', 'type': '06-03-2023', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=vAalcpm79bJs16%2Bd%2B2eBqg%3D%3D', 'type': '06-03-2023', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=iP2%2FMbOXwtPa5Qz0Fjlhmg%3D%3D', 'type': '06-03-2023', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=MMR3a0T%2Bj0t115p%2B0zxGPA%3D%3D', 'type': '24-05-2023', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=6FBsw2%2BirfFvblrj81mj3g%3D%3D', 'type': '24-05-2023', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=WCqHiuAIy4O7zqrb%2FTCCgA%3D%3D', 'type': 'Balance Sheet 2020', 'updated': True, 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=xPuBGlfAYwNtYgX59FFR2A%3D%3D', 'type': 'Balance Sheet 2021', 'updated': True, 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=rUSfedNl5%2BXUqCu%2BEgNzDg%3D%3D', 'type': 'Balance Sheet 2022', 'updated': True, 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=8N%2Bc7udi0Hqvr03sZY6vIw%3D%3D', 'type': 'Profit and Loss Account 2020', 'updated': True, 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=kNNCMR5iO6wzj2Ej2viz7Q%3D%3D', 'type': 'Profit and Loss Account 2021', 'updated': True, 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=y31o14KbDV5yFcG3ryMVWw%3D%3D', 'type': 'Profit and Loss Account 2022', 'updated': True, 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=Cdk1W54kpXmiw36iUtf9KA%3D%3D', 'type': 'Means of Finance', 'updated': True, 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=PqVayCmaN0asfjeKSdjN%2Bw%3D%3D', 'type': 'EC', 'updated': True, 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=pJJ9NGLzJIVpPspy8uEF2Q%3D%3D', 'type': 'Civil Works Order', 'updated': True, 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=hV185aKUcXT7VLOtwxPRhg%3D%3D', 'type': 'Village Map', 'updated': True, 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=phBAU2S1qFpAWaY2yss8zg%3D%3D', 'type': 'Engineers License', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Engineers_License.pdf', 'updated': True, 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=rnBPiqkmlBBPwi5L%2BwhFxw%3D%3D', 'type': 'Letter showing Engg license need not be renewed every year', 'updated': True, 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=yKfoBLl6UyDmEsUBMCuXug%3D%3D', 'type': 'Proforma Allotment Letter', 'updated': True, 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=vAalcpm79bJs16%2Bd%2B2eBqg%3D%3D', 'type': 'Estimated Cost of Construction', 'updated': True, 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=iP2%2FMbOXwtPa5Qz0Fjlhmg%3D%3D', 'type': 'Affidavit 3(1)', 'updated': True, 'dated_on': '2023-03-06 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=MMR3a0T%2Bj0t115p%2B0zxGPA%3D%3D', 'type': 'Encumbrance Certificate', 'updated': True, 'dated_on': '2023-05-24 00:00:00+00:00'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=6FBsw2%2BirfFvblrj81mj3g%3D%3D', 'type': 'Brief Estimated Cost of Construction', 'updated': True, 'dated_on': '2023-05-24 00:00:00+00:00'}]"
+    },
+    {
+      "updated_on": "2025-08-06 13:17:10.648793+0000",
+      "document_urls": "[{'link': 'http://docs.primetenders.com/documents/1682578984026406157/Registration_Certificate.pdf', 'type': 'Registration Certificate'}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Registration_Certificate.pdf', 'type': 'Registration Certificate'}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Approved_Layout_Plan*_(_Annexure_-_70_).pdf', 'type': 'Approved Layout Plan* ( Annexure - 70 )'}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Existing_Layout_Plan_(_Annexure_-_72_).pdf', 'type': 'Existing Layout Plan ( Annexure - 72 )'}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Sectional_Drawing_of_the_apartments*_(_Annexure_-_74_).pdf', 'type': 'Sectional Drawing of the apartments* ( Annexure - 74 )'}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Approved_Section_Of_Building_Infrastructure_Plan_of_Plotting*_(_Annexure_-_76_).pdf', 'type': 'Approved Section Of Building/Infrastructure Plan of Plotting* ( Annexure - 76 )'}, {'link': 'https://docs.primetenders.com/documents/1682578984026406157/Rera%2520Registration%2520Certificate.pdf', 'type': 'Rera Registration Certificate'}, {'link': ' https://docs.primetenders.com/documents/1682578984026406157/Certificate from Registered Engineer indicating the structural safety of the building* ( Annexure - 78 ).pdf', 'type': 'Certificate from Registered Engineer indicating the structural safety of the building* ( Annexure - 78 )'}, {'link': ' https://docs.primetenders.com/documents/1682578984026406157/Urban Land Ceiling* ( Annexure - 80 ).pdf', 'type': 'Urban Land Ceiling* ( Annexure - 80 )'}, {'link': \" https://docs.primetenders.com/documents/1682578984026406157/Engineer's Certificate (Form-6).pdf\", 'type': \"Engineer's Certificate (Form-6)\"}, {'link': \" https://docs.primetenders.com/documents/1682578984026406157/Engineer's Certificate (Form-6).pdf\", 'type': \"Engineer's Certificate (Form-6)\"}]",
+      "status_update": "[{'construction_progress': [{'title': 'total_completion_percentage', 'progress_percentage': '85 %'}]}]",
+      "uploaded_documents": "[{'link': 'http://docs.primetenders.com/documents/1682578984026406157/Registration_Certificate.pdf', 'type': 'Registration Certificate', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Registration_Certificate.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=%2FS3ofjgzNyfEaLzqqh70yQ%3D%3D', 'type': 'PAN Card', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=aL23knhTKkt9PheBVl15Dg%3D%3D', 'type': 'Address Proof', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=rhhQjVALH8hftRSaJNEgtQ%3D%3D', 'type': 'PAN Card', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=IfD9OcBMvtw32RujdzaBdw%3D%3D', 'type': 'Certificate from Chartered Account', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=ZgD7EAGFpUa37TdJCYM5yA%3D%3D', 'type': 'Site release order Copies(1st,2nd phase and final release order)', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=WX12KtlVxKgxl3KKtL6gRg%3D%3D', 'type': 'Certificate issued by P.W.D/ Panchayath Raj/Urban Local Bodies for completion of Road', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=wuuLbxs8dWhbIdm5LIyLUg%3D%3D', 'type': \"Certificate issued by the concerned power supply(ESCOM'S)\", 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=1mUm0IpqKNxUGydKN4kJiw%3D%3D', 'type': 'Certificate issued by KSPCB, consent for operation of STP plant', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=hZSwGueqRQpWvZ2xuVZbdw%3D%3D', 'type': 'Brief description of Water supply and Underground drainage works', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=jxQduRIAa7GqT5i7f9%2F1AA%3D%3D', 'type': 'Chartered Accountant Certificate (Form-4)', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=g4RCdPjqYNdTjK18%2FvxnpA%3D%3D', 'type': \"Engineer's Certificate (Form-6)\", 's3_link': \" https://docs.primetenders.com/documents/1682578984026406157/Engineer's Certificate (Form-6).pdf\", 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Registration_Certificate.pdf', 'type': 'Registration Certificate', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Registration_Certificate.pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=%2FS3ofjgzNyfEaLzqqh70yQ%3D%3D', 'type': 'PAN Card', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=aL23knhTKkt9PheBVl15Dg%3D%3D', 'type': 'Address Proof', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=rhhQjVALH8hftRSaJNEgtQ%3D%3D', 'type': 'PAN Card', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=IfD9OcBMvtw32RujdzaBdw%3D%3D', 'type': 'Certificate from Chartered Account', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=ZgD7EAGFpUa37TdJCYM5yA%3D%3D', 'type': 'Site release order Copies(1st,2nd phase and final release order)', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=WX12KtlVxKgxl3KKtL6gRg%3D%3D', 'type': 'Certificate issued by P.W.D/ Panchayath Raj/Urban Local Bodies for completion of Road', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=wuuLbxs8dWhbIdm5LIyLUg%3D%3D', 'type': \"Certificate issued by the concerned power supply(ESCOM'S)\", 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=1mUm0IpqKNxUGydKN4kJiw%3D%3D', 'type': 'Certificate issued by KSPCB, consent for operation of STP plant', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=hZSwGueqRQpWvZ2xuVZbdw%3D%3D', 'type': 'Brief description of Water supply and Underground drainage works', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=jxQduRIAa7GqT5i7f9%2F1AA%3D%3D', 'type': 'Chartered Accountant Certificate (Form-4)', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=g4RCdPjqYNdTjK18%2FvxnpA%3D%3D', 'type': \"Engineer's Certificate (Form-6)\", 's3_link': \" https://docs.primetenders.com/documents/1682578984026406157/Engineer's Certificate (Form-6).pdf\", 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=%2FS3ofjgzNyfEaLzqqh70yQ%3D%3D', 'type': 'Self Attested PAN Card* ( Annexure - 66 )', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=AoHZibdDseUP23%2FG%2Fjk%2BZQ%3D%3D', 'type': 'Electricity Permission Letter* ( Annexure - 68 )', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Approved_Layout_Plan*_(_Annexure_-_70_).pdf', 'type': 'Approved Layout Plan* ( Annexure - 70 )', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Approved_Layout_Plan*_(_Annexure_-_70_).pdf', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Existing_Layout_Plan_(_Annexure_-_72_).pdf', 'type': 'Existing Layout Plan ( Annexure - 72 )', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Existing_Layout_Plan_(_Annexure_-_72_).pdf', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Sectional_Drawing_of_the_apartments*_(_Annexure_-_74_).pdf', 'type': 'Sectional Drawing of the apartments* ( Annexure - 74 )', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Sectional_Drawing_of_the_apartments*_(_Annexure_-_74_).pdf', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/1682578984026406157/Approved_Section_Of_Building_Infrastructure_Plan_of_Plotting*_(_Annexure_-_76_).pdf', 'type': 'Approved Section Of Building/Infrastructure Plan of Plotting* ( Annexure - 76 )', 's3_link': 'http://docs.primetenders.com/documents/1682578984026406157/Approved_Section_Of_Building_Infrastructure_Plan_of_Plotting*_(_Annexure_-_76_).pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=VnvPMuqrLn7xYcx5qXiUpg%3D%3D', 'type': 'Certificate from Registered Engineer indicating the structural safety of the building* ( Annexure - 78 )', 's3_link': ' https://docs.primetenders.com/documents/1682578984026406157/Certificate from Registered Engineer indicating the structural safety of the building* ( Annexure - 78 ).pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=DSAvis1wDPsX8N5Ek7b%2FMg%3D%3D', 'type': 'Urban Land Ceiling* ( Annexure - 80 )', 's3_link': ' https://docs.primetenders.com/documents/1682578984026406157/Urban Land Ceiling* ( Annexure - 80 ).pdf', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=0NWxmR61DwugVsHjMrsnvQ%3D%3D', 'type': 'Change of Land Use* ( Annexure - 82 )', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=8xupj%2FPyuEyqhnLNqiEFkw%3D%3D', 'type': 'Conversion Certificate under section 95 of the KLR Act 1964* ( Annexure - 84 )', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=arTC9OwnLomUbR6kugPu8Q%3D%3D', 'type': 'Proforma of Agreement for Sale* ( Annexure - 86 )', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=', 'type': 'Proforma For Sale Deed* ( Annexure - 88 )', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=6yA4I3nEqA60oMWJ32oDtQ%3D%3D', 'type': 'Declaration (Form B)* ( Annexure - 90 )', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=D53xh2s85UbSH9yNBNtThg%3D%3D', 'type': 'JD AFFIDAVIT CUM DECLARATION* ( Annexure - 92 )', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=JlabbWxaB7O8jDDRv5DKoQ%3D%3D', 'type': 'Utilisation certificate ( Annexure - 108 )', 'updated': True}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=3KbyibSyBcWk1MlVYV3CIA%3D%3D', 'type': 'Relinquishment Deed ( Annexure - 110 )', 'updated': True}, {'type': 'D LALITHA PAN.pdf', 'updated': True}, {'type': 'GESCOM NOC with Fee Paid.pdf', 'updated': True}, {'type': 'Provisional Approval.pdf', 'updated': True}, {'type': 'Layout Plan.pdf', 'updated': True}, {'type': 'Not Applicable.pdf', 'updated': True}, {'type': 'Not Applicable.pdf', 'updated': True}, {'type': 'Not Applicable.pdf', 'updated': True}, {'type': 'Not Applicable.pdf', 'updated': True}, {'type': 'Conversion Order.pdf', 'updated': True}, {'type': 'Conversion Order.pdf', 'updated': True}, {'type': 'Agreement of Sale Proforma.pdf', 'updated': True}, {'type': 'Form B.pdf', 'updated': True}, {'type': 'Not Applicable.pdf', 'updated': True}, {'type': 'Not Applicable.pdf', 'updated': True}, {'type': 'Relinquishment Deed.pdf', 'updated': True}, {'link': './td[3]/a', 'updated': True}, {'link': './td[3]/a', 'updated': True}, {'link': './td[3]/a', 'updated': True}, {'link': './td[3]/a', 'updated': True}, {'link': './td[3]/a', 'updated': True}, {'link': './td[3]/a', 'updated': True}, {'link': './td[3]/a', 'updated': True}, {'link': './td[3]/a', 'updated': True}, {'link': './td[3]/a', 'updated': True}, {'link': './td[3]/a', 'updated': True}, {'link': './td[3]/a', 'updated': True}, {'link': './td[3]/a', 'updated': True}, {'link': './td[3]/a', 'updated': True}, {'link': './td[3]/a', 'updated': True}, {'link': './td[3]/a', 'updated': True}, {'link': './td[3]/a', 'updated': True}, {'link': './td[3]/a', 'updated': True}, {'link': 'https://docs.primetenders.com/documents/1682578984026406157/Rera%2520Registration%2520Certificate.pdf', 'type': 'Rera Registration Certificate', 's3_link': 'https://docs.primetenders.com/documents/1682578984026406157/Rera%2520Registration%2520Certificate.pdf'}]"
+    },
+    {
+      "land_area": "None",
+      "updated_on": "2025-07-05 08:51:33.948505+0000",
+      "status_update": "None",
+      "approved_on_date": "None",
+      "land_area_details": "{'land_area': None, 'land_area_unit': None, 'construction_area': None, 'construction_area_unit': None}",
+      "actual_finish_date": "2023-07-05 00:00:00+00:00",
+      "uploaded_documents": "[{'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895001', 'type': '2022-BS.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895002', 'type': '2021-BS.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895003', 'type': '2020-BS.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895004', 'type': '2022-PL.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895005', 'type': '2021-PL.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895006', 'type': '2020-PL.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895010', 'type': '2022-CF.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895011', 'type': '2021-CF.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895011', 'type': '2020-CF.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895016', 'type': 'ITR 22.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895017', 'type': 'ITR 21.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895018', 'type': 'ITR 20.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895019', 'type': 'D LALITHA PAN.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895020', 'type': 'Provisional Approval.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895021', 'type': 'GESCOM NOC with Fee Paid.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895022', 'type': 'Water NOC with Fees Paid.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895023', 'type': 'Provisional Approval.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895024', 'type': 'Provisional Approval.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895025', 'type': 'Layout Plan.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895026', 'type': 'Project Specifications.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895028', 'type': 'Project Specifications.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895032', 'type': 'Search Report.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895035', 'type': 'Conversion Order.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895037', 'type': 'Conversion Order.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895039', 'type': 'Agreement of Sale Proforma.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895040', 'type': 'Booking Form.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895042', 'type': 'Form B.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895043', 'type': '3(1).pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895045', 'type': 'GESCOM NOC with Fee Paid.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895046', 'type': 'Water NOC with Fees Paid.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895062', 'type': 'Relinquishment Deed.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895126', 'type': 'CDP.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895127', 'type': 'GPA.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895128', 'type': 'Guidance Value.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895129', 'type': 'Modified Conversion Order.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2895130', 'type': 'UGD Demarcation.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2972810', 'type': 'BS 2020.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2972811', 'type': 'BS 2021.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2972812', 'type': 'BS 2022.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2972813', 'type': 'PL 2020.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2972814', 'type': 'PL 2021.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2972815', 'type': 'Pl 2022.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2972816', 'type': 'MOF -Plotted.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2972817', 'type': 'Encumbrance Certificate.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2972818', 'type': 'Civil Works Order.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2972819', 'type': 'Village Map.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2972820', 'type': 'Engineer Registration.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2972821', 'type': 'Engg Letter.jpeg'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2972822', 'type': 'Proforma Allotment Letter.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2972823', 'type': 'Engineers Certificate.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=2972824', 'type': '3(1).pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=3188569', 'type': 'EC.pdf'}, {'link': 'https://rera.karnataka.gov.in/download_jc?DOC_ID=3188570', 'type': 'Estimated Cost of Construction.pdf'}]"
+    }
+  ],
+  "status_update": [
+    {
+      "updated": true,
+      "building_details": [
+        {
+          "updated": true,
+          "flat_type": "CORNER",
+          "total_area": "149.10"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "108"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "108"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "108"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "108"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "108"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "108"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "108"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "108"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "108"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "108"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "108"
+        },
+        {
+          "updated": true,
+          "flat_type": "CORNER",
+          "total_area": "72.24"
+        },
+        {
+          "updated": true,
+          "flat_type": "CORNER",
+          "total_area": "177.575"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "121.14"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "121.73"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "122.85"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "123.75"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "124.65"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "125.505"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "126.36"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "127.26"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "128.115"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "128.97"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "129.87"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "130.725"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "131.58"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "132.48"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "133.38"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "134.68"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "135.54"
+        },
+        {
+          "updated": true,
+          "flat_type": "INTERMEDIATE",
+          "total_area": "135.99"
+        },
+        {
+          "flat_type": "CORNER",
+          "total_area": "180.17"
+        }
+      ],
+      "proposed_timeline": [
+        {
+          "title": "Ground Clearance/Formation Of Plots",
+          "status": "Yes",
+          "proposed_end_date": "2021-08-31 00:00:00+00:00"
+        },
+        {
+          "title": "Formation Of Road, Footpath",
+          "status": "Yes",
+          "proposed_end_date": "2023-12-27 00:00:00+00:00"
+        },
+        {
+          "title": "Construction Of Water Supply Infrastucture",
+          "status": "Yes",
+          "proposed_end_date": "2021-12-31 00:00:00+00:00"
+        },
+        {
+          "title": "Construction Of Sewage System Infrastucture",
+          "status": "Yes",
+          "proposed_end_date": "2021-12-31 00:00:00+00:00"
+        },
+        {
+          "title": "Power Supply Work(Transformer & Substation)",
+          "status": "Yes",
+          "proposed_end_date": "2023-11-20 00:00:00+00:00"
+        },
+        {
+          "title": "Construction Of Storm Water Drainage",
+          "status": "Yes",
+          "proposed_end_date": "2022-03-31 00:00:00+00:00"
+        },
+        {
+          "title": "Tree Plantation And LandScape Work",
+          "status": "Yes",
+          "proposed_end_date": "2023-12-26 00:00:00+00:00"
+        },
+        {
+          "title": "Street Lighting",
+          "status": "Yes",
+          "proposed_end_date": "2023-12-28 00:00:00+00:00"
+        },
+        {
+          "title": "Other Miscellaneous Work",
+          "status": "Yes",
+          "proposed_end_date": "2023-12-27 00:00:00+00:00"
+        }
+      ],
+      "construction_progress": [
+        {
+          "title": "total_completion_percentage",
+          "progress_percentage": "85 %"
+        }
+      ]
+    }
+  ],
+  "iw_part_processed": true,
+  "iw_processed": true,
+  "last_crawled_date": "2026-04-21 20:14:01.550041+00:00",
+  "land_area_details": {
+    "land_area": "8094",
+    "land_area_unit": null,
+    "construction_area": null,
+    "construction_area_unit": null
+  },
+  "doc_ocr_url": null,
+  "proposed_timeline": [
+    {
+      "title": "Ground Clearance/Formation Of Plots",
+      "status": "Yes",
+      "proposed_end_date": "2021-08-31 00:00:00+00:00"
+    },
+    {
+      "title": "Formation Of Road, Footpath",
+      "status": "Yes",
+      "proposed_end_date": "2023-12-27 00:00:00+00:00"
+    },
+    {
+      "title": "Construction Of Water Supply Infrastucture",
+      "status": "Yes",
+      "proposed_end_date": "2021-12-31 00:00:00+00:00"
+    },
+    {
+      "title": "Construction Of Sewage System Infrastucture",
+      "status": "Yes",
+      "proposed_end_date": "2021-12-31 00:00:00+00:00"
+    },
+    {
+      "title": "Power Supply Work(Transformer & Substation)",
+      "status": "Yes",
+      "proposed_end_date": "2023-11-20 00:00:00+00:00"
+    },
+    {
+      "title": "Construction Of Storm Water Drainage",
+      "status": "Yes",
+      "proposed_end_date": "2022-03-31 00:00:00+00:00"
+    },
+    {
+      "title": "Tree Plantation And LandScape Work",
+      "status": "Yes",
+      "proposed_end_date": "2023-12-26 00:00:00+00:00"
+    },
+    {
+      "title": "Street Lighting",
+      "status": "Yes",
+      "proposed_end_date": "2023-12-28 00:00:00+00:00"
+    },
+    {
+      "title": "Other Miscellaneous Work",
+      "status": "Yes",
+      "proposed_end_date": "2023-12-27 00:00:00+00:00"
+    }
+  ],
+  "checked_updates": true,
+  "checked_updates_date": "2025-09-09 16:53:49.768439+00:00",
+  "rera_housing_found": true,
+  "is_live": true,
+  "alternative_rera_ids": null
+}

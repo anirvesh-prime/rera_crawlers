@@ -18,6 +18,12 @@ from core.project_schema import JSONB_FIELDS, REQUIRED_PROJECT_FIELDS
 
 log = logging.getLogger(__name__)
 
+# ── Per-process persistent connection ────────────────────────────────────────
+# ProcessPoolExecutor gives each crawler its own OS process, so this module-
+# level variable is private to that process — no cross-process sharing occurs.
+_conn: "psycopg.Connection | None" = None
+_schema_ensured: bool = False
+
 # ── Comparison constants (mirrors production DataComparator) ──────────────────
 
 # Fields never compared for business-level changes
@@ -269,9 +275,21 @@ _SCHEMA_DDL = [
 
 
 def get_connection() -> psycopg.Connection:
-    conn = psycopg.connect(settings.postgres_dsn, row_factory=dict_row)
-    ensure_schema(conn)
-    return conn
+    """Return the process-level persistent connection, creating it if needed.
+
+    Opening a new TCP connection + TLS handshake + auth on every DB call is
+    the single biggest overhead when crawlers log frequently.  Reusing one
+    connection per process eliminates that cost entirely while staying safe
+    because ProcessPoolExecutor gives each crawler its own address space.
+    """
+    global _conn, _schema_ensured
+    if _conn is None or _conn.closed:
+        _conn = psycopg.connect(settings.postgres_dsn, row_factory=dict_row)
+        _schema_ensured = False
+    if not _schema_ensured:
+        ensure_schema(_conn)
+        _schema_ensured = True
+    return _conn
 
 
 def ensure_schema(conn: psycopg.Connection):
@@ -461,61 +479,69 @@ def upsert_project(data: dict[str, Any]) -> str:
                write only changed fields + bookkeeping columns
     - Skipped: key exists, nothing changed →
                write updated_fields=NULL + last_crawled_date only
+
+    Runs entirely inside one transaction with SELECT … FOR UPDATE so that
+    parallel crawler processes cannot race on the same project key.
     """
     key = data["key"]
-    existing = get_project_by_key(key)
+    conn = get_connection()
 
-    if existing is None:
-        _insert_project(data)
-        return "new"
+    with conn.transaction():
+        existing = conn.execute(
+            "SELECT * FROM rera_projects WHERE key = %s FOR UPDATE", (key,)
+        ).fetchone()
 
-    item = dict(data)          # working copy (null-preservation writes back here)
-    updated_fields: list[str] = []
+        if existing is None:
+            _insert_project(data, conn)
+            return "new"
 
-    for column, new_val in list(item.items()):
-        if column in _COMPARE_IGNORE:
-            continue
-        if column not in existing:
-            continue
+        item = dict(data)          # working copy (null-preservation writes back here)
+        updated_fields: list[str] = []
 
-        old_val = existing[column]
+        for column, new_val in list(item.items()):
+            if column in _COMPARE_IGNORE:
+                continue
+            if column not in existing:
+                continue
 
-        # Null-preservation: new crawl missed a value → keep DB value
-        if _is_none_equiv(new_val) and not _is_none_equiv(old_val):
-            item[column] = old_val
-            continue
+            old_val = existing[column]
 
-        if _is_none_equiv(new_val):
-            continue  # both empty — not a change
+            # Null-preservation: new crawl missed a value → keep DB value
+            if _is_none_equiv(new_val) and not _is_none_equiv(old_val):
+                item[column] = old_val
+                continue
 
-        if _field_differs(column, old_val, new_val):
-            updated_fields.append(column)
+            if _is_none_equiv(new_val):
+                continue  # both empty — not a change
 
-    if not updated_fields:
-        _touch_project(key)
-        return "skipped"
+            if _field_differs(column, old_val, new_val):
+                updated_fields.append(column)
 
-    # Build old_updates history entry (stores old values for changed fields)
-    old_updates: list[dict] = _parse_old_updates(existing.get("old_updates"))
-    new_entry: dict = {"updated_on": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S.%f%z")}
-    for field in updated_fields:
-        if field in ("old_updates", "last_updated", "updated_fields"):
-            continue
-        old_v = existing.get(field)
-        if not _is_none_equiv(old_v):
-            new_entry[field] = str(old_v)
-    if len(new_entry) > 1:
-        old_updates.append(new_entry)
+        if not updated_fields:
+            _touch_project(key, conn)
+            return "skipped"
 
-    # Keep most recent MAX_UPDATES_HISTORY entries
-    old_updates = sorted(
-        [u for u in old_updates if isinstance(u, dict) and "updated_on" in u and len(u) > 1],
-        key=lambda x: x.get("updated_on", ""),
-        reverse=True,
-    )[:_MAX_UPDATES_HISTORY]
+        # Build old_updates history entry (stores old values for changed fields)
+        old_updates: list[dict] = _parse_old_updates(existing.get("old_updates"))
+        new_entry: dict = {"updated_on": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S.%f%z")}
+        for field in updated_fields:
+            if field in ("old_updates", "last_updated", "updated_fields"):
+                continue
+            old_v = existing.get(field)
+            if not _is_none_equiv(old_v):
+                new_entry[field] = str(old_v)
+        if len(new_entry) > 1:
+            old_updates.append(new_entry)
 
-    _update_project_fields(key, item, updated_fields, old_updates)
-    return "updated"
+        # Keep most recent MAX_UPDATES_HISTORY entries
+        old_updates = sorted(
+            [u for u in old_updates if isinstance(u, dict) and "updated_on" in u and len(u) > 1],
+            key=lambda x: x.get("updated_on", ""),
+            reverse=True,
+        )[:_MAX_UPDATES_HISTORY]
+
+        _update_project_fields(key, item, updated_fields, old_updates, conn)
+        return "updated"
 
 
 def _parse_old_updates(raw: Any) -> list[dict]:
@@ -532,7 +558,8 @@ def _parse_old_updates(raw: Any) -> list[dict]:
     return []
 
 
-def _insert_project(data: dict[str, Any]):
+def _insert_project(data: dict[str, Any], conn: psycopg.Connection):
+    """Execute INSERT within the caller's transaction — no commit here."""
     missing = _missing_required_project_fields(data)
     if missing:
         raise ValueError(
@@ -544,19 +571,16 @@ def _insert_project(data: dict[str, Any]):
         fields=SQL(", ").join(Identifier(c) for c in columns),
         values=SQL(", ").join(SQL("%s") for _ in columns),
     )
-    with get_connection() as conn:
-        conn.execute(query, [_db_value(data[c], c) for c in columns])
-        conn.commit()
+    conn.execute(query, [_db_value(data[c], c) for c in columns])
 
 
-def _touch_project(key: str):
-    """No meaningful change — only refresh last_crawled_date, clear updated_fields."""
-    with get_connection() as conn:
-        conn.execute(
-            "UPDATE rera_projects SET last_crawled_date = now(), updated_fields = NULL WHERE key = %s",
-            (key,),
-        )
-        conn.commit()
+def _touch_project(key: str, conn: psycopg.Connection):
+    """No meaningful change — only refresh last_crawled_date, clear updated_fields.
+    Executes within the caller's transaction — no commit here."""
+    conn.execute(
+        "UPDATE rera_projects SET last_crawled_date = now(), updated_fields = NULL WHERE key = %s",
+        (key,),
+    )
 
 
 def _update_project_fields(
@@ -564,8 +588,10 @@ def _update_project_fields(
     item: dict[str, Any],
     updated_fields: list[str],
     old_updates: list[dict],
+    conn: psycopg.Connection,
 ):
-    """Write only changed business fields + bookkeeping columns."""
+    """Write only changed business fields + bookkeeping columns.
+    Executes within the caller's transaction — no commit here."""
     _BOOKKEEPING = ["updated_fields", "last_updated", "last_crawled_date",
                     "old_updates", "config_id", "is_updated"]
     # Deduplicate preserving order: changed fields first, then bookkeeping
@@ -595,10 +621,46 @@ def _update_project_fields(
     )
     values = [_db_value(write[c], c) for c in all_columns]
     values.append(key)
+    conn.execute(query, values)
 
-    with get_connection() as conn:
-        conn.execute(query, values)
-        conn.commit()
+
+def bulk_insert_logs(entries: list[dict]) -> None:
+    """Batch-insert buffered log entries in a single round-trip.
+
+    Called by the buffered DbLogHandler — never raises so that a DB hiccup
+    cannot kill the crawler.  Uses a nested transaction (savepoint) so it
+    is safe to call even when the persistent connection already has an open
+    transaction (e.g. inside upsert_project).
+    """
+    if not entries:
+        return
+    try:
+        conn = get_connection()
+        with conn.transaction():
+            conn.executemany(
+                """
+                INSERT INTO crawl_logs
+                    (run_id, site_id, level, message, project_key,
+                     registration_no, step, traceback, extra)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                [
+                    (
+                        e.get("run_id"),
+                        e.get("site_id"),
+                        e.get("level"),
+                        e.get("message"),
+                        e.get("project_key"),
+                        e.get("registration_no"),
+                        e.get("step"),
+                        e.get("traceback"),
+                        json.dumps(e.get("extra") or {}),
+                    )
+                    for e in entries
+                ],
+            )
+    except Exception:
+        pass  # never let logging break the crawler
 
 
 # project_documents

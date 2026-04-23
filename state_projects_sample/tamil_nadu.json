@@ -1,0 +1,184 @@
+{
+  "key": "12586206054163957170",
+  "project_name": "RESIDENZA LILIUM By Urban Tree Ph1",
+  "project_type": null,
+  "promoter_name": "M/s.Shri Rishabdev Infrastructures LLP",
+  "project_registration_no": "TNRERA/29/LO/4544/2025",
+  "status_of_the_project": "Under Construction",
+  "acknowledgement_no": null,
+  "project_pin_code": "603103",
+  "project_city": "Thaiyur",
+  "project_state": "Tamil Nadu",
+  "project_location_raw": {
+    "city": "Thaiyur",
+    "state": "Tamil Nadu",
+    "taluk": "Thiruporur",
+    "village": "Thaiyur A Village",
+    "district": "Chennai",
+    "latitude": "12.770558",
+    "pin_code": "603103",
+    "longitude": "80.186468",
+    "survey_resurvey_number": "778/2, 781/1B, 1C, 1D, 1E, 1F, 781/1G,  1H, 1I1, 1I2, 1J, 1K, 1L, 1M, 1N, 2A, 2B, 2C, 782/1, 2 and 784/1B"
+  },
+  "promoter_address_raw": {
+    "city": "Chennai",
+    "state": "Tamil Nadu",
+    "village": "Nungambakkam",
+    "district": "Chennai",
+    "pin_code": "600006",
+    "raw_address": "Door No : 8 Floor Street Name : Rutland Gate, 5th Street Village : Nungambakkam City : Chennai State : Tamil Nadu District : Chennai Pincode : 600006"
+  },
+  "promoter_contact_details": {
+    "email": "liaison.dept@urbantree.in",
+    "phone": "9176906161"
+  },
+  "submitted_date": null,
+  "last_modified": null,
+  "estimated_commencement_date": "2025-12-29 00:00:00+00:00",
+  "actual_commencement_date": null,
+  "estimated_finish_date": "2026-09-30 00:00:00+00:00",
+  "actual_finish_date": null,
+  "approved_on_date": "2025-09-12 00:00:00+00:00",
+  "past_experience_of_promoter": null,
+  "bank_details": {
+    "email": "kotakmahindrabank@customercare.in",
+    "state": "Tamil Nadu",
+    "branch": "Kotak Mahindra Bank",
+    "bank_name": "Kotak Mahindra Bank",
+    "account_no": "XXXXXX7549"
+  },
+  "land_area": 9396.0,
+  "construction_area": null,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "project_cost_detail": {
+    "cost_of_land": "30196010",
+    "total_project_cost": "41696010"
+  },
+  "number_of_residential_units": null,
+  "number_of_commercial_units": null,
+  "building_details": null,
+  "complaints_litigation_details": null,
+  "uploaded_documents": [
+    {
+      "link": "https://rera.tn.gov.in/formcqr/3c2c3140-ca91-11f0-be7a-49ff3448b535",
+      "type": "Rera Registration Certificate 1",
+      "s3_link": "http://docs.primetenders.com/documents/12586206054163957170/Rera_Registration_Certificate_1.pdf"
+    },
+    {
+      "link": "https://rera.tn.gov.in/public/storage/upload/DsSykbCLv6aXefqY45RpljYqNVkbVqbus3HF0oRT.pdf",
+      "type": "Site Photos With all four Sides "
+    },
+    {
+      "link": "https://rera.tn.gov.in/public/storage/upload/OCTHuNOcComVfar1Ha5UFSOChAG7vSIbbimqdK6y.pdf",
+      "type": "Approved Plan 1",
+      "s3_link": "http://docs.primetenders.com/documents/12586206054163957170/Approved_Plan_1.pdf"
+    },
+    {
+      "link": "https://rera.tn.gov.in/public/storage/upload/ctXCKYmJYyLdKLF1dB36b2AqNXvaFh4mDhHjh4VD.pdf",
+      "type": "Approved Plan 2",
+      "s3_link": "http://docs.primetenders.com/documents/12586206054163957170/Approved_Plan_2.pdf"
+    },
+    {
+      "link": "https://rera.tn.gov.in/public/storage/upload/QmGv52o52tXGn35qR82OT0TyYw8hbfrVcTHnKu48.pdf",
+      "type": "Local Body Approval Letter "
+    },
+    {
+      "link": "https://rera.tn.gov.in/public/storage/upload/cCoXxXRNLH2DaOXdtLNJrc5tWYbPpkvypoSSvmuV.pdf",
+      "type": "GLV value should be mentioned for all the survey numbers covered in the project*"
+    },
+    {
+      "link": "https://rera.tn.gov.in/public/storage/upload/kB8kKKwj20zPPbXGdBex7VuvKP8KY1ltsQzmKXPx.pdf",
+      "type": "Approved Plan 3",
+      "s3_link": "http://docs.primetenders.com/documents/12586206054163957170/Approved_Plan_3.pdf"
+    },
+    {
+      "link": "https://rera.tn.gov.in/public/storage/upload/iAlFta0OJ8rR4fclazzB70ixsuXujlX5ATa900Ft.pdf",
+      "type": "Declaration(Form B) "
+    }
+  ],
+  "authorised_signatory_details": null,
+  "co_promoter_details": null,
+  "project_description": null,
+  "provided_faciltiy": null,
+  "professional_information": [
+    {
+      "name": "Vijayakumar R Thiruvallur Municipalit",
+      "role": "License Surveyor",
+      "email": "vijayakumar.r1985@gmail.com",
+      "phone": "9443240897",
+      "address": "No 18, Ganthi Street, Manavalan Nagar, Thiruvallur",
+      "registration_no": "TVLR/RE/Gr/-III/2019/05/001"
+    }
+  ],
+  "development_agreement_detail": null,
+  "construction_progress": null,
+  "land_detail": null,
+  "document_urls": [
+    {
+      "link": "http://docs.primetenders.com/documents/12586206054163957170/Rera_Registration_Certificate_1.pdf",
+      "type": "Rera Registration Certificate 1"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/12586206054163957170/Approved_Plan_1.pdf",
+      "type": "Approved Plan 1"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/12586206054163957170/Approved_Plan_2.pdf",
+      "type": "Approved Plan 2"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/12586206054163957170/Approved_Plan_3.pdf",
+      "type": "Approved Plan 3"
+    }
+  ],
+  "members_details": [
+    {
+      "name": "Abhinay Mehta",
+      "email": "abhinay@urbantree.in",
+      "phone": "9841299994",
+      "position": "Director",
+      "raw_address": "No 8, Rutland Gate, 5th Street, Nungambakkam State : Tamil Nadu District : Chennai Pincode : 600006"
+    }
+  ],
+  "retrieved_on": "2026-01-25 15:07:40.261815+00:00",
+  "config_id": 14374,
+  "data": {
+    "form_c": "https://rera.tn.gov.in/formcqr/3c2c3140-ca91-11f0-be7a-49ff3448b535",
+    "govt_type": "state",
+    "is_processed": false,
+    "promoter_url": "https://rera.tn.gov.in/public-view1/layout/pfirm/3c289c20-ca91-11f0-bd54-ef6224abb025"
+  },
+  "promoters_details": {
+    "name": "Shri Rishabdev Infrastructures LLP",
+    "type_of_firm": "Limited Liability Partnership",
+    "registration_no": "AAP-0265",
+    "registration_certificate": "https://rera.tn.gov.in/public/storage/upload/F0ChKVtrrx8cXUznIYCMOAMpFKltjp5kGqpNn0lk.pdf"
+  },
+  "domain": "rera.tn.gov.in",
+  "state": "Tamil Nadu",
+  "crawl_machine_ip": "98.70.112.253",
+  "machine_name": "dashboard-rera-14374-tamil-nadu-754f8f47cf-48r78",
+  "is_updated": false,
+  "is_duplicate": false,
+  "url": "https://rera.tn.gov.in/public-view2/layout/pfirm/060e6e00-cab8-11f0-a493-1dc986406559",
+  "last_updated": null,
+  "updated_fields": null,
+  "project_images": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": "'[]'::jsonb",
+  "status_update": null,
+  "iw_part_processed": null,
+  "iw_processed": true,
+  "last_crawled_date": "2026-01-25 15:07:37.686452+00:00",
+  "land_area_details": null,
+  "doc_ocr_url": null,
+  "proposed_timeline": null,
+  "checked_updates": true,
+  "checked_updates_date": "2026-02-02 06:11:55.112020+00:00",
+  "rera_housing_found": false,
+  "is_live": false,
+  "alternative_rera_ids": null
+}

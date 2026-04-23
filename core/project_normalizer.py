@@ -381,8 +381,11 @@ def normalize_project_payload(
         normalized[key] = cleaned
 
     if config.get("state"):
-        normalized.setdefault("state", config["state"])
-        normalized.setdefault("project_state", normalized.get("project_state") or config["state"])
+        # Always lowercase so new inserts are consistent with existing DB rows
+        # regardless of how the config spells the state name.
+        state_lower = config["state"].lower()
+        normalized.setdefault("state", state_lower)
+        normalized.setdefault("project_state", normalized.get("project_state") or state_lower)
     if config.get("domain"):
         normalized.setdefault("domain", config["domain"])
     if config.get("config_id") is not None:

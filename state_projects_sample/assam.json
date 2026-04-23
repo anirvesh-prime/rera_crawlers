@@ -1,0 +1,257 @@
+{
+  "key": "4303895041291968771",
+  "project_name": "UTTARAYAN BUILDERS AND DEVELOPERS",
+  "project_type": null,
+  "promoter_name": "UTTARAYAN HARMONY,BAGHORBARI, SATGAON,GUWAHATI,ASSAM.",
+  "project_registration_no": "RERAA KM 49 OF 2024-2025",
+  "status_of_the_project": "NEW",
+  "acknowledgement_no": null,
+  "project_pin_code": "781037",
+  "project_city": null,
+  "project_state": "assam",
+  "project_location_raw": {
+    "village": "SATGAON",
+    "district": "KAMRUP METRO",
+    "pin_code": "781037",
+    "post_office": "BAGHORBARI",
+    "raw_address": "UTTARAYAN HARMONY,BAGHORBARI,SATGAON,GUWAHATI,ASSAM.",
+    "processed_latitude": 26.1491675,
+    "processed_longitude": 91.83042309999999
+  },
+  "promoter_address_raw": {
+    "village": "GUWAHATI",
+    "district": "K",
+    "pin_code": "781009",
+    "raw_address": "1ST FLOOR PODDER COMPLEX OPP KALI MANDIR FANCY BAZAR GUWAHATI-781001",
+    "correspondence_address": "PODDAR COMPLEX,1ST FLOOR,M.S. ROAD,OPP. KALI MANDIR,FANCY BAZAR,GUWAHATI,KAMRUP METRO P.O FANCY BAZAR PINCODE-781001"
+  },
+  "promoter_contact_details": {
+    "email": "harmony@uttarayangroup.com",
+    "phone": "9903900299"
+  },
+  "submitted_date": "2023-12-01 12:51:31+00:00",
+  "last_modified": null,
+  "estimated_commencement_date": "2023-12-01 00:00:00+00:00",
+  "actual_commencement_date": null,
+  "estimated_finish_date": "2026-12-31 00:00:00+00:00",
+  "actual_finish_date": null,
+  "approved_on_date": null,
+  "past_experience_of_promoter": null,
+  "bank_details": {
+    "IFSC": "SBIN0012259",
+    "branch": "1ST FLOOR",
+    "bank_name": "STATE BANK OF INDIA",
+    "account_no": "39968459965"
+  },
+  "land_area": 1270.67,
+  "construction_area": 29499.84,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "project_cost_detail": {
+    "cost_of_land": "13493505 Lakhs",
+    "estimated_project_cost": "80961026 Lakhs",
+    "estimated_construction_cost": "59716309 Lakhs"
+  },
+  "number_of_residential_units": 24,
+  "number_of_commercial_units": null,
+  "building_details": null,
+  "complaints_litigation_details": null,
+  "uploaded_documents": [
+    {
+      "link": "https://rera.assam.gov.in/view_project/view_certificate/MTYxOQ==",
+      "type": "RERA REGISTRATION CERTIFICATE 1",
+      "s3_link": "http://docs.primetenders.com/documents/4303895041291968771/RERA_REGISTRATION_CERTIFICATE_1.pdf",
+      "updated": true
+    }
+  ],
+  "authorised_signatory_details": null,
+  "co_promoter_details": [
+    {
+      "name": "HANUMAN MAL KALANI",
+      "role": "Partner 1",
+      "email": "SANJAYKALANI679@GMAIL.COM",
+      "phone": "9435016679",
+      "present_address": "1ST FLOOR PODDER COMPLEX OPP KALI MANDIR FANCY BAZAR GUWAHATI-781001"
+    },
+    {
+      "name": "DEEPJYOTI BARUAH",
+      "role": "Partner 2",
+      "email": "DJBARUAH@UTTARAYANGROUP.COM",
+      "phone": "9864031390",
+      "present_address": "1ST FLOOR PODDER COMPLEX OPP KALI MANDIR FANCY BAZAR GUWAHATI-781001"
+    },
+    {
+      "name": "PREETI RATHI",
+      "role": "Partner 3",
+      "email": "AYUSSHR@UTTARAYANGROUP.COM",
+      "phone": "9854060701",
+      "present_address": "1ST FLOOR PODDER COMPLEX OPP KALI MANDIR FANCY BAZAR GUWAHATI-781001"
+    },
+    {
+      "name": "RAKESH CHOUDHURY",
+      "role": "Partner 4",
+      "email": "rakesh@uttarayangroup.com",
+      "phone": "9435045293",
+      "present_address": "1ST FLOOR PODDER COMPLEX OPP KALI MANDIR FANCY BAZAR GUWAHATI-781001"
+    },
+    {
+      "name": "MAHESH KALANI",
+      "email": "MAHESHKALANI212@GMAIL.COM",
+      "phone": "9864060704",
+      "present_address": "1ST FLOOR PODDER COMPLEX OPP KALI MANDIR FANCY BAZAR GUWAHATI-781001"
+    }
+  ],
+  "project_description": null,
+  "provided_faciltiy": [
+    {
+      "status": "AS PER PROJECT REPORT",
+      "facility": "INTERNAL ROADS AND PAVEMENTS"
+    },
+    {
+      "status": "AS PER PROJECT REPORT",
+      "facility": "WATER SUPPLY SYSTEM"
+    },
+    {
+      "status": "AS PER PROJECT REPORT",
+      "facility": "STORM WATER DRAINAGE"
+    },
+    {
+      "status": "AS PER PROJECT REPORT",
+      "facility": "ELECTRICITY SUPPLY SYSTEM"
+    },
+    {
+      "status": "AS PER PROJECT REPORT",
+      "facility": "SEWAGE TREATMENT & GARBAGE DISPOSAL"
+    },
+    {
+      "status": "YET TO BE PREPARED",
+      "facility": "STREET LIGHTING"
+    },
+    {
+      "status": "YET TO BE PREPARED",
+      "facility": "SECURITY AND FIRE FIGHTING"
+    },
+    {
+      "status": "AS PER PROJECT REPORT",
+      "facility": "PLAYGROUNDS AND PARKS"
+    },
+    {
+      "status": "YET TO BE PREPARED",
+      "facility": "CLUB HOUSE/COMMUNITY CENTRE"
+    },
+    {
+      "status": "YET TO BE PREPARED",
+      "facility": "SHOPPING AREA"
+    },
+    {
+      "status": "YET TO BE PREPARED",
+      "facility": "RENEWABLE ENERGY SYSTEM"
+    },
+    {
+      "status": "YET TO BE PREPARED",
+      "facility": "SCHOOL"
+    },
+    {
+      "status": "YET TO BE PREPARED",
+      "facility": "HOSPITAL/DISPENSARY"
+    },
+    {
+      "status": "YET TO BE PREPARED",
+      "facility": "ANY OTHER"
+    }
+  ],
+  "professional_information": null,
+  "development_agreement_detail": null,
+  "construction_progress": null,
+  "land_detail": {
+    "mouza": "GUWAHATI",
+    "total_area": "1270.67"
+  },
+  "document_urls": [
+    {
+      "link": "http://docs.primetenders.com/documents/4303895041291968771/RERA_REGISTRATION_CERTIFICATE_1.pdf",
+      "type": "RERA REGISTRATION CERTIFICATE 1",
+      "updated": true
+    }
+  ],
+  "members_details": [
+    {
+      "name": "TAMANNA TABASSUM",
+      "email": "mktgsaleshead@uttarayangroup.com",
+      "phone": "9854040007",
+      "position": "MARKETING AND SALED HEAD"
+    }
+  ],
+  "retrieved_on": "2024-12-27 04:42:34.313557+00:00",
+  "config_id": 11804,
+  "data": {
+    "govt_type": "state",
+    "construction_unit": "In Square Meter",
+    "construction_area_1": "1439.10 18 599.34 6"
+  },
+  "promoters_details": {
+    "name": "UTTARAYAN BUILDERS AND DEVELOPERS",
+    "pan_no": "XXXX573L",
+    "registration_no": "RFKAMM173Z198OF20212022"
+  },
+  "domain": "rera.assam.gov.in",
+  "state": "assam",
+  "crawl_machine_ip": "148.113.37.79",
+  "machine_name": "dashboard-rera-11804-assam-79d8fd9b7f-pznwl",
+  "is_updated": true,
+  "is_duplicate": false,
+  "url": "https://rera.assam.gov.in/view_project/searchprojectDetail/1897",
+  "last_updated": "2026-04-21 20:34:02.063546+00:00",
+  "updated_fields": [
+    "project_name",
+    "promoter_name",
+    "approved_on_date",
+    "uploaded_documents",
+    "document_urls",
+    "updated_fields",
+    "last_updated",
+    "last_crawled_date",
+    "old_updates",
+    "config_id",
+    "is_updated"
+  ],
+  "project_images": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": [
+    {
+      "updated_on": "2026-04-21 20:34:02.063546+0000",
+      "project_name": "UTTARAYAN HARMONY 2",
+      "document_urls": "[{'link': 'http://docs.primetenders.com/documents/4303895041291968771/RERA_REGISTRATION_CERTIFICATE.pdf', 'type': 'RERA REGISTRATION CERTIFICATE', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/4303895041291968771/APPROVED_DRAWING.pdf', 'type': 'APPROVED DRAWING', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/4303895041291968771/PLAN_OF_DEVELOPMENT_WORKS.pdf', 'type': 'PLAN OF DEVELOPMENT WORKS', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/4303895041291968771/CARPET_AREA.pdf', 'type': 'CARPET AREA', 'updated': True}, {'link': 'http://docs.primetenders.com/documents/4303895041291968771/ARCHITECT,_STRUCTURAL_ENGINEER_AND_CONTRACTOR_DETAILS_Certificate.pdf', 'type': 'ARCHITECT, STRUCTURAL ENGINEER AND CONTRACTOR DETAILS Certificate', 'updated': True}]",
+      "promoter_name": "UTTARAYAN BUILDERS AND DEVELOPERS",
+      "uploaded_documents": "[{'link': 'https://rera.assam.gov.in/view_project/view_certificate/MTYxOQ==', 'type': 'RERA REGISTRATION CERTIFICATE', 's3_link': 'http://docs.primetenders.com/documents/4303895041291968771/RERA_REGISTRATION_CERTIFICATE.pdf', 'updated': True}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzQ2Nzc=', 'type': 'LATEST JAMABANDI COPY OF THE PROPOSED PROJECT LAND', 'dated_on': '2023-10-10 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzQ2Nzk=', 'type': 'LATEST NON ENCUMBRANCE CERTIFICATE', 'dated_on': '2023-10-10 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMDc=', 'type': 'POWER OF ATTORNEY', 'dated_on': '2023-10-30 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMDg=', 'type': 'TRACE MAP SHOWING NEARBY BY STREAMS, PONDS ETC.', 'dated_on': '2023-10-30 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU4MDY=', 'type': 'DEVELOPMENT AGREEMENT OR DEED OF AGREEMENT', 'dated_on': '2023-11-11 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzQ2ODA=', 'type': 'PLANNING PERMIT FROM COMPETENT AUTHORITY', 'dated_on': '2023-10-10 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMjk=', 'type': 'APPROVED DRAWING', 's3_link': 'http://docs.primetenders.com/documents/4303895041291968771/APPROVED_DRAWING.pdf', 'updated': True, 'dated_on': '2023-10-31 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMzA=', 'type': 'NO OBJECTION CERTIFICATE FROM THE COMPETENT AUTHORITY', 'dated_on': '2023-10-31 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU0MTk=', 'type': 'LOCATIONAL MAP INCLUDING LATITUDE AND LONGITUDE', 'dated_on': '2023-11-03 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU4NTI=', 'type': 'FIRE NOC', 'dated_on': '2023-11-17 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU4NTM=', 'type': 'COMMENCEMENT CERTIFICATE OF THE PROJECT', 'dated_on': '2023-11-17 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU5NjQ=', 'type': 'PLAN OF DEVELOPMENT WORKS', 's3_link': 'http://docs.primetenders.com/documents/4303895041291968771/PLAN_OF_DEVELOPMENT_WORKS.pdf', 'updated': True, 'dated_on': '2023-11-28 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNDk=', 'type': 'CARPET AREA', 's3_link': 'http://docs.primetenders.com/documents/4303895041291968771/CARPET_AREA.pdf', 'updated': True, 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNTA=', 'type': 'ARCHITECT, STRUCTURAL ENGINEER AND CONTRACTOR DETAILS Certificate', 's3_link': 'http://docs.primetenders.com/documents/4303895041291968771/ARCHITECT,_STRUCTURAL_ENGINEER_AND_CONTRACTOR_DETAILS_Certificate.pdf', 'updated': True, 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/NDU2NzY=', 'type': 'PROJECT COST ESTIMATE', 'dated_on': '2024-12-27 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzQ2ODM=', 'type': 'REGISTRATION CERTIFICATE OF THE ENTITY', 'updated': True, 'dated_on': '2023-10-10 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMDk=', 'type': 'PAN CARD OF THE ENTITY', 'dated_on': '2023-10-30 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU0MDY=', 'type': 'LETTER OF AUTHORIZATION FOR AUTHORIZED SIGNATORY', 'dated_on': '2023-11-02 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU4MDU=', 'type': 'DEED OF PARTNERSHIP', 'dated_on': '2023-11-11 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU2MDM=', 'type': 'FORM B, DULY NOTARIZED', 'dated_on': '2023-11-07 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNDc=', 'type': 'DRAFT ALLOTMENT LETTER', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNDg=', 'type': 'DRAFT CONVEYENCE DEED', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNTI=', 'type': 'DRAFT FOR AGREEMENT FOR SALE', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU3Nzg=', 'type': 'PHOTOCOPY OF BANK DRAFT', 'dated_on': '2023-11-10 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNTU=', 'type': 'AUDITED BALANCE SHEET OF THE PROMOTER FOR THE IMMEDIATELY PRECEDING THREE (3) FINANCIAL YEARS', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNTY=', 'type': 'INCOME TAX RETURN OF THE PROMOTER FOR THE IMMEDIATELY PRECEDING THREE (3) FINANCIAL YEARS', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/NDU2Nzc=', 'type': \"BANK MANAGER'S LETTER MENTIONING THAT THE ACCOUNT HAS BEEN OPENED IN COMPLIANCE WITH THE SECTION 4(2)(L)(D) OF REAL ESTATE (REGULATION AND DEVELOPMENT) ACT, 2016\", 'dated_on': '2024-12-27 00:00:00+00:00'}]"
+    },
+    {
+      "updated_on": "2025-08-11 20:34:04.773334+0000",
+      "document_urls": "[{'link': 'https://docs.primetenders.com/documents/4303895041291968771/APPROVED DRAWING FROM COMPETENT AUTHORITY.pdf', 'type': 'APPROVED DRAWING FROM COMPETENT AUTHORITY'}, {'link': 'https://docs.primetenders.com/documents/4303895041291968771/PLAN OF DEVELOPMENT WORKS.pdf', 'type': 'PLAN OF DEVELOPMENT WORKS'}, {'link': 'https://docs.primetenders.com/documents/4303895041291968771/CARPET AREA AND PARKING AREA DETAILS.pdf', 'type': 'CARPET AREA AND PARKING AREA DETAILS'}, {'link': 'https://docs.primetenders.com/documents/4303895041291968771/REGISTRATION CERTIFICATE OF THE ENTITY.pdf', 'type': 'REGISTRATION CERTIFICATE OF THE ENTITY'}]",
+      "uploaded_documents": "[{'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzQ2Nzc=', 'type': 'LATEST JAMABANDI COPY OF THE PROPOSED PROJECT LAND', 'dated_on': '2023-10-10 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzQ2Nzk=', 'type': 'LATEST NON ENCUMBRANCE CERTIFICATE', 'dated_on': '2023-10-10 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMDc=', 'type': 'POWER OF ATTORNEY', 'dated_on': '2023-10-30 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMDg=', 'type': 'TRACE MAP SHOWING NEARBY BY STREAMS, PONDS ETC.', 'dated_on': '2023-10-30 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU4MDY=', 'type': 'DEVELOPMENT AGREEMENT OR DEED OF AGREEMENT', 'dated_on': '2023-11-11 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzQ2ODA=', 'type': 'PLANNING PERMIT FROM COMPETENT AUTHORITY', 'dated_on': '2023-10-10 00:00:00+00:00'}, {'link': 'https://docs.primetenders.com/documents/4303895041291968771/APPROVED DRAWING FROM COMPETENT AUTHORITY.pdf', 'type': 'APPROVED DRAWING FROM COMPETENT AUTHORITY', 's3_link': 'https://docs.primetenders.com/documents/4303895041291968771/APPROVED DRAWING FROM COMPETENT AUTHORITY.pdf', 'dated_on': '2023-10-31 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMzA=', 'type': 'NO OBJECTION CERTIFICATE FROM THE COMPETENT AUTHORITY', 'dated_on': '2023-10-31 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU0MTk=', 'type': 'LOCATIONAL MAP INCLUDING LATITUDE AND LONGITUDE', 'dated_on': '2023-11-03 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU4NTI=', 'type': 'FIRE NOC', 'dated_on': '2023-11-17 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU4NTM=', 'type': 'COMMENCEMENT CERTIFICATE OF THE PROJECT', 'dated_on': '2023-11-17 00:00:00+00:00'}, {'link': 'https://docs.primetenders.com/documents/4303895041291968771/PLAN OF DEVELOPMENT WORKS.pdf', 'type': 'PLAN OF DEVELOPMENT WORKS', 's3_link': 'https://docs.primetenders.com/documents/4303895041291968771/PLAN OF DEVELOPMENT WORKS.pdf', 'dated_on': '2023-11-28 00:00:00+00:00'}, {'link': 'https://docs.primetenders.com/documents/4303895041291968771/CARPET AREA AND PARKING AREA DETAILS.pdf', 'type': 'CARPET AREA AND PARKING AREA DETAILS', 's3_link': 'https://docs.primetenders.com/documents/4303895041291968771/CARPET AREA AND PARKING AREA DETAILS.pdf', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNTA=', 'type': 'ARCHITECT, STRUCTURAL ENGINEER AND CONTRACTOR DETAILS WITH NAME AND ADDRESS AS THE CASE MAY BE', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/NDU2NzY=', 'type': 'PROJECT COST ESTIMATE', 'updated': True, 'dated_on': '2024-12-27 00:00:00+00:00'}, {'link': 'https://docs.primetenders.com/documents/4303895041291968771/REGISTRATION CERTIFICATE OF THE ENTITY.pdf', 'type': 'REGISTRATION CERTIFICATE OF THE ENTITY', 's3_link': 'https://docs.primetenders.com/documents/4303895041291968771/REGISTRATION CERTIFICATE OF THE ENTITY.pdf', 'dated_on': '2023-10-10 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMDk=', 'type': 'PAN CARD OF THE ENTITY', 'dated_on': '2023-10-30 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU0MDY=', 'type': 'LETTER OF AUTHORIZATION FOR AUTHORIZED SIGNATORY', 'dated_on': '2023-11-02 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU4MDU=', 'type': 'DEED OF PARTNERSHIP', 'dated_on': '2023-11-11 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU2MDM=', 'type': 'FORM B, DULY NOTARIZED', 'dated_on': '2023-11-07 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNDc=', 'type': 'DRAFT ALLOTMENT LETTER', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNDg=', 'type': 'DRAFT CONVEYENCE DEED', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNTI=', 'type': 'DRAFT FOR AGREEMENT FOR SALE', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU3Nzg=', 'type': 'PHOTOCOPY OF BANK DRAFT', 'dated_on': '2023-11-10 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNTU=', 'type': 'AUDITED BALANCE SHEET OF THE PROMOTER FOR THE IMMEDIATELY PRECEDING THREE (3) FINANCIAL YEARS', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNTY=', 'type': 'INCOME TAX RETURN OF THE PROMOTER FOR THE IMMEDIATELY PRECEDING THREE (3) FINANCIAL YEARS', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/NDU2Nzc=', 'type': \"BANK MANAGER'S LETTER MENTIONING THAT THE ACCOUNT HAS BEEN OPENED IN COMPLIANCE WITH THE SECTION 4(2)(L)(D) OF REAL ESTATE (REGULATION AND DEVELOPMENT) ACT, 2016\", 'dated_on': '2024-12-27 00:00:00+00:00'}]"
+    },
+    {
+      "updated_on": "2025-04-07 05:32:25.718046+0000",
+      "uploaded_documents": "[{'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzQ2Nzc=', 'type': 'LATEST JAMABANDI COPY OF THE PROPOSED PROJECT LAND', 'dated_on': '2023-10-10 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzQ2Nzk=', 'type': 'LATEST NON ENCUMBRANCE CERTIFICATE', 'dated_on': '2023-10-10 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzQ2ODA=', 'type': 'PLANNING PERMIT FROM COMPETENT AUTHORITY', 'dated_on': '2023-10-10 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzQ2ODM=', 'type': 'REGISTRATION CERTIFICATE OF THE ENTITY', 'dated_on': '2023-10-10 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMDc=', 'type': 'POWER OF ATTORNEY', 'dated_on': '2023-10-30 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMDg=', 'type': 'TRACE MAP SHOWING NEARBY BY STREAMS, PONDS ETC.', 'dated_on': '2023-10-30 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMDk=', 'type': 'PAN CARD OF THE ENTITY', 'dated_on': '2023-10-30 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMjk=', 'type': 'APPROVED DRAWING FROM COMPETENT AUTHORITY', 'dated_on': '2023-10-31 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMzA=', 'type': 'NO OBJECTION CERTIFICATE FROM THE COMPETENT AUTHORITY', 'dated_on': '2023-10-31 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU0MDY=', 'type': 'LETTER OF AUTHORIZATION FOR AUTHORIZED SIGNATORY', 'dated_on': '2023-11-02 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU0MTk=', 'type': 'LOCATIONAL MAP INCLUDING LATITUDE AND LONGITUDE', 'dated_on': '2023-11-03 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU2MDM=', 'type': 'FORM B, DULY NOTARIZED', 'dated_on': '2023-11-07 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU3Nzg=', 'type': 'PHOTOCOPY OF BANK DRAFT', 'dated_on': '2023-11-10 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU4MDU=', 'type': 'DEED OF PARTNERSHIP', 'dated_on': '2023-11-11 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU4MDY=', 'type': 'DEVELOPMENT AGREEMENT OR DEED OF AGREEMENT', 'dated_on': '2023-11-11 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU4NTI=', 'type': 'FIRE NOC', 'dated_on': '2023-11-17 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU4NTM=', 'type': 'COMMENCEMENT CERTIFICATE OF THE PROJECT', 'dated_on': '2023-11-17 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU5NjQ=', 'type': 'PLAN OF DEVELOPMENT WORKS', 'dated_on': '2023-11-28 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNDc=', 'type': 'DRAFT ALLOTMENT LETTER', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNDg=', 'type': 'DRAFT CONVEYENCE DEED', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNDk=', 'type': 'CARPET AREA AND PARKING AREA DETAILS', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNTA=', 'type': 'ARCHITECT, STRUCTURAL ENGINEER AND CONTRACTOR DETAILS WITH NAME AND ADDRESS AS THE CASE MAY BE', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNTI=', 'type': 'DRAFT FOR AGREEMENT FOR SALE', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNTU=', 'type': 'AUDITED BALANCE SHEET OF THE PROMOTER FOR THE IMMEDIATELY PRECEDING THREE (3) FINANCIAL YEARS', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNTY=', 'type': 'INCOME TAX RETURN OF THE PROMOTER FOR THE IMMEDIATELY PRECEDING THREE (3) FINANCIAL YEARS', 'dated_on': '2023-12-01 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/NDU2NzY=', 'type': 'UPDATED NEC', 'dated_on': '2024-12-27 00:00:00+00:00'}, {'link': 'https://rera.assam.gov.in/project/view_uploaded_Document_open_public/NDU2Nzc=', 'type': \"BANK MANAGER'S LETTER MENTIONING THAT THE ACCOUNT HAS BEEN OPENED IN COMPLIANCE WITH THE SECTION 4(2)(L)(D) OF REAL ESTATE (REGULATION AND DEVELOPMENT) ACT, 2016\", 'dated_on': '2024-12-27 00:00:00+00:00'}]"
+    }
+  ],
+  "status_update": null,
+  "iw_part_processed": true,
+  "iw_processed": true,
+  "last_crawled_date": "2026-04-21 20:34:02.063828+00:00",
+  "land_area_details": {
+    "land_area": "1270.67",
+    "land_area_unit": "(Sqr/mtrs)",
+    "construction_area": 29499.84,
+    "construction_area_unit": "In Square Meter"
+  },
+  "doc_ocr_url": null,
+  "proposed_timeline": null,
+  "checked_updates": true,
+  "checked_updates_date": "2025-08-11 20:34:09.853745+00:00",
+  "rera_housing_found": true,
+  "is_live": true,
+  "alternative_rera_ids": null
+}

@@ -1,0 +1,229 @@
+{
+  "key": "7742253939251332159",
+  "project_name": "AURAMAH VALLEY PHASE-I",
+  "project_type": "Development / Construction (Residential)",
+  "promoter_name": "MANAVINDER SINGH",
+  "project_registration_no": "RERAHPSHP01190048",
+  "status_of_the_project": "Ongoing Project",
+  "acknowledgement_no": null,
+  "project_pin_code": null,
+  "project_city": null,
+  "project_state": "himachal pradesh",
+  "project_location_raw": {
+    "taluk": "Shimla(Rural)",
+    "plot_no": "249,249/1,250,251,252,253",
+    "latitude": "31.1643 deg",
+    "locality": "Tikkar",
+    "longitude": "77.3168 deg",
+    "raw_address": "Tikkar, Shimla Rural, Shimla, 2 (171002)"
+  },
+  "promoter_address_raw": {
+    "registered_address": "Villette Kothi, Khalini, Shimla, Khalini, Shimla, Himachal Pradesh (171002)",
+    "correspondence_address": "Villette Kothi, Khalini, Shimla, Khalini, Shimla, Himachal Pradesh (171002)"
+  },
+  "promoter_contact_details": {
+    "email": "manav@imperialholding.in",
+    "phone": "8527733503"
+  },
+  "submitted_date": null,
+  "last_modified": null,
+  "estimated_commencement_date": "2019-10-04 00:00:00+00:00",
+  "actual_commencement_date": null,
+  "estimated_finish_date": "2025-10-02 00:00:00+00:00",
+  "actual_finish_date": null,
+  "approved_on_date": null,
+  "past_experience_of_promoter": null,
+  "bank_details": {
+    "IFSC": "HDFC0000089",
+    "branch": "NEW FRIENDS COLONY, NEW DELHI",
+    "address": "NEW FRIENDS COLONY, NEW DELHI",
+    "bank_name": "HDFC BANK",
+    "account_no": "00892560006430",
+    "account_name": "CLUB ONE ESTATES"
+  },
+  "land_area": 0.0,
+  "construction_area": 5644.0,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "project_cost_detail": {
+    "cost_of_land": "0.00 lakh",
+    "total_project_cost": "0.00 lakh",
+    "estimated_construction_cost": "0.00 lakh"
+  },
+  "number_of_residential_units": 52,
+  "number_of_commercial_units": null,
+  "building_details": null,
+  "complaints_litigation_details": null,
+  "uploaded_documents": [
+    {
+      "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUys6fW2%2FDbBBU5DiO8tXnvRrdOKQW3EYnjZQME%2BMwu35YNGmOMdFPIAhiGcL7hGbWgpYCOnUQXButLSQIRI2IIJbaoNXSW3%2FNO0FjwbZ78LZrA%3D%3D",
+      "type": "Jamabandhi *",
+      "updated": true
+    },
+    {
+      "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUys6fW2%2FDbBBU5DiO8tXnvRrdOKQW3EYnjZQME%2BMwu35YNGmOMdFPIAhiGcL7hGbWgpYCOnUQXButLSQIRI2IIJbDGxS5cvU24XpPtMs%2BFu%2Fdw%3D%3D",
+      "type": "Tatima *",
+      "updated": true
+    },
+    {
+      "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUys6fW2%2FDbBBU5DiO8tXnvRrdOKQW3EYnjZQME%2BMwu35YNGmOMdFPIAhiGcL7hGbWgpYCOnUQXButLSQIRI2IIJbZHMjb0vuJ6VxxeeotyRgOg%3D%3D",
+      "type": "Non-Encumbrance Certificate *",
+      "updated": true
+    },
+    {
+      "type": "Sales Deed/Conveyance Deed/Lease Deed/Gift Deed/Registry/Other Deeds"
+    },
+    {
+      "type": "Agreement with Land Owner (Collaboration/Development/Joint Dev./Other Agreement)"
+    },
+    {
+      "type": "Project Report"
+    },
+    {
+      "type": "Brochure of the Project"
+    },
+    {
+      "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUys6fW2%2FDbBBU5DiO8tXnvRrdOKQW3EYnjZQME%2BMwu35YNGmOMdFPIAhiGcL7hGbWgpYCOnUQXButLSQIRI2IIJbc5H7URg7gcJMfoAuwtj95A%3D%3D",
+      "type": "Proforma of Agreement for Sale (Form-L) *",
+      "updated": true
+    },
+    {
+      "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUys6fW2%2FDbBBU5DiO8tXnvRrdOKQW3EYnjZQME%2BMwu35YNGmOMdFPIAhiGcL7hGbWgpYCOnUQXButLSQIRI2IIJbZHMjb0vuJ6XixZw0X1UBTA%3D%3D",
+      "type": "Proforma of Sales Deed/Conveyance Deed/Lease Deed/Gift Deed/Others *",
+      "updated": true
+    },
+    {
+      "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUys6fW2%2FDbBBU5DiO8tXnvRrdOKQW3EYnjZQME%2BMwu35YNGmOMdFPIAhiGcL7hGbWgpYCOnUQXButLSQIRI2IIJbMxlCwuXPVoOrRVevYCYJjw%3D%3D",
+      "type": "Proforma of Allotment Letter *",
+      "updated": true
+    },
+    {
+      "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUys6fW2%2FDbBBU5DiO8tXnvRrdOKQW3EYnjZQME%2BMwu35YNGmOMdFPIAhiGcL7hGbWgpYCOnUQXButLSQIRI2IIJbZHMjb0vuJ6W6ovU1DfqRIQ%3D%3D",
+      "type": "Proforma of Possession Letter *",
+      "updated": true
+    },
+    {
+      "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUys6fW2%2FDbBBU5DiO8tXnvRrdOKQW3EYnjZQME%2BMwu35YNGmOMdFPIAhiGcL7hGbWgpYCOnUQXButLSQIRI2IIJbZHMjb0vuJ6WV4HAHfqh4Kw%3D%3D",
+      "type": "Structural Stability Certificate",
+      "updated": true
+    },
+    {
+      "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUys6fW2%2FDbBBU5DiO8tXnvRrdOKQW3EYnjZQME%2BMwu35YNGmOMdFPIAhiGcL7hGbWgpYCOnUQXButLSQIRI2IIJbexnOULCyieer2yoYOvyv%2FA%3D%3D",
+      "type": "Permission under Section 118 of the HP Tenancy and Land Reforms Act 1972",
+      "updated": true
+    },
+    {
+      "type": "NOC/Consent to Operate from Pollution Control Board"
+    },
+    {
+      "type": "Environment Clearance from the Competent Authority"
+    },
+    {
+      "type": "Legal Title Deed of the Land (Rule 3(1)(d) & (e)) *",
+      "updated": true
+    },
+    {
+      "type": "Value of the Project as per approved valuer empaneled with Income Tax Department *",
+      "updated": true
+    },
+    {
+      "type": "Fire NOC *",
+      "updated": true
+    }
+  ],
+  "authorised_signatory_details": null,
+  "co_promoter_details": null,
+  "project_description": "Ongoing Project Residential",
+  "provided_faciltiy": null,
+  "professional_information": [
+    {
+      "name": "SH RANDEEP CHAUHAN",
+      "role": "Architect",
+      "email": "responce.erc@gmail.com",
+      "phone": "9218000003",
+      "address": "Twin Tower, Seven Oak, By Pass Road, Sanjauli, Shimla, 171006., By Pass Road, Sanjauli,, Shimla, Himachal Pradesh, 171006",
+      "updated": true,
+      "key_real_estate_projects": "0"
+    },
+    {
+      "name": "SH SURINDER KALTA",
+      "role": "Engineer",
+      "email": "responce.erc@gmail.com",
+      "phone": "9218000003",
+      "address": "Jai Niwas, Ghan,, Kamlanagar, Sanjaul, Shimla, Himachal Pradesh, 171006",
+      "key_real_estate_projects": "0"
+    }
+  ],
+  "development_agreement_detail": null,
+  "construction_progress": null,
+  "land_detail": {
+    "mouza": "Tikkar",
+    "khata_no": "22"
+  },
+  "document_urls": null,
+  "members_details": null,
+  "retrieved_on": "2024-11-04 10:16:58.509329+00:00",
+  "config_id": 11808,
+  "data": {
+    "flats": "52",
+    "govt_type": "state",
+    "arrived_date": "2024-11-04 15:45:10.225246+05:30",
+    "completion_year": "6",
+    "completion_month": "0"
+  },
+  "promoters_details": {
+    "name": "MANAVINDER SINGH",
+    "type_of_firm": "Individual"
+  },
+  "domain": "hprera.nic.in",
+  "state": "himachal pradesh",
+  "crawl_machine_ip": "148.113.37.79",
+  "machine_name": "dashboard-rera-11808-himachal-pradesh-5d46558969-smjfv",
+  "is_updated": true,
+  "is_duplicate": false,
+  "url": "https://hprera.nic.in/PublicDashboard",
+  "last_updated": "2026-04-06 10:36:53.507971+00:00",
+  "updated_fields": null,
+  "project_images": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": [
+    {
+      "updated_on": "2026-04-06 10:36:53.507971+0000",
+      "uploaded_documents": "[{'link': 'https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUyuFY4JxB5V4loDb76vcw8cGpsMW%2FJpFkyfgh6gMpwfcsTpfoaFrWKU0V2FxNnkgJtY8N79huFZCQZyZswhiVHXY97oyjmu9%2B%2Bvj7q4t3eoB3g%3D%3D', 'type': 'Jamabandhi *'}, {'link': 'https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUyuFY4JxB5V4loDb76vcw8cGpsMW%2FJpFkyfgh6gMpwfcsTpfoaFrWKU0V2FxNnkgJtY8N79huFZCQZyZswhiVHXYMWPR1nmOkgNPV2kuTrD4OQ%3D%3D', 'type': 'Tatima *'}, {'link': 'https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUyuFY4JxB5V4loDb76vcw8cGpsMW%2FJpFkyfgh6gMpwfcsTpfoaFrWKU0V2FxNnkgJtY8N79huFZCQZyZswhiVHXYvxZS3VCIwAW1O7jxy%2FGFcQ%3D%3D', 'type': 'Non-Encumbrance Certificate *'}, {'type': 'Sales Deed/Conveyance Deed/Lease Deed/Gift Deed/Registry/Other Deeds'}, {'type': 'Agreement with Land Owner (Collaboration/Development/Joint Dev./Other Agreement)'}, {'type': 'Project Report'}, {'type': 'Brochure of the Project'}, {'link': 'https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUyuFY4JxB5V4loDb76vcw8cGpsMW%2FJpFkyfgh6gMpwfcsTpfoaFrWKU0V2FxNnkgJtY8N79huFZCQZyZswhiVHXY67HOicvCxs8Gsm1Uod2XHg%3D%3D', 'type': 'Proforma of Agreement for Sale (Form-L) *'}, {'link': 'https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUyuFY4JxB5V4loDb76vcw8cGpsMW%2FJpFkyfgh6gMpwfcsTpfoaFrWKU0V2FxNnkgJtY8N79huFZCQZyZswhiVHXYZvga7azKwPiGtKWIy4TEVA%3D%3D', 'type': 'Proforma of Sales Deed/Conveyance Deed/Lease Deed/Gift Deed/Others *'}, {'link': 'https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUyuFY4JxB5V4loDb76vcw8cGpsMW%2FJpFkyfgh6gMpwfcsTpfoaFrWKU0V2FxNnkgJtY8N79huFZCQZyZswhiVHXYDJ8i%2FsqLj1kHg7k0koVEcw%3D%3D', 'type': 'Proforma of Allotment Letter *'}, {'link': 'https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUyuFY4JxB5V4loDb76vcw8cGpsMW%2FJpFkyfgh6gMpwfcsTpfoaFrWKU0V2FxNnkgJtY8N79huFZCQZyZswhiVHXYCVFjtOLYXUB5p%2ByioTXDqg%3D%3D', 'type': 'Proforma of Possession Letter *'}, {'link': 'https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUyuFY4JxB5V4loDb76vcw8cGpsMW%2FJpFkyfgh6gMpwfcsTpfoaFrWKU0V2FxNnkgJtY8N79huFZCQZyZswhiVHXYWqE%2Bq92IU2D7QB%2BB2y9wrA%3D%3D', 'type': 'Structural Stability Certificate'}, {'link': 'https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUyuFY4JxB5V4loDb76vcw8cGpsMW%2FJpFkyfgh6gMpwfcsTpfoaFrWKU0V2FxNnkgJtY8N79huFZCQZyZswhiVHXYQkoHGMA%2F6qr4MeBPt8UaVw%3D%3D', 'type': 'Permission under Section 118 of the HP Tenancy and Land Reforms Act 1972'}, {'type': 'NOC/Consent to Operate from Pollution Control Board'}, {'type': 'Environment Clearance from the Competent Authority'}]"
+    },
+    {
+      "updated_on": "2025-04-01 09:00:16.663411+0000",
+      "promoter_address_raw": "{'registered_address': 'Villette Kothi, Khalini, Shiml, Khalini, Shimla, Himachal Pradesh (171002)', 'correspondence_address': 'Villette Kothi, Khalini, Shiml, Khalini, Shimla, Himachal Pradesh (171002)'}",
+      "professional_information": "[{'name': 'SH RANDEEP CHAUHAN', 'role': 'Architect', 'email': 'responce.erc@gmail.com', 'phone': '9218000003', 'address': 'Twin Tower, Seven Oak, By Pass, By Pass Road, Sanjauli,, Shimla, Himachal Pradesh, 171006', 'updated': True, 'key_real_estate_projects': '0'}, {'name': 'SH SURINDER KALTA', 'role': 'Engineer', 'email': 'responce.erc@gmail.com', 'phone': '9218000003', 'address': 'Jai Niwas, Ghan,, Kamlanagar, Sanjaul, Shimla, Himachal Pradesh, 171006', 'key_real_estate_projects': '0'}]"
+    },
+    {
+      "updated_on": "2025-02-26 09:01:44.571202+0000",
+      "promoter_address_raw": "{'registered_address': 'Villette Kothi, Khalini, Shimla, Khalini, Shimla, Himachal Pradesh (171002)', 'correspondence_address': 'Villette Kothi, Khalini, Shimla, Khalini, Shimla, Himachal Pradesh (171002)'}",
+      "professional_information": "[{'name': 'SH RANDEEP CHAUHAN', 'role': 'Architect', 'email': 'responce.erc@gmail.com', 'phone': '9218000003', 'address': 'Twin Tower, Seven Oak, By Pass Road, Sanjauli, Shimla, 171006., By Pass Road, Sanjauli,, Shimla, Himachal Pradesh, 171006', 'key_real_estate_projects': '0'}, {'name': 'SH SURINDER KALTA', 'role': 'Engineer', 'email': 'responce.erc@gmail.com', 'phone': '9218000003', 'address': 'Jai Niwas, Ghan,, Kamlanagar, Sanjaul, Shimla, Himachal Pradesh, 171006', 'key_real_estate_projects': '0'}]"
+    },
+    {
+      "land_area": "0.0",
+      "updated_on": "2024-12-24 07:55:56.555995+0000",
+      "construction_area": "5644.0"
+    }
+  ],
+  "status_update": null,
+  "iw_part_processed": true,
+  "iw_processed": true,
+  "last_crawled_date": "2026-04-07 03:42:03.754066+00:00",
+  "land_area_details": {
+    "land_area": "0.00",
+    "land_area_unit": "sq m",
+    "construction_area": "5644.00",
+    "construction_area_unit": "sq m"
+  },
+  "doc_ocr_url": null,
+  "proposed_timeline": null,
+  "checked_updates": false,
+  "checked_updates_date": null,
+  "rera_housing_found": true,
+  "is_live": true,
+  "alternative_rera_ids": null
+}

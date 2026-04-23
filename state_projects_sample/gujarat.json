@@ -1,0 +1,4376 @@
+{
+  "key": "7466134763757854538",
+  "project_name": "SILENT SCAPE",
+  "project_type": "Residential/Group Housing",
+  "promoter_name": "J EKLERA REALTY LLP",
+  "project_registration_no": "PR/GJ/SURAT/CHORYASI/Surat Municipal Corporation/RAA16644/250326/311231",
+  "status_of_the_project": "New",
+  "acknowledgement_no": "PR/SURAT/CHORYASI/SURAT MUNICIPAL CORPORATION/260310/030502",
+  "project_pin_code": null,
+  "project_city": null,
+  "project_state": "Gujarat",
+  "project_location_raw": {
+    "state": "Gujarat",
+    "raw_address": "T.P.S. NO. 58 (VALAK), BLOCK NO. 169/A (OLD), 189 (RE-SURVEY), C.S.NO:-NA189/P, +169/B/1(OLD), 192/A (RE-SURVEY), +179 (OLD), 207/2 (RE-SURVEY), C.S. NO:-NA207/2/2, O.P. NO:-75/A+75/B/1+78/A, F.P.NO. 75/A+75/B/1 +78/A PAIKEE SUB DIVISION NO:-1, MOJE: - VALAK, TAL. - CHORYASI, DIST.:- SURAT, Choryasi, Surat, GUJARAT, 395013"
+  },
+  "promoter_address_raw": {
+    "raw_address": "Shop No. G/1, Gr Floor, Shubham Residency, Opp. Silicon View, Archana School Road, Magob, Surat, Gujarat, 395010, India  MAGOB GUJARAT Surat Surat City 395010"
+  },
+  "promoter_contact_details": {
+    "email": "silentresidency@gmail.com",
+    "phone": "9510620036"
+  },
+  "submitted_date": null,
+  "last_modified": null,
+  "estimated_commencement_date": null,
+  "actual_commencement_date": "2026-01-12 00:00:00+00:00",
+  "estimated_finish_date": null,
+  "actual_finish_date": "2031-12-31 00:00:00+00:00",
+  "approved_on_date": null,
+  "past_experience_of_promoter": null,
+  "bank_details": null,
+  "land_area": 5472.0,
+  "construction_area": 18213.44000000007,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "project_cost_detail": {
+    "total_project_cost": "850899091.00",
+    "estimated_project_cost": "850899091.00"
+  },
+  "number_of_residential_units": 280,
+  "number_of_commercial_units": null,
+  "building_details": [
+    {
+      "flat_name": "101",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "102",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "103",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "104",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "201",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "202",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "203",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "204",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "301",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "302",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "303",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "304",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "401",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "402",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "403",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "404",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "501",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "502",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "503",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "504",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "601",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "602",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "603",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "604",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "701",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "702",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "703",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "704",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "801",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "802",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "803",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "804",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "901",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "902",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "903",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "904",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1001",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1002",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1003",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1004",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1101",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1102",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1103",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1104",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1201",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1202",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1203",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1204",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1301",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1302",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1303",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1304",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1401",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1402",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1403",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "1404",
+      "flat_type": "Residential",
+      "open_area": "8.74",
+      "block_name": "A",
+      "carpet_area": "85.14"
+    },
+    {
+      "flat_name": "101",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "102",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "103",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "104",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "201",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "202",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "203",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "204",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "301",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "302",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "303",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "304",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "401",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "402",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "403",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "404",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "501",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "502",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "503",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "504",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "601",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "602",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "603",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "604",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "701",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "702",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "703",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "704",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "801",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "802",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "803",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "804",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "901",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "902",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "903",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "904",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1001",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1002",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1003",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1004",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1101",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1102",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1103",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1104",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1201",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1202",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1203",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1204",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1301",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1302",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1303",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1304",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1401",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1402",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1403",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1404",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "B",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "101",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "102",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "103",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "104",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "201",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "202",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "203",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "204",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "301",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "302",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "303",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "304",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "401",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "402",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "403",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "404",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "501",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "502",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "503",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "504",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "601",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "602",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "603",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "604",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "701",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "702",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "703",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "704",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "801",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "802",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "803",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "804",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "901",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "902",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "903",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "904",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1001",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1002",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1003",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1004",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1101",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1102",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1103",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1104",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1201",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1202",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1203",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1204",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1301",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1302",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1303",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1304",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1401",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1402",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1403",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "1404",
+      "flat_type": "Residential",
+      "open_area": "8.99",
+      "block_name": "C",
+      "carpet_area": "61.12"
+    },
+    {
+      "flat_name": "101",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "102",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "103",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "104",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "201",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "202",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "203",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "204",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "301",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "302",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "303",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "304",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "401",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "402",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "403",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "404",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "501",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "502",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "503",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "504",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "601",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "602",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "603",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "604",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "701",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "702",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "703",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "704",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "801",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "802",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "803",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "804",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "901",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "902",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "903",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "904",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1001",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1002",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1003",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1004",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1101",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1102",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1103",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1104",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1201",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1202",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1203",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1204",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1301",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1302",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1303",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1304",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1401",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1402",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1403",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1404",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "D",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "101",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "102",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "103",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "104",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "201",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "202",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "203",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "204",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "301",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "302",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "303",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "304",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "401",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "402",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "403",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "404",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "501",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "502",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "503",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "504",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "601",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "602",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "603",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "604",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "701",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "702",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "703",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "704",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "801",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "802",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "803",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "804",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "901",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "902",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "903",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "904",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1001",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1002",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1003",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1004",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1101",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1102",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1103",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1104",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1201",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1202",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1203",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1204",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1301",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1302",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1303",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1304",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1401",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1402",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1403",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    },
+    {
+      "flat_name": "1404",
+      "flat_type": "Residential",
+      "open_area": "9.06",
+      "block_name": "E",
+      "carpet_area": "58.93"
+    }
+  ],
+  "complaints_litigation_details": null,
+  "uploaded_documents": [
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/P2BPiCWm86gHhMqaDxqasPHqXuLzlbkiolwkhDtg85zEi8CD1xgUTPXsFMuTiZniDtzV4h3hAfh0f",
+      "type": "ARCHITECT CERTIFICATE",
+      "s3_link": "http://docs.primetenders.com/documents/7466134763757854538/ARCHITECT_CERTIFICATE.pdf",
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/3kaPAcWfz6zihq1aH7qU4PyQXM0zRdk8FlPDhEIgkuzGa8r01PoUAPXsXMaLiOgiElzrACWpLsA0d",
+      "type": "ENGINEER CERTIFICATE",
+      "s3_link": "http://docs.primetenders.com/documents/7466134763757854538/ENGINEER_CERTIFICATE.pdf",
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/4mCPBhWh86g1h86aK8qV2PkAX2rzrpkmFlQPhYjgjvzEi8qC1OpUDXXAFMuLiOfiFDzZtCtMAdzyRr3RC9q",
+      "type": "CA CERTIFICATE",
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/42APhgWgy6yEhrhaG8qVRPp8XaLzljkYBlzBhLKgmvzHa8rRHPab3PZUIMrGdEliMdBDACWgLGfyiL3aG99",
+      "type": "Approved Building Plan/Plotting Plan",
+      "s3_link": "http://docs.primetenders.com/documents/7466134763757854538/Approved_Building_Plan_Plotting_Plan.pdf",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/P2aPADWny6y1h87aCzqL3PVzX39zNdk80lwkhOXgj6zEa8rHH9gb4HZ8FMuTdbliMiBB4CIoLcfyiM30G99",
+      "type": "Approved Layout Plan",
+      "s3_link": "http://docs.primetenders.com/documents/7466134763757854538/Approved_Layout_Plan.pdf",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/43aPAgWgz6z0h97aC7qUJPjaX0qzmdk8plaZhYXgjvzH08XaHdrbTXZanMbLdpkiBDBJtCtoLcfyi939K9p",
+      "type": "Approved Section Plan/ Infrastructure Plan",
+      "s3_link": "http://docs.primetenders.com/documents/7466134763757854538/Approved_Section_Plan__Infrastructure_Plan.pdf",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/44CPBFWp86gGhLXaWzqL2PkAX2LzlOkDplPZhGug8wzHh8hRHPpWBGXfYMxGdOkiaBB9gcpnA6y0em6IVY50TijXp1q3",
+      "type": "Area Development Plan",
+      "s3_link": "http://docs.primetenders.com/documents/7466134763757854538/Area_Development_Plan.pdf",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/32yP4gWg86gyhd1aH6qRJPjzX3LzljkYplaPhZXgjuz0i86HH9ab3PZUFMuzd3kiBlBUhCKMLIyybq3L29q",
+      "type": "Draft Brochure",
+      "s3_link": "http://docs.primetenders.com/documents/7466134763757854538/Draft_Brochure.pdf",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/34PPtFWp06BGhLhaGzqL2PkaX00zRKkZalDZhYKgmczji86HH9ab3PZUHM0Ad4gi0lBUCC2hLkfyi939K9p",
+      "type": "Non Agriculture (NA) Order and Fire Opinion from Authority",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/4QzPgDWny6yHhM1aH6qR4PyXXZ9zNikXolBPhZXgjczji869Hb9bJ9ZDFMuLdpeiCBBRCC2pLw0yhM30C9o",
+      "type": "Project Photo",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/P2zPghWh06BihqraVxqaRPpXXZLzlskWFlPkhOugYwzGk8qRHPgb4HZ8mMRyd6fiviBBzCuoLczyRL3aD9h",
+      "type": "Project Specification",
+      "s3_link": "http://docs.primetenders.com/documents/7466134763757854538/Project_Specification.pdf",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/P3aPAhWh96hDhm2a18qVSPqaX0azdKkZFlPJhNKgmuz0k8qRHPsbsGZQHM0Zd5oiLiBB4CInLdyybr3RK9p",
+      "type": "Any other Document",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/33APhDWnz6zHhM1aH9qW3PVQXMHz7bkiBlyQhgtg95zti810He0b2yZsYMwGdEnipDBJhCKgLGzyR83DK9p",
+      "type": "Balance sheet 1",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/46CPBcWfz6zGhL7aC9qWSPqUXgLzlskWolaYhOIgj4zio8hRHPrbT7ZAHM0zd3gi0tBQACWmLfeyod3I29q",
+      "type": "Balance sheet 3",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/4QDPCFWpz6z1h82a1yqDSPqrXt0zREkEolaJhYXgk4ziR8qfHz0WTHVXm3rGjZeiDMw9hDCn840ySrqD1u6a2GyU9grGljohpiBQDgJZzvCGhM6fzz9y",
+      "type": "Cash Flow Statement 1",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/3mwPzcWfy6yyhd7aC8qVsPHXXZ0zRbkiolakhbtg9uzMI82aHdgb4yZsZMvZd5gi0BBRtCtpLw0yh33K19r",
+      "type": "Cash Flow Statement 2",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/3SwPzhWhy6yjh33a29qWSPqUXgLzlOkDBlyBhcKglvzLI82RHPsbsGZQXMaZd5kiBiBBACWqLvAyk83DH9s",
+      "type": "Cash Flow Statement 3",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/3laPAhWhz6z1h86aKxqa3PVqXu9zNEkEBlzKhKWgZwzGR8Y0HerbTHZ8FMuAd4kiBABkACWoLchycd3I29q",
+      "type": "Directors Report 1",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/P4wPzDWnM6fyhdqaDYqbsPHaX0Hz7skWolBQhMJgl5z1o870HepbRXZanMbAd4jiWABktCtfLHgyId3IG99",
+      "type": "Directors Report 2",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/P6zPghWhz6zjh36aKyqDSPqAX2azdikXplaDhFkgxuz0i86RHP0b27ZAXMaLdpjiWiBBhCKMLIfyiM30W96",
+      "type": "Directors Report 3",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/32zPgEWox60yhd2a1xqa4PyUXgbziikXplaYhbKgmwzG08X0He9bJ9ZDFMuzd3eiCCBVCC2gLGhycq3L19r",
+      "type": "Auditor Report 1",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/3mBPigWgA6Aihq7aCYqbTPGqXu9zNpkm0lwZhYJgl4zIi860Hesbs7ZAFMuAd4eiCiBBBCCqLvAyk939V9Y",
+      "type": "Auditor Report 2",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/46aPAhWh96hGhL1aHxqaRPpqXu8zMpkmolBKhKWgZczj08XfHzrbTHZ8IMrZd5niplBUBCCpLwzyR83DK9p",
+      "type": "Auditor Report 3",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/4kPPtcWfy6yGhL2a1zqLSPqzX3LzlEkEalDYhbkgx6zEI83RHP0b29ZD9MxGdEjiWDBJtCtgLGzyRM30G99",
+      "type": "Income Tax Return Acknowledgement 1",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/43zPghWh96hGhL1aHYqbSPqqXuLzlEkEolBPhZWgZ4zII83DHarbTyZsYMwGdEgi0iBB4CInLdAykL3aD9h",
+      "type": "Income Tax Return Acknowledgement 2",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/P3CPBDWnL6eHhM1aHxqaSPqXXZ0zRskWolBkhOjga7zyh81aHd0b2HZ8FMuyd6gi0DBJgCJqLvyybL3aK9p",
+      "type": "Income Tax Return Acknowledgement 3",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/4mPPtFWp96hGhL7aCYqb3PVXXZLzldk8olBYhbIgk5z1R8YfHz9bJGZQmMRAd4jiWtBQiCYpLweyoM3029q",
+      "type": "Land Document",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/34CPBGWqA6AEhr7aC6qRSPqQXMLzlbkiMlAKhKugYczj08XDHaab3UZXFMuHdskiBDBJiCYoLczyRq3LV9Y",
+      "type": "Affidavit by Promoter (Form B)",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/4SAPhDWnx600h92a18qVRPpAX28zMikXFlPBhLKgmczja8r0HerbTGZQXMaAd4liMBBRBCCgLGfyi93919r",
+      "type": "Drainage Affidavit",
+      "dated_on": "4SAPhDWnx6"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/3QaPAhWhz6zjh3qaDxqaRPpaX00zRskWplaYhbKgm6zEI830HerbTHZ8YMwGdEliMCBVACWnLdeyom3fV9Y",
+      "type": "Encumbrance Certificate",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/45BPiFWpM6f1h86aK9qWTPGqXu9zNjkYplakhOKgm5z1k8qGHY9bJHZ8XMaZd5nipABkhCKgLGyyb83D19r",
+      "type": "Performa for Sale Agreement",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/45APhhWh96hHhM7aCyqDsPHzX30zRikXFlPZhYugY5z1o87GHYsbsUZXZMvLdpliMiBBiCYoLchyc939V9Y",
+      "type": "Draft Allotment Letter",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    },
+    {
+      "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/4SBPibWM86g1h8raV8qVSPqaX0Hz7jkYolwBhCKgyczia8BGHYsbs9ZDZMvZd5kiBlBUiCYhLky0RM30KY0UsP",
+      "type": "Rera Registration Certificate",
+      "s3_link": "http://docs.primetenders.com/documents/7466134763757854538/Rera_Registration_Certificate.pdf",
+      "updated": true,
+      "dated_on": "2026-03-10 11:58:17.864"
+    }
+  ],
+  "authorised_signatory_details": [
+    {
+      "name": " MANISHBHAI NAGJIBHAI SAVASAVIYA",
+      "email": " silentresidency@gmail.com",
+      "phone": " 9510620036",
+      "photo": "https://gujrera.gujarat.gov.in/vdms/download/45CPBEWoy6yyhd3a2xqa3PVXXZqzmskWalDBhLXgk7zDk82DHa0b2RZE9MvAibjiFBP9hCKfAfe0c96DC9YDsMVX2Mq2mifhFdPQwCIXL701iHhfH"
+    }
+  ],
+  "co_promoter_details": [
+    {
+      "name": " JAYANTIBHAI VIRJIBHAI BABARIYA",
+      "email": " ekleragroup@gmail.com",
+      "phone": " 9714050300"
+    },
+    {
+      "name": " PRAVINABEN JAYANTIBHAI BABARIYA",
+      "email": " ekleragroup@gmail.com",
+      "phone": " 9723641429"
+    },
+    {
+      "name": " MANISHBHAI NAGJIBHAI SAVASAVIYA",
+      "email": " silentresidency@gmail.com",
+      "phone": " 9510620036"
+    }
+  ],
+  "project_description": null,
+  "provided_faciltiy": [
+    {
+      "status": "Not Available",
+      "facility": "Pool"
+    },
+    {
+      "status": "Available",
+      "facility": "Disposal of  sewage water"
+    },
+    {
+      "status": "Available",
+      "facility": "Lift"
+    },
+    {
+      "status": "Available",
+      "facility": "Garden"
+    },
+    {
+      "status": "Available",
+      "facility": "Security"
+    },
+    {
+      "status": "Available",
+      "facility": "Drinking Water"
+    },
+    {
+      "status": "Available",
+      "facility": "Water  Conservation"
+    },
+    {
+      "status": "Available",
+      "facility": "Water Supply"
+    },
+    {
+      "status": "Available",
+      "facility": "Renewable  Energy"
+    },
+    {
+      "status": "Not Available",
+      "facility": "Community Hall"
+    },
+    {
+      "status": "Available",
+      "facility": "Fire Safety"
+    },
+    {
+      "status": "Available",
+      "facility": "Road"
+    }
+  ],
+  "professional_information": [
+    {
+      "name": " Dimple Padmshibhai Mordiya",
+      "type": "Architects",
+      "email": " dimple.moradiya@gmail.com",
+      "phone": " 9978725858",
+      "registration_no": " CA/2016/075438"
+    },
+    {
+      "name": " ANKIT MUKUNDBHAI KUMBHANI",
+      "type": "Engineers",
+      "email": " khushaligelani1998@gmail.com",
+      "phone": " 9824822236",
+      "registration_no": " 1116ERH19032903291088"
+    },
+    {
+      "type": "Contrators"
+    },
+    {
+      "type": "Agent"
+    }
+  ],
+  "development_agreement_detail": null,
+  "construction_progress": null,
+  "land_detail": null,
+  "document_urls": [
+    {
+      "link": "http://docs.primetenders.com/documents/7466134763757854538/ARCHITECT_CERTIFICATE.pdf",
+      "type": "ARCHITECT CERTIFICATE"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/7466134763757854538/ENGINEER_CERTIFICATE.pdf",
+      "type": "ENGINEER CERTIFICATE"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/7466134763757854538/Approved_Building_Plan_Plotting_Plan.pdf",
+      "type": "Approved Building Plan/Plotting Plan"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/7466134763757854538/Approved_Layout_Plan.pdf",
+      "type": "Approved Layout Plan"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/7466134763757854538/Approved_Section_Plan__Infrastructure_Plan.pdf",
+      "type": "Approved Section Plan/ Infrastructure Plan"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/7466134763757854538/Area_Development_Plan.pdf",
+      "type": "Area Development Plan"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/7466134763757854538/Draft_Brochure.pdf",
+      "type": "Draft Brochure"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/7466134763757854538/Project_Specification.pdf",
+      "type": "Project Specification"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/7466134763757854538/Rera_Registration_Certificate.pdf",
+      "type": "Rera Registration Certificate"
+    }
+  ],
+  "members_details": null,
+  "retrieved_on": "2026-03-26 04:32:10.198046+00:00",
+  "config_id": 14591,
+  "data": {
+    "govt_type": "state",
+    "detail_url": "https://gujrera.gujarat.gov.in/#/project-preview?id=MzA1MDI=",
+    "project_id": "MzA1MDI=",
+    "no_of_units": "280",
+    "raw_address": "T.P.S. NO. 58 (VALAK), BLOCK NO. 169/A (OLD), 189 (RE-SURVEY), C.S.NO:-NA189/P, +169/B/1(OLD), 192/A (RE-SURVEY), +179 (OLD), 207/2 (RE-SURVEY), C.S. NO:-NA207/2/2, O.P. NO:-75/A+75/B/1+78/A, F.P.NO. 75/A+75/B/1 +78/A PAIKEE SUB DIVISION NO:-1, MOJE: - VALAK, TAL. - CHORYASI, DIST.:- SURAT, Choryasi, Surat, GUJARAT, 395013",
+    "is_processed": false,
+    "type_of_units": "Residential/Group Housing",
+    "land_area_units": "Sq Mtrs",
+    "actual_start_date": "2026-01-12 00:00:00",
+    "construction_units": "in Sq. Mts."
+  },
+  "promoters_details": {
+    "pan": "AA###9#63#",
+    "name": "J EKLERA REALTY LLP",
+    "photo": "https://gujrera.gujarat.gov.in/assets/images/user-img.png",
+    "reg_no": "ABA3614",
+    "type_of_firm": "LIMITED LIABILITY PARTNERSHIP FIRM"
+  },
+  "domain": "gujrera.gujarat.gov.in",
+  "state": "gujarat",
+  "crawl_machine_ip": "98.70.112.71",
+  "machine_name": "dashboard-rera-14591-gujarat-58869f7d5d-2nbgf",
+  "is_updated": false,
+  "is_duplicate": false,
+  "url": "https://gujrera.gujarat.gov.in/#/search-glob/gloabl-data",
+  "last_updated": null,
+  "updated_fields": [
+    "uploaded_documents",
+    "status_update"
+  ],
+  "project_images": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": [
+    {
+      "updated_on": "2026-03-26 05:03:54.761606+0000",
+      "status_update": "None",
+      "uploaded_documents": "[{'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/P2BPiCWm86gHhMqaDxqasPHqXuLzlbkiolwkhDtg85zEi8CD1xgUTPXsFMuTiZniDtzV4h3hAfh0f', 'type': 'ARCHITECT CERTIFICATE', 's3_link': 'http://docs.primetenders.com/documents/7466134763757854538/ARCHITECT_CERTIFICATE.pdf', 'dated_on': '2026-03-10 11:58:17.864'}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/3kaPAcWfz6zihq1aH7qU4PyQXM0zRdk8FlPDhEIgkuzGa8r01PoUAPXsXMaLiOgiElzrACWpLsA0d', 'type': 'ENGINEER CERTIFICATE', 's3_link': 'http://docs.primetenders.com/documents/7466134763757854538/ENGINEER_CERTIFICATE.pdf', 'dated_on': '2026-03-10 11:58:17.864'}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/4mCPBhWh86g1h86aK8qV2PkAX2rzrpkmFlQPhYjgjvzEi8qC1OpUDXXAFMuLiOfiFDzZtCtMAdzyRr3RC9q', 'type': 'CA CERTIFICATE', 'dated_on': '2026-03-10 11:58:17.864'}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/42APhgWgy6yEhrhaG8qVRPp8XaLzljkYBlzBhLKgmvzHa8rRHPab3PZUIMrGdEliMdBDACWgLGfyiL3aG99', 'type': 'Approved Building Plan/Plotting Plan', 's3_link': 'http://docs.primetenders.com/documents/7466134763757854538/Approved_Building_Plan_Plotting_Plan.pdf', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/P2aPADWny6y1h87aCzqL3PVzX39zNdk80lwkhOXgj6zEa8rHH9gb4HZ8FMuTdbliMiBB4CIoLcfyiM30G99', 'type': 'Approved Layout Plan', 's3_link': 'http://docs.primetenders.com/documents/7466134763757854538/Approved_Layout_Plan.pdf', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/43aPAgWgz6z0h97aC7qUJPjaX0qzmdk8plaZhYXgjvzH08XaHdrbTXZanMbLdpkiBDBJtCtoLcfyi939K9p', 'type': 'Approved Section Plan/ Infrastructure Plan', 's3_link': 'http://docs.primetenders.com/documents/7466134763757854538/Approved_Section_Plan__Infrastructure_Plan.pdf', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/44CPBFWp86gGhLXaWzqL2PkAX2LzlOkDplPZhGug8wzHh8hRHPpWBGXfYMxGdOkiaBB9gcpnA6y0em6IVY50TijXp1q3', 'type': 'Area Development Plan', 's3_link': 'http://docs.primetenders.com/documents/7466134763757854538/Area_Development_Plan.pdf', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/32yP4gWg86gyhd1aH6qRJPjzX3LzljkYplaPhZXgjuz0i86HH9ab3PZUFMuzd3kiBlBUhCKMLIyybq3L29q', 'type': 'Draft Brochure', 's3_link': 'http://docs.primetenders.com/documents/7466134763757854538/Draft_Brochure.pdf', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/34PPtFWp06BGhLhaGzqL2PkaX00zRKkZalDZhYKgmczji86HH9ab3PZUHM0Ad4gi0lBUCC2hLkfyi939K9p', 'type': 'Non Agriculture (NA) Order and Fire Opinion from Authority', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/4QzPgDWny6yHhM1aH6qR4PyXXZ9zNikXolBPhZXgjczji869Hb9bJ9ZDFMuLdpeiCBBRCC2pLw0yhM30C9o', 'type': 'Project Photo', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/P2zPghWh06BihqraVxqaRPpXXZLzlskWFlPkhOugYwzGk8qRHPgb4HZ8mMRyd6fiviBBzCuoLczyRL3aD9h', 'type': 'Project Specification', 's3_link': 'http://docs.primetenders.com/documents/7466134763757854538/Project_Specification.pdf', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/P3aPAhWh96hDhm2a18qVSPqaX0azdKkZFlPJhNKgmuz0k8qRHPsbsGZQHM0Zd5oiLiBB4CInLdyybr3RK9p', 'type': 'Any other Document', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/33APhDWnz6zHhM1aH9qW3PVQXMHz7bkiBlyQhgtg95zti810He0b2yZsYMwGdEnipDBJhCKgLGzyR83DK9p', 'type': 'Balance sheet 1', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/46CPBcWfz6zGhL7aC9qWSPqUXgLzlskWolaYhOIgj4zio8hRHPrbT7ZAHM0zd3gi0tBQACWmLfeyod3I29q', 'type': 'Balance sheet 3', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/4QDPCFWpz6z1h82a1yqDSPqrXt0zREkEolaJhYXgk4ziR8qfHz0WTHVXm3rGjZeiDMw9hDCn840ySrqD1u6a2GyU9grGljohpiBQDgJZzvCGhM6fzz9y', 'type': 'Cash Flow Statement 1', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/3mwPzcWfy6yyhd7aC8qVsPHXXZ0zRbkiolakhbtg9uzMI82aHdgb4yZsZMvZd5gi0BBRtCtpLw0yh33K19r', 'type': 'Cash Flow Statement 2', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/3SwPzhWhy6yjh33a29qWSPqUXgLzlOkDBlyBhcKglvzLI82RHPsbsGZQXMaZd5kiBiBBACWqLvAyk83DH9s', 'type': 'Cash Flow Statement 3', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/3laPAhWhz6z1h86aKxqa3PVqXu9zNEkEBlzKhKWgZwzGR8Y0HerbTHZ8FMuAd4kiBABkACWoLchycd3I29q', 'type': 'Directors Report 1', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/P4wPzDWnM6fyhdqaDYqbsPHaX0Hz7skWolBQhMJgl5z1o870HepbRXZanMbAd4jiWABktCtfLHgyId3IG99', 'type': 'Directors Report 2', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/P6zPghWhz6zjh36aKyqDSPqAX2azdikXplaDhFkgxuz0i86RHP0b27ZAXMaLdpjiWiBBhCKMLIfyiM30W96', 'type': 'Directors Report 3', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/32zPgEWox60yhd2a1xqa4PyUXgbziikXplaYhbKgmwzG08X0He9bJ9ZDFMuzd3eiCCBVCC2gLGhycq3L19r', 'type': 'Auditor Report 1', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/3mBPigWgA6Aihq7aCYqbTPGqXu9zNpkm0lwZhYJgl4zIi860Hesbs7ZAFMuAd4eiCiBBBCCqLvAyk939V9Y', 'type': 'Auditor Report 2', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/46aPAhWh96hGhL1aHxqaRPpqXu8zMpkmolBKhKWgZczj08XfHzrbTHZ8IMrZd5niplBUBCCpLwzyR83DK9p', 'type': 'Auditor Report 3', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/4kPPtcWfy6yGhL2a1zqLSPqzX3LzlEkEalDYhbkgx6zEI83RHP0b29ZD9MxGdEjiWDBJtCtgLGzyRM30G99', 'type': 'Income Tax Return Acknowledgement 1', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/43zPghWh96hGhL1aHYqbSPqqXuLzlEkEolBPhZWgZ4zII83DHarbTyZsYMwGdEgi0iBB4CInLdAykL3aD9h', 'type': 'Income Tax Return Acknowledgement 2', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/P3CPBDWnL6eHhM1aHxqaSPqXXZ0zRskWolBkhOjga7zyh81aHd0b2HZ8FMuyd6gi0DBJgCJqLvyybL3aK9p', 'type': 'Income Tax Return Acknowledgement 3', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/4mPPtFWp96hGhL7aCYqb3PVXXZLzldk8olBYhbIgk5z1R8YfHz9bJGZQmMRAd4jiWtBQiCYpLweyoM3029q', 'type': 'Land Document', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/34CPBGWqA6AEhr7aC6qRSPqQXMLzlbkiMlAKhKugYczj08XDHaab3UZXFMuHdskiBDBJiCYoLczyRq3LV9Y', 'type': 'Affidavit by Promoter (Form B)', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/4SAPhDWnx600h92a18qVRPpAX28zMikXFlPBhLKgmczja8r0HerbTGZQXMaAd4liMBBRBCCgLGfyi93919r', 'type': 'Drainage Affidavit', 'dated_on': '4SAPhDWnx6'}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/3QaPAhWhz6zjh3qaDxqaRPpaX00zRskWplaYhbKgm6zEI830HerbTHZ8YMwGdEliMCBVACWnLdeyom3fV9Y', 'type': 'Encumbrance Certificate', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/45BPiFWpM6f1h86aK9qWTPGqXu9zNjkYplakhOKgm5z1k8qGHY9bJHZ8XMaZd5nipABkhCKgLGyyb83D19r', 'type': 'Performa for Sale Agreement', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/45APhhWh96hHhM7aCyqDsPHzX30zRikXFlPZhYugY5z1o87GHYsbsUZXZMvLdpliMiBBiCYoLchyc939V9Y', 'type': 'Draft Allotment Letter', 'dated_on': None}, {'link': 'https://gujrera.gujarat.gov.in/vdms/view-doc/4SBPibWM86g1h8raV8qVSPqaX0Hz7jkYolwBhCKgyczia8BGHYsbs9ZDZMvZd5kiBlBUiCYhLky0RM30KY0UsP', 'type': 'Rera Registration Certificate', 's3_link': 'http://docs.primetenders.com/documents/7466134763757854538/Rera_Registration_Certificate.pdf', 'dated_on': None}]"
+    }
+  ],
+  "status_update": [
+    {
+      "building_details": [
+        {
+          "flat_name": "101",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "102",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "103",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "104",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "201",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "202",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "203",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "204",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "301",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "302",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "303",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "304",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "401",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "402",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "403",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "404",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "501",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "502",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "503",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "504",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "601",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "602",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "603",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "604",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "701",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "702",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "703",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "704",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "801",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "802",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "803",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "804",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "901",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "902",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "903",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "904",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1001",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1002",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1003",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1004",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1101",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1102",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1103",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1104",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1201",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1202",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1203",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1204",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1301",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1302",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1303",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1304",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1401",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1402",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1403",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "1404",
+          "flat_type": "Residential",
+          "open_area": "8.74",
+          "block_name": "A",
+          "carpet_area": "85.14"
+        },
+        {
+          "flat_name": "101",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "102",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "103",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "104",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "201",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "202",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "203",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "204",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "301",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "302",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "303",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "304",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "401",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "402",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "403",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "404",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "501",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "502",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "503",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "504",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "601",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "602",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "603",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "604",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "701",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "702",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "703",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "704",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "801",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "802",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "803",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "804",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "901",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "902",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "903",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "904",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1001",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1002",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1003",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1004",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1101",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1102",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1103",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1104",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1201",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1202",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1203",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1204",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1301",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1302",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1303",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1304",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1401",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1402",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1403",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1404",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "B",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "101",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "102",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "103",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "104",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "201",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "202",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "203",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "204",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "301",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "302",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "303",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "304",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "401",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "402",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "403",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "404",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "501",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "502",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "503",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "504",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "601",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "602",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "603",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "604",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "701",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "702",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "703",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "704",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "801",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "802",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "803",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "804",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "901",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "902",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "903",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "904",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1001",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1002",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1003",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1004",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1101",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1102",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1103",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1104",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1201",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1202",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1203",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1204",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1301",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1302",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1303",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1304",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1401",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1402",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1403",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "1404",
+          "flat_type": "Residential",
+          "open_area": "8.99",
+          "block_name": "C",
+          "carpet_area": "61.12"
+        },
+        {
+          "flat_name": "101",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "102",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "103",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "104",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "201",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "202",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "203",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "204",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "301",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "302",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "303",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "304",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "401",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "402",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "403",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "404",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "501",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "502",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "503",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "504",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "601",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "602",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "603",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "604",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "701",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "702",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "703",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "704",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "801",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "802",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "803",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "804",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "901",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "902",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "903",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "904",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1001",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1002",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1003",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1004",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1101",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1102",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1103",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1104",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1201",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1202",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1203",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1204",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1301",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1302",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1303",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1304",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1401",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1402",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1403",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1404",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "D",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "101",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "102",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "103",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "104",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "201",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "202",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "203",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "204",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "301",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "302",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "303",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "304",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "401",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "402",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "403",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "404",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "501",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "502",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "503",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "504",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "601",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "602",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "603",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "604",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "701",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "702",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "703",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "704",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "801",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "802",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "803",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "804",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "901",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "902",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "903",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "904",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1001",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1002",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1003",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1004",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1101",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1102",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1103",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1104",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1201",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1202",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1203",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1204",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1301",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1302",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1303",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1304",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1401",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1402",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1403",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        },
+        {
+          "flat_name": "1404",
+          "flat_type": "Residential",
+          "open_area": "9.06",
+          "block_name": "E",
+          "carpet_area": "58.93"
+        }
+      ]
+    }
+  ],
+  "iw_part_processed": null,
+  "iw_processed": true,
+  "last_crawled_date": "2026-03-26 04:32:07.597076+00:00",
+  "land_area_details": {
+    "land_area": "5472",
+    "land_area_unit": "Sq Mtrs",
+    "construction_area": 18213.44000000007,
+    "construction_area_unit": "in Sq. Mts."
+  },
+  "doc_ocr_url": null,
+  "proposed_timeline": null,
+  "checked_updates": false,
+  "checked_updates_date": null,
+  "rera_housing_found": false,
+  "is_live": false,
+  "alternative_rera_ids": null
+}

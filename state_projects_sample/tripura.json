@@ -1,0 +1,148 @@
+{
+  "key": "1731382315881895046",
+  "project_name": "Roodraksh Pearl",
+  "project_type": "Mixed Development",
+  "promoter_name": "Roodraksh Realtors",
+  "project_registration_no": "PRTR03240386",
+  "status_of_the_project": "New Project Launch",
+  "acknowledgement_no": null,
+  "project_pin_code": null,
+  "project_city": null,
+  "project_state": "Tripura",
+  "project_location_raw": {
+    "taluk": "West Tripura",
+    "district": "Tripura",
+    "raw_address": "S.D.O Chowmuhani, Sadar,West Tripura, Tripura",
+    "has_same_data": true,
+    "processed_latitude": 23.8735799,
+    "processed_longitude": 91.330052
+  },
+  "promoter_address_raw": null,
+  "promoter_contact_details": {
+    "email": "rajeev@prozone.in",
+    "phone": "9862184953"
+  },
+  "submitted_date": "2024-03-16 17:38:42+00:00",
+  "last_modified": null,
+  "estimated_commencement_date": "2023-12-20 00:00:00+00:00",
+  "actual_commencement_date": null,
+  "estimated_finish_date": "2026-12-28 00:00:00+00:00",
+  "actual_finish_date": null,
+  "approved_on_date": null,
+  "past_experience_of_promoter": null,
+  "bank_details": null,
+  "land_area": 3856.97,
+  "construction_area": 14210.69,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "project_cost_detail": null,
+  "number_of_residential_units": 105,
+  "number_of_commercial_units": null,
+  "building_details": null,
+  "complaints_litigation_details": null,
+  "uploaded_documents": null,
+  "authorised_signatory_details": null,
+  "co_promoter_details": null,
+  "project_description": "B+G+9 Building ,3BHK=57 Nos ,2BHK=39 Nos ,1BHK=9 nos and 2 Nos commercial Space",
+  "provided_faciltiy": null,
+  "professional_information": [
+    {
+      "name": "Sanyam Surana",
+      "role": "Architects",
+      "email": "Sanyam.surana@outlook.com",
+      "address": "Surana Bhawan, Tokobari Road,Guwahati,Kamrup Metropolitan,Assam",
+      "has_same_data": true
+    },
+    {
+      "name": "Er. Amarjit Sau",
+      "role": "Structural Engineers",
+      "email": "virajee.agt@gmail.com",
+      "address": "M.G. Bazar,Near V2 mall,Ramthakur Sangha,Agartala,West Tripura,Tripura",
+      "has_same_data": true
+    }
+  ],
+  "development_agreement_detail": null,
+  "construction_progress": null,
+  "land_detail": null,
+  "document_urls": null,
+  "members_details": [
+    {
+      "name": "Rajeev Sanchet",
+      "email": "rajeev@prozone.in",
+      "phone": "9401411111",
+      "position": "Board Member",
+      "has_same_data": true
+    },
+    {
+      "name": "Sanjay Chhabra",
+      "email": "chhbrasanjay2000@gmail.com",
+      "phone": "9435012011",
+      "position": "Board Member",
+      "has_same_data": true
+    }
+  ],
+  "retrieved_on": "2024-10-30 11:52:46.556196+00:00",
+  "config_id": 11807,
+  "data": {
+    "govt_type": "state",
+    "raw_address": "S.D.O Chowmuhani, Sadar,West Tripura, Tripura",
+    "has_same_data": false,
+    "land_area_unit": "sq Mtr",
+    "construction_area_unit": "Sq Mtr"
+  },
+  "promoters_details": {
+    "name": "Roodraksh Realtors"
+  },
+  "domain": "reraonline.tripura.gov.in",
+  "state": "tripura",
+  "crawl_machine_ip": "148.113.37.213",
+  "machine_name": "dashboard-rera-11807-tripura-66587f4d8b-rwljh",
+  "is_updated": false,
+  "is_duplicate": false,
+  "url": "https://reraonline.tripura.gov.in/viewProjectDetailPage?projectID=386",
+  "last_updated": "2024-10-30 12:21:40.218899+00:00",
+  "updated_fields": null,
+  "project_images": [
+    "http://docs.primetenders.com/documents/rera/projects/tripura/rera_images/1731382315881895046/496e6ba888bc6e88c9ad5dcb98eb1419.jpg"
+  ],
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": [
+    {
+      "updated_on": "2024-10-30 11:54:02.839096+0000",
+      "members_details": "[{'name': 'Rajeev Sanchet', 'email': 'rajeev@prozone.in', 'phone': '9401411111', 'position': 'Board Member'}, {'name': 'Sanjay Chhabra', 'email': 'chhbrasanjay2000@gmail.com', 'phone': '9435012011', 'position': 'Board Member'}]",
+      "project_location_raw": "{'taluk': 'West Tripura', 'district': 'Tripura', 'raw_address': 'S.D.O Chowmuhani, Sadar,West Tripura, Tripura'}",
+      "professional_information": "[{'name': 'Sanyam Surana', 'role': 'Architects', 'email': 'Sanyam.surana@outlook.com', 'address': 'Surana Bhawan, Tokobari Road,Guwahati,Kamrup Metropolitan,Assam'}, {'name': 'Er. Amarjit Sau', 'role': 'Structural Engineers', 'email': 'virajee.agt@gmail.com', 'address': 'M.G. Bazar,Near V2 mall,Ramthakur Sangha,Agartala,West Tripura,Tripura'}]"
+    },
+    {
+      "updated_on": "2024-10-30 12:20:25.528568+0000",
+      "members_details": "[{'name': 'Rajeev Sanchet', 'email': 'rajeev@prozone.in', 'phone': '9401411111', 'position': 'Board Member', 'has_same_data': True}, {'name': 'Sanjay Chhabra', 'email': 'chhbrasanjay2000@gmail.com', 'phone': '9435012011', 'position': 'Board Member', 'has_same_data': True}]",
+      "project_location_raw": "{'taluk': 'West Tripura', 'district': 'Tripura', 'raw_address': 'S.D.O Chowmuhani, Sadar,West Tripura, Tripura', 'has_same_data': True}",
+      "professional_information": "[{'name': 'Sanyam Surana', 'role': 'Architects', 'email': 'Sanyam.surana@outlook.com', 'address': 'Surana Bhawan, Tokobari Road,Guwahati,Kamrup Metropolitan,Assam', 'has_same_data': True}, {'name': 'Er. Amarjit Sau', 'role': 'Structural Engineers', 'email': 'virajee.agt@gmail.com', 'address': 'M.G. Bazar,Near V2 mall,Ramthakur Sangha,Agartala,West Tripura,Tripura', 'has_same_data': True}]"
+    },
+    {
+      "updated_on": "2024-10-30 12:21:40.218899+0000",
+      "members_details": "[{'name': 'Sanjay Chhabra', 'email': 'chhbrasanjay2000@gmail.com', 'phone': '9435012011', 'position': 'Board Member', 'has_same_data': True}, {'name': 'Rajeev Sanchet', 'email': 'rajeev@prozone.in', 'phone': '9401411111', 'position': 'Board Member', 'has_same_data': True}]",
+      "project_location_raw": "{'taluk': 'West Tripura', 'district': 'Tripura', 'raw_address': 'S.D.O Chowmuhani, Sadar,West Tripura, Tripura', 'has_same_data': True}",
+      "professional_information": "[{'name': 'Sanyam Surana', 'role': 'Architects', 'email': 'Sanyam.surana@outlook.com', 'address': 'Surana Bhawan, Tokobari Road,Guwahati,Kamrup Metropolitan,Assam', 'has_same_data': True}, {'name': 'Er. Amarjit Sau', 'role': 'Structural Engineers', 'email': 'virajee.agt@gmail.com', 'address': 'M.G. Bazar,Near V2 mall,Ramthakur Sangha,Agartala,West Tripura,Tripura', 'has_same_data': True}]"
+    }
+  ],
+  "status_update": null,
+  "iw_part_processed": true,
+  "iw_processed": true,
+  "last_crawled_date": "2026-04-21 18:45:35.787696+00:00",
+  "land_area_details": {
+    "land_area": "3856.97",
+    "land_area_unit": "sq Mtr",
+    "construction_area": "14210.69",
+    "construction_area_unit": "Sq Mtr"
+  },
+  "doc_ocr_url": null,
+  "proposed_timeline": null,
+  "checked_updates": false,
+  "checked_updates_date": null,
+  "rera_housing_found": true,
+  "is_live": true,
+  "alternative_rera_ids": null
+}

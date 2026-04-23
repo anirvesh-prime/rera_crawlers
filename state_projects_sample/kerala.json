@@ -1,0 +1,533 @@
+{
+  "key": "6087120247077897222",
+  "project_name": "Ambalath Ayesha Homes",
+  "project_type": "Residential (Apartment)",
+  "promoter_name": "Abdul Rasheed",
+  "project_registration_no": "K-RERA/PRJ/TSR/167/2022",
+  "status_of_the_project": "Completed Project:Form 6 filed",
+  "acknowledgement_no": null,
+  "project_pin_code": "680101",
+  "project_city": null,
+  "project_state": "KERALA",
+  "project_location_raw": [
+    {
+      "state": "KERALA",
+      "taluk": "Chavakkad",
+      "plot_no": "11904",
+      "village": "GURUVAYUR",
+      "district": "Thrissur",
+      "pin_code": "680101",
+      "survey_resurvey_number": "139/17-5,3,6"
+    }
+  ],
+  "promoter_address_raw": [
+    {
+      "state": "KERALA",
+      "taluk": "Chavakkad",
+      "district": "Thrissur",
+      "locality": "Guruvayur",
+      "pin_code": "680101",
+      "house_no_building_name": "Pulicharam Veettil House"
+    }
+  ],
+  "promoter_contact_details": [
+    {
+      "email": "ambalathbuilders16@gmail.com",
+      "phone": "8129667766"
+    }
+  ],
+  "submitted_date": null,
+  "last_modified": "2023-09-27 00:00:00+00:00",
+  "estimated_commencement_date": null,
+  "actual_commencement_date": "2019-04-26 00:00:00+00:00",
+  "estimated_finish_date": null,
+  "actual_finish_date": "2020-12-04 00:00:00+00:00",
+  "approved_on_date": null,
+  "past_experience_of_promoter": null,
+  "bank_details": null,
+  "land_area": 612.0,
+  "construction_area": 1178.3,
+  "total_floor_area_under_commercial_or_other_uses": 0.0,
+  "total_floor_area_under_residential": 1178.3,
+  "project_cost_detail": null,
+  "number_of_residential_units": 24,
+  "number_of_commercial_units": 0,
+  "building_details": [
+    {
+      "flat_type": "2BHK",
+      "open_area": "0",
+      "total_area": "0",
+      "carpet_area": "0",
+      "no_of_units": "8",
+      "balcony_area": "0"
+    },
+    {
+      "flat_type": "Service Apartments",
+      "open_area": "0",
+      "total_area": "0",
+      "carpet_area": "0",
+      "no_of_units": "16",
+      "balcony_area": "0"
+    }
+  ],
+  "complaints_litigation_details": null,
+  "uploaded_documents": [
+    {
+      "type": "Copy of Sanctioned Plans",
+      "dated_on": "2021-12-31 13:29:28+00:00"
+    },
+    {
+      "type": "Copy of Valid Building Permit",
+      "updated": true,
+      "dated_on": "2021-12-31 13:29:18+00:00"
+    },
+    {
+      "type": "Copy of Valid Development Permit (For villa projects & plot development pojects)"
+    },
+    {
+      "type": "Detailed technical specifications to be adopted in the project",
+      "updated": true,
+      "dated_on": "2021-12-31 13:30:15+00:00"
+    },
+    {
+      "type": "Detailed technical specifications to be adopted in the project",
+      "dated_on": "2021-12-31 14:25:59+00:00"
+    },
+    {
+      "type": "Details of Association Formed"
+    },
+    {
+      "type": "Development certificate(for plots and villas)"
+    },
+    {
+      "type": "Layout approval plan"
+    },
+    {
+      "type": "Location details of the project with clear demarcation of land with boundaries including Latitude and Longitude of end points"
+    },
+    {
+      "link": [
+        "http://docs.primetenders.com/documents/6087120247077897222/Occupancy_Certificate.pdf"
+      ],
+      "type": "Occupancy Certificate",
+      "s3_link": [
+        "http://docs.primetenders.com/documents/6087120247077897222/Occupancy_Certificate.pdf"
+      ],
+      "updated": true,
+      "dated_on": "2022-02-23 11:37:57+00:00"
+    },
+    {
+      "type": "Site Plan / Site Map",
+      "dated_on": "2022-02-23 11:10:20+00:00"
+    },
+    {
+      "type": "Copy of latest Land Tax Receipt",
+      "dated_on": "2021-12-31 13:30:37+00:00"
+    },
+    {
+      "type": "Copy of Title Deed",
+      "dated_on": "2021-12-31 14:24:56+00:00"
+    },
+    {
+      "type": "Land title search report (From an advocate as specified in Rule 17)",
+      "updated": true,
+      "dated_on": "2021-12-31 14:25:09+00:00"
+    },
+    {
+      "link": [
+        "http://docs.primetenders.com/documents/6087120247077897222/Latest_Encumbrance_certificate.pdf"
+      ],
+      "type": "Latest Encumbrance certificate",
+      "s3_link": [
+        "http://docs.primetenders.com/documents/6087120247077897222/Latest_Encumbrance_certificate.pdf"
+      ],
+      "updated": true,
+      "dated_on": "2021-12-31 14:25:29+00:00"
+    },
+    {
+      "type": "Proforma of Conveyance Deed / Sales Deed",
+      "dated_on": "2021-12-31 13:38:14+00:00"
+    },
+    {
+      "type": "Declaration / Affidavit in Form B",
+      "updated": true,
+      "dated_on": "2021-12-31 13:28:13+00:00"
+    },
+    {
+      "type": "The annual report including audited profit and loss account, balance sheet, cash flow statement, directors report and auditor's report of the promoter for the immediately preceding three financial years and where annual report is not available then the audited profit and loss account, balance sheet, cash flow statement and the auditor's report of the promoter for immediately preceding three financial years and in case of newly incorporated or registered entity, such information shall be disclosed for the parent entity."
+    },
+    {
+      "type": "Proforma of Agreement for Sale (As per Annexure A) Note - Promoter is directed to stick on original clauses of Annexure A. No alterations/additions/omissions are allowed in words/sentences/clauses.",
+      "updated": true,
+      "dated_on": "2021-12-31 14:23:39+00:00"
+    },
+    {
+      "type": "Proforma of Allotment Letter (As per the Authority order No. K-RERA/T1/1657/2024 dated 26/11/2024)",
+      "updated": true,
+      "dated_on": "2021-12-31 13:32:46+00:00"
+    },
+    {
+      "type": "Architect's Certificate in Form 2"
+    },
+    {
+      "type": "Chartered Accountant's Certificate in Form 4 (in letter head)"
+    },
+    {
+      "type": "Declaration by the Promoter - Form No. 6",
+      "dated_on": "2023-09-27 16:01:50+00:00"
+    },
+    {
+      "type": "Engineer's Certificate in Form 3"
+    },
+    {
+      "type": "Clearance from Airport Authority of India",
+      "dated_on": "2022-02-23 11:35:39+00:00"
+    },
+    {
+      "type": "Clearance from Coastal Zone Management Authority",
+      "dated_on": "2022-02-23 11:36:50+00:00"
+    },
+    {
+      "type": "Clearance from National Highways / Railways / Other Relevant Departments",
+      "dated_on": "2022-02-23 11:36:20+00:00"
+    },
+    {
+      "type": "Concurrence / Layout Approval of Town and Country planning department"
+    },
+    {
+      "type": "Consent to establish (Clearance from Pollution Control Board)"
+    },
+    {
+      "type": "Consent to operate (Clearance from Pollution Control Board)"
+    },
+    {
+      "type": "Environment Clearance",
+      "dated_on": "2022-02-23 11:36:33+00:00"
+    },
+    {
+      "type": "Final Fire NOC"
+    },
+    {
+      "type": "If the project is proposed to be developed in Phases, an authenticated copy of license or land use permission, Building sanction plan or building permit for each of such phases (If applicable)"
+    },
+    {
+      "type": "Initial NOC from Fire and Rescue department",
+      "updated": true,
+      "dated_on": "2022-01-25 14:28:52+00:00"
+    },
+    {
+      "type": "Permission from Water and sewerage department"
+    },
+    {
+      "type": "Brochure / prospectus issued in regard to this project",
+      "dated_on": "2022-02-23 11:39:57+00:00"
+    },
+    {
+      "type": "Others",
+      "dated_on": "2022-02-23 12:10:41+00:00"
+    },
+    {
+      "type": "Others",
+      "dated_on": "2022-02-23 12:11:18+00:00"
+    },
+    {
+      "type": "Others",
+      "dated_on": "2022-02-23 12:11:30+00:00"
+    },
+    {
+      "type": "Others",
+      "dated_on": "2022-02-23 12:11:42+00:00"
+    },
+    {
+      "type": "Others",
+      "dated_on": "2022-02-23 12:11:55+00:00"
+    },
+    {
+      "type": "Others",
+      "dated_on": "2022-02-23 12:12:06+00:00"
+    },
+    {
+      "type": "Others",
+      "dated_on": "2022-02-23 12:12:19+00:00"
+    },
+    {
+      "type": "Others",
+      "dated_on": "2022-02-23 12:12:31+00:00"
+    },
+    {
+      "type": "Others",
+      "dated_on": "2022-02-23 12:12:43+00:00"
+    },
+    {
+      "type": "Others",
+      "dated_on": "2022-02-23 12:12:56+00:00"
+    },
+    {
+      "type": "Sanction letters from Bank for construction finance"
+    },
+    {
+      "type": "Sanction letters from bank for home loan tie-ups"
+    },
+    {
+      "type": "Charts and the project schedule"
+    },
+    {
+      "type": "List and details of common amenities"
+    },
+    {
+      "type": "Other Plans to be executed in the proposed project"
+    },
+    {
+      "type": "Plan for Drinking water service to be executed in the proposed project"
+    },
+    {
+      "type": "Plan of firefighting to be executed in the proposed project"
+    },
+    {
+      "type": "Plan of Use of renewable energy to be executed in the proposed project"
+    },
+    {
+      "type": "Completion plan (if any)"
+    },
+    {
+      "type": "Registered Joint Development Agreement"
+    },
+    {
+      "link": "https://docs.primetenders.com/documents/6087120247077897222/Rera Registration Certificate.pdf",
+      "type": "Rera Registration Certificate",
+      "s3_link": "https://docs.primetenders.com/documents/6087120247077897222/Rera Registration Certificate.pdf"
+    }
+  ],
+  "authorised_signatory_details": null,
+  "co_promoter_details": null,
+  "project_description": null,
+  "provided_faciltiy": null,
+  "professional_information": [
+    {
+      "name": "A",
+      "role": "Architect",
+      "address": "ABC",
+      "registration_no": "COA",
+      "key_real_estate_projects": "ABC"
+    },
+    {
+      "name": "A",
+      "role": "Engineer",
+      "address": "A",
+      "updated": true,
+      "registration_no": "COA",
+      "key_real_estate_projects": "A"
+    },
+    {
+      "name": "A",
+      "role": "Chartered Accountant",
+      "address": "A",
+      "registration_no": "COA",
+      "key_real_estate_projects": "A"
+    }
+  ],
+  "development_agreement_detail": null,
+  "construction_progress": [
+    {
+      "title": "Visitors Parking",
+      "has_same_data": true,
+      "progress_percentage": " 0"
+    },
+    {
+      "title": "Water conservation, Rain water harvesting",
+      "has_same_data": true,
+      "progress_percentage": " 0"
+    },
+    {
+      "title": "Electrical meter room, Sub-station, Receiving station",
+      "has_same_data": true,
+      "progress_percentage": " 0"
+    },
+    {
+      "title": "Open parking",
+      "has_same_data": true,
+      "progress_percentage": " 0"
+    },
+    {
+      "title": "Water supply",
+      "has_same_data": true,
+      "progress_percentage": " 0"
+    },
+    {
+      "title": "Sewerage (Chamber, Lines, Septic tank, STP)",
+      "has_same_data": true,
+      "progress_percentage": " 0"
+    },
+    {
+      "title": "Landscaping & Tree planting",
+      "has_same_data": true,
+      "progress_percentage": " 0"
+    },
+    {
+      "title": "total_completion_percentage",
+      "progress_percentage": "100.00"
+    }
+  ],
+  "land_detail": null,
+  "document_urls": [
+    {
+      "link": "http://docs.primetenders.com/documents/6087120247077897222/Occupancy_Certificate.pdf",
+      "type": "Occupancy Certificate"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/6087120247077897222/Latest_Encumbrance_certificate.pdf",
+      "type": "Latest Encumbrance certificate"
+    },
+    {
+      "link": "https://docs.primetenders.com/documents/6087120247077897222/Rera Registration Certificate.pdf",
+      "type": "Rera Registration Certificate"
+    }
+  ],
+  "members_details": null,
+  "retrieved_on": "2024-10-23 20:45:26.112933+00:00",
+  "config_id": 14521,
+  "data": {
+    "govt_type": "state",
+    "land_area_unit": "Sqmts",
+    "construction_area_unit": "in Sqmts"
+  },
+  "promoters_details": null,
+  "domain": "reraonline.kerala.gov.in",
+  "state": "kerala",
+  "crawl_machine_ip": "148.113.37.208",
+  "machine_name": "dashboard-rera-11794-kerala-6f899f4c7c-28ctb",
+  "is_updated": true,
+  "is_duplicate": false,
+  "url": "https://reraonline.kerala.gov.in/PrintPreview/PrintPreview?q=PbGPs6KN%2b2e4hOhnIPALLxq3gEj4M7L7BZNKIzDaxxSDy27w6xbdPj6beqF%2fjnTyo9Vlu30iTYFIo8yniJ0DtMcOmOxHQ%2fEkBGLF7B03dJv8JYBWLUeiH8gZthYcQL1Bpz4OvbMqByzf2LcJvHo7D9Y2V%2fLEoIyPuDhaiIluagI%2fM3wXFV68%2bw%3d%3d",
+  "last_updated": "2025-05-10 19:08:30.143063+00:00",
+  "updated_fields": [
+    "uploaded_documents",
+    "status_update",
+    "updated_fields",
+    "last_updated",
+    "last_crawled_date",
+    "old_updates",
+    "config_id",
+    "is_updated"
+  ],
+  "project_images": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": [
+    {
+      "updated_on": "2024-12-24 12:12:12.205651+0000",
+      "status_update": "{'booked_detail': [{'area': '0', 'sold': '0', 'type': '2BHK', 'block': 'Ambalath Ayesha Homes', 'total': '8'}, {'area': '0', 'sold': '0', 'type': 'Service Apartments', 'block': 'Ambalath Ayesha Homes', 'total': '16'}], 'amenity_detail': [{'name': 'Water conservation, Rain water harvesting :', 'remarks': 'Only rain water harvesting', 'percent_completed': '0'}, {'name': 'Landscaping & Tree planting :', 'remarks': 'TOT LOT', 'percent_completed': '0'}, {'name': 'Open parking :', 'remarks': 'NA', 'percent_completed': '0'}, {'name': 'Water supply :', 'remarks': 'Borewell', 'percent_completed': '0'}, {'name': 'Sewerage (Chamber, Lines, Septic tank, STP) :', 'remarks': 'Only STP', 'percent_completed': '0'}, {'name': 'Visitors Parking :', 'remarks': 'NA', 'percent_completed': '0'}, {'name': 'Electrical meter room, Sub-station, Receiving station :', 'remarks': 'Only electric meter box', 'percent_completed': '0'}], 'building_detail': [{'name': 'Ambalath Ayesha Homes', 'no_stilt': '0', 'no_podium': '0', 'no_basement': '0', 'completion_date': '04/12/2020', 'no_super_struct': '5'}], 'progress_detail': [{'block': 'Ambalath Ayesha Homes'}, {'block': 'Ambalath Ayesha Homes'}]}",
+      "professional_information": "[{'name': 'A', 'role': 'Architect', 'address': 'ABC', 'registration_no': 'COA', 'key_real_estate_projects': 'ABC'}, {'name': 'A', 'role': 'Engineer', 'address': 'A', 'registration_no': 'NA', 'key_real_estate_projects': 'A'}, {'name': 'A', 'role': 'Chartered Accountant', 'address': 'A', 'registration_no': 'COA', 'key_real_estate_projects': 'A'}]"
+    },
+    {
+      "updated_on": "2025-01-24 04:12:24.018554+0000",
+      "status_update": "{'booked_detail': [{'area': '0', 'sold': '0', 'type': '2BHK', 'block': 'Ambalath Ayesha Homes', 'total': '8'}, {'area': '0', 'sold': '0', 'type': 'Service Apartments', 'block': 'Ambalath Ayesha Homes', 'total': '16'}], 'amenity_detail': [{'name': 'Electrical meter room, Sub-station, Receiving station :', 'remarks': 'Only electric meter box', 'percent_completed': '0'}, {'name': 'Water conservation, Rain water harvesting :', 'remarks': 'Only rain water harvesting', 'percent_completed': '0'}, {'name': 'Sewerage (Chamber, Lines, Septic tank, STP) :', 'remarks': 'Only STP', 'percent_completed': '0'}, {'name': 'Visitors Parking :', 'percent_completed': '0'}, {'name': 'Landscaping & Tree planting :', 'remarks': 'TOT LOT', 'percent_completed': '0'}, {'name': 'Open parking :', 'percent_completed': '0'}, {'name': 'Water supply :', 'remarks': 'Borewell', 'percent_completed': '0'}], 'building_detail': [{'name': 'Ambalath Ayesha Homes', 'no_stilt': '0', 'no_podium': '0', 'no_basement': '0', 'completion_date': '04/12/2020', 'no_super_struct': '5'}], 'progress_detail': [{'block': 'Ambalath Ayesha Homes'}, {'block': 'Ambalath Ayesha Homes'}]}",
+      "construction_progress": "None"
+    },
+    {
+      "updated_on": "2025-04-09 02:20:20.306313+0000",
+      "uploaded_documents": "[{'type': 'Copy of Building Permit', 'dated_on': '2021-12-31 13:29:18+00:00'}, {'type': 'Copy of Sanctioned Plans', 'dated_on': '2021-12-31 13:29:28+00:00'}, {'type': 'Copy of Valid Development Permit'}, {'type': 'Detailed technical specifications to be adopted in the project', 'dated_on': '2021-12-31 14:25:59+00:00'}, {'type': 'Details of Association Formed'}, {'type': 'Development certificate(for plots and villas)'}, {'type': 'Layout approval plan'}, {'type': 'Location details of the project with clear demarcation of land with boundaries including Latitude and Longitude of end points'}, {'type': 'Location details of the project with clear demarcation of land with boundaries including Latitude and Longitude of end points', 'dated_on': '2021-12-31 13:30:15+00:00'}, {'link': ['http://docs.primetenders.com/documents/6087120247077897222/Occupancy_Certificate__Completion_Certificate__development_certificate.pdf'], 'type': 'Occupancy Certificate/ Completion Certificate/ development certificate', 'dated_on': '2022-02-23 11:37:57+00:00'}, {'type': 'Site Plan / Site Map', 'dated_on': '2022-02-23 11:10:20+00:00'}, {'type': 'Copy of latest Land Tax Receipt', 'dated_on': '2021-12-31 13:30:37+00:00'}, {'type': 'Copy of Title Deed', 'dated_on': '2021-12-31 14:24:56+00:00'}, {'type': 'Details of Encumbrance', 'dated_on': '2021-12-31 14:25:29+00:00'}, {'type': 'Land title search report', 'dated_on': '2021-12-31 14:25:09+00:00'}, {'type': 'Proforma of Conveyance Deed / Sales Deed', 'dated_on': '2021-12-31 13:38:14+00:00'}, {'type': 'Declaration in Form B', 'dated_on': '2021-12-31 13:28:13+00:00'}, {'type': \"The annual report including audited profit and loss account, balance sheet, cash flow statement, directors report and auditor's report of the promoter for the immediately preceding three financial years and where annual report is not available then the audited profit and loss account, balance sheet, cash flow statement and the auditor's report of the promoter for immediately preceding three financial years and in case of newly incorporated or registered entity, such information shall be disclosed for the parent entity.\"}, {'type': 'Proforma of Agreement for Sale (As per Annexure A)', 'dated_on': '2021-12-31 14:23:39+00:00'}, {'type': 'Proforma of Allotment Letter', 'dated_on': '2021-12-31 13:32:46+00:00'}, {'type': \"Architect's Certificate in Form 2\"}, {'type': \"Chartered Accountant's Certificate in Form 4 (in letter head)\"}, {'type': 'Declaration by the Promoter - Form No. 6', 'dated_on': '2023-09-27 16:01:50+00:00'}, {'type': \"Engineer's Certificate in Form 3\"}, {'type': 'Clearance from Airport Authority of India', 'dated_on': '2022-02-23 11:35:39+00:00'}, {'type': 'Clearance from Coastal Zone Management Authority', 'dated_on': '2022-02-23 11:36:50+00:00'}, {'type': 'Clearance from National Highways / Railways / Other Relevant Departments', 'dated_on': '2022-02-23 11:36:20+00:00'}, {'type': 'Concurrence / Layout Approval of Town and Country planning department'}, {'type': 'Consent to establish (Clearance from Pollution Control Board)'}, {'type': 'Consent to operate (Clearance from Pollution Control Board)'}, {'type': 'Environment Clearance', 'dated_on': '2022-02-23 11:36:33+00:00'}, {'type': 'Final Fire NOC'}, {'type': 'If the project is proposed to be developed in Phases, an authenticated copy of license or land use permission, Building sanction plan or building permit for each of such phases (If applicable)'}, {'type': 'NOC from Fire and Rescue department', 'dated_on': '2022-01-25 14:28:52+00:00'}, {'type': 'Permission from Water and sewerage department'}, {'type': 'Brochure / prospectus issued in regard to this project', 'dated_on': '2022-02-23 11:39:57+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:10:41+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:11:18+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:11:30+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:11:42+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:11:55+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:12:06+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:12:19+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:12:31+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:12:43+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:12:56+00:00'}, {'type': 'Sanction letters form bank for home loan tie-ups'}, {'type': 'Sanction letters from Bank for construction finance'}, {'type': 'Charts and the project schedule'}, {'type': 'List and details of common amenities'}, {'type': 'Other Plans to be executed in the proposed project'}, {'type': 'Plan for Drinking water service to be executed in the proposed project'}, {'type': 'Plan of firefighting to be executed in the proposed project'}, {'type': 'Plan of Use of renewable energy to be executed in the proposed project'}, {'type': 'The Plan of development works to be executed in the proposed project', 'dated_on': '2021-12-31 14:25:43+00:00'}, {'type': 'Upload Agreement / MoU Copy'}]"
+    },
+    {
+      "updated_on": "2025-05-10 19:08:30.143063+0000",
+      "status_update": "{'booked_detail': [{'area': '0', 'sold': '0', 'type': '2BHK', 'block': 'Ambalath Ayesha Homes', 'total': '8'}, {'area': '0', 'sold': '0', 'type': 'Service Apartments', 'block': 'Ambalath Ayesha Homes', 'total': '16'}], 'amenity_detail': [{'name': 'Visitors Parking :', 'percent_completed': '0'}, {'name': 'Water conservation, Rain water harvesting :', 'remarks': 'Only rain water harvesting', 'percent_completed': '0'}, {'name': 'Electrical meter room, Sub-station, Receiving station :', 'remarks': 'Only electric meter box', 'percent_completed': '0'}, {'name': 'Open parking :', 'percent_completed': '0'}, {'name': 'Water supply :', 'remarks': 'Borewell', 'percent_completed': '0'}, {'name': 'Sewerage (Chamber, Lines, Septic tank, STP) :', 'remarks': 'Only STP', 'percent_completed': '0'}, {'name': 'Landscaping & Tree planting :', 'remarks': 'TOT LOT', 'percent_completed': '0'}], 'building_detail': [{'name': 'Ambalath Ayesha Homes', 'no_stilt': '0', 'no_podium': '0', 'no_basement': '0', 'completion_date': '04/12/2020', 'no_super_struct': '5'}], 'progress_detail': [{'block': 'Ambalath Ayesha Homes'}, {'block': 'Ambalath Ayesha Homes'}]}",
+      "uploaded_documents": "[{'type': 'Completion plan (if any)', 'updated': True}, {'type': 'Copy of Building Permit', 'dated_on': '2021-12-31 13:29:18+00:00'}, {'type': 'Copy of Sanctioned Plans', 'dated_on': '2021-12-31 13:29:28+00:00'}, {'type': 'Copy of Valid Development Permit (For villa projects & plot development pojects)', 'updated': True}, {'type': 'Detailed technical specifications to be adopted in the project', 'dated_on': '2021-12-31 14:25:59+00:00'}, {'type': 'Details of Association Formed'}, {'type': 'Development certificate(for plots and villas)'}, {'type': 'Layout approval plan'}, {'type': 'Location details of the project with clear demarcation of land with boundaries including Latitude and Longitude of end points'}, {'type': 'Location details of the project with clear demarcation of land with boundaries including Latitude and Longitude of end points', 'dated_on': '2021-12-31 13:30:15+00:00'}, {'link': ['http://docs.primetenders.com/documents/6087120247077897222/Occupancy_Certificate__Completion_Certificate__development_certificate.pdf'], 'type': 'Occupancy Certificate/ Completion Certificate/ development certificate', 'dated_on': '2022-02-23 11:37:57+00:00'}, {'type': 'Site Plan / Site Map', 'dated_on': '2022-02-23 11:10:20+00:00'}, {'type': 'Copy of latest Land Tax Receipt', 'dated_on': '2021-12-31 13:30:37+00:00'}, {'type': 'Copy of Title Deed', 'dated_on': '2021-12-31 14:24:56+00:00'}, {'type': 'Details of Encumbrance', 'dated_on': '2021-12-31 14:25:29+00:00'}, {'type': 'Land title search report', 'dated_on': '2021-12-31 14:25:09+00:00'}, {'type': 'Proforma of Conveyance Deed / Sales Deed', 'dated_on': '2021-12-31 13:38:14+00:00'}, {'type': 'Declaration in Form B', 'dated_on': '2021-12-31 13:28:13+00:00'}, {'type': \"The annual report including audited profit and loss account, balance sheet, cash flow statement, directors report and auditor's report of the promoter for the immediately preceding three financial years and where annual report is not available then the audited profit and loss account, balance sheet, cash flow statement and the auditor's report of the promoter for immediately preceding three financial years and in case of newly incorporated or registered entity, such information shall be disclosed for the parent entity.\"}, {'type': 'Proforma of Agreement for Sale (As per Annexure A)', 'dated_on': '2021-12-31 14:23:39+00:00'}, {'type': 'Proforma of Allotment Letter', 'dated_on': '2021-12-31 13:32:46+00:00'}, {'type': \"Architect's Certificate in Form 2\"}, {'type': \"Chartered Accountant's Certificate in Form 4 (in letter head)\"}, {'type': 'Declaration by the Promoter - Form No. 6', 'dated_on': '2023-09-27 16:01:50+00:00'}, {'type': \"Engineer's Certificate in Form 3\"}, {'type': 'Clearance from Airport Authority of India', 'dated_on': '2022-02-23 11:35:39+00:00'}, {'type': 'Clearance from Coastal Zone Management Authority', 'dated_on': '2022-02-23 11:36:50+00:00'}, {'type': 'Clearance from National Highways / Railways / Other Relevant Departments', 'dated_on': '2022-02-23 11:36:20+00:00'}, {'type': 'Concurrence / Layout Approval of Town and Country planning department'}, {'type': 'Consent to establish (Clearance from Pollution Control Board)'}, {'type': 'Consent to operate (Clearance from Pollution Control Board)'}, {'type': 'Environment Clearance', 'dated_on': '2022-02-23 11:36:33+00:00'}, {'type': 'Final Fire NOC'}, {'type': 'If the project is proposed to be developed in Phases, an authenticated copy of license or land use permission, Building sanction plan or building permit for each of such phases (If applicable)'}, {'type': 'NOC from Fire and Rescue department', 'dated_on': '2022-01-25 14:28:52+00:00'}, {'type': 'Permission from Water and sewerage department'}, {'type': 'Brochure / prospectus issued in regard to this project', 'dated_on': '2022-02-23 11:39:57+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:10:41+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:11:18+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:11:30+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:11:42+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:11:55+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:12:06+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:12:19+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:12:31+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:12:43+00:00'}, {'type': 'Others', 'dated_on': '2022-02-23 12:12:56+00:00'}, {'type': 'Sanction letters from Bank for construction finance'}, {'type': 'Sanction letters from bank for home loan tie-ups', 'updated': True}, {'type': 'Charts and the project schedule'}, {'type': 'List and details of common amenities'}, {'type': 'Other Plans to be executed in the proposed project'}, {'type': 'Plan for Drinking water service to be executed in the proposed project'}, {'type': 'Plan of firefighting to be executed in the proposed project'}, {'type': 'Plan of Use of renewable energy to be executed in the proposed project'}, {'type': 'Registered Joint Development Agreement', 'updated': True}]"
+    }
+  ],
+  "status_update": [
+    {
+      "booked_detail": [
+        {
+          "area": "0",
+          "sold": "0",
+          "type": "2BHK",
+          "block": "Ambalath Ayesha Homes",
+          "total": "8"
+        },
+        {
+          "area": "0",
+          "sold": "0",
+          "type": "Service Apartments",
+          "block": "Ambalath Ayesha Homes",
+          "total": "16"
+        }
+      ]
+    },
+    {
+      "amenity_detail": [
+        {
+          "name": "Electrical meter room, Sub-station, Receiving station :",
+          "remarks": "Only electric meter box",
+          "percent_completed": "0"
+        },
+        {
+          "name": "Water conservation, Rain water harvesting :",
+          "remarks": "Only rain water harvesting",
+          "percent_completed": "0"
+        },
+        {
+          "name": "Landscaping & Tree planting :",
+          "remarks": "TOT LOT",
+          "percent_completed": "0"
+        },
+        {
+          "name": "Open parking :",
+          "percent_completed": "0"
+        },
+        {
+          "name": "Water supply :",
+          "remarks": "Borewell",
+          "percent_completed": "0"
+        },
+        {
+          "name": "Sewerage (Chamber, Lines, Septic tank, STP) :",
+          "remarks": "Only STP",
+          "percent_completed": "0"
+        },
+        {
+          "name": "Visitors Parking :",
+          "percent_completed": "0"
+        }
+      ]
+    },
+    {
+      "building_detail": [
+        {
+          "name": "Ambalath Ayesha Homes",
+          "no_stilt": "0",
+          "no_podium": "0",
+          "no_basement": "0",
+          "completion_date": "04/12/2020",
+          "no_super_struct": "5"
+        }
+      ]
+    },
+    {
+      "progress_detail": [
+        {
+          "block": "Ambalath Ayesha Homes"
+        },
+        {
+          "block": "Ambalath Ayesha Homes"
+        }
+      ]
+    }
+  ],
+  "iw_part_processed": true,
+  "iw_processed": true,
+  "last_crawled_date": "2025-05-10 19:08:30.143455+00:00",
+  "land_area_details": {
+    "land_area": "612.00",
+    "land_area_unit": "Sqmts",
+    "construction_area": "1178.30",
+    "construction_area_unit": "in Sqmts"
+  },
+  "doc_ocr_url": null,
+  "proposed_timeline": null,
+  "checked_updates": true,
+  "checked_updates_date": "2025-07-29 03:40:26.366236+00:00",
+  "rera_housing_found": false,
+  "is_live": false,
+  "alternative_rera_ids": null
+}

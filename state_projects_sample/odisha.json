@@ -1,0 +1,1116 @@
+{
+  "key": "12777815000802312001",
+  "project_name": "Disha Ananta Villa",
+  "project_type": "Residential",
+  "promoter_name": "DISHA REAL ESTATE",
+  "project_registration_no": "RP/11/2026/01471",
+  "status_of_the_project": null,
+  "acknowledgement_no": null,
+  "project_pin_code": null,
+  "project_city": null,
+  "project_state": null,
+  "project_location_raw": {
+    "raw_address": "Mouza-Goilundi, Jyoti Nagar, 4th Lane, Ganjam, Berhampur MC, Berhampur mc"
+  },
+  "promoter_address_raw": {
+    "registered_address": "Sabata Colony, Main Road,Plot No-822/1592,Bijipur,Berhampur,Ganjam,Odisha,760003",
+    "correspondence_address": "Sabata Colony, Main Road,Plot No-822/1592,Bijipur,Berhampur,Ganjam,Odisha,760003"
+  },
+  "promoter_contact_details": {
+    "email": "dineshmish@gmail.com",
+    "phone": "9861056977",
+    "telephone_no": "--"
+  },
+  "submitted_date": null,
+  "last_modified": null,
+  "estimated_commencement_date": null,
+  "actual_commencement_date": null,
+  "estimated_finish_date": null,
+  "actual_finish_date": null,
+  "approved_on_date": null,
+  "past_experience_of_promoter": null,
+  "bank_details": [
+    {
+      "IFSC": "IDBI000C149",
+      "phone": "8249288298",
+      "branch": "Rajarani Tower, Kamapalli Main Road, Near BN Pur Police Station",
+      "bank_name": "INDIAN BANK",
+      "account_no": "7980874336",
+      "account_name": "DISHA REAL ESTATE/Disha Ananta Villa/Account",
+      "telephone_no": "0680-2280430"
+    },
+    {
+      "IFSC": "IDBI000C149",
+      "phone": "8249288298",
+      "branch": "Rajarani Tower, Kamapalli Main Road, Near BN Pur Police Station",
+      "bank_name": "INDIAN BANK",
+      "account_no": "7980887471",
+      "account_name": "DISHA REAL ESTATE/Disha Ananta Villa/ORERA",
+      "telephone_no": "0680-2280430"
+    },
+    {
+      "IFSC": "IDBI000C149",
+      "phone": "8249288298",
+      "branch": "Rajarani Tower, Kamapalli Main Road, Near BN Pur Police Station",
+      "bank_name": "INDIAN BANK",
+      "account_no": "7980890256",
+      "account_name": "DISHA REAL ESTATE/Disha Ananta Villa/Transaction",
+      "telephone_no": "0680-2280430"
+    }
+  ],
+  "land_area": null,
+  "construction_area": null,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "project_cost_detail": {
+    "fund_from_bank": "0.00 Lakhs",
+    "fund_from_promoter": "1350.14 Lakhs",
+    "total_project_cost": "1350.14 Lakhs",
+    "fund_from_allottees": "0.00 Lakhs"
+  },
+  "number_of_residential_units": 48,
+  "number_of_commercial_units": null,
+  "building_details": [
+    {
+      "flat_name": ";",
+      "flat_type": "Parking",
+      "carpet_area": "1123.040 Sq.Mtr."
+    },
+    {
+      "flat_name": "101",
+      "flat_type": "3 BHK",
+      "carpet_area": "73 Sq.Mtr.",
+      "balcony_area": "8 Sq.Mtr."
+    },
+    {
+      "flat_name": "102",
+      "flat_type": "3 BHK",
+      "carpet_area": "73 Sq.Mtr.",
+      "balcony_area": "6 Sq.Mtr."
+    },
+    {
+      "flat_name": "103",
+      "flat_type": "3 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "6 Sq.Mtr."
+    },
+    {
+      "flat_name": "104",
+      "flat_type": "3 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "7 Sq.Mtr."
+    },
+    {
+      "flat_name": "105",
+      "flat_type": "2 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "3 Sq.Mtr."
+    },
+    {
+      "flat_name": "106",
+      "flat_type": "2 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "3 Sq.Mtr."
+    },
+    {
+      "flat_name": "107",
+      "flat_type": "2 BHK",
+      "carpet_area": "57 Sq.Mtr.",
+      "balcony_area": "4 Sq.Mtr."
+    },
+    {
+      "flat_name": "108",
+      "flat_type": "2 BHK",
+      "carpet_area": "57 Sq.Mtr.",
+      "balcony_area": "4 Sq.Mtr."
+    },
+    {
+      "flat_name": "201",
+      "flat_type": "3 BHK",
+      "carpet_area": "73 Sq.Mtr.",
+      "balcony_area": "0 Sq.Mtr."
+    },
+    {
+      "flat_name": "202",
+      "flat_type": "3 BHK",
+      "carpet_area": "73 Sq.Mtr.",
+      "balcony_area": "0 Sq.Mtr."
+    },
+    {
+      "flat_name": "203",
+      "flat_type": "3 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "0 Sq.Mtr."
+    },
+    {
+      "flat_name": "204",
+      "flat_type": "3 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "0 Sq.Mtr."
+    },
+    {
+      "flat_name": "205",
+      "flat_type": "2 BHK",
+      "carpet_area": "57 Sq.Mtr.",
+      "balcony_area": "0 Sq.Mtr."
+    },
+    {
+      "flat_name": "206",
+      "flat_type": "2 BHK",
+      "carpet_area": "57 Sq.Mtr.",
+      "balcony_area": "0 Sq.Mtr."
+    },
+    {
+      "flat_name": "207",
+      "flat_type": "3 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "0 Sq.Mtr."
+    },
+    {
+      "flat_name": "208",
+      "flat_type": "3 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "0 Sq.Mtr."
+    },
+    {
+      "flat_name": "209",
+      "flat_type": "2 BHK",
+      "carpet_area": "57 Sq.Mtr.",
+      "balcony_area": "0 Sq.Mtr."
+    },
+    {
+      "flat_name": "210",
+      "flat_type": "2 BHK",
+      "carpet_area": "57 Sq.Mtr.",
+      "balcony_area": "0 Sq.Mtr."
+    },
+    {
+      "flat_name": "301",
+      "flat_type": "3 BHK",
+      "carpet_area": "73 Sq.Mtr.",
+      "balcony_area": "8 Sq.Mtr."
+    },
+    {
+      "flat_name": "302",
+      "flat_type": "3 BHK",
+      "carpet_area": "73 Sq.Mtr.",
+      "balcony_area": "6 Sq.Mtr."
+    },
+    {
+      "flat_name": "303",
+      "flat_type": "3 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "6 Sq.Mtr."
+    },
+    {
+      "flat_name": "304",
+      "flat_type": "3 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "7 Sq.Mtr."
+    },
+    {
+      "flat_name": "305",
+      "flat_type": "2 BHK",
+      "carpet_area": "57 Sq.Mtr.",
+      "balcony_area": "6 Sq.Mtr."
+    },
+    {
+      "flat_name": "306",
+      "flat_type": "2 BHK",
+      "carpet_area": "57 Sq.Mtr.",
+      "balcony_area": "8 Sq.Mtr."
+    },
+    {
+      "flat_name": "307",
+      "flat_type": "3 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "3 Sq.Mtr."
+    },
+    {
+      "flat_name": "308",
+      "flat_type": "3 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "3 Sq.Mtr."
+    },
+    {
+      "flat_name": "309",
+      "flat_type": "2 BHK",
+      "carpet_area": "57 Sq.Mtr.",
+      "balcony_area": "4 Sq.Mtr."
+    },
+    {
+      "flat_name": "310",
+      "flat_type": "2 BHK",
+      "carpet_area": "57 Sq.Mtr.",
+      "balcony_area": "4 Sq.Mtr."
+    },
+    {
+      "flat_name": "401",
+      "flat_type": "3 BHK",
+      "carpet_area": "73 Sq.Mtr.",
+      "balcony_area": "8 Sq.Mtr."
+    },
+    {
+      "flat_name": "402",
+      "flat_type": "3 BHK",
+      "carpet_area": "73 Sq.Mtr.",
+      "balcony_area": "6 Sq.Mtr."
+    },
+    {
+      "flat_name": "403",
+      "flat_type": "3 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "6 Sq.Mtr."
+    },
+    {
+      "flat_name": "404",
+      "flat_type": "3 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "7 Sq.Mtr."
+    },
+    {
+      "flat_name": "405",
+      "flat_type": "2 BHK",
+      "carpet_area": "57 Sq.Mtr.",
+      "balcony_area": "6 Sq.Mtr."
+    },
+    {
+      "flat_name": "406",
+      "flat_type": "2 BHK",
+      "carpet_area": "57 Sq.Mtr.",
+      "balcony_area": "8 Sq.Mtr."
+    },
+    {
+      "flat_name": "407",
+      "flat_type": "3 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "3 Sq.Mtr."
+    },
+    {
+      "flat_name": "408",
+      "flat_type": "3 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "3 Sq.Mtr."
+    },
+    {
+      "flat_name": "409",
+      "flat_type": "2 BHK",
+      "carpet_area": "57 Sq.Mtr.",
+      "balcony_area": "4 Sq.Mtr."
+    },
+    {
+      "flat_name": "410",
+      "flat_type": "2 BHK",
+      "carpet_area": "57 Sq.Mtr.",
+      "balcony_area": "4 Sq.Mtr."
+    },
+    {
+      "flat_name": "501",
+      "flat_type": "3 BHK",
+      "carpet_area": "73 Sq.Mtr.",
+      "balcony_area": "8 Sq.Mtr."
+    },
+    {
+      "flat_name": "502",
+      "flat_type": "3 BHK",
+      "carpet_area": "73 Sq.Mtr.",
+      "balcony_area": "6 Sq.Mtr."
+    },
+    {
+      "flat_name": "503",
+      "flat_type": "3 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "6 Sq.Mtr."
+    },
+    {
+      "flat_name": "504",
+      "flat_type": "3 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "7 Sq.Mtr."
+    },
+    {
+      "flat_name": "505",
+      "flat_type": "2 BHK",
+      "carpet_area": "57 Sq.Mtr.",
+      "balcony_area": "6 Sq.Mtr."
+    },
+    {
+      "flat_name": "506",
+      "flat_type": "2 BHK",
+      "carpet_area": "57 Sq.Mtr.",
+      "balcony_area": "8 Sq.Mtr."
+    },
+    {
+      "flat_name": "507",
+      "flat_type": "3 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "3 Sq.Mtr."
+    },
+    {
+      "flat_name": "508",
+      "flat_type": "3 BHK",
+      "carpet_area": "75 Sq.Mtr.",
+      "balcony_area": "3 Sq.Mtr."
+    },
+    {
+      "flat_name": "509",
+      "flat_type": "2 BHK",
+      "carpet_area": "57 Sq.Mtr.",
+      "balcony_area": "4 Sq.Mtr."
+    },
+    {
+      "flat_name": "510",
+      "flat_type": "2 BHK",
+      "carpet_area": "57 Sq.Mtr.",
+      "balcony_area": "4 Sq.Mtr."
+    }
+  ],
+  "complaints_litigation_details": null,
+  "uploaded_documents": [
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/projectCertificatePdf_1776840665.pdf",
+      "type": "RERA Registration Certificate 1",
+      "s3_link": "http://docs.primetenders.com/documents/12777815000802312001/RERA_Registration_Certificate_1.pdf"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpfFiBVm_1743081751.pdf",
+      "type": "Approved layout 1",
+      "s3_link": "http://docs.primetenders.com/documents/12777815000802312001/Approved_layout_1.pdf"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpWX9kUl_1754656354.pdf",
+      "type": "Share Allocation Agreement"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php2kaoXH_1743080799.pdf",
+      "type": "Advocate Report"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpj659yu_1775658592.pdf",
+      "type": "Approved layout 2",
+      "s3_link": "http://docs.primetenders.com/documents/12777815000802312001/Approved_layout_2.pdf"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpCwTlUp_1746877744.pdf",
+      "type": "Site Plan 1",
+      "s3_link": "http://docs.primetenders.com/documents/12777815000802312001/Site_Plan_1.pdf"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpMbpCLK_1775659406.pdf",
+      "type": "Nakhsha Location"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpMAkexT_1746877753.pdf",
+      "type": "Approved layout 3",
+      "s3_link": "http://docs.primetenders.com/documents/12777815000802312001/Approved_layout_3.pdf"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpcAMmhb_1762964918.pdf",
+      "type": "Estimated Price of Construction"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpydu3jj_1745423838.pdf",
+      "type": "Annual Report for FY 2021-22"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpTPi7Q0_1745423717.pdf",
+      "type": "Annual Report for FY 2022-23"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpExnNlo_1745423574.pdf",
+      "type": "Annual Report for FY 2023-24"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php4fs8aw_1745423782.pdf",
+      "type": "IT Return for FY 2021-22"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpepmwv0_1745423727.pdf",
+      "type": "IT Return for FY 2022-23"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpksrNxZ_1745423543.pdf",
+      "type": "IT Return for FY 2023-24"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpJvGXtE_1745423851.pdf",
+      "type": "Audit Report for FY 2021-22"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpmtyevI_1745423750.pdf",
+      "type": "Audit Report for FY 2022-23"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php8hUII4_1745423598.pdf",
+      "type": "Audit Report for FY 2023-24"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php0k7iA4_1745423089.pdf",
+      "type": "Fire Safety Certificate"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpKaaImp_1751640576.pdf",
+      "type": "Conveyance Deed"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpHW95Vo_1745423196.pdf",
+      "type": "Allotment letter format"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpfml7BK_1745423214.pdf",
+      "type": "Affidavit in Form-A as per clause-l of sub-section-2 of section-4 of the Act"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpj2EZgQ_1746881231.pdf",
+      "type": "Electricity NOC"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpDZdFQ3_1754659774.pdf",
+      "type": "Disha Real Estate Previous Project details"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php1NaPeu_1754659853.pdf",
+      "type": "Registered Office Address Declaration"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpOSBT95_1755528578.pdf",
+      "type": "Mile Stone Project"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpQiiL7k_1755531583.pdf",
+      "type": "Estimate Report"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpiqaUgv_1762963754.pdf",
+      "type": "Fire NOC"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpNDbkQs_1762963794.pdf",
+      "type": "CGW NOC"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpapSOUD_1762965197.pdf",
+      "type": "Objection Previous Project & Self Declaration"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php3NbIIl_1762965846.pdf",
+      "type": "New Address Cotrection Company Registration Certificate"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpwFNwg0_1769078729.pdf",
+      "type": "approval letter 1",
+      "s3_link": "http://docs.primetenders.com/documents/12777815000802312001/approval_letter_1.pdf"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpyCywTi_1769078841.pdf",
+      "type": "Cadastral Map and BeMC Approch Road Letter"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpOlTFfS_1769078974.pdf",
+      "type": "Disha Real Estate New Partnership Deed"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php14siAB_1769079045.pdf",
+      "type": "Fire Affidavit with Undertaking"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpgWlswd_1746877369.pdf",
+      "type": "SCHEDULE ‘A’"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phptwOxrN_1745422555.pdf",
+      "type": "SCHEDULE ‘B’"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpvN27oD_1748247723.pdf",
+      "type": "SCHEDULE ‘C’"
+    }
+  ],
+  "authorised_signatory_details": null,
+  "co_promoter_details": [
+    {
+      "name": "DINESH KUMAR MISHRA",
+      "role": "Partner",
+      "email": "dineshmish@gmail.com",
+      "phone": "9861056977",
+      "photo": "https://reraapps.odisha.gov.in/dms/public/Decrypted/PromoterMemberDetail_1972144651_1684908919_1735112698.jpeg"
+    },
+    {
+      "photo": "https://reraapps.odisha.gov.in/dms/public/Decrypted/PromoterMemberDetail_1972144651_1684908919_1735112698.jpeg"
+    },
+    {
+      "name": "ARUN KUMAR SABAT",
+      "role": "Partner",
+      "email": "arunsabat1111@gmail.com",
+      "phone": "9937654949",
+      "photo": "https://reraapps.odisha.gov.in/dms/public/Decrypted/PromoterMemberDetail_815592317_1684908919_1735112699.jpg"
+    },
+    {
+      "photo": "https://reraapps.odisha.gov.in/dms/public/Decrypted/PromoterMemberDetail_815592317_1684908919_1735112699.jpg"
+    },
+    {
+      "name": "ASISH KUMAR DALAI",
+      "role": "Partner",
+      "email": "titu.asish143@gmail.com",
+      "phone": "9438000063",
+      "photo": "https://reraapps.odisha.gov.in/dms/public/Decrypted/PromoterMemberDetail_1446261525_1684908919_1735112700.jpg"
+    },
+    {
+      "photo": "https://reraapps.odisha.gov.in/dms/public/Decrypted/PromoterMemberDetail_1446261525_1684908919_1735112700.jpg"
+    },
+    {
+      "name": "GOVIND CHANDRA SABAT",
+      "role": "Partner",
+      "email": "govindsabat130@gmail.com",
+      "phone": "7205462303",
+      "photo": "https://reraapps.odisha.gov.in/dms/public/Decrypted/PromoterMemberDetail_534421148_1684908919_1735112700.jpg"
+    },
+    {
+      "photo": "https://reraapps.odisha.gov.in/dms/public/Decrypted/PromoterMemberDetail_534421148_1684908919_1735112700.jpg"
+    }
+  ],
+  "project_description": null,
+  "provided_faciltiy": [
+    {
+      "name": "Elevators"
+    },
+    {
+      "name": "Plantation Area/No."
+    },
+    {
+      "name": "Fire Fighting Facility"
+    },
+    {
+      "name": "Community Center"
+    },
+    {
+      "name": "Internal Road"
+    },
+    {
+      "name": "Elecricity Supply"
+    },
+    {
+      "name": "External Road"
+    },
+    {
+      "name": "Water Supply"
+    }
+  ],
+  "professional_information": [
+    {
+      "name": "Krishnam Raju Penumatcha",
+      "role": "Structural Engineers/Construction Engineer",
+      "email": "drpkraju1962@gmail.com",
+      "phone": "9676493111",
+      "registration_no": "8 of2025-26"
+    },
+    {
+      "name": "ER. SURESH KUMAR SISTA",
+      "role": "Architect",
+      "email": "sureshsista1972@gmail.com",
+      "phone": "9437322869",
+      "registration_no": "130615/9"
+    },
+    {
+      "name": "J.Bijay Kumar",
+      "role": "Chartered Accountant",
+      "email": "mohantyrath.co@gmail.com",
+      "phone": "9439337031",
+      "registration_no": "68589"
+    },
+    {
+      "name": "DISHA REAL ESTATE",
+      "role": "Grievance Redressal Officer",
+      "email": "dineshmish@gmail.com",
+      "phone": "9861056977"
+    }
+  ],
+  "development_agreement_detail": null,
+  "construction_progress": null,
+  "land_detail": [
+    {
+      "mouza": "Goilundi",
+      "plot_no": "602",
+      "ror_doc": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=246544&text=134e3722f50836e83971dac93a521d8c1d7a31a9cded338ed032facb82ae819a",
+      "khata_no": "1166/3625",
+      "plot_area": "1449.00",
+      "any_encumbrance": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=153100&text=b5f0b40047231904f1182cf524f1c51cf75971152484be954bed98f09f6a4177",
+      "registration_place": "Homestead (Gharabari)"
+    },
+    {
+      "mouza": "Goilundi",
+      "plot_no": "598/9851",
+      "ror_doc": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=246543&text=5f8e0f7fe7e1eb6ce3d4d46bd03a716cc611982e77a36e0eb5f9c5bc740448f9",
+      "khata_no": "1166/3625",
+      "plot_area": "137.37",
+      "any_encumbrance": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=246542&text=a41aa5b9fca09436f245b17d82037f0532d29f0c0a171f921b1d742cea5c1f28",
+      "registration_place": "Homestead (Gharabari)"
+    }
+  ],
+  "document_urls": [
+    {
+      "link": "http://docs.primetenders.com/documents/12777815000802312001/RERA_Registration_Certificate_1.pdf",
+      "type": "RERA Registration Certificate 1"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/12777815000802312001/Approved_layout_1.pdf",
+      "type": "Approved layout 1"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/12777815000802312001/Approved_layout_2.pdf",
+      "type": "Approved layout 2"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/12777815000802312001/Site_Plan_1.pdf",
+      "type": "Site Plan 1"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/12777815000802312001/Approved_layout_3.pdf",
+      "type": "Approved layout 3"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/12777815000802312001/approval_letter_1.pdf",
+      "type": "approval letter 1"
+    }
+  ],
+  "members_details": null,
+  "retrieved_on": "2026-04-22 08:02:15.387428+00:00",
+  "config_id": 14587,
+  "data": {
+    "govt_type": "state",
+    "regis_cert": "https://reraapps.odisha.gov.in/dms/public/Decrypted/projectCertificatePdf_1776840665.pdf",
+    "is_processed": false,
+    "project_location": "Mouza-Goilundi, Jyoti Nagar, 4th Lane, Ganjam, Berhampur MC, Berhampur mc"
+  },
+  "promoters_details": {
+    "name": "DISHA REAL ESTATE",
+    "gst_no": "21AASFD0267C1ZU",
+    "type_of_firm": "a firm under the Partnership Act, 1932 or the Limited Liability Partnership Act, 6 of 2009. 2008, as the case may be;",
+    "registration_no": "11202100265 RP/11/2023/00990 RP/11/2023/01049 RP/11/2022/00745 RP/11/2025/01329",
+    "registration_certificate": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=248036&text=ccdf170c1c030df7fe8acf7c93eeaacd5602b78e731d4b8384d4f808d77e2fa2"
+  },
+  "domain": "rera.odisha.gov.in",
+  "state": "odisha",
+  "crawl_machine_ip": "98.70.112.46",
+  "machine_name": "dashboard-rera-14587-odisha-d4f95d77f-zsd4n",
+  "is_updated": false,
+  "is_duplicate": false,
+  "url": "https://rera.odisha.gov.in/projects/project-details/VTJGc2RHVmtYMSsxU29IQm1ySWp6eklwcTdpYkcwbEtkdE8xTjh6d0ltWEt3ZnNRS1dKYm1VR1RNN1NZRnJOWnlhbTZ2WW9mdXRjazhkZFo1N0pGSWx3bnc4Vit0ZTJPRWpJNmdFZ2RGbTQ9?name=Disha%20Ananta%20Villa",
+  "last_updated": null,
+  "updated_fields": [
+    "status_update"
+  ],
+  "project_images": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": [
+    {
+      "updated_on": "2026-04-22 08:10:27.886928+0000",
+      "status_update": "None"
+    }
+  ],
+  "status_update": [
+    {
+      "building_details": [
+        {
+          "flat_name": ";",
+          "flat_type": "Parking",
+          "carpet_area": "1123.040 Sq.Mtr."
+        },
+        {
+          "flat_name": "101",
+          "flat_type": "3 BHK",
+          "carpet_area": "73 Sq.Mtr.",
+          "balcony_area": "8 Sq.Mtr."
+        },
+        {
+          "flat_name": "102",
+          "flat_type": "3 BHK",
+          "carpet_area": "73 Sq.Mtr.",
+          "balcony_area": "6 Sq.Mtr."
+        },
+        {
+          "flat_name": "103",
+          "flat_type": "3 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "6 Sq.Mtr."
+        },
+        {
+          "flat_name": "104",
+          "flat_type": "3 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "7 Sq.Mtr."
+        },
+        {
+          "flat_name": "105",
+          "flat_type": "2 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "3 Sq.Mtr."
+        },
+        {
+          "flat_name": "106",
+          "flat_type": "2 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "3 Sq.Mtr."
+        },
+        {
+          "flat_name": "107",
+          "flat_type": "2 BHK",
+          "carpet_area": "57 Sq.Mtr.",
+          "balcony_area": "4 Sq.Mtr."
+        },
+        {
+          "flat_name": "108",
+          "flat_type": "2 BHK",
+          "carpet_area": "57 Sq.Mtr.",
+          "balcony_area": "4 Sq.Mtr."
+        },
+        {
+          "flat_name": "201",
+          "flat_type": "3 BHK",
+          "carpet_area": "73 Sq.Mtr.",
+          "balcony_area": "0 Sq.Mtr."
+        },
+        {
+          "flat_name": "202",
+          "flat_type": "3 BHK",
+          "carpet_area": "73 Sq.Mtr.",
+          "balcony_area": "0 Sq.Mtr."
+        },
+        {
+          "flat_name": "203",
+          "flat_type": "3 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "0 Sq.Mtr."
+        },
+        {
+          "flat_name": "204",
+          "flat_type": "3 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "0 Sq.Mtr."
+        },
+        {
+          "flat_name": "205",
+          "flat_type": "2 BHK",
+          "carpet_area": "57 Sq.Mtr.",
+          "balcony_area": "0 Sq.Mtr."
+        },
+        {
+          "flat_name": "206",
+          "flat_type": "2 BHK",
+          "carpet_area": "57 Sq.Mtr.",
+          "balcony_area": "0 Sq.Mtr."
+        },
+        {
+          "flat_name": "207",
+          "flat_type": "3 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "0 Sq.Mtr."
+        },
+        {
+          "flat_name": "208",
+          "flat_type": "3 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "0 Sq.Mtr."
+        },
+        {
+          "flat_name": "209",
+          "flat_type": "2 BHK",
+          "carpet_area": "57 Sq.Mtr.",
+          "balcony_area": "0 Sq.Mtr."
+        },
+        {
+          "flat_name": "210",
+          "flat_type": "2 BHK",
+          "carpet_area": "57 Sq.Mtr.",
+          "balcony_area": "0 Sq.Mtr."
+        },
+        {
+          "flat_name": "301",
+          "flat_type": "3 BHK",
+          "carpet_area": "73 Sq.Mtr.",
+          "balcony_area": "8 Sq.Mtr."
+        },
+        {
+          "flat_name": "302",
+          "flat_type": "3 BHK",
+          "carpet_area": "73 Sq.Mtr.",
+          "balcony_area": "6 Sq.Mtr."
+        },
+        {
+          "flat_name": "303",
+          "flat_type": "3 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "6 Sq.Mtr."
+        },
+        {
+          "flat_name": "304",
+          "flat_type": "3 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "7 Sq.Mtr."
+        },
+        {
+          "flat_name": "305",
+          "flat_type": "2 BHK",
+          "carpet_area": "57 Sq.Mtr.",
+          "balcony_area": "6 Sq.Mtr."
+        },
+        {
+          "flat_name": "306",
+          "flat_type": "2 BHK",
+          "carpet_area": "57 Sq.Mtr.",
+          "balcony_area": "8 Sq.Mtr."
+        },
+        {
+          "flat_name": "307",
+          "flat_type": "3 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "3 Sq.Mtr."
+        },
+        {
+          "flat_name": "308",
+          "flat_type": "3 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "3 Sq.Mtr."
+        },
+        {
+          "flat_name": "309",
+          "flat_type": "2 BHK",
+          "carpet_area": "57 Sq.Mtr.",
+          "balcony_area": "4 Sq.Mtr."
+        },
+        {
+          "flat_name": "310",
+          "flat_type": "2 BHK",
+          "carpet_area": "57 Sq.Mtr.",
+          "balcony_area": "4 Sq.Mtr."
+        },
+        {
+          "flat_name": "401",
+          "flat_type": "3 BHK",
+          "carpet_area": "73 Sq.Mtr.",
+          "balcony_area": "8 Sq.Mtr."
+        },
+        {
+          "flat_name": "402",
+          "flat_type": "3 BHK",
+          "carpet_area": "73 Sq.Mtr.",
+          "balcony_area": "6 Sq.Mtr."
+        },
+        {
+          "flat_name": "403",
+          "flat_type": "3 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "6 Sq.Mtr."
+        },
+        {
+          "flat_name": "404",
+          "flat_type": "3 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "7 Sq.Mtr."
+        },
+        {
+          "flat_name": "405",
+          "flat_type": "2 BHK",
+          "carpet_area": "57 Sq.Mtr.",
+          "balcony_area": "6 Sq.Mtr."
+        },
+        {
+          "flat_name": "406",
+          "flat_type": "2 BHK",
+          "carpet_area": "57 Sq.Mtr.",
+          "balcony_area": "8 Sq.Mtr."
+        },
+        {
+          "flat_name": "407",
+          "flat_type": "3 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "3 Sq.Mtr."
+        },
+        {
+          "flat_name": "408",
+          "flat_type": "3 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "3 Sq.Mtr."
+        },
+        {
+          "flat_name": "409",
+          "flat_type": "2 BHK",
+          "carpet_area": "57 Sq.Mtr.",
+          "balcony_area": "4 Sq.Mtr."
+        },
+        {
+          "flat_name": "410",
+          "flat_type": "2 BHK",
+          "carpet_area": "57 Sq.Mtr.",
+          "balcony_area": "4 Sq.Mtr."
+        },
+        {
+          "flat_name": "501",
+          "flat_type": "3 BHK",
+          "carpet_area": "73 Sq.Mtr.",
+          "balcony_area": "8 Sq.Mtr."
+        },
+        {
+          "flat_name": "502",
+          "flat_type": "3 BHK",
+          "carpet_area": "73 Sq.Mtr.",
+          "balcony_area": "6 Sq.Mtr."
+        },
+        {
+          "flat_name": "503",
+          "flat_type": "3 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "6 Sq.Mtr."
+        },
+        {
+          "flat_name": "504",
+          "flat_type": "3 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "7 Sq.Mtr."
+        },
+        {
+          "flat_name": "505",
+          "flat_type": "2 BHK",
+          "carpet_area": "57 Sq.Mtr.",
+          "balcony_area": "6 Sq.Mtr."
+        },
+        {
+          "flat_name": "506",
+          "flat_type": "2 BHK",
+          "carpet_area": "57 Sq.Mtr.",
+          "balcony_area": "8 Sq.Mtr."
+        },
+        {
+          "flat_name": "507",
+          "flat_type": "3 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "3 Sq.Mtr."
+        },
+        {
+          "flat_name": "508",
+          "flat_type": "3 BHK",
+          "carpet_area": "75 Sq.Mtr.",
+          "balcony_area": "3 Sq.Mtr."
+        },
+        {
+          "flat_name": "509",
+          "flat_type": "2 BHK",
+          "carpet_area": "57 Sq.Mtr.",
+          "balcony_area": "4 Sq.Mtr."
+        },
+        {
+          "flat_name": "510",
+          "flat_type": "2 BHK",
+          "carpet_area": "57 Sq.Mtr.",
+          "balcony_area": "4 Sq.Mtr."
+        }
+      ],
+      "proposed_timeline": [
+        {
+          "title": "Site Development of Disha Ananta Villa, Disha Ananta Villa",
+          "status": "Not started",
+          "proposed_end_date": "24-Dec-2024"
+        },
+        {
+          "title": "Foundation of Disha Ananta Villa, Disha Ananta Villa",
+          "status": "Not started",
+          "proposed_end_date": "31-Jan-2025"
+        },
+        {
+          "title": "Stilt of Disha Ananta Villa, Disha Ananta Villa",
+          "status": "Not started",
+          "proposed_end_date": "07-Mar-2025"
+        },
+        {
+          "title": "1st of Disha Ananta Villa, Disha Ananta Villa",
+          "status": "Not started",
+          "proposed_end_date": "12-Jun-2025"
+        },
+        {
+          "title": "2nd of Disha Ananta Villa, Disha Ananta Villa",
+          "status": "Not started",
+          "proposed_end_date": "31-Jul-2025"
+        },
+        {
+          "title": "3rd of Disha Ananta Villa, Disha Ananta Villa",
+          "status": "Not started",
+          "proposed_end_date": "30-Sep-2025"
+        },
+        {
+          "title": "4th of Disha Ananta Villa, Disha Ananta Villa",
+          "status": "Not started",
+          "proposed_end_date": "29-Nov-2025"
+        },
+        {
+          "title": "5th of Disha Ananta Villa, Disha Ananta Villa",
+          "status": "Not started",
+          "proposed_end_date": "28-May-2026"
+        },
+        {
+          "title": "Power Supply of Disha Ananta Villa, Disha Ananta Villa",
+          "status": "Not started",
+          "proposed_end_date": "30-Jun-2027"
+        }
+      ]
+    }
+  ],
+  "iw_part_processed": null,
+  "iw_processed": true,
+  "last_crawled_date": "2026-04-22 08:02:12.755658+00:00",
+  "land_area_details": null,
+  "doc_ocr_url": null,
+  "proposed_timeline": [
+    {
+      "title": "Site Development of Disha Ananta Villa, Disha Ananta Villa",
+      "status": "Not started",
+      "proposed_end_date": "24-Dec-2024"
+    },
+    {
+      "title": "Foundation of Disha Ananta Villa, Disha Ananta Villa",
+      "status": "Not started",
+      "proposed_end_date": "31-Jan-2025"
+    },
+    {
+      "title": "Stilt of Disha Ananta Villa, Disha Ananta Villa",
+      "status": "Not started",
+      "proposed_end_date": "07-Mar-2025"
+    },
+    {
+      "title": "1st of Disha Ananta Villa, Disha Ananta Villa",
+      "status": "Not started",
+      "proposed_end_date": "12-Jun-2025"
+    },
+    {
+      "title": "2nd of Disha Ananta Villa, Disha Ananta Villa",
+      "status": "Not started",
+      "proposed_end_date": "31-Jul-2025"
+    },
+    {
+      "title": "3rd of Disha Ananta Villa, Disha Ananta Villa",
+      "status": "Not started",
+      "proposed_end_date": "30-Sep-2025"
+    },
+    {
+      "title": "4th of Disha Ananta Villa, Disha Ananta Villa",
+      "status": "Not started",
+      "proposed_end_date": "29-Nov-2025"
+    },
+    {
+      "title": "5th of Disha Ananta Villa, Disha Ananta Villa",
+      "status": "Not started",
+      "proposed_end_date": "28-May-2026"
+    },
+    {
+      "title": "Power Supply of Disha Ananta Villa, Disha Ananta Villa",
+      "status": "Not started",
+      "proposed_end_date": "30-Jun-2027"
+    }
+  ],
+  "checked_updates": true,
+  "checked_updates_date": "2026-04-22 08:10:30.615372+00:00",
+  "rera_housing_found": false,
+  "is_live": false,
+  "alternative_rera_ids": null
+}

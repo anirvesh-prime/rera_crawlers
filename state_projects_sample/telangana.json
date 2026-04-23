@@ -1,0 +1,823 @@
+{
+  "key": "8640035356322727155",
+  "project_name": "SURAKSHA COUNTY",
+  "project_type": "Plotted Development",
+  "promoter_name": "PENUGURI PRABHAKAR",
+  "project_registration_no": null,
+  "status_of_the_project": "On-Going Project",
+  "acknowledgement_no": null,
+  "project_pin_code": null,
+  "project_city": "Jangaon",
+  "project_state": null,
+  "project_location_raw": {
+    "state": "Telangana",
+    "village": "Shamirpet",
+    "district": "Jangaon",
+    "locality": "SHAMIRPET",
+    "pin_code": "506167",
+    "raw_address": "SHAMIRPET, Jangaon, Telangana, Pincode: 506167"
+  },
+  "promoter_address_raw": {
+    "state": "Telangana",
+    "district": "Khammam",
+    "locality": "MANCHU KONDA",
+    "pin_code": "507182",
+    "raw_address": "PRABHAKAR HOME, MANCHU KONDA, Khammam, Telangana, Pincode: 507182",
+    "house_no_building_name": "PRABHAKAR HOME"
+  },
+  "promoter_contact_details": {
+    "phone": "08341684410"
+  },
+  "submitted_date": null,
+  "last_modified": null,
+  "estimated_commencement_date": null,
+  "actual_commencement_date": null,
+  "estimated_finish_date": "2025-09-22 00:00:00+00:00",
+  "actual_finish_date": null,
+  "approved_on_date": "2023-09-23 00:00:00+00:00",
+  "past_experience_of_promoter": null,
+  "bank_details": null,
+  "land_area": 28550.33,
+  "construction_area": 15329.36,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "project_cost_detail": null,
+  "number_of_residential_units": null,
+  "number_of_commercial_units": null,
+  "building_details": [
+    {
+      "flat_type": "plot",
+      "total_area": "132.77",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "124.73",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "125.01",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "125.30",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "125.59",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "125.87",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "126.17",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "119.89",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "147.09",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "141.95",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "170.77",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "243.98",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "238.52",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "153.95",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "161.92",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "148.92",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "136.13",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "177.75",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "255.87",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "148.64",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "143.96",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "153.22",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "153.24",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "125.38",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "161.41",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "160.91",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "153.7",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "153.67",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "153.65",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "186.8",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "204.52",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "190.11",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "190.10",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "191",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "192.10",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "196.02",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "137.95",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "137.95",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "199.27",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "220.67",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "152.77",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "152.77",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "124.11",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "124.11",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "124.11",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "124.11",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "124.11",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "124.11",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "194.43",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "210.37",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "152.79",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "152.59",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "152.79",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "152.79",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "169.76",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "169.76",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "203.68",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "183.92",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "153.28",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "153.28",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "137.95",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "137.95",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "137.95",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "137.95",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "309.08",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "194.16",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "155.51",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "155.51",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "155.51",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "155.51",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "155.51",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "172.8",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "155.51",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "155.51",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "232.87",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "187.8",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "125.41",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "125.41",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "139.35",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "125.41",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "125.41",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "125.41",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "125.41",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "125.41",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "133.41",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "180.85",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "182.53",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "182.53",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "182.53",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "182.53",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "167.22",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "167.22",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "167.22",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "167.22",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "total_area": "175.46",
+      "no_of_plots": "1",
+      "booking_detail": "0"
+    }
+  ],
+  "complaints_litigation_details": null,
+  "uploaded_documents": [
+    {
+      "link": "https://rerait.telangana.gov.in/SearchList/GetShowCertificateFileContent?QueryStringID=UHJvamVjdElEPTU1MjYwJkRpdmlzaW9uPTEmVXNlcklEPTE3MjE4MiZSb2xlSUQ9MSZBcHBJRD03MTI2OCZBY3Rpb249U0VBUkNIJkNoYXJhY3RlckQ9NTImRXh0QXBwSUQ9",
+      "type": "Registration Certificate 1",
+      "s3_link": "http://docs.primetenders.com/documents/8640035356322727155/Registration_Certificate_1.pdf",
+      "updated": true
+    },
+    {
+      "link": "https://rerait.telangana.gov.in//SearchList/GetshowFileApplicationPreviewFileContent/UHJvamVjdElEPTU1MjYwJkRpdmlzaW9uPTEmVXNlcklEPTE3MjE4MiZSb2xlSUQ9MSZBcHBJRD03MTI2OCZBY3Rpb249U0VBUkNIJkNoYXJhY3RlckQ9NTImRXh0QXBwSUQ9",
+      "type": "Rera Project Details",
+      "updated": true
+    },
+    {
+      "type": "Copy of the legal title report"
+    },
+    {
+      "type": "Commencement Certificate/Copy of Building Permit/Proceedings",
+      "updated": true
+    },
+    {
+      "type": "Registered Supplementary Agreement of Share Holdings of Flat(s) / Plot(s) among Developers / Landowners",
+      "updated": true
+    }
+  ],
+  "authorised_signatory_details": null,
+  "co_promoter_details": [
+    {
+      "name": "MERUGU SAROJA"
+    },
+    {
+      "name": "MERUGU VASU"
+    },
+    {
+      "name": "MERUGU NEELIMA"
+    },
+    {
+      "name": "MERUGU NIKHIL"
+    },
+    {
+      "name": "MERUGU SUDHAKAR"
+    },
+    {
+      "name": "MERUGU PRABHAKAR"
+    },
+    {
+      "name": "CHENNA BHAVANI"
+    },
+    {
+      "name": "MERUGU SURENDER"
+    },
+    {
+      "name": "MERUGU LAXMI NARAYANA"
+    },
+    {
+      "name": "MERUGU DEVRAJ"
+    },
+    {
+      "name": "YASOJU NARSIMHA CHARY"
+    }
+  ],
+  "project_description": null,
+  "provided_faciltiy": null,
+  "professional_information": [
+    {
+      "name": "BASITH ALI",
+      "role": "Architect"
+    },
+    {
+      "name": "MOHAMMED MAQSOOD ANSARI",
+      "role": "Structural Engineer"
+    }
+  ],
+  "development_agreement_detail": null,
+  "construction_progress": [
+    {
+      "title": "Internal Roads & Footpaths :",
+      "remarks": "COMPLETED",
+      "progress_percentage": "100"
+    },
+    {
+      "title": "Water Supply :",
+      "remarks": "COMPLETED",
+      "progress_percentage": "100"
+    },
+    {
+      "title": "Sewerage (Chamber, Lines, Septic Tank , STP) :",
+      "remarks": "COMPLETED",
+      "progress_percentage": "100"
+    },
+    {
+      "title": "Storm Water Drains :",
+      "remarks": "COMPLETED",
+      "progress_percentage": "100"
+    },
+    {
+      "title": "Green Strip/TOT LOT/Park :",
+      "remarks": "COMPLETED",
+      "progress_percentage": "100"
+    },
+    {
+      "title": "Street Lighting :",
+      "remarks": "completed",
+      "progress_percentage": "100"
+    },
+    {
+      "title": "Treatment And Disposal Of Sewage And Sullage Water :",
+      "remarks": "COMPLETED",
+      "progress_percentage": "100"
+    },
+    {
+      "title": "Solid Waste Management And Disposal :",
+      "remarks": "COMPLETED",
+      "progress_percentage": "100"
+    },
+    {
+      "title": "Water Conservation, Rain water Harvesting :",
+      "remarks": "COMPLETED",
+      "progress_percentage": "100"
+    }
+  ],
+  "land_detail": null,
+  "document_urls": [
+    {
+      "link": "http://docs.primetenders.com/documents/8640035356322727155/Registration_Certificate_1.pdf",
+      "type": "Registration Certificate 1"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/8640035356322727155/Layout_Plan_1.pdf",
+      "type": "Layout Plan 1"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/8640035356322727155/Commencement_Certificate_1.pdf",
+      "type": "Commencement Certificate 1"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/8640035356322727155/Commencement_Certificate_2.pdf",
+      "type": "Commencement Certificate 2"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/8640035356322727155/Building_Plan_1.pdf",
+      "type": "Building Plan 1"
+    }
+  ],
+  "members_details": null,
+  "retrieved_on": "2025-11-14 11:27:04.033204+00:00",
+  "config_id": 11811,
+  "data": {
+    "data_cert": "UHJvamVjdElEPTU1MjYwJkRpdmlzaW9uPTEmVXNlcklEPTE3MjE4MiZSb2xlSUQ9MSZBcHBJRD03MTI2OCZBY3Rpb249U0VBUkNIJkNoYXJhY3RlckQ9ODcmRXh0QXBwSUQ9",
+    "govt_type": "state",
+    "doc_decoded": "ProjectID=55260&Division=1&UserID=172182&RoleID=1&AppID=71268&Action=SEARCH",
+    "is_processed": false,
+    "land_area_unit": "Total Area(In sqmts)",
+    "construction_area_unit": "Approved Built up Area (In Sqmts)"
+  },
+  "promoters_details": {
+    "name": "PENUGURI"
+  },
+  "domain": "rerait.telangana.gov.in",
+  "state": "telangana",
+  "crawl_machine_ip": "98.70.112.130",
+  "machine_name": "dashboard-rera-11811-telangana-74b87ccd6f-jh7tz",
+  "is_updated": true,
+  "is_duplicate": false,
+  "url": "https://rerait.telangana.gov.in/PrintPreview/PrintPreview?q=7tBl7Q%2bne0YC%2bJuWZ1o5D7U%2fBMf%2f%2bZxNCMUjHlNIxKGW8oSVcCENetit4ylunFGT7t4JZGIC%2b2WFGs7LWJggSdNtLNFeZax5RiGpHPLkSpUcv%2bvfRNtr6hwZdFZ4NiZZxvkmqK2%2b4lATrpm8hCXobpzvbormKT9qddg%2fjGZhMz5XgEN968pNIQ%3d%3d",
+  "last_updated": "2026-04-21 20:32:20.426996+00:00",
+  "updated_fields": [
+    "uploaded_documents",
+    "updated_fields",
+    "last_updated",
+    "last_crawled_date",
+    "old_updates",
+    "config_id",
+    "is_updated"
+  ],
+  "project_images": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": [
+    {
+      "updated_on": "2026-04-21 20:32:20.426996+0000",
+      "uploaded_documents": "[{'link': 'https://rerait.telangana.gov.in/SearchList/GetShowCertificateFileContent?QueryStringID=UHJvamVjdElEPTU1MjYwJkRpdmlzaW9uPTEmVXNlcklEPTE3MjE4MiZSb2xlSUQ9MSZBcHBJRD03MTI2OCZBY3Rpb249U0VBUkNIJkNoYXJhY3RlckQ9ODcmRXh0QXBwSUQ9', 'type': 'Registration Certificate 1', 's3_link': 'http://docs.primetenders.com/documents/8640035356322727155/Registration_Certificate_1.pdf'}, {'link': 'https://rerait.telangana.gov.in//SearchList/GetshowFileApplicationPreviewFileContent/UHJvamVjdElEPTU1MjYwJkRpdmlzaW9uPTEmVXNlcklEPTE3MjE4MiZSb2xlSUQ9MSZBcHBJRD03MTI2OCZBY3Rpb249U0VBUkNIJkNoYXJhY3RlckQ9ODcmRXh0QXBwSUQ9', 'type': 'Rera Project Details'}, {'type': 'Copy of the legal title report'}, {'type': 'Copy of the legal title report'}, {'type': 'Copy of the legal title report'}, {'type': 'Copy of the legal title report'}, {'type': 'Copy of the legal title report'}, {'type': 'Copy of the legal title report'}, {'type': 'Copy of the legal title report'}, {'type': 'Copy of the legal title report'}, {'type': 'Details of encumbrances'}, {'link': 'https://rerait.telangana.gov.in/Preview/GetUserDocumentFileContent/610680/1?RoleID=1&CurrentUserID=0', 'type': 'Layout Plan 1', 's3_link': 'http://docs.primetenders.com/documents/8640035356322727155/Layout_Plan_1.pdf'}, {'link': 'https://rerait.telangana.gov.in/Preview/GetUserDocumentFileContent/610680/1?RoleID=1&CurrentUserID=0', 'type': 'Agreement of Sale (AOS) [as per the Format]'}, {'link': 'https://rerait.telangana.gov.in/Preview/GetUserDocumentFileContent/610680/1?RoleID=1&CurrentUserID=0', 'type': 'Declaration in FORM B'}, {'link': 'https://rerait.telangana.gov.in/Preview/GetUserDocumentFileContent/610684/1?RoleID=1&CurrentUserID=0', 'type': 'Commencement Certificate 1', 's3_link': 'http://docs.primetenders.com/documents/8640035356322727155/Commencement_Certificate_1.pdf'}, {'link': 'https://rerait.telangana.gov.in/Preview/GetUserDocumentFileContent/624212/1?RoleID=1&CurrentUserID=0', 'type': 'Commencement Certificate 2', 's3_link': 'http://docs.primetenders.com/documents/8640035356322727155/Commencement_Certificate_2.pdf'}, {'link': 'https://rerait.telangana.gov.in/Preview/GetUserDocumentFileContent/610685/1?RoleID=1&CurrentUserID=0', 'type': 'Building Plan 1', 's3_link': 'http://docs.primetenders.com/documents/8640035356322727155/Building_Plan_1.pdf'}]"
+    }
+  ],
+  "status_update": {
+    "booking_details": []
+  },
+  "iw_part_processed": null,
+  "iw_processed": true,
+  "last_crawled_date": "2026-04-21 20:32:20.428064+00:00",
+  "land_area_details": {
+    "land_area": "28550.33",
+    "land_area_unit": "Total Area(In sqmts)",
+    "construction_area": "15329.36",
+    "construction_area_unit": "Approved Built up Area (In Sqmts)"
+  },
+  "doc_ocr_url": null,
+  "proposed_timeline": null,
+  "checked_updates": true,
+  "checked_updates_date": "2025-11-14 11:34:09.100605+00:00",
+  "rera_housing_found": false,
+  "is_live": false,
+  "alternative_rera_ids": null
+}

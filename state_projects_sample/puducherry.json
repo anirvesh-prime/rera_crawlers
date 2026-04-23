@@ -1,0 +1,128 @@
+{
+  "key": "17474881117080113836",
+  "project_name": "PROPOSED RESIDENTIAL LAYOUT",
+  "project_type": "Plotted Development",
+  "promoter_name": "KANCHARLA SRI RAMA KRISHNAYYA",
+  "project_registration_no": "PRPY133450",
+  "status_of_the_project": "APPROVED",
+  "acknowledgement_no": null,
+  "project_pin_code": null,
+  "project_city": null,
+  "project_state": null,
+  "project_location_raw": {
+    "state": "Puducherry",
+    "village": "Mettakur",
+    "district": "YANAM",
+    "raw_address": "TS NO A/3/41/2, METTACUR YANAM, YANAM, Puducherry"
+  },
+  "promoter_address_raw": null,
+  "promoter_contact_details": {
+    "email": "mmbuilderspdy@gmail.com",
+    "phone": "9440103718"
+  },
+  "submitted_date": "2026-04-21 14:21:14+00:00",
+  "last_modified": null,
+  "estimated_commencement_date": "2026-03-19 00:00:00+00:00",
+  "actual_commencement_date": null,
+  "estimated_finish_date": "2031-03-18 00:00:00+00:00",
+  "actual_finish_date": null,
+  "approved_on_date": null,
+  "past_experience_of_promoter": null,
+  "bank_details": null,
+  "land_area": null,
+  "construction_area": null,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "project_cost_detail": {
+    "total_project_cost": "10000000"
+  },
+  "number_of_residential_units": null,
+  "number_of_commercial_units": null,
+  "building_details": null,
+  "complaints_litigation_details": null,
+  "uploaded_documents": [
+    {
+      "link": "https://prera.py.gov.in/reraAppOffice/getdocument?DOC_ID=12329",
+      "type": "Declaration (Form B)",
+      "s3_link": "http://docs.primetenders.com/documents/17474881117080113836/Declaration_(Form_B).pdf"
+    },
+    {
+      "link": "https://prera.py.gov.in/reraAppOffice/getdocument?DOC_ID=12383",
+      "type": "Project Registration Certificate",
+      "s3_link": "http://docs.primetenders.com/documents/17474881117080113836/Project_Registration_Certificate.pdf"
+    }
+  ],
+  "authorised_signatory_details": null,
+  "co_promoter_details": null,
+  "project_description": "TS NO A/3/41/2 METTACUR YANAM",
+  "provided_faciltiy": null,
+  "professional_information": [
+    {
+      "role": "Architects",
+      "address": ",,Pondicherry,Puducherry"
+    },
+    {
+      "role": "Structural Engineers",
+      "address": ",,Pondicherry,Puducherry"
+    }
+  ],
+  "development_agreement_detail": null,
+  "construction_progress": null,
+  "land_detail": null,
+  "document_urls": [
+    {
+      "link": "http://docs.primetenders.com/documents/17474881117080113836/Declaration_(Form_B).pdf",
+      "type": "Declaration (Form B)"
+    },
+    {
+      "link": "http://docs.primetenders.com/documents/17474881117080113836/Project_Registration_Certificate.pdf",
+      "type": "Project Registration Certificate"
+    }
+  ],
+  "members_details": null,
+  "retrieved_on": "2026-04-21 15:15:01.682306+00:00",
+  "config_id": 15113,
+  "data": {
+    "govt_type": "state",
+    "raw_address": "TS NO A/3/41/2, METTACUR YANAM, YANAM, Puducherry",
+    "is_processed": false,
+    "promoter_type": "Individual"
+  },
+  "promoters_details": {
+    "name": "KANCHARLA SRI RAMA KRISHNAYYA",
+    "type_of_firm": "Individual"
+  },
+  "domain": "prera.py.gov.in",
+  "state": "puducherry",
+  "crawl_machine_ip": "98.70.112.71",
+  "machine_name": "dashboard-india-crawlers-676b776ff7-kl262",
+  "is_updated": false,
+  "is_duplicate": false,
+  "url": "https://prera.py.gov.in/reraAppOffice/viewProjectDetailPage?projectID=567",
+  "last_updated": null,
+  "updated_fields": null,
+  "project_images": [
+    ""
+  ],
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": "'[]'::jsonb",
+  "status_update": null,
+  "iw_part_processed": null,
+  "iw_processed": true,
+  "last_crawled_date": "2026-04-21 15:14:59.072414+00:00",
+  "land_area_details": {
+    "land_area": null,
+    "land_area_unit": null,
+    "construction_area": null,
+    "construction_area_unit": "Sq Mtr"
+  },
+  "doc_ocr_url": null,
+  "proposed_timeline": null,
+  "checked_updates": false,
+  "checked_updates_date": null,
+  "rera_housing_found": false,
+  "is_live": false,
+  "alternative_rera_ids": null
+}
