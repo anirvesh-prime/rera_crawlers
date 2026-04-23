@@ -1169,6 +1169,8 @@ def _handle_document(
             data = resp.content
         md5 = compute_md5(data)
         s3_key = upload_document(project_key, filename, data, dry_run=settings.DRY_RUN_S3)
+        if s3_key is None:
+            return None
         s3_url = get_s3_url(s3_key)
         upsert_document(project_key=project_key, document_type=label, original_url=document_identity_url(doc) or url,
                         s3_key=s3_key, s3_bucket=settings.S3_BUCKET_NAME,

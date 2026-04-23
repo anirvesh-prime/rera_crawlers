@@ -29,11 +29,7 @@ class Settings(BaseSettings):
     AWS_ACCESS_KEY_ID: str
     AWS_SECRET_ACCESS_KEY: str
     AWS_REGION: str
-    S3_BUCKET_NAME: str
-    # Public CDN base URL for document links stored in the DB.
-    # e.g. https://docs.primetenders.com  — no trailing slash.
-    # get_s3_url() will produce: {CDN_BASE_URL}/{s3_key}
-    CDN_BASE_URL: str = ""
+    S3_BUCKET_NAME: str  # also used as the public CDN domain for document URLs
 
     # Crawler — DRY_RUN_S3 required (set in .env); others optional with safe defaults
     PYTHONHASHSEED: str = "0"
