@@ -65,14 +65,19 @@ def safe_get(
     logger: CrawlerLogger | None = None,
     timeout: float = 30.0,
     verify: bool = True,
+    client: httpx.Client | None = None,
 ) -> httpx.Response | None:
+    """GET with retry/backoff.  Pass `client` to reuse an existing connection pool."""
     _headers = {"User-Agent": get_random_ua(), **(headers or {})}
     for attempt in range(1, retries + 1):
         try:
-            with httpx.Client(timeout=timeout, follow_redirects=True, verify=verify) as client:
+            if client is not None:
                 resp = client.get(url, headers=_headers, params=params)
-                resp.raise_for_status()
-                return resp
+            else:
+                with httpx.Client(timeout=timeout, follow_redirects=True, verify=verify) as c:
+                    resp = c.get(url, headers=_headers, params=params)
+            resp.raise_for_status()
+            return resp
         except Exception as e:
             if logger:
                 logger.warning(f"GET attempt {attempt}/{retries} failed: {e}", url=url)
@@ -91,14 +96,19 @@ def safe_post(
     logger: CrawlerLogger | None = None,
     timeout: float = 30.0,
     verify: bool = True,
+    client: httpx.Client | None = None,
 ) -> httpx.Response | None:
+    """POST with retry/backoff.  Pass `client` to reuse an existing connection pool."""
     _headers = {"User-Agent": get_random_ua(), **(headers or {})}
     for attempt in range(1, retries + 1):
         try:
-            with httpx.Client(timeout=timeout, follow_redirects=True, verify=verify) as client:
+            if client is not None:
                 resp = client.post(url, data=data, json=json_data, headers=_headers)
-                resp.raise_for_status()
-                return resp
+            else:
+                with httpx.Client(timeout=timeout, follow_redirects=True, verify=verify) as c:
+                    resp = c.post(url, data=data, json=json_data, headers=_headers)
+            resp.raise_for_status()
+            return resp
         except Exception as e:
             if logger:
                 logger.warning(f"POST attempt {attempt}/{retries} failed: {e}", url=url)

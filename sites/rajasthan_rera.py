@@ -12,6 +12,8 @@ from __future__ import annotations
 import re
 from datetime import datetime, timezone
 
+import httpx
+
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
@@ -84,12 +86,14 @@ _DETAIL_API_TO_FIELD: dict[str, str] = {
 
 
 
-def _fetch_project_detail(enc_id: str, logger: CrawlerLogger) -> dict:
+def _fetch_project_detail(enc_id: str, logger: CrawlerLogger,
+                          client: httpx.Client | None = None) -> dict:
     """Call GetProjectById API and return explicit fields plus raw structured payloads."""
     resp = safe_post(
         f"{API_BASE}/Home/GetProjectById",
         json_data={"ProjectId": enc_id},
-        headers=_API_HEADERS, retries=2, timeout=20,
+        headers=_API_HEADERS, retries=2, timeout=12,
+        client=client,
     )
     if not resp:
         return {}
@@ -194,31 +198,17 @@ def _is_real_document(resp) -> bool:
 def _resolve_relative_url(path: str, hosts: list[str] = _DOC_HOSTS) -> str | None:
     """
     Turn a relative path (e.g. '~/Content/uploads/Certificate/Signed_xxx.pdf')
-    into an absolute URL by probing each candidate host.
+    into an absolute URL using the primary document host (APP_BASE).
 
-    Returns the first URL whose response body looks like a real document.
-    Falls back to the first candidate so we never silently discard a URL
-    (e.g. during a transient outage where all probes fail).
-
-    Status codes are deliberately NOT used as the sole signal — government
-    sites commonly return HTTP 200 for soft-404 HTML error pages.
+    No HTTP probing is performed — the primary host (APP_BASE) always serves
+    Rajasthan RERA documents, so probing every host is wasted round-trips.
+    The `hosts` parameter is kept for backwards-compatibility with tests.
     """
     clean = path.replace("~/", "").replace("~\\", "").replace("../", "").replace("..\\", "")
     if not clean.startswith("/"):
         clean = f"/{clean}"
-
-    fallback: str | None = None
-    for host in hosts:
-        url = f"{host}{clean}"
-        if fallback is None:
-            fallback = url
-        try:
-            resp = safe_get(url, timeout=10)
-            if _is_real_document(resp):
-                return url
-        except Exception:
-            pass
-    return fallback
+    primary = hosts[0] if hosts else APP_BASE
+    return f"{primary}{clean}"
 
 
 def _build_cert_url(cert_path: str) -> str | None:
@@ -238,8 +228,10 @@ def _build_app_url(path: str | None) -> str | None:
     return _resolve_relative_url(path)
 
 
-def _fetch_project_website_detail(enc_id: str, logger: CrawlerLogger) -> dict:
-    resp = safe_get(f"{APP_BASE}/HomeWebsite/ProjectDtlsWebsite/{enc_id}", logger=logger, timeout=30)
+def _fetch_project_website_detail(enc_id: str, logger: CrawlerLogger,
+                                   client: httpx.Client | None = None) -> dict:
+    resp = safe_get(f"{APP_BASE}/HomeWebsite/ProjectDtlsWebsite/{enc_id}", logger=logger, timeout=15,
+                    client=client)
     if not resp:
         return {}
     try:
@@ -283,11 +275,12 @@ def _iter_website_documents(node, *, docs: list[dict], seen: set[str], section: 
             _iter_website_documents(item, docs=docs, seen=seen, section=section)
 
 
-def _fetch_last_updated_date(logger: CrawlerLogger) -> str:
+def _fetch_last_updated_date(logger: CrawlerLogger,
+                             client: httpx.Client | None = None) -> str:
     """Fetch the global 'Updated project details as on' date from the RERA app API."""
     resp = safe_get(
         f"{APP_BASE}/HomeWebsite/GetPatchLastUpdatedDateWebSite/",
-        logger=logger, timeout=15,
+        logger=logger, timeout=12, client=client,
     )
     if not resp:
         return ""
@@ -297,7 +290,8 @@ def _fetch_last_updated_date(logger: CrawlerLogger) -> str:
         return ""
 
 
-def _fetch_view_project_data(project_id: str, doc_type: str, logger: CrawlerLogger) -> dict:
+def _fetch_view_project_data(project_id: str, doc_type: str, logger: CrawlerLogger,
+                             client: httpx.Client | None = None) -> dict:
     """
     Call ViewProjectWebsite?id=<project_id>&type=<O|U>.
     type=U → current/updated project data (primary source for DB fields and documents).
@@ -305,7 +299,7 @@ def _fetch_view_project_data(project_id: str, doc_type: str, logger: CrawlerLogg
     """
     resp = safe_get(
         f"{APP_BASE}/HomeWebsite/ViewProjectWebsite?id={project_id}&type={doc_type}",
-        logger=logger, timeout=30,
+        logger=logger, timeout=15, client=client,
     )
     if not resp:
         return {}
@@ -905,7 +899,8 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 
 
 def _handle_document(project_key: str, doc: dict, run_id: int,
-                     site_id: str, logger: CrawlerLogger) -> dict | None:
+                     site_id: str, logger: CrawlerLogger,
+                     client: httpx.Client | None = None) -> dict | None:
     """Download a document, upload to S3, persist to DB. Returns normalized document metadata or None."""
     url   = doc.get("url")
     label = doc.get("label", "document")
@@ -913,7 +908,7 @@ def _handle_document(project_key: str, doc: dict, run_id: int,
         return None
     filename = build_document_filename(doc)
     try:
-        resp = safe_get(url, logger=logger, timeout=30)
+        resp = safe_get(url, logger=logger, timeout=15, client=client)
         if not resp or len(resp.content) < 100:
             return None
         content = resp.content
@@ -965,8 +960,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     counts["projects_found"] = len(api_projects)
     machine_name, machine_ip = get_machine_context()
 
+    # One shared HTTP session for the entire run — avoids per-request TLS handshakes
+    _timeout = httpx.Timeout(connect=10.0, read=15.0, write=10.0, pool=5.0)
+    session = httpx.Client(timeout=_timeout, follow_redirects=True)
+
     # Fetch the global "Updated project details as on <date>" label once per run
-    updated_date = _fetch_last_updated_date(logger)
+    updated_date = _fetch_last_updated_date(logger, client=session)
     if updated_date:
         logger.info(f"Rajasthan: updated_project_details date = {updated_date}")
     else:
@@ -1019,7 +1018,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
             if enc_id:
                 logger.info("Fetching project detail API", step="detail_fetch")
-                detail = _fetch_project_detail(enc_id, logger)
+                detail = _fetch_project_detail(enc_id, logger, client=session)
                 data.update({k: v for k, v in detail.items() if k != "data" and v is not None and not k.startswith("_")})
 
                 # Build promoter_block array matching PROD format:
@@ -1033,7 +1032,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     prod_data_fields["promoter_block"] = _promoter_block
 
                 logger.info("Fetching project website detail", step="detail_fetch")
-                website_detail = _fetch_project_website_detail(enc_id, logger)
+                website_detail = _fetch_project_website_detail(enc_id, logger, client=session)
 
                 # details_page and area unit fields are present for all enc_id projects
                 prod_data_fields["details_page"] = (
@@ -1046,16 +1045,16 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     doc_links.extend(_extract_project_website_documents(website_detail, updated_date=updated_date))
 
                     # Fetch ViewProjectWebsite for additional documents and structured data.
-                    # type=U (updated) is primary; type=O (registration snapshot) adds historic docs.
+                    # type=U (updated) is the primary source for DB fields and documents.
                     project_id = website_detail.get("ProjectId")
                     vp_updated: dict = {}
-                    vp_original: dict = {}
+                    vp_original: dict = {}  # kept for data JSONB only (not fetched — see perf note)
                     if project_id:
                         # Build shared seen-set so ViewProject docs don't duplicate existing ones
                         vp_seen: set[str] = {d["url"] for d in doc_links if d.get("url")}
 
                         logger.info("Fetching ViewProjectWebsite (updated)", step="detail_fetch")
-                        vp_updated = _fetch_view_project_data(project_id, "U", logger)
+                        vp_updated = _fetch_view_project_data(project_id, "U", logger, client=session)
                         if vp_updated:
                             vp_docs: list[dict] = []
                             _iter_view_project_documents(vp_updated, docs=vp_docs, seen=vp_seen)
@@ -1070,13 +1069,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                                 prod_data_fields["raw_address"] = vp_fields["raw_address"]
                             if vp_fields.get("plot_details"):
                                 prod_data_fields["plot_details"] = vp_fields["plot_details"]
-
-                        logger.info("Fetching ViewProjectWebsite (at registration)", step="detail_fetch")
-                        vp_original = _fetch_view_project_data(project_id, "O", logger)
-                        if vp_original:
-                            vp_orig_docs: list[dict] = []
-                            _iter_view_project_documents(vp_original, docs=vp_orig_docs, seen=vp_seen)
-                            doc_links.extend(vp_orig_docs)
+                        # NOTE: type=O (historic snapshot) call intentionally skipped for performance.
+                        # It adds ~15s per project and its documents are almost always duplicates of type=U.
 
                     # ── data JSONB enrichment (temp / type / no_of_plots) ─────────
                     _reg_no = data.get("project_registration_no", "")
@@ -1139,7 +1133,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             for doc in doc_links:
                 selected_doc = select_document_for_download(config["state"], doc, doc_name_counts, domain=DOMAIN)
                 if selected_doc:
-                    uploaded_doc = _handle_document(key, selected_doc, run_id, site_id, logger)
+                    uploaded_doc = _handle_document(key, selected_doc, run_id, site_id, logger, client=session)
                     if uploaded_doc:
                         uploaded_documents.append(uploaded_doc)
                         counts["documents_uploaded"] += 1
@@ -1168,6 +1162,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             counts["error_count"] += 1
         finally:
             logger.clear_project()
+    session.close()
     reset_checkpoint(site_id, mode)
     logger.info(f"Rajasthan RERA complete: {counts}")
     return counts
