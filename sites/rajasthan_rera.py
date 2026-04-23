@@ -10,6 +10,7 @@ Strategy:
 from __future__ import annotations
 
 import re
+from datetime import datetime, timezone
 
 from pydantic import ValidationError
 
@@ -30,6 +31,20 @@ from core.project_normalizer import (
 )
 from core.s3 import compute_md5, upload_document, get_s3_url
 from core.config import settings
+
+def _format_inr(amount: float) -> str:
+    """Format a float as Indian currency string: ₹X,XX,XX,XXX.XX"""
+    rounded   = round(amount, 2)
+    int_part  = int(rounded)
+    dec_str   = f"{rounded - int_part:.2f}"[1:]   # ".xx"
+    s = str(int_part)
+    if len(s) <= 3:
+        return f"₹{s}{dec_str}"
+    result, s = s[-3:], s[:-3]
+    while s:
+        result, s = s[-2:] + "," + result, s[:-2]
+    return f"₹{result}{dec_str}"
+
 
 BASE_URL       = "https://rera.rajasthan.gov.in"
 API_BASE       = "https://reraapi.rajasthan.gov.in/api/web"
@@ -96,8 +111,9 @@ def _fetch_project_detail(enc_id: str, logger: CrawlerLogger) -> dict:
         "details_of_promoter": proj.get("DetailsofPromoter"),
         "promoter_type": proj.get("PromoterType"),
     }
+    # Use "phone" key (matches production schema) instead of "mobile"
     promoter_contact = {
-        "mobile": proj.get("promotermobileno"),
+        "phone": proj.get("promotermobileno"),
         "email": proj.get("promoteremail"),
     }
     if any(promoter_address.values()):
@@ -117,6 +133,12 @@ def _fetch_project_detail(enc_id: str, logger: CrawlerLogger) -> dict:
             "rectified_phase_area": proj.get("Rectified_PhaseArea"),
             "aggregate_open_space_area": proj.get("AggregateAreaOpenSpace"),
         }
+        # Promote land area to top-level float column
+        try:
+            if proj.get("Rectified_PhaseArea") is not None:
+                out["land_area"] = float(proj["Rectified_PhaseArea"])
+        except (ValueError, TypeError):
+            pass
     out["data"] = {"source_api": "GetProjectById", "raw": proj}
     return out
 
@@ -361,18 +383,27 @@ def _iter_view_project_documents(
             _iter_view_project_documents(item, docs=docs, seen=seen, section=section)
 
 
-def _extract_view_project_fields(view_data: dict) -> dict:
+def _extract_view_project_fields(view_data: dict) -> dict:  # noqa: C901
     """
     Extract structured DB fields from a ViewProjectWebsite (type=U) response.
     Returns only fields that have a non-empty value.
 
-    Also extracts PROD-compatible metadata fields:
-      - raw_address  — constructed from GetProjectBasic location parts
-      - plot_details — list of {carpet_area, no_of_units} from PlotDetails
+    Extracted top-level schema columns:
+      actual_commencement_date, actual_finish_date, estimated_commencement_date,
+      submitted_date, number_of_residential_units, number_of_commercial_units,
+      construction_area, project_description, project_location_raw,
+      promoter_address_raw, promoters_details, members_details,
+      building_details (rich list), construction_progress, bank_details,
+      co_promoter_details, plot_details, project_cost_detail,
+      professional_information, provided_faciltiy, complaints_litigation_details,
+      promoter_details.
+
+    Also returns prod_data_fields helpers:
+      raw_address (string), plot_details (list)
     """
     out: dict = {}
 
-    # GetProjectBasic may be a dict (new API) or a list with one item (old API).
+    # ── GetProjectBasic ────────────────────────────────────────────────────────
     basic_raw = view_data.get("GetProjectBasic")
     if isinstance(basic_raw, list) and basic_raw:
         basic: dict = basic_raw[0]
@@ -382,39 +413,142 @@ def _extract_view_project_fields(view_data: dict) -> dict:
         basic = {}
 
     if basic:
-        for api_f, schema_f in (
-            ("ActualCommencementDate", "actual_commencement_date"),
-            ("ActualfinishDate",       "actual_finish_date"),
-        ):
-            val = basic.get(api_f)
-            if val and str(val).strip() not in ("null", "None", ""):
-                out[schema_f] = str(val).strip()
+        # Date fields — try multiple API key variants; first non-empty wins
+        _date_candidates: list[tuple[str, ...]] = [
+            ("actual_commencement_date", "ActualCommencementDate"),
+            ("actual_finish_date",       "ActualfinishDate"),
+            ("estimated_commencement_date", "CommencementDate", "ProposedStartDate",
+             "ProposedCommencementDate", "EstimatedStartDate"),
+            ("submitted_date", "ApplicationDate", "DateofApplication",
+             "SubmittedDate", "RegistrationDate"),
+        ]
+        for row in _date_candidates:
+            schema_f, *api_keys = row
+            if schema_f in out:
+                continue
+            for api_f in api_keys:
+                val = basic.get(api_f)
+                if val and str(val).strip() not in ("null", "None", "0", ""):
+                    v_str = str(val).strip()
+                    # Parse .NET JSON date: /Date(<ms>)/
+                    _dotnet = re.match(r'^/Date\((-?\d+)\)/$', v_str)
+                    if _dotnet:
+                        try:
+                            dt = datetime.fromtimestamp(int(_dotnet.group(1)) / 1000, tz=timezone.utc)
+                            v_str = dt.strftime("%Y-%m-%d %H:%M:%S+00:00")
+                        except (ValueError, OSError):
+                            pass
+                    out[schema_f] = v_str
+                    break
 
-        # Build raw_address from GetProjectBasic location fields
-        plot_no   = (basic.get("PlotNo") or "").strip()
-        village   = (basic.get("VillageName") or "").strip()
-        district  = (basic.get("DistrictName") or "").strip()
-        pin_code  = (basic.get("PinCode") or "").strip()
-        state_name = (basic.get("StateName") or "Rajasthan").strip() or "Rajasthan"
+        # Unit counts
+        for api_f_list, schema_f in (
+            (("TotalResidentialUnit", "NoofResidentialUnit", "TotalUnit", "NoofUnit",
+              "TotalResidentialUnits", "NumberofResidentialUnit"), "number_of_residential_units"),
+            (("TotalCommercialUnit", "NoofCommercialUnit", "TotalCommercialUnits",
+              "NumberofCommercialUnit"), "number_of_commercial_units"),
+        ):
+            for api_f in api_f_list:
+                val = basic.get(api_f)
+                if val is not None and str(val).strip() not in ("", "null", "None", "0"):
+                    try:
+                        out[schema_f] = int(val)
+                    except (ValueError, TypeError):
+                        pass
+                    break
+
+        # Area fields
+        for api_f_list, schema_f in (
+            (("BuiltupArea", "TotalBuiltupArea", "ConstructionArea", "TotalConstArea",
+              "BuiltUpArea", "TotalBuiltUpArea"), "construction_area"),
+        ):
+            for api_f in api_f_list:
+                val = basic.get(api_f)
+                if val is not None and str(val).strip() not in ("", "null", "None", "0"):
+                    try:
+                        out[schema_f] = float(val)
+                    except (ValueError, TypeError):
+                        pass
+                    break
+
+        # Project description
+        desc = (basic.get("ProjectDescription") or basic.get("Description") or
+                basic.get("ProjectDesc") or "").strip()
+        if desc and desc.lower() not in ("null", "none"):
+            out["project_description"] = desc
+
+        # Location fields — build both a structured dict and a legacy string
+        # _s() coerces any value (including ints returned by the API) to a str
+        def _s(*keys: str) -> str:
+            for k in keys:
+                v = basic.get(k)
+                if v is None:
+                    continue
+                sv = str(v).strip()
+                if sv in ("", "null", "None", "0"):
+                    continue
+                return sv
+            return ""
+
+        plot_no    = _s("PlotNo")
+        village    = _s("VillageName")
+        district   = _s("DistrictName")
+        pin_code   = _s("PinCode")
+        state_name = _s("StateName") or "Rajasthan"
+        locality   = _s("LocalityName", "StreetName", "Locality", "StreetAddress")
+        # Taluka field often holds a numeric DB ID — skip purely numeric values
+        taluk      = next(
+            (str(basic.get(k, "")).strip() for k in ("TehsilName", "TalukName", "Tehsil", "Taluka")
+             if basic.get(k) is not None
+             and str(basic.get(k, "")).strip() not in ("", "null", "None", "0")
+             and not str(basic.get(k, "")).strip().isdigit()),
+            ""
+        )
+        house_no   = _s("HouseNo", "HouseName", "BuildingNo")
+
         if plot_no or village or district:
-            parts = []
+            # Legacy address string (stored in prod_data_fields for backward compat)
+            parts: list[str] = []
             if plot_no:
                 parts.append(f"Khasra No./ Plot No.{plot_no}")
             if village:
                 parts.append(f"Village- {village}")
-            location = f"{district} - {pin_code}" if pin_code else district
-            if location:
-                parts.append(f", {location} ({state_name})")
-            out["raw_address"] = " , ".join(parts)
+            if locality:
+                parts.append(locality)
+            location_str = f"{district} - {pin_code}" if pin_code else district
+            if location_str:
+                parts.append(f", {location_str} ({state_name})")
+            raw_addr_str = " , ".join(parts)
+            out["raw_address"] = raw_addr_str  # for prod_data_fields
 
-    # plot_details from PlotDetails list
+            # Structured project_location_raw JSONB dict (matches production schema)
+            loc: dict = {}
+            if house_no:
+                loc["house_no_building_name"] = house_no
+            elif plot_no:
+                loc["house_no_building_name"] = f"PLOT NO {plot_no}"
+            if village:
+                loc["village"] = village
+            if locality:
+                loc["locality"] = locality
+            if taluk:
+                loc["taluk"] = taluk
+            if district:
+                loc["district"] = district
+            if pin_code:
+                loc["pin_code"] = pin_code
+            loc["state"] = state_name
+            loc["raw_address"] = raw_addr_str
+            out["project_location_raw"] = loc
+
+    # ── PlotDetails ───────────────────────────────────────────────────────────
     plot_details_raw = view_data.get("PlotDetails")
     if isinstance(plot_details_raw, list):
         plot_details = []
         for item in plot_details_raw:
             if not isinstance(item, dict):
                 continue
-            plot_area  = item.get("PlotArea")
+            plot_area   = item.get("PlotArea")
             total_plots = item.get("TotalPlots")
             if plot_area is not None:
                 plot_details.append({
@@ -424,25 +558,282 @@ def _extract_view_project_fields(view_data: dict) -> dict:
         if plot_details:
             out["plot_details"] = plot_details
 
-    # Cost details
-    cost = view_data.get("GetProjectCostDetail")
-    if cost:
-        out["project_cost_detail"] = cost
+    # ── Rich building details (unit-level list from ViewProjectWebsite) ────────
+    for bk in ("GetBuildingDetails", "BuildingDetails", "ProjectBuildingDetails",
+               "GetBuildings", "Buildings"):
+        bldg_raw = view_data.get(bk)
+        if isinstance(bldg_raw, list) and bldg_raw:
+            bldg_list = []
+            for item in bldg_raw:
+                if not isinstance(item, dict):
+                    continue
+                entry: dict = {}
+                flat_type = (item.get("FlatType") or item.get("UnitType") or
+                             item.get("ApartmentType") or "")
+                carpet    = item.get("CarpetArea") or item.get("Carpetarea")
+                open_a    = item.get("OpenArea")   or item.get("Openarea")
+                balcony   = item.get("BalconyArea") or item.get("Balconyarea")
+                no_units  = (item.get("NoOfUnit") or item.get("UnitCount") or
+                             item.get("TotalUnit") or item.get("NoofUnit"))
+                block     = (item.get("BlockName") or item.get("WingName") or
+                             item.get("TowerName") or "")
+                if str(flat_type).strip():
+                    entry["flat_type"] = str(flat_type).strip()
+                if carpet is not None:
+                    entry["carpet_area"] = str(carpet)
+                if open_a is not None:
+                    entry["open_area"] = str(open_a)
+                if balcony is not None:
+                    entry["balcony_area"] = str(balcony)
+                if no_units is not None:
+                    entry["no_of_units"] = str(no_units)
+                if str(block).strip():
+                    entry["block_name"] = str(block).strip()
+                if entry:
+                    bldg_list.append(entry)
+            if bldg_list:
+                out["building_details"] = bldg_list
+            break  # use first matching key
 
-    # Professional information (Architect, Engineer, Contractor)
-    professionals = view_data.get("ProjectProFessionAlDetail")
-    if professionals:
-        out["professional_information"] = professionals
+    # ── Construction progress ─────────────────────────────────────────────────
+    for pk in ("WorkProgress", "GetWorkProgress", "ConstructionProgress",
+               "GetConstructionProgress", "ProjectProgress", "GetProjectProgress",
+               "GetWorkProgressDetails"):
+        progress_raw = view_data.get(pk)
+        if isinstance(progress_raw, list) and progress_raw:
+            prog_list = []
+            for item in progress_raw:
+                if not isinstance(item, dict):
+                    continue
+                title = (item.get("WorkTitle") or item.get("ProgressTitle") or
+                         item.get("Title") or item.get("WorkProgressTitle") or "").strip()
+                pct   = (item.get("Percentage") or item.get("ProgressPercentage") or
+                         item.get("WorkPercentage") or "")
+                status = (item.get("Status") or item.get("WorkStatus") or "")
+                pe: dict = {}
+                if title:
+                    pe["title"] = title
+                if pct is not None and str(pct) != "":
+                    pe["progress_percentage"] = str(pct)
+                if status:
+                    pe["status"] = str(status).strip()
+                if pe:
+                    prog_list.append(pe)
+            if prog_list:
+                out["construction_progress"] = prog_list
+            break
 
-    # Common area facilities
+    # ── Bank details ──────────────────────────────────────────────────────────
+    for bk in ("GetProjectBankDetail", "BankDetails", "ProjectBankDetails",
+               "GetBankDetails", "GetProjectBankDetails", "BankDetail"):
+        bank_raw = view_data.get(bk)
+        if bank_raw:
+            bank_items = bank_raw if isinstance(bank_raw, list) else [bank_raw]
+            bank_list = []
+            for item in bank_items:
+                if not isinstance(item, dict):
+                    continue
+                be: dict = {}
+                for api_k, out_k in (
+                    ("BankName",        "bank_name"),
+                    ("IFSCCode",        "IFSC"),  ("IFSC", "IFSC"),
+                    ("BranchName",      "branch"), ("Branch", "branch"),
+                    ("AccountNo",       "account_no"), ("AccountNumber", "account_no"),
+                    ("AccountName",     "account_name"),
+                    ("AccountHolderName", "account_name"),
+                    ("AccountType",     "account_type"),
+                    ("TypeofAccount",   "account_type"),
+                    ("BankAddress",     "address"), ("Address", "address"),
+                ):
+                    if out_k not in be:
+                        val = item.get(api_k)
+                        if val is not None and str(val).strip():
+                            be[out_k] = str(val).strip()
+                if be:
+                    bank_list.append(be)
+            if bank_list:
+                out["bank_details"] = bank_list
+            break
+
+    # ── Co-promoter details ───────────────────────────────────────────────────
+    for ck in ("GetCoPromoterDetails", "CoPromoterDetails", "GetCopromoterList",
+               "CopromoterList", "CopromotorDetails"):
+        co_raw = view_data.get(ck)
+        if co_raw:
+            out["co_promoter_details"] = co_raw if isinstance(co_raw, list) else [co_raw]
+            break
+
+    # ── Cost details ──────────────────────────────────────────────────────────
+    cost_raw = view_data.get("GetProjectCostDetail")
+    if cost_raw:
+        cost_items = cost_raw if isinstance(cost_raw, list) else [cost_raw]
+        cost_out: dict = {}
+
+        # Primary: Rajasthan API uses a Type-keyed list with EstimatedAmount
+        # Type values: "LandCost ", "DevelopmentCost " (with trailing space)
+        # ParticulerId == 1 identifies the top-level summary row for each Type
+        _land_amt = 0.0
+        _dev_amt  = 0.0
+        for _ci in cost_items:
+            if not isinstance(_ci, dict):
+                continue
+            _ci_type = (_ci.get("Type") or "").strip().lower().replace(" ", "")
+            _ci_amt  = _ci.get("EstimatedAmount")
+            _ci_pid  = _ci.get("ParticulerId", 0)
+            if _ci_type and _ci_amt is not None and _ci_pid == 1:
+                try:
+                    amt = float(_ci_amt)
+                except (ValueError, TypeError):
+                    continue
+                if "landcost" in _ci_type and _land_amt == 0.0:
+                    _land_amt = amt
+                elif "developmentcost" in _ci_type and _dev_amt == 0.0:
+                    _dev_amt = amt
+
+        if _land_amt > 0 or _dev_amt > 0:
+            if _land_amt > 0:
+                cost_out["cost_of_land"] = _format_inr(_land_amt)
+            if _dev_amt > 0:
+                cost_out["estimated_construction_cost"] = _format_inr(_dev_amt)
+            if _land_amt > 0 and _dev_amt > 0:
+                cost_out["estimated_project_cost"] = _format_inr(_land_amt + _dev_amt)
+        else:
+            # Fallback: flat-dict format (older API / backward compat)
+            def _inr_or_str(v) -> str:
+                try:
+                    return _format_inr(float(v))
+                except (ValueError, TypeError):
+                    return str(v).strip()
+            for _ci in cost_items:
+                if not isinstance(_ci, dict):
+                    continue
+                land  = (_ci.get("CostofLand") or _ci.get("CostOfLand") or
+                         _ci.get("LandCost") or _ci.get("cost_of_land"))
+                total = (_ci.get("TotalProjectCost") or _ci.get("EstimatedProjectCost") or
+                         _ci.get("total_project_cost") or _ci.get("estimated_project_cost"))
+                const = (_ci.get("EstimatedCostofConstruction") or _ci.get("EstimatedConstructionCost") or
+                         _ci.get("ConstructionCost") or _ci.get("estimated_construction_cost"))
+                if land  is not None: cost_out["cost_of_land"]               = _inr_or_str(land)
+                if total is not None: cost_out["estimated_project_cost"]      = _inr_or_str(total)
+                if const is not None: cost_out["estimated_construction_cost"] = _inr_or_str(const)
+                if cost_out:
+                    break
+
+        if not cost_out and cost_items:
+            # Absolute fallback: store the first raw item as-is
+            cost_out = cost_items[0] if isinstance(cost_items[0], dict) else {}
+        out["project_cost_detail"] = cost_out or None
+
+    # ── Professional information ───────────────────────────────────────────────
+    professionals_raw = view_data.get("ProjectProFessionAlDetail")
+    if professionals_raw:
+        prof_items = professionals_raw if isinstance(professionals_raw, list) else [professionals_raw]
+        normalized_profs = []
+        for _pi in prof_items:
+            if not isinstance(_pi, dict):
+                continue
+            pe: dict = {}
+            _pname = ((_pi.get("ProfessionalName") or _pi.get("Name") or
+                       _pi.get("name") or "")).strip()
+            _prole = ((_pi.get("TypeofProfessional") or _pi.get("ProfessionalType") or
+                       _pi.get("Role") or _pi.get("role") or "")).strip()
+            _pemail = ((_pi.get("EmailId") or _pi.get("Email") or _pi.get("email") or "")).strip()
+            _pphone = ((_pi.get("MobileNo") or _pi.get("Mobile") or _pi.get("phone") or "")).strip()
+            _paddress = ((_pi.get("ProfessionalAddress") or _pi.get("Address") or
+                          _pi.get("address") or "")).strip()
+            if _pname:    pe["name"]    = _pname
+            if _prole:    pe["role"]    = _prole
+            if _pemail:   pe["email"]   = _pemail
+            if _pphone:   pe["phone"]   = _pphone
+            if _paddress: pe["address"] = _paddress
+            if pe:
+                normalized_profs.append(pe)
+        if normalized_profs:
+            out["professional_information"] = normalized_profs
+
+    # ── Common area facilities ────────────────────────────────────────────────
     facilities = view_data.get("GetProjectAreaFacilities")
     if facilities:
-        out["provided_faciltiy"] = facilities
+        # API wraps items under {"ProjectId": ..., "ProjectDetail": [...]}
+        if isinstance(facilities, dict) and "ProjectDetail" in facilities:
+            facilities = facilities.get("ProjectDetail") or facilities
+        if facilities:
+            out["provided_faciltiy"] = facilities
 
-    # Litigation / complaints details
+    # ── Litigation / complaints ───────────────────────────────────────────────
     litigations = view_data.get("ProjectLitigations")
     if litigations:
         out["complaints_litigation_details"] = litigations
+
+    # ── PromoterDetails — promoter_details + members_details + promoters_details
+    #                    + promoter_address_raw ──────────────────────────────
+    promoter_raw = view_data.get("PromoterDetails")
+    if isinstance(promoter_raw, dict):
+        pd: dict = {}
+
+        office_no = (promoter_raw.get("OfficeNo") or "").strip()
+        website   = (promoter_raw.get("WebSiteURL") or "").strip()
+        if office_no:
+            pd["office_no"] = office_no
+        if website:
+            pd["website"] = website
+
+        partners = promoter_raw.get("PartnerModel")
+        if isinstance(partners, list) and partners:
+            clean_partners = [
+                {k: v for k, v in p.items() if v and k in ("PartnerName", "Designation")}
+                for p in partners if isinstance(p, dict)
+            ]
+            if clean_partners:
+                pd["partners"] = clean_partners
+                # Also populate members_details (name/position format)
+                out["members_details"] = [
+                    {k2: v2 for k2, v2 in (
+                        ("name",     p.get("PartnerName", "").strip()),
+                        ("position", p.get("Designation", "").strip()),
+                    ) if v2}
+                    for p in partners if isinstance(p, dict)
+                ]
+
+        # Promoter address → both promoter_details.address and promoter_address_raw
+        addr = promoter_raw.get("Address")
+        if isinstance(addr, dict):
+            _addr_key_map = {
+                "PlotNumber":   "house_no_building_name",
+                "StreetName":   "locality",
+                "VillageName":  "village",
+                "DistrictName": "district",
+                "Taluka":       "taluk",
+                "StateName":    "state",
+                "ZipCode":      "pin_code",
+            }
+            addr_parts = {}
+            for raw_k, schema_k in _addr_key_map.items():
+                val = (addr.get(raw_k) or "").strip()
+                if val:
+                    addr_parts[schema_k] = val
+            if addr_parts:
+                pd["address"] = addr_parts
+                # Structured list format matching production schema
+                out["promoter_address_raw"] = [addr_parts]
+
+        past_exp = promoter_raw.get("PastExprienceDetails")
+        if isinstance(past_exp, list) and past_exp:
+            pd["past_experience"] = past_exp
+
+        if pd:
+            out["promoter_details"] = pd
+
+        # promoters_details (firm type / org name summary)
+        org_type = (promoter_raw.get("OrgType") or "").strip()
+        org_name = (promoter_raw.get("OrgName") or "").strip()
+        prom_d: dict = {}
+        if org_type and org_type.lower() not in ("null", "none"):
+            prom_d["type_of_firm"] = org_type
+        if org_name and org_name.lower() not in ("null", "none"):
+            prom_d["name"] = org_name
+        if prom_d:
+            out["promoters_details"] = prom_d
 
     return out
 
@@ -635,7 +1026,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 # [promoter_name, phone, email] — sourced from GetProjectById API
                 _pb_name  = data.get("promoter_name", "")
                 _pb_contact = data.get("promoter_contact_details") or {}
-                _pb_phone = _pb_contact.get("mobile", "")
+                _pb_phone = _pb_contact.get("phone", "")
                 _pb_email = _pb_contact.get("email", "")
                 _promoter_block = [x for x in [_pb_name, _pb_phone, _pb_email] if x]
                 if _promoter_block:
@@ -644,11 +1035,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 logger.info("Fetching project website detail", step="detail_fetch")
                 website_detail = _fetch_project_website_detail(enc_id, logger)
 
-                # details_page and land_area_unit are present for all enc_id projects
+                # details_page and area unit fields are present for all enc_id projects
                 prod_data_fields["details_page"] = (
                     f"https://rera.rajasthan.gov.in/view-project-summary?id={enc_id}&type=U"
                 )
-                prod_data_fields["land_area_unit"] = "In sq. meters"
+                prod_data_fields["land_area_unit"]         = "In sq. meters"
+                prod_data_fields["construction_area_unit"] = "in sq. meters"
 
                 if website_detail:
                     doc_links.extend(_extract_project_website_documents(website_detail, updated_date=updated_date))
@@ -685,6 +1077,23 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                             vp_orig_docs: list[dict] = []
                             _iter_view_project_documents(vp_original, docs=vp_orig_docs, seen=vp_seen)
                             doc_links.extend(vp_orig_docs)
+
+                    # ── data JSONB enrichment (temp / type / no_of_plots) ─────────
+                    _reg_no = data.get("project_registration_no", "")
+                    _aod    = data.get("approved_on_date", "")
+                    # Convert dd-mm-yyyy → dd/mm/yyyy for the temp stamp
+                    _date_stamp = _aod.replace("-", "/") if _aod else ""
+                    if _reg_no:
+                        prod_data_fields["temp"] = (
+                            f"{_reg_no} ({_date_stamp})" if _date_stamp else _reg_no
+                        )
+                    # Prefer detail-API casing (e.g. "Group Housing") over list-API ALL-CAPS
+                    _raw_type = data.get("project_type", "") or proj.get("ProjectTypeName", "")
+                    if _raw_type:
+                        prod_data_fields["type"] = str(_raw_type).strip()
+                    _n_units = data.get("number_of_residential_units")
+                    if _n_units is not None and str(_n_units) not in ("", "None"):
+                        prod_data_fields["no_of_plots"] = str(_n_units)
 
                     data["data"] = merge_data_sections(
                         prod_data_fields,
