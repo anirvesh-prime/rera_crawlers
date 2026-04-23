@@ -18,24 +18,27 @@ USER_AGENT_POOL = [
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    # PostgreSQL
-    POSTGRES_HOST: str = "localhost"
-    POSTGRES_PORT: int = 5432
-    POSTGRES_DB: str = "rera_crawlers"
-    POSTGRES_USER: str = ""
-    POSTGRES_PASSWORD: str = ""
+    # PostgreSQL — required, set in .env
+    POSTGRES_HOST: str
+    POSTGRES_PORT: int
+    POSTGRES_DB: str
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str = ""  # may be blank for local dev
 
-    # AWS S3
-    AWS_ACCESS_KEY_ID: str = ""
-    AWS_SECRET_ACCESS_KEY: str = ""
-    AWS_REGION: str = "ap-south-1"
-    S3_BUCKET_NAME: str = "rera-crawlers-dev"
+    # AWS S3 — required, set in .env
+    AWS_ACCESS_KEY_ID: str
+    AWS_SECRET_ACCESS_KEY: str
+    AWS_REGION: str
+    S3_BUCKET_NAME: str
+    # Public CDN base URL for document links stored in the DB.
+    # e.g. https://docs.primetenders.com  — no trailing slash.
+    # get_s3_url() will produce: {CDN_BASE_URL}/{s3_key}
+    CDN_BASE_URL: str = ""
 
-    # Crawler
+    # Crawler — DRY_RUN_S3 required (set in .env); others optional with safe defaults
     PYTHONHASHSEED: str = "0"
     LOG_DIR: str = "logs"
-    # Set to false in production to actually upload to S3.
-    DRY_RUN_S3: bool = True
+    DRY_RUN_S3: bool
     # Cap total projects processed per run. 0 = unlimited.
     CRAWL_ITEM_LIMIT: int = 0
     # Set to false to skip detail-page fetches entirely.

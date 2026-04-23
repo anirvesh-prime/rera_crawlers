@@ -62,4 +62,13 @@ def document_exists(project_key: str, filename: str) -> bool:
 
 
 def get_s3_url(s3_key: str) -> str:
+    """Return the public URL for a stored S3 object.
+
+    When CDN_BASE_URL is set (e.g. "https://docs.primetenders.com") the URL
+    will be  {CDN_BASE_URL}/{s3_key}.  Otherwise falls back to the raw S3
+    virtual-hosted URL so local/dev runs still produce something usable.
+    """
+    if settings.CDN_BASE_URL:
+        base = settings.CDN_BASE_URL.rstrip("/")
+        return f"{base}/{s3_key}"
     return f"https://{settings.S3_BUCKET_NAME}.s3.{settings.AWS_REGION}.amazonaws.com/{s3_key}"
