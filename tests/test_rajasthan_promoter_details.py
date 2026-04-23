@@ -648,8 +648,12 @@ class TestNewFieldsExtraction(unittest.TestCase):
     # ── rich building_details list ────────────────────────────────────────────
 
     def test_building_details_from_get_building_details_key(self):
+        # GetBuildingDetails items now contain nested GetAppartmentDetails
         r = self._x({"GetBuildingDetails": [
-            {"FlatType": "2BHK", "CarpetArea": 85.5, "NoOfUnit": 24},
+            {"Name": "Tower 1", "GetAppartmentDetails": [
+                {"ApartmentType": "2BHK", "CarpetArea": 85.5, "NumberOfApartments": 24,
+                 "BulidingBlockText": "T1"},
+            ]},
         ]})
         self.assertIsInstance(r["building_details"], list)
         self.assertEqual(r["building_details"][0]["flat_type"], "2BHK")
@@ -657,7 +661,11 @@ class TestNewFieldsExtraction(unittest.TestCase):
         self.assertEqual(r["building_details"][0]["no_of_units"], "24")
 
     def test_building_details_with_block_name(self):
-        r = self._x({"GetBuildingDetails": [{"FlatType": "3BHK", "BlockName": "Tower A"}]})
+        r = self._x({"GetBuildingDetails": [
+            {"Name": "Tower A", "GetAppartmentDetails": [
+                {"ApartmentType": "3BHK", "BulidingBlockText": "Tower A"},
+            ]},
+        ]})
         self.assertEqual(r["building_details"][0]["block_name"], "Tower A")
 
     def test_empty_building_detail_item_skipped(self):
@@ -667,35 +675,47 @@ class TestNewFieldsExtraction(unittest.TestCase):
     # ── construction_progress ─────────────────────────────────────────────────
 
     def test_construction_progress_extracted(self):
-        r = self._x({"WorkProgress": [
-            {"WorkTitle": "Foundation", "Percentage": 100, "Status": "Complete"},
+        # Construction progress comes from GanttChartModel milestones
+        r = self._x({"GanttChartModel": [
+            {"Milestone": "Foundation", "FromDate": None, "ToDate": None},
+            {"Milestone": "Structure", "FromDate": "/Date(1762540200000)/", "ToDate": None},
         ]})
         self.assertIsInstance(r["construction_progress"], list)
         self.assertEqual(r["construction_progress"][0]["title"], "Foundation")
-        self.assertEqual(r["construction_progress"][0]["progress_percentage"], "100")
+        self.assertEqual(r["construction_progress"][1]["title"], "Structure")
+        self.assertIn("from_date", r["construction_progress"][1])
 
     def test_construction_progress_empty_list_not_extracted(self):
-        r = self._x({"WorkProgress": []})
+        r = self._x({"GanttChartModel": [], "GanttChartModelcomm": []})
         self.assertNotIn("construction_progress", r)
 
     # ── bank_details ──────────────────────────────────────────────────────────
 
     def test_bank_details_extracted(self):
-        r = self._x({"GetProjectBankDetail": [
-            {"BankName": "SBI", "IFSCCode": "SBIN0001234", "AccountNo": "123456789",
-             "BranchName": "Jaipur Main"},
-        ]})
+        # Bank details are flat fields inside GetProjectBasic (collection account)
+        r = self._x({"GetProjectBasic": {
+            "BankName": "SBI", "IFSCCode": "SBIN0001234", "BankAccountNo": "123456789",
+            "BranchName": "Jaipur Main", "BankAddress": "MI Road", "AccountHolderName": "Proj AC",
+        }})
         self.assertIsInstance(r["bank_details"], list)
         bd = r["bank_details"][0]
-        self.assertEqual(bd["bank_name"], "SBI")
-        self.assertEqual(bd["IFSC"],      "SBIN0001234")
-        self.assertEqual(bd["account_no"], "123456789")
-        self.assertEqual(bd["branch"],    "Jaipur Main")
+        self.assertEqual(bd["bank_name"],    "SBI")
+        self.assertEqual(bd["IFSC"],         "SBIN0001234")
+        self.assertEqual(bd["account_no"],   "123456789")
+        self.assertEqual(bd["branch"],       "Jaipur Main")
+        self.assertEqual(bd["account_type"], "collection")
 
-    def test_bank_details_as_dict_wrapped_in_list(self):
-        r = self._x({"GetProjectBankDetail": {"BankName": "HDFC"}})
-        self.assertIsInstance(r["bank_details"], list)
-        self.assertEqual(r["bank_details"][0]["bank_name"], "HDFC")
+    def test_bank_details_three_account_types(self):
+        # All three account types (collection, retention, promoter) are extracted
+        r = self._x({"GetProjectBasic": {
+            "BankName": "SBI",   "BankAccountNo": "111",
+            "BankNameRetention": "HDFC", "BankAccountNoRetention": "222",
+            "BankNamePromoter":  "ICICI", "BankAccountNoPromoter": "333",
+        }})
+        types = [bd["account_type"] for bd in r["bank_details"]]
+        self.assertIn("collection", types)
+        self.assertIn("retention",  types)
+        self.assertIn("promoter",   types)
 
     # ── co_promoter_details ───────────────────────────────────────────────────
 
