@@ -15,8 +15,10 @@ Strategy:
 - Total pages parsed from div.pagination ("of N" text).
 - Detail pages: the detail site (maharerait.maharashtra.gov.in) is an Angular SPA
   gated by a canvas CAPTCHA. Strategy:
-    1. Use Playwright to load the first detail page, intercept canvas fillText to
-       solve the CAPTCHA, then capture the JWT Bearer token from authenticatePublic.
+    1. Use Playwright to load the first detail page, solve the CAPTCHA via
+       core.captcha_solver against the rendered canvas, and fall back to canvas
+       text interception if OCR fails. Capture the JWT Bearer token from
+       authenticatePublic.
     2. Re-use that token for all subsequent projects via plain httpx API calls.
     3. Token is valid ~100 minutes; re-acquire if a call returns 401.
 - CRAWL_ITEM_LIMIT env variable caps total projects processed.
@@ -26,6 +28,7 @@ Strategy:
 from __future__ import annotations
 
 import re
+import urllib.parse
 from typing import Optional
 
 import httpx
@@ -34,6 +37,7 @@ from playwright.sync_api import sync_playwright
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
+from core.captcha_solver import solve_captcha_from_page, wait_for_captcha_canvas
 from core.config import settings
 from core.crawler_base import generate_project_key, random_delay, safe_get
 from core.db import upsert_project, insert_crawl_error
@@ -44,6 +48,7 @@ from core.project_normalizer import get_machine_context, merge_data_sections, no
 LISTING_URL  = "https://maharera.maharashtra.gov.in/projects-search-result"
 DETAIL_BASE  = "https://maharerait.maharashtra.gov.in"
 API_BASE     = f"{DETAIL_BASE}/api/maha-rera-public-view-project-registration-service/public/projectregistartion"
+DMS_BASE     = f"{DETAIL_BASE}/api/maha-rera-dms-service/batch-job"
 STATE_CODE   = "MH"
 DOMAIN       = "maharera.maharashtra.gov.in"
 
@@ -200,11 +205,15 @@ _CAPTCHA_INTERCEPT_SCRIPT = """
 """
 
 
+_MAX_CAPTCHA_ATTEMPTS = 3
+
+
 def _acquire_mh_token(cert_id: str, logger: CrawlerLogger) -> str | None:
     """
-    Load maharerait detail page via Playwright, intercept the canvas CAPTCHA value,
-    submit it, then return the JWT Bearer token from authenticatePublic.
+    Load maharerait detail page via Playwright, solve the CAPTCHA, submit it,
+    then return the JWT Bearer token from authenticatePublic.
     The token is valid for ~100 minutes and can be reused for all project API calls.
+    Retries up to _MAX_CAPTCHA_ATTEMPTS times (refreshing the page each attempt).
     """
     url = f"{DETAIL_BASE}/public/project/view/{cert_id}"
     token: str | None = None
@@ -233,16 +242,54 @@ def _acquire_mh_token(cert_id: str, logger: CrawlerLogger) -> str | None:
             page = context.new_page()
             page.on("response", _on_resp)
             page.goto(url, timeout=45_000)
-            page.wait_for_timeout(5_000)
 
-            captcha_texts = page.evaluate("() => window.__captchaTexts || []")
-            captcha_value = "".join(captcha_texts).strip()
-            logger.info(f"Captcha intercepted: {captcha_value!r}", step="captcha")
+            for attempt in range(1, _MAX_CAPTCHA_ATTEMPTS + 1):
+                logger.info(f"Captcha attempt {attempt}/{_MAX_CAPTCHA_ATTEMPTS}", step="captcha")
 
-            if captcha_value:
+                # Wait until the canvas has non-blank pixel data before reading it
+                canvas_ready = wait_for_captcha_canvas(
+                    page, "canvas", timeout_ms=20_000, logger=logger
+                )
+                if not canvas_ready:
+                    logger.warning("Canvas not ready — refreshing page", step="captcha")
+                    page.reload(timeout=45_000)
+                    continue
+
+                captcha_value = solve_captcha_from_page(
+                    page,
+                    logger=logger,
+                    selectors=["canvas"],
+                    captcha_source="eprocure",
+                )
+                if captcha_value:
+                    logger.info(f"Captcha solved via OCR: {captcha_value!r}", step="captcha")
+                else:
+                    captcha_texts = page.evaluate("() => window.__captchaTexts || []")
+                    captcha_value = "".join(captcha_texts).strip()
+                    if captcha_value:
+                        logger.info(
+                            f"Captcha recovered via canvas interception: {captcha_value!r}",
+                            step="captcha",
+                        )
+
+                if not captcha_value:
+                    logger.warning(
+                        f"Captcha solve failed on attempt {attempt} — refreshing", step="captcha"
+                    )
+                    page.reload(timeout=45_000)
+                    continue
+
                 page.fill("input[name='captcha']", captcha_value)
                 page.click("button.next")
                 page.wait_for_timeout(4_000)
+
+                if token:
+                    break  # Token received via response listener — done
+
+                logger.warning(
+                    f"No token after submit on attempt {attempt} — refreshing", step="captcha"
+                )
+                page.reload(timeout=45_000)
 
             browser.close()
     except Exception as exc:
@@ -266,12 +313,24 @@ def _api_headers(token: str) -> dict:
     }
 
 
-def _post_api(endpoint: str, project_id: str | int, token: str, timeout: float = 15.0) -> dict | None:
-    """POST to a maharerait project API endpoint and return responseObject or None."""
+def _post_api(
+    endpoint: str,
+    project_id: str | int,
+    token: str,
+    timeout: float = 15.0,
+    extra: dict | None = None,
+) -> dict | None:
+    """POST to a maharerait project API endpoint and return responseObject or None.
+
+    ``extra`` keys are merged into the JSON body alongside ``projectId``.
+    """
+    body: dict = {"projectId": int(project_id)}
+    if extra:
+        body.update(extra)
     try:
         resp = httpx.post(
             f"{API_BASE}/{endpoint}",
-            json={"projectId": int(project_id)},
+            json=body,
             headers=_api_headers(token),
             timeout=timeout,
         )
@@ -346,16 +405,215 @@ def _fetch_mh_project_detail(cert_id: str, token: str, logger: CrawlerLogger) ->
             "pincode":  promo_details.get("pincode", ""),
         }
 
-    # ── Bank details ─────────────────────────────────────────────────────
-    bank_obj = _post_api("getProjectPromoterBankDetails", pid, token) or {}
+    # ── Bank details (API returns a list) ────────────────────────────────
+    bank_raw = _post_api("getProjectPromoterBankDetails", pid, token) or []
+    if isinstance(bank_raw, dict):      # defensive: normalise to list
+        bank_raw = [bank_raw]
+    bank_obj = bank_raw[0] if isinstance(bank_raw, list) and bank_raw else {}
     bank: dict = {}
     if isinstance(bank_obj, dict) and bank_obj.get("bankFullName"):
         bank = {
-            "bank_name":  bank_obj.get("bankFullName", ""),
-            "branch":     bank_obj.get("branchFullName", "") or bank_obj.get("branchName", ""),
-            "ifsc_code":  bank_obj.get("ifsccode", ""),
-            "address":    bank_obj.get("bankAddress", ""),
+            "bank_name": bank_obj.get("bankFullName", ""),
+            "branch":    bank_obj.get("branchFullName") or bank_obj.get("branchName", ""),
+            "IFSC":      bank_obj.get("ifsccode", ""),
+            "address":   bank_obj.get("bankAddress", ""),
         }
+
+    # ── userProfileId (needed for personnel call) ─────────────────────────
+    user_profile_id = promo_details.get("userProfileId") if promo_details else None
+
+    # ── Authorized Signatory / Single Point of Contact ───────────────────
+    spoc_list = _post_api("getPromoterSpocDetails", pid, token) or []
+    auth_signatory: list = []
+    promoter_contact: dict = {}
+    if isinstance(spoc_list, list):
+        for spoc in spoc_list:
+            if not isinstance(spoc, dict):
+                continue
+            name = " ".join(filter(None, [
+                spoc.get("firstName"), spoc.get("middleName"), spoc.get("lastName"),
+            ])).strip()
+            role = spoc.get("designation", "")
+            if name:
+                auth_signatory.append({"name": name, "role": role})
+            # SPOC has unencrypted phone + email — use for promoter_contact_details
+            if not promoter_contact:
+                ph = spoc.get("mobileNumber", "")
+                em = spoc.get("emailId", "")
+                if ph or em:
+                    promoter_contact = {k: v for k, v in {"phone": ph, "email": em}.items() if v}
+
+    # ── Designated Partners → co_promoter_details ────────────────────────
+    co_promos: list = []
+    if user_profile_id:
+        personnel = _post_api(
+            "fetchPromoterPersonnelContactAddressDetails", pid, token,
+            extra={"userProfileId": user_profile_id},
+        ) or []
+        if isinstance(personnel, list):
+            for p in personnel:
+                if not isinstance(p, dict):
+                    continue
+                name = " ".join(filter(None, [
+                    p.get("firstname"), p.get("middleName"), p.get("lastName"),
+                ])).strip()
+                role = p.get("userProfilePersonnelDesignationId", "Partner")
+                if name:
+                    co_promos.append({"name": name, "role": role})
+
+    # ── Promoter general details (GSTIN, firm type) ──────────────────────
+    gen_promo = _post_api("fetchPromoterGeneralDetails", pid, token) or {}
+    promoters_info: dict = {}
+    if isinstance(gen_promo, dict) and not gen_promo.get("_expired"):
+        promoters_info = {k: v for k, v in {
+            "name":         gen_promo.get("organizationName") or promoter_name or None,
+            "GSTIN":        gen_promo.get("gstinNumber") or None,
+            "pan_no":       None,
+            "type_of_firm": gen_promo.get("organizationType") or None,
+        }.items() if v is not None}
+
+    # ── Better promoter address (has taluk / village names) ──────────────
+    addr_obj = _post_api("getPromoterAddressDetails", pid, token) or {}
+    if isinstance(addr_obj, dict) and not addr_obj.get("_expired") and addr_obj.get("districtName"):
+        promoter_addr = {k: v for k, v in {
+            "state":                  addr_obj.get("stateName"),
+            "taluk":                  addr_obj.get("talukaName"),
+            "village":                addr_obj.get("villageName"),
+            "district":               addr_obj.get("districtName"),
+            "locality":               addr_obj.get("locality") or addr_obj.get("landmark") or None,
+            "pin_code":               addr_obj.get("pinCode"),
+            "building_name":          addr_obj.get("buildingName") if addr_obj.get("buildingName") != "-" else None,
+            "house_no_building_name": addr_obj.get("unitNumber") if addr_obj.get("unitNumber") != "-" else None,
+        }.items() if v}
+
+    # ── Construction progress ─────────────────────────────────────────────
+    act_obj = _post_api("getBuildingWingsActivityDetails", pid, token) or {}
+    construction_progress: list = []
+    if isinstance(act_obj, dict) and not act_obj.get("_expired"):
+        for bldg in (act_obj.get("projectActivityDetails") or []):
+            bname = bldg.get("buildingNameNumber", "")
+            for act in (bldg.get("activities") or []):
+                if act.get("isAvailable") != "1":
+                    continue
+                title = act.get("projectActivityParticularTypeName") or act.get("activityParticularOtherName", "")
+                pct   = act.get("completionPercentage") or 0
+                if title:
+                    pct_str = str(int(pct)) if pct == int(pct) else str(pct)
+                    construction_progress.append({
+                        "title":               title,
+                        "building_name":       bname,
+                        "progress_percentage": pct_str,
+                    })
+
+    # ── Uploaded documents ────────────────────────────────────────────────
+    docs_raw = _post_api("getUploadedDocuments", pid, token) or []
+    uploaded_docs: list = []
+    doc_urls: list = []
+    if isinstance(docs_raw, list):
+        for doc in docs_raw:
+            if not isinstance(doc, dict):
+                continue
+            fname = doc.get("documentFileName") or ""
+            dms_ref = doc.get("documentDmsRefNo") or ""
+            dtype = doc.get("documentDescription") or doc.get("documentDetails") or "Document"
+            if fname and dms_ref:
+                # Construct a reference URL encoding the DMS ref and file name
+                link = (
+                    f"{DMS_BASE}/downloadDocumentForPublicView"
+                    f"?documentId={urllib.parse.quote(dms_ref)}"
+                    f"&fileName={urllib.parse.quote(fname)}"
+                )
+                uploaded_docs.append({"type": dtype, "name": fname, "link": link})
+                doc_urls.append({"type": dtype, "link": link})
+            elif fname:
+                uploaded_docs.append({"type": dtype, "name": fname})
+
+    # ── Land header (construction area, land area details) ───────────────
+    land_hdr = _post_api("getProjectLandHeaderDetails", pid, token) or {}
+    construction_area_val: float | None = None
+    land_area_hdr: float | None = None
+    land_area_details_val: dict = {}
+    if isinstance(land_hdr, dict) and not land_hdr.get("_expired"):
+        try:
+            construction_area_val = float(land_hdr.get("projectProposedNotSanctionedBuildUpArea") or 0) or None
+        except (TypeError, ValueError):
+            pass
+        try:
+            land_area_hdr = float(land_hdr.get("landAreaSqmts") or 0) or None
+        except (TypeError, ValueError):
+            pass
+        if land_area_hdr or construction_area_val:
+            land_area_details_val = {k: v for k, v in {
+                "land_area":               land_area_hdr,
+                "land_area_unit":          "sq mt" if land_area_hdr else None,
+                "construction_area":       construction_area_val,
+                "construction_area_unit":  "sq mt" if construction_area_val else None,
+            }.items() if v is not None}
+
+    # ── Means of finance → project_cost_detail ───────────────────────────
+    finance_obj = _post_api("getProjectMeansOfFinance", pid, token) or {}
+    project_cost: dict = {}
+    if isinstance(finance_obj, dict) and not finance_obj.get("_expired"):
+        est = finance_obj.get("estimated") or {}
+        if isinstance(est, dict):
+            total = est.get("totalEstimatedCostTableA") or est.get("totalFundsForProject")
+            if total is not None:
+                try:
+                    project_cost = {"estimated_construction_cost": float(total)}
+                except (TypeError, ValueError):
+                    pass
+
+    # ── Sold/Unsold inventory → building_details ─────────────────────────
+    inv_obj = _post_api("getProjectSoldUnsoldInventory", pid, token) or {}
+    building_units: list = []
+    if isinstance(inv_obj, dict) and not inv_obj.get("_expired"):
+        for inv_key, is_sold in [
+            ("projectBuildingSoldInventory", True),
+            ("projectBuildingUnSoldInventory", False),
+        ]:
+            for bldg in (inv_obj.get(inv_key) or []):
+                if not isinstance(bldg, dict):
+                    continue
+                bname = bldg.get("buildingName") or ""
+                wname = bldg.get("buildingWingName") or ""
+                block = f"{bname} {wname}".strip() if wname and wname.upper() != "NA" else bname
+                for unit in (bldg.get("floorsUnitDetails") or []):
+                    if not isinstance(unit, dict):
+                        continue
+                    agreement = unit.get("unitConsiderationAsPerAgreement") or 0.0
+                    reckoner  = unit.get("unitConsiderationAsPerReckonerRate") or 0.0
+                    entry: dict = {
+                        "floor_no":       unit.get("floorName"),
+                        "flat_name":      unit.get("unitNameNumber"),
+                        "block_name":     block or None,
+                        "amount_paid":    unit.get("receivedAmount") if is_sold else 0.0,
+                        "carpet_area":    unit.get("unitCarpetAreaSqmts"),
+                        "max_flat_value": agreement if is_sold else 0.0,
+                        "min_flat_value": reckoner if not is_sold else 0.0,
+                    }
+                    building_units.append({k: v for k, v in entry.items() if v is not None})
+
+    # ── Professional information ──────────────────────────────────────────
+    prof_list = _post_api("getProjectProfessional", pid, token) or []
+    professionals: list = []
+    if isinstance(prof_list, list):
+        for p in prof_list:
+            if not isinstance(p, dict):
+                continue
+            name = " ".join(filter(None, [
+                p.get("firstName"), p.get("middleName"), p.get("lastName"),
+            ])).strip() or (p.get("entityCompanyName") or "")
+            role = p.get("executiveOfficerDesignation") or "Professional"
+            addr_parts = [p.get("locality"), p.get("districtName")]
+            entry_p: dict = {
+                "name":    name,
+                "role":    role,
+                "email":   p.get("emailId"),
+                "phone":   p.get("primaryContactNo"),
+                "pan_no":  None,
+                "address": " ".join(filter(None, addr_parts)) or None,
+            }
+            professionals.append({k: v for k, v in entry_p.items() if v is not None})
 
     # ── Assemble location raw ─────────────────────────────────────────────
     loc_raw: dict = {}
@@ -369,13 +627,17 @@ def _fetch_mh_project_detail(cert_id: str, token: str, logger: CrawlerLogger) ->
         loc_raw["latitude"]  = latitude
         loc_raw["longitude"] = longitude
 
+    # ── Submitted date & city from general / promoter ────────────────────
+    submitted_date = gen_obj.get("projectApplicationDate", "")
+    project_city   = promo_details.get("districtName", "")
+
     out: dict = {
-        "status_of_the_project":     status_name or None,
-        "project_type":              project_type or None,
-        "estimated_finish_date":     finish_date or None,
+        "status_of_the_project":       status_name or None,
+        "project_type":                project_type or None,
+        "estimated_finish_date":       finish_date or None,
         "estimated_commencement_date": start_date or None,
-        "approved_on_date":          reg_date or None,
-        "acknowledgement_no":        ack_no or None,
+        "approved_on_date":            reg_date or None,
+        "acknowledgement_no":          ack_no or None,
     }
     if reg_no_api:
         out["project_registration_no"] = reg_no_api
@@ -389,18 +651,54 @@ def _fetch_mh_project_detail(cert_id: str, token: str, logger: CrawlerLogger) ->
         out["promoter_address_raw"] = promoter_addr
     if bank:
         out["bank_details"] = bank
-    if total_land is not None:
+    if submitted_date:
+        out["submitted_date"] = submitted_date
+    if project_city:
+        out["project_city"] = project_city
+    # Use land header area as more authoritative source; fall back to address area
+    if land_area_hdr is not None:
+        out["land_area"] = land_area_hdr
+    elif total_land is not None:
         try:
             out["land_area"] = float(total_land)
         except (TypeError, ValueError):
             pass
+    if construction_area_val is not None:
+        out["construction_area"] = construction_area_val
+    if land_area_details_val:
+        out["land_area_details"] = land_area_details_val
+    if project_cost:
+        out["project_cost_detail"] = project_cost
+    if building_units:
+        out["building_details"] = building_units
+    if professionals:
+        out["professional_information"] = professionals
+    if auth_signatory:
+        out["authorised_signatory_details"] = auth_signatory
+    if promoter_contact:
+        out["promoter_contact_details"] = promoter_contact
+    if co_promos:
+        out["co_promoter_details"] = co_promos
+    if promoters_info:
+        out["promoters_details"] = promoters_info
+    if construction_progress:
+        out["construction_progress"] = construction_progress
+    if uploaded_docs:
+        out["uploaded_documents"] = uploaded_docs
+    if doc_urls:
+        out["document_urls"] = doc_urls
 
-    out["data"] = {
-        "source": "maharerait_api",
-        "orig_finish_date": orig_finish,
-        "raw_status": status_obj,
-        "raw_general": {k: v for k, v in gen_obj.items() if v is not None},
-    }
+    # data JSONB — only Maharashtra-allowed keys (see _STATE_JSON_FIELD_ALLOWED_KEYS)
+    out["data"] = {k: v for k, v in {
+        "project_id":               str(pid),
+        "agent_type":               gen_promo.get("organizationType") if isinstance(gen_promo, dict) else None,
+        "land_area_unit":           "sq mt" if (land_area_hdr or total_land) else None,
+        "construction_area_unit":   "sq mt" if construction_area_val else None,
+        "estimated_construction_cost": str(project_cost.get("estimated_construction_cost")) if project_cost else None,
+        "state_promo":              promo_details.get("stateName") if promo_details else None,
+        "district_promo":           promo_details.get("districtName") if promo_details else None,
+        "pin_code_promo":           promo_details.get("pincode") if promo_details else None,
+    }.items() if v is not None}
     return {k: v for k, v in out.items() if v is not None}
 
 
@@ -500,63 +798,72 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             detail_url  = raw.pop("view_details_url", None)
             cert_id     = raw.pop("certificate_id", None)
             project_url = detail_url or url
-
-            # ── Detail page enrichment ───────────────────────────────────
-            detail_fields: dict = {}
-            if scrape_detail and cert_id:
-                # Acquire token lazily (once per run)
-                if mh_token is None:
-                    mh_token = _acquire_mh_token(cert_id, logger)
-
-                if mh_token:
-                    detail_fields = _fetch_mh_project_detail(cert_id, mh_token, logger)
-                    if detail_fields.get("_token_expired"):
-                        # Re-acquire token and retry once
-                        mh_token = _acquire_mh_token(cert_id, logger)
-                        detail_fields = _fetch_mh_project_detail(cert_id, mh_token, logger) if mh_token else {}
-
-                    detail_fields.pop("_token_expired", None)
-                    logger.info(
-                        f"Detail fetched for {reg_no} — status={detail_fields.get('status_of_the_project')!r}",
-                        step="detail",
-                    )
-                    random_delay(1, 2)
-
+            logger.set_project(key=key, reg_no=reg_no, url=project_url, page=page_no)
             try:
-                payload: dict = {
-                    **raw,
-                    **detail_fields,
-                    "domain": DOMAIN,
-                    "url":    project_url,
-                    "state":  config.get("state", "Maharashtra"),
-                }
-                # Merge data JSONB sections (listing data + detail API raw data)
-                if "data" in detail_fields and "data" in raw:
-                    payload["data"] = merge_data_sections(raw.get("data", {}), detail_fields.get("data", {}))
+                # ── Detail page enrichment ───────────────────────────────────
+                detail_fields: dict = {}
+                if scrape_detail and cert_id:
+                    # Acquire token lazily (once per run)
+                    if mh_token is None:
+                        mh_token = _acquire_mh_token(cert_id, logger)
 
-                normalized = normalize_project_payload(payload, config, machine_name=machine_name, machine_ip=machine_ip)
-                record  = ProjectRecord(**normalized)
-                db_dict = record.to_db_dict()
-                status  = upsert_project(db_dict)
+                    if mh_token:
+                        detail_fields = _fetch_mh_project_detail(cert_id, mh_token, logger)
+                        if detail_fields.get("_token_expired"):
+                            # Re-acquire token and retry once
+                            mh_token = _acquire_mh_token(cert_id, logger)
+                            detail_fields = _fetch_mh_project_detail(cert_id, mh_token, logger) if mh_token else {}
 
-                items_processed += 1
-                if status == "new":
-                    counters["projects_new"] += 1
-                    logger.info(f"New: {reg_no}", project_key=key, registration_no=reg_no, step="upsert")
-                elif status == "updated":
-                    counters["projects_updated"] += 1
-                    logger.info(f"Updated: {reg_no}", project_key=key, registration_no=reg_no, step="upsert")
-                else:
-                    counters["projects_skipped"] += 1
+                        detail_fields.pop("_token_expired", None)
+                        logger.info(
+                            f"Detail fetched for {reg_no} — status={detail_fields.get('status_of_the_project')!r}",
+                            step="detail",
+                        )
+                        random_delay(1, 2)
 
-            except ValidationError as exc:
-                counters["error_count"] += 1
-                logger.error(str(exc), project_key=key, step="validate")
-                insert_crawl_error(run_id, config["id"], "VALIDATION_FAILED", str(exc), url, project_key=key)
-            except Exception as exc:
-                counters["error_count"] += 1
-                logger.error(str(exc), project_key=key, step="upsert")
-                insert_crawl_error(run_id, config["id"], "CRAWLER_EXCEPTION", str(exc), url, project_key=key)
+                try:
+                    payload: dict = {
+                        **raw,
+                        **detail_fields,
+                        "domain": DOMAIN,
+                        "url":    project_url,
+                        "state":  config.get("state", "Maharashtra"),
+                    }
+                    # Merge data JSONB sections (listing data + detail API raw data)
+                    if "data" in detail_fields and "data" in raw:
+                        payload["data"] = merge_data_sections(raw.get("data", {}), detail_fields.get("data", {}))
+
+                    # Derive project_city from listing district when the API doesn't provide it
+                    if not payload.get("project_city"):
+                        loc = payload.get("project_location_raw") or {}
+                        if isinstance(loc, dict) and loc.get("district"):
+                            payload["project_city"] = loc["district"]
+
+                    normalized = normalize_project_payload(payload, config, machine_name=machine_name, machine_ip=machine_ip)
+                    record  = ProjectRecord(**normalized)
+                    db_dict = record.to_db_dict()
+                    status  = upsert_project(db_dict)
+
+                    items_processed += 1
+                    if status == "new":
+                        counters["projects_new"] += 1
+                        logger.info(f"New: {reg_no}", step="upsert")
+                    elif status == "updated":
+                        counters["projects_updated"] += 1
+                        logger.info(f"Updated: {reg_no}", step="upsert")
+                    else:
+                        counters["projects_skipped"] += 1
+
+                except ValidationError as exc:
+                    counters["error_count"] += 1
+                    logger.error(str(exc), step="validate")
+                    insert_crawl_error(run_id, config["id"], "VALIDATION_FAILED", str(exc), url, project_key=key)
+                except Exception as exc:
+                    counters["error_count"] += 1
+                    logger.error(str(exc), step="upsert")
+                    insert_crawl_error(run_id, config["id"], "CRAWLER_EXCEPTION", str(exc), url, project_key=key)
+            finally:
+                logger.clear_project()
 
         save_checkpoint(config["id"], mode, page_no, None, run_id)
         random_delay(*delay_range)

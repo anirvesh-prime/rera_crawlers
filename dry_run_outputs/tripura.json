@@ -1,0 +1,35 @@
+{
+  "key": "10597149491446115799",
+  "project_registration_no": "PRTR01200001",
+  "url": "https://reraonline.tripura.gov.in/viewProjectDetailPage?projectID=01200001",
+  "state": "tripura",
+  "domain": "reraonline.tripura.gov.in",
+  "project_name": "PARIJAAT",
+  "project_type": "Residential/Group Housing",
+  "promoter_name": "CROSS COUNTRY PROJECTS",
+  "project_state": "Tripura",
+  "crawl_machine_ip": "127.0.0.1",
+  "machine_name": "Anirveshs-MacBook-Air.local",
+  "project_location_raw": {
+    "raw_address": "103, Parijaat, Cross Country Projects, Near Tripura University, Suryamani Nagar, Babul Chowmuhani, Agartala - 799130 , Babul Chowmuhani, Sadar,West Tripura, Tripura"
+  },
+  "data": {
+    "govt_type": "state"
+  },
+  "promoters_details": {
+    "name": "CROSS COUNTRY PROJECTS"
+  },
+  "land_area_details": {
+    "land_area": "1417.0",
+    "land_area_unit": "sq Mtr",
+    "construction_area_unit": "Sq Mtr"
+  },
+  "config_id": 11807,
+  "land_area": 1417.0,
+  "is_updated": false,
+  "is_duplicate": false,
+  "iw_processed": false,
+  "checked_updates": false,
+  "rera_housing_found": false,
+  "is_live": true
+}

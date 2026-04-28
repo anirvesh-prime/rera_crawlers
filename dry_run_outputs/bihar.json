@@ -1,0 +1,307 @@
+{
+  "key": "12583144421226088060",
+  "project_registration_no": "BRERAP187328070625271029E00",
+  "url": "https://rera.bihar.gov.in/Filanprint.aspx?id=RERAP01282025205138-1",
+  "state": "bihar",
+  "domain": "rera.bihar.gov.in",
+  "project_name": "3D APARTMENT",
+  "project_type": "Residential/Group Housing",
+  "promoter_name": "VANTAGE AND PSVS JV",
+  "status_of_the_project": "New Project Launch",
+  "project_city": "PATNA",
+  "project_state": "bihar",
+  "project_description": "IT IS B+G+6 APPROVED RESIDENTIAL PROJECT",
+  "crawl_machine_ip": "127.0.0.1",
+  "machine_name": "Anirveshs-MacBook-Air.local",
+  "project_location_raw": {
+    "raw_address": "NEAR GOLA ROAD PETROL PUMP, RAJDHANI NAGAR,P.S REPASPUR, PATNA",
+    "district": "Patna",
+    "plot_no": "86P",
+    "latitude": 25.613118,
+    "longitude": 85.056026
+  },
+  "promoter_address_raw": {
+    "raw_address": "GROUND FLOOR,3D COMPLEX, GOLA ROAD, NEAR PETROL PUMP, DANAPUR, PATNA"
+  },
+  "promoter_contact_details": {
+    "phone": "9771412024",
+    "email": "sanjay.eiipl@gmail.com"
+  },
+  "bank_details": {
+    "bank_name": "IDBI Bank",
+    "account_no": "0065102000044572",
+    "IFSC": "IBKL0000065"
+  },
+  "project_cost_detail": {
+    "estimated_construction_cost": 400.0,
+    "cost_of_land": 200.46
+  },
+  "uploaded_documents": [
+    {
+      "link": "https://rera.bihar.gov.in/Registration_Certificate/RERAP01282025205138.pdf",
+      "type": "View",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/PassBook/RERAP0128202520513802072149592025.pdf",
+      "type": "View",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138-1_409.pdf",
+      "type": "View",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138-1_409.pdf",
+      "type": "View",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138-1_409.pdf",
+      "type": "View",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138-1_409.pdf",
+      "type": "View",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138-1_409.pdf",
+      "type": "View",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138-1_409.pdf",
+      "type": "View",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138-1_409.pdf",
+      "type": "View",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1EncumbranceCertificate.pdf",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1EncumbranceCertificate.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1SharePart.pdf",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1SharePart.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1ProjectRelatedDocuments.pdf",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1ProjectRelatedDocuments.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1BrochureofCurrentProject.pdf",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1BrochureofCurrentProject.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1DeclarationFormB.pdf",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1DeclarationFormB.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1EnvironmentalDocuments.pdf",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1EnvironmentalDocuments.pdf"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1AirportDocuments.pdf",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1AirportDocuments.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1ProjectRelatedDocuments.pdf",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1ProjectRelatedDocuments.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1NoticeofCommencement.pdf",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1NoticeofCommencement.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1AreaDevelopmentPlan.pdf",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1AreaDevelopmentPlan.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1ApprovedLayoutPlan.pdf",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1ApprovedLayoutPlan.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1ProformaofAllotmentLetter.pdf",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1ProformaofAllotmentLetter.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1ProformaforSaleofAgreement.pdf",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1ProformaforSaleofAgreement.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1SanctionedbuildingPlan.pdf",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1SanctionedbuildingPlan.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1SanctionedLayoutPlan.pdf",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1SanctionedLayoutPlan.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    }
+  ],
+  "professional_information": [
+    {
+      "name": "MANOJ KUMAR",
+      "address": "202-B GHAROUNDA COMPLEX, JAGDEO PATH, PATNA"
+    },
+    {
+      "name": "SCON PRIVATE LIMITED",
+      "address": "FLAT NO-G01, SUNDAR NAGENDRA NIWAS, GORAKHNATH LANE, EAST BORING CANAL RD, PATNA"
+    },
+    {
+      "name": "SANJAY KUMAR",
+      "address": "Road No-1A, Shivpuri, Patna"
+    }
+  ],
+  "members_details": [
+    {
+      "name": "SANJAY KUMAR SINGH"
+    },
+    {
+      "name": "SEEMA SINGH"
+    }
+  ],
+  "data": {
+    "govt_type": "state",
+    "land_area_unit": "Sq mt",
+    "construction_area_unit": "Sq mtr",
+    "link": "https://rera.bihar.gov.in/Registration_Certificate/RERAP01282025205138.pdf",
+    "type": "Registration Certificate"
+  },
+  "promoters_details": {
+    "type_of_firm": "Partnership Firm",
+    "pan_no": "AAYFV6368A",
+    "registration_no": "378/03-05-24"
+  },
+  "land_area_details": {
+    "land_area": "885.14",
+    "land_area_unit": "Sq mt",
+    "construction_area": "360.44",
+    "construction_area_unit": "Sq mtr"
+  },
+  "submitted_date": "2025-06-30 00:00:00+00:00",
+  "estimated_commencement_date": "2025-01-20 00:00:00+00:00",
+  "estimated_finish_date": "2029-10-27 00:00:00+00:00",
+  "config_id": 5,
+  "land_area": 885.14,
+  "construction_area": 360.44,
+  "total_floor_area_under_residential": 2203.96,
+  "is_updated": false,
+  "is_duplicate": false,
+  "iw_processed": false,
+  "checked_updates": false,
+  "rera_housing_found": false,
+  "is_live": false,
+  "document_urls": [
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "View"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "View"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "View"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "View"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "View"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "View"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "View"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "View"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "View"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1EncumbranceCertificate.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1SharePart.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1ProjectRelatedDocuments.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1BrochureofCurrentProject.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1DeclarationFormB.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1AirportDocuments.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1ProjectRelatedDocuments.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1NoticeofCommencement.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1AreaDevelopmentPlan.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1ApprovedLayoutPlan.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1ProformaofAllotmentLetter.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1ProformaforSaleofAgreement.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1SanctionedbuildingPlan.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "~\\All_Document\\RERAP01282025205138RERAP01282025205138-1SanctionedLayoutPlan.pdf"
+    }
+  ]
+}

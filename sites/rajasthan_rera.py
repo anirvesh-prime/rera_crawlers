@@ -149,7 +149,6 @@ _DETAIL_API_TO_FIELD: dict[str, str] = {
 }
 
 
-
 def _fetch_project_detail(enc_id: str, logger: CrawlerLogger,
                           client: httpx.Client | None = None) -> dict:
     """Call GetProjectById API and return explicit fields plus raw structured payloads."""
@@ -238,8 +237,7 @@ def _fetch_all_projects(logger: CrawlerLogger) -> list[dict]:
         return []
 
 
-# Ordered list of hosts to probe when resolving relative document paths.
-# Checked left-to-right; first host that returns HTTP < 400 wins.
+# Primary host for resolving relative document paths; BASE_URL kept as fallback for tests.
 _DOC_HOSTS = [APP_BASE, BASE_URL]
 
 
@@ -448,22 +446,11 @@ def _iter_view_project_documents(
 
 
 def _extract_view_project_fields(view_data: dict) -> dict:  # noqa: C901
-    """
-    Extract structured DB fields from a ViewProjectWebsite (type=U) response.
-    Returns only fields that have a non-empty value.
+    """Extract structured DB fields from a ViewProjectWebsite (type=U) response.
 
-    Extracted top-level schema columns:
-      actual_commencement_date, actual_finish_date, estimated_commencement_date,
-      submitted_date, number_of_residential_units, number_of_commercial_units,
-      construction_area, project_description, project_location_raw,
-      promoter_address_raw, promoters_details, members_details,
-      building_details (rich list), construction_progress, bank_details,
-      co_promoter_details, plot_details, project_cost_detail,
-      professional_information, provided_faciltiy, complaints_litigation_details,
-      promoter_details.
-
-    Also returns prod_data_fields helpers:
-      raw_address (string), plot_details (list)
+    Returns a dict of non-empty schema fields populated from the various
+    sub-keys of the ViewProject payload (GetProjectBasic, GetBuildingDetails,
+    GanttChartModel, ProjectCommanArea, PromoterDetails, etc.).
     """
     out: dict = {}
 
@@ -478,9 +465,6 @@ def _extract_view_project_fields(view_data: dict) -> dict:  # noqa: C901
 
     if basic:
         # Date fields — try multiple API key variants; first non-empty, valid date wins.
-        # Candidate tuples: (schema_field, api_key_1, api_key_2, …)
-        # DateOfComplation  = the date the project was proposed to start (estimated commencement).
-        # ApprovedOn        = timestamp when RERA approved; fallback for submitted_date.
         _date_candidates: list[tuple[str, ...]] = [
             ("actual_commencement_date", "ActualCommencementDate"),
             ("actual_finish_date",       "ActualfinishDate"),
@@ -714,7 +698,6 @@ def _extract_view_project_fields(view_data: dict) -> dict:  # noqa: C901
                 _total_floors = _n_basement + _n_plinth + _n_podium + _n_stilt + _n_upper
                 if _total_floors:
                     _floor_meta["total_floors"] = _total_floors
-
                 # Nested apartment/unit type details are in GetAppartmentDetails
                 apt_raw = (bldg_item.get("GetAppartmentDetails") or
                            bldg_item.get("GetAppartmentDetailsNew") or [])
@@ -960,13 +943,7 @@ def _extract_view_project_fields(view_data: dict) -> dict:  # noqa: C901
         if normalized_profs:
             out["professional_information"] = normalized_profs
 
-    # ── Common area facilities — sourced from ProjectCommanArea ─────────────────
-    # The site's "Common Amenities" section renders from ProjectDevelopementWork
-    # (infrastructure like Water Supply, Sanitation, Electrification, …).
-    # "Common Area" checkboxes come from CommonAreaItemsCharged.
-    # "Parking Area" table comes from ProjectCommonAreaDetails.
-    # GetProjectAreaFacilities.ProjectDetail is only counts of garages/covered parking
-    # (much less informative) and is NOT used here.
+    # ── Common area facilities (amenities, common area checkboxes, parking) ──────
     fac_out: dict = {}
 
     # 1. Infrastructure / development works (Water Supply, Rain Water Harvesting, etc.)

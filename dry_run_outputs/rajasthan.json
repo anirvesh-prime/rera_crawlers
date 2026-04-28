@@ -1,0 +1,457 @@
+{
+  "key": "14862599096769474009",
+  "project_registration_no": "RAJ/P/2025/4508",
+  "url": "https://rera.rajasthan.gov.in/ProjectDetail?id=3gsCKHLzV4YVjzny6pxubA",
+  "state": "rajasthan",
+  "domain": "rera.rajasthan.gov.in",
+  "project_name": "AKSHAT KANOTA SKY HOMES 5",
+  "project_type": "group-housing",
+  "promoter_name": "AKSHAT APARTMENTS PRIVATE LIMITED",
+  "status_of_the_project": "Objected",
+  "acknowledgement_no": "RAJ-RERA-APP-P-2025-11253",
+  "project_city": "Jaipur",
+  "project_state": "rajasthan",
+  "crawl_machine_ip": "127.0.0.1",
+  "machine_name": "Anirveshs-MacBook-Air.local",
+  "project_location_raw": {
+    "house_no_building_name": "5",
+    "village": "KANOTA",
+    "locality": "AKSHAT KANOTA ESTATE",
+    "taluk": "Bassi",
+    "pin_code": "303012",
+    "state": "Rajasthan",
+    "raw_address": "Khasra No./ Plot No.5 , Village- KANOTA , AKSHAT KANOTA ESTATE , , Jaipur - 303012 (Rajasthan)"
+  },
+  "promoter_address_raw": [
+    {
+      "house_no_building_name": "A-27/13-A",
+      "locality": "Kanti Chandra Road, Banipark",
+      "district": "Jaipur",
+      "taluk": "Jaipur",
+      "state": "Rajasthan",
+      "pin_code": "302016"
+    }
+  ],
+  "promoter_contact_details": {
+    "phone": "9829066855",
+    "email": "akshatapartments@gmail.com"
+  },
+  "bank_details": [
+    {
+      "account_type": "Collection Account (100%)",
+      "bank_name": "State Bank of India",
+      "branch": "SME Branch, Church Road, Jaipur",
+      "IFSC": "SBIN0004080",
+      "account_no": "44543228771",
+      "address": "plot no 13, First Floor, Galaxy Tower, Gopi Nath Marg, MI Road, Jaipur",
+      "account_name": "Akshat Apts Pvt Ltd - Akshat Kanota Sky Homes 5- Collection AC"
+    },
+    {
+      "account_type": "RERA Retention Account (70%)",
+      "bank_name": "State Bank of India",
+      "branch": "SME Branch, Church Road, Jaipur",
+      "IFSC": "SBIN0004080",
+      "account_no": "446543226047",
+      "address": "plot no 13, First Floor, Galaxy Tower, Gopi Nath Marg, MI Road, Jaipur",
+      "account_name": "Akshat Apts Pvt Ltd - Akshat Kanota Sky Homes 5- Retention AC"
+    },
+    {
+      "account_type": "Promoter's Account",
+      "bank_name": "State Bank of India",
+      "branch": "SME Branch, Church Road, Jaipur",
+      "IFSC": "SBIN0004080",
+      "account_no": "44543439157",
+      "address": "plot no 13, First Floor, Galaxy Tower, Gopi Nath Marg, MI Road, Jaipur",
+      "account_name": "Akshat Apts Pvt Ltd - Akshat Kanota Sky Homes 5- Promoters AC"
+    }
+  ],
+  "project_cost_detail": {
+    "cost_of_land": "₹4,20,80,000.00",
+    "estimated_construction_cost": "₹16,83,00,000.00",
+    "estimated_project_cost": "₹21,03,80,000.00"
+  },
+  "building_details": [
+    {
+      "flat_type": "2 BHK",
+      "carpet_area": "96.11",
+      "balcony_area": "13.07",
+      "open_area": "0.00",
+      "no_of_units": "4",
+      "block_name": "1"
+    },
+    {
+      "flat_type": "2 BHK",
+      "carpet_area": "96.11",
+      "balcony_area": "13.07",
+      "open_area": "0.00",
+      "no_of_units": "4",
+      "block_name": "1"
+    },
+    {
+      "flat_type": "3 BHK + Serv",
+      "carpet_area": "130.52",
+      "balcony_area": "17.48",
+      "open_area": "0.00",
+      "no_of_units": "3",
+      "block_name": "1"
+    },
+    {
+      "flat_type": "3 BHK + Serv",
+      "carpet_area": "130.52",
+      "balcony_area": "17.48",
+      "open_area": "0.00",
+      "no_of_units": "3",
+      "block_name": "1"
+    },
+    {
+      "flat_type": "3 BHK + Serv",
+      "carpet_area": "139.36",
+      "balcony_area": "17.48",
+      "open_area": "0.00",
+      "no_of_units": "1",
+      "block_name": "1"
+    },
+    {
+      "flat_type": "3 BHK + Serv",
+      "carpet_area": "139.36",
+      "balcony_area": "17.48",
+      "open_area": "0.00",
+      "no_of_units": "1",
+      "block_name": "1"
+    },
+    {
+      "flat_type": "4 BHK + Serv - T1",
+      "carpet_area": "168.37",
+      "balcony_area": "34.38",
+      "open_area": "0.00",
+      "no_of_units": "3",
+      "block_name": "1"
+    },
+    {
+      "flat_type": "4 BHK + Serv - T1",
+      "carpet_area": "180.91",
+      "balcony_area": "34.38",
+      "open_area": "0.00",
+      "no_of_units": "1",
+      "block_name": "1"
+    },
+    {
+      "flat_type": "4 BHK + Serv - T2",
+      "carpet_area": "167.64",
+      "balcony_area": "34.38",
+      "open_area": "0.00",
+      "no_of_units": "3",
+      "block_name": "1"
+    },
+    {
+      "flat_type": "4 BHK + Serv - T2",
+      "carpet_area": "180.91",
+      "balcony_area": "34.38",
+      "open_area": "0.00",
+      "no_of_units": "1",
+      "block_name": "1"
+    }
+  ],
+  "professional_information": [
+    {
+      "role": "Architect",
+      "name": "Sharad maithal",
+      "email": "studio@maarchitects.in",
+      "phone": "1414299999",
+      "address": "1, Greenswoods, Lalkothi Scheme, off. Sahakar Marg, Jaipur"
+    },
+    {
+      "role": "Structural Engineer",
+      "name": "Manish Gupta",
+      "email": "sg.structures@gmail.com",
+      "phone": "1416693947",
+      "address": "A-36, Basement, Swej Farm, New Sanganer Road, Jaipur"
+    },
+    {
+      "role": "Contractor",
+      "name": "Mr Ram Swaroop",
+      "email": "rskhoraniya@gmail.com",
+      "phone": "8290941511",
+      "address": "48, Balaji Vihar, Dahmi Kalan, Ajmer Road, Jaipur"
+    },
+    {
+      "role": "Chartered Accountant",
+      "name": "Jain Sharma and Co",
+      "email": "jainsharmaco@gmail.com",
+      "phone": "1414916933",
+      "address": "303,Shyam Anukampa,D-11, Ashok Marg."
+    },
+    {
+      "role": "Plumbing Consultant",
+      "name": "SURENDRA MATHUR",
+      "email": "aoneinfraconsultants@yahoo.in",
+      "phone": "9414377742",
+      "address": "7 KHA 13 JAWAHAR NAGAR, JAIPUR"
+    }
+  ],
+  "construction_progress": [
+    {
+      "title": "Excavation"
+    },
+    {
+      "title": "Basement & Plinth Work"
+    },
+    {
+      "title": "Lower Ground Floor"
+    },
+    {
+      "title": "Stilit Floor & Ground Floor"
+    },
+    {
+      "title": "Casting of Slabs (First Floor + Option to Add More)"
+    },
+    {
+      "title": "Mumty"
+    },
+    {
+      "title": "Brick Masonry, Internal and External Plastering Work"
+    },
+    {
+      "title": "Plumbing & Sanitary Work"
+    },
+    {
+      "title": "Electrical, Fire Fighting System & HVAC"
+    },
+    {
+      "title": "Finishing Work ( Door, Windows, Structural Glazing & Paint Work etc.)"
+    },
+    {
+      "title": "Installation of Lift And Escalators"
+    },
+    {
+      "title": "Other Work & Common Facilities Within the Tower"
+    },
+    {
+      "title": "For Common amenities and areas Compound Wall, Entry & Exid Gates/ Guard Rooms, Internal Driveways & Pathways And Open & Covered Parking Areas"
+    },
+    {
+      "title": "Community Building"
+    },
+    {
+      "title": "Meter Room / Pump Room, Electrical Work / Light Poles, Installation of Transformer / DG Set / Meters & Solar Panels / Solar Water Heater etc."
+    },
+    {
+      "title": "WaterSpply Lines / Ug Tank, Storm Water Drains, Construction of Rain Water Harvesting Structure & Water Supply Connection / Boring etc"
+    },
+    {
+      "title": "Structure of Waste Water Treatment / Recycling Plant, Layion of Sewerage Line and Construction of STP, Inatallayion of Machinery of WTP / Solid Waste Management etc"
+    },
+    {
+      "title": "Development of green and Landscape Areas, Tree Plantation & Any Other Work"
+    },
+    {
+      "title": "Date of Possession"
+    },
+    {
+      "title": "Handover to RWA"
+    }
+  ],
+  "members_details": [
+    {
+      "name": "Sunil Jain",
+      "position": "Managing Director"
+    },
+    {
+      "name": "Nisha Jain",
+      "position": "Director"
+    }
+  ],
+  "data": {
+    "is_processed": false,
+    "land_area_unit": "In sq. meters",
+    "construction_area_unit": "in sq. meters",
+    "temp": "RAJ/P/2025/4508 (17/04/2026)",
+    "type": "group-housing",
+    "no_of_plots": "24"
+  },
+  "promoters_details": {
+    "type_of_firm": "Company"
+  },
+  "submitted_date": "2026-04-17 00:00:00+00:00",
+  "estimated_commencement_date": "2025-11-08 13:08:09+00:00",
+  "actual_commencement_date": "2025-11-08 00:00:00+00:00",
+  "estimated_finish_date": "2027-12-31 00:00:00+00:00",
+  "approved_on_date": "2026-04-17 16:50:27+00:00",
+  "number_of_residential_units": 24,
+  "config_id": 2,
+  "land_area": 2649.52,
+  "construction_area": 6014.44,
+  "is_updated": false,
+  "is_duplicate": false,
+  "iw_processed": false,
+  "checked_updates": false,
+  "rera_housing_found": false,
+  "is_live": false,
+  "uploaded_documents": [
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/uploads/Certificate/27b83e0a-185c-4db7-bb7e-a4eff8bfac02.pdf",
+      "type": "registration_certificate"
+    },
+    {
+      "link": "https://rera.rajasthan.gov.in/ViewProject?id=kD6ZefpBIHk=&type=O",
+      "type": "Project details as at the time of registration dated 17-04-2026"
+    },
+    {
+      "link": "https://rera.rajasthan.gov.in/ViewProject?id=kD6ZefpBIHk=&type=U",
+      "type": "Updated project details as on 18-Mar-2026"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/uploads/7fdbcdf7-aa93-4efe-a8b3-11b67856e83d.pdf",
+      "type": "Advocate Search Report along with Search Fee Receipt"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/uploads/c5806fbc-bf39-41a2-91fc-d94aa1d821ed.pdf",
+      "type": "Chain of Land Title Document"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/uploads/b2f49d8f-c2fa-40d0-a3bf-803a6bfac51f.pdf",
+      "type": "Signed Performa for the allotment letter and agreement for sale (AFS) for project (As per RAJ - RERA Rules and FORM - G)"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/uploads/cdc27588-4b21-4d5e-af48-427a2e60cce1.pdf",
+      "type": "Declaration in FORM B(As per RAJ-RERA Rules)"
+    },
+    {
+      "type": "Approved Site Plan 1",
+      "link": "https://reraapp.rajasthan.gov.in/Content/uploads/b8073b5e-c987-486e-a468-f81cc9d9a437.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "type": "Gantt Chart 1",
+      "link": "https://reraapp.rajasthan.gov.in/Content/uploads/06add1ef-541b-49bf-8e90-8e019e384d38.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/uploads/69dfb2d4-c1b6-4711-add4-c3848f351118.pdf",
+      "type": "Declaration with respect to NOC"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/uploads/7dfd08e8-9491-46f7-9ecb-edc7f4c41b65.pdf",
+      "type": "Environment NOC_CTE.pdf"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/uploads/3c7d89b6-f9f1-40a5-9b61-ed0c9e20df78.pdf",
+      "type": "NOC from Airport Authority of India"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/uploads/7cc2251c-82ec-4217-8b68-57aa96058b67.pdf",
+      "type": "Board Resolution Letter"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/uploads/4cdcb535-8031-4ef4-a9e1-5ecab2c028ed.pdf",
+      "type": "Audited Balance Sheet of the Promoter for the preceding financial year"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/uploads/cb8acad7-932d-41a1-b312-782e0271eee9.pdf",
+      "type": "ITR"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/uploads/df7c7d98-8a17-497a-ac8a-4c5f1cd4a496.pdf",
+      "type": "Declaration of criminal record"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/uploads/a12077fb-c70e-45d4-a946-b5e938a37da0.pdf",
+      "type": "Declaration of Project Litigation"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/uploads/59da92d8-a177-4f6d-b684-0804d18ee3b0.pdf",
+      "type": "New Project Booking Affidavit"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/uploads/a3914a83-3c2f-4ba9-8b34-ed8272966e66.pdf",
+      "type": "Project Related Approval Documents (Other than Plotted)"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/ProjectCommanarea/Drawings/0ff90f47-6804-4d1b-85b6-bb94f488eb3d.pdf",
+      "type": "Common Area Drawing"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/ProjectCommanarea/Drawings/448a13ed-f7fd-46c4-9950-0b88fd05589d.pdf",
+      "type": "Common Area Drawing"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/ProjectCommanarea/Drawings/80331aca-864a-419e-8e01-d96fd2856ac2.pdf",
+      "type": "Common Area Drawing"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/ProjectCommanarea/Drawings/be5c40fe-6ab8-43f5-b2da-01cbf09943fd.pdf",
+      "type": "Common Area Drawing"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/ProjectCommanarea/Drawings/43575bfb-b392-4e63-8177-35c71e856c13.pdf",
+      "type": "Common Area Drawing"
+    },
+    {
+      "type": "Electrical 1",
+      "link": "https://reraapp.rajasthan.gov.in/Content/Project/Building/5070/8bc3a122-1a0c-4efc-9342-9151665dd503.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "type": "Building Sanction Plan 1",
+      "link": "https://reraapp.rajasthan.gov.in/Content/Project/Building/5070/2c2faeaf-1202-480d-afae-a74e948cda0c.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "type": "ARCHITECT Certificate 1",
+      "link": "https://reraapp.rajasthan.gov.in/Content/Project/Building/5070/21220b16-0ded-46be-8b80-d69210ee6874.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "type": "Structural drawings 1",
+      "link": "https://reraapp.rajasthan.gov.in/Content/Project/Building/5070/38f4ef00-aee4-4313-b7cf-4e8eff456209.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "type": "Electrical 2",
+      "link": "https://reraapp.rajasthan.gov.in/Content/Project/Building/5070/da7d806e-19f5-48fa-b09b-b77b0ad91760.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/Project/Building/5070/46147c42-6542-4107-b54a-f98d7cbafb89.pdf",
+      "type": "Services  (SLD/ Distribution details after LT panel, Earthing layout, External Lighting plan/ Layout ,Tv & Telephone Riser Diagram, Lighting arrester location & Pit location, coordination drawings, fire detection & alarm system layout of all floor)"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/Project/Building/5070/29743092-6e81-4dd5-84a8-c83027715b0a.pdf",
+      "type": "Common Plumbing (Plumbing specification, Water schematic drawing, Internal water supply & drainage\r\nExternal water supply & drainage, Terrace ring main & rain water locations & UG Water details\r\nBasement drainage & water supply, External sewage layout. Pump room layout)"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/Project/Building/5070/94037cfa-f945-4cb3-8486-f44eb62f8465.pdf",
+      "type": "Firefighting (Firefighting BOQ & specification, External yard hydrant layout, Pump room layout)"
+    }
+  ],
+  "document_urls": [
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Approved Site Plan 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Gantt Chart 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Electrical 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Building Sanction Plan 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "ARCHITECT Certificate 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Structural drawings 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Electrical 2"
+    }
+  ]
+}

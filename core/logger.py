@@ -10,6 +10,12 @@ from core.config import settings
 
 
 _FLUSH_SIZE = 25  # flush to DB after this many buffered entries
+_CONTEXT_ALIASES = {
+    "project_key": ("project_key", "key"),
+    "registration_no": ("registration_no", "reg_no"),
+    "url": ("url",),
+    "page": ("page",),
+}
 
 
 class DbLogHandler(logging.Handler):
@@ -97,7 +103,6 @@ class CrawlerLogger:
         self.run_id  = run_id
         self._logger = logging.getLogger(f"rera.{site_id}.{run_id}")
         self._logger.setLevel(logging.DEBUG)
-        self._ctx: dict = {}   # current project context
 
         if not self._logger.handlers:
             ch = logging.StreamHandler()
@@ -110,21 +115,53 @@ class CrawlerLogger:
             self._logger.addHandler(JsonLineHandler(log_path))
             self._logger.addHandler(DbLogHandler(run_id, site_id))
 
+        if not hasattr(self._logger, "_crawler_logger_state"):
+            self._logger._crawler_logger_state = {
+                "ctx": {},
+                "touched_keys": [],
+                "touched_key_set": set(),
+                "key_summary_logged": False,
+            }
+        self._state = self._logger._crawler_logger_state
+
+    def _register_touched_key(self, project_key: str | None) -> None:
+        if not project_key:
+            return
+        key_set = self._state["touched_key_set"]
+        if project_key in key_set:
+            return
+        key_set.add(project_key)
+        self._state["touched_keys"].append(project_key)
+
+    def _extract_context(self, extra: dict | None) -> tuple[dict, dict]:
+        remaining = dict(extra or {})
+        context: dict = {}
+        for canonical, aliases in _CONTEXT_ALIASES.items():
+            for alias in aliases:
+                if alias not in remaining:
+                    continue
+                value = remaining.pop(alias)
+                if value is not None:
+                    context[canonical] = value
+                    break
+        return context, remaining
+
     # ── Project context ───────────────────────────────────────────────────────
 
     def set_project(self, *, key: str | None = None, reg_no: str | None = None,
                     url: str | None = None, page: int | None = None):
         """Set per-project context — included in every subsequent log call."""
-        self._ctx = {k: v for k, v in {
+        self._state["ctx"] = {k: v for k, v in {
             "project_key": key, "registration_no": reg_no,
             "url": url, "page": page,
         }.items() if v is not None}
+        self._register_touched_key(self._state["ctx"].get("project_key"))
 
     def clear_project(self):
         """Clear project context and flush buffered DB log entries.
         Called after every project is fully processed, ensuring logs reach
         the database in near-real-time rather than only at process exit."""
-        self._ctx = {}
+        self._state["ctx"] = {}
         self._flush_db()
 
     def _flush_db(self) -> None:
@@ -145,10 +182,17 @@ class CrawlerLogger:
 
     def _log(self, level: int, message: str, step: str | None = None,
              traceback: str | None = None, extra: dict | None = None):
-        url_in_ctx  = self._ctx.get("url", "")
+        ctx_updates, extra_payload = self._extract_context(extra)
+        if ctx_updates:
+            self._state["ctx"] = {**self._state["ctx"], **ctx_updates}
+        ctx = dict(self._state["ctx"])
+        self._register_touched_key(ctx.get("project_key"))
+
         console_msg = message
-        if self._ctx.get("registration_no"):
-            console_msg = f"[{self._ctx['registration_no']}] {message}"
+        if ctx.get("project_key"):
+            console_msg = f"[key={ctx['project_key']}] {console_msg}"
+        if ctx.get("registration_no"):
+            console_msg = f"[reg={ctx['registration_no']}] {console_msg}"
         if step:
             console_msg = f"[{step}] {console_msg}"
 
@@ -158,17 +202,39 @@ class CrawlerLogger:
             extra={
                 "site_id":         self.site_id,
                 "run_id":          self.run_id,
-                "project_key":     self._ctx.get("project_key"),
-                "registration_no": self._ctx.get("registration_no"),
+                "project_key":     ctx.get("project_key"),
+                "registration_no": ctx.get("registration_no"),
                 "step":            step,
                 "traceback":       traceback,
                 "extra": {
-                    **{k: v for k, v in self._ctx.items()
+                    **{k: v for k, v in ctx.items()
                        if k not in ("project_key", "registration_no")},
-                    **(extra or {}),
+                    **extra_payload,
                 },
             },
         )
+
+    def log_run_key_summary(self, limit: int = 10, step: str = "done") -> None:
+        if self._state["key_summary_logged"]:
+            return
+        self._state["key_summary_logged"] = True
+
+        touched_keys = list(self._state["touched_keys"])
+        shown_keys = touched_keys[:limit]
+        remaining = max(0, len(touched_keys) - len(shown_keys))
+        previous_ctx = dict(self._state["ctx"])
+        self._state["ctx"] = {}
+        try:
+            if shown_keys:
+                self.info(
+                    f"Run key summary ({len(shown_keys)}/{len(touched_keys)} shown): {', '.join(shown_keys)}",
+                    step=step,
+                )
+            else:
+                self.info("Run key summary (0/0 shown): no project keys logged", step=step)
+            self.info(f"Remaining keys not shown: {remaining}", step=step)
+        finally:
+            self._state["ctx"] = previous_ctx
 
     # ── Public API ────────────────────────────────────────────────────────────
 

@@ -1,0 +1,318 @@
+{
+  "key": "14845853821626274157",
+  "project_registration_no": "RP/07/2026/01480",
+  "url": "https://rera.odisha.gov.in/projects/project-details/VTJGc2RHVmtYMStZaTJ5ZlNQMHFIZzB3TmJlVEVDalVFNVlMd0tFTStpbi9pU09UMjZwbWErdjF4ejZIOFBpZy9tNHM4eEcyUkpjYzAxTmhwd1ZOTmZTbzMxQ1B4SHZEaG0rWlMwSlgyRnc9?name=JOSHNA%20SKYLINE",
+  "state": "odisha",
+  "domain": "rera.odisha.gov.in",
+  "project_name": "JOSHNA SKYLINE",
+  "project_type": "Residential",
+  "promoter_name": "SANTOSH KUMAR NAYAK",
+  "project_state": "odisha",
+  "crawl_machine_ip": "127.0.0.1",
+  "machine_name": "Anirveshs-MacBook-Air.local",
+  "project_location_raw": {
+    "raw_address": "Plot No- 59/6613 & 59/6635, Khata no- 650/3091 & 650/3109, Mz-Cuttack Sahar Unit no. 28 Paisa, Tahsil-Cuttack, CUTTACK, Cuttack, Cuttack Sadar, Cuttack sadar"
+  },
+  "promoter_address_raw": {
+    "correspondence_address": "Flat No-3911, Ground Floor,Priya Elite Apartment,Pandara, Unit-38, Jagannath Nagar Main Road,Bhubaneswar,Khordha,Odisha,751025"
+  },
+  "promoter_contact_details": {
+    "email": "nayakraja557@gmail.com",
+    "phone": "8598931430,9827500109"
+  },
+  "bank_details": [
+    {
+      "account_type": "Master Account",
+      "IFSC": "UCBA0003154"
+    },
+    {
+      "account_type": "RERA Designated Account / Project Account",
+      "IFSC": "UCBA0003154"
+    },
+    {
+      "account_type": "Promoter Account",
+      "IFSC": "UCBA0003154"
+    },
+    {
+      "account_type": "Plot 1"
+    },
+    {
+      "account_type": "Plot 2"
+    }
+  ],
+  "project_cost_detail": {
+    "total_project_cost": "607.00",
+    "fund_from_promoter": "190.00",
+    "fund_from_allottees": "417.00",
+    "fund_from_bank": "0.00"
+  },
+  "professional_information": [
+    {
+      "name": "SATYAJEET PANIGRAHI",
+      "role": "Chartered Accountant",
+      "email": "SATYAJEETPANIGRAHI@VSC.CO.IN",
+      "phone": "8270367253",
+      "registration_no": "316245"
+    },
+    {
+      "name": "ARJUN KUMAR KAR",
+      "role": "Grievance Redressal Officer",
+      "email": "KARARJUN888@GMAIL.COM",
+      "phone": "9937776888",
+      "registration_no": "N/A"
+    },
+    {
+      "name": "Er. Sudhansu Sekhar Panda",
+      "role": "Structural Engineers/Construction Engineer",
+      "email": "Sudhansu72_panda@yahoo.com",
+      "phone": "9437092014",
+      "registration_no": "RTP/DTP/ST.ER.).012/2017"
+    },
+    {
+      "name": "RAJASHREE SUBHADARSHINI",
+      "role": "Architect",
+      "email": "8763192203mum.rs@gmail.com",
+      "phone": "8763192203",
+      "registration_no": "CA/2023/161253"
+    }
+  ],
+  "data": {
+    "govt_type": "state",
+    "is_processed": false
+  },
+  "promoters_details": {
+    "gst_no": "21CNIPN8025R1ZH",
+    "type_of_firm": "An Individual",
+    "registration_no": "--"
+  },
+  "number_of_residential_units": 28,
+  "config_id": 3,
+  "is_updated": false,
+  "is_duplicate": false,
+  "iw_processed": false,
+  "checked_updates": false,
+  "rera_housing_found": false,
+  "is_live": false,
+  "uploaded_documents": [
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/projectCertificatePdf_1777032458.pdf",
+      "type": "Registration Certificate"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phphYygoe_1756817782.pdf",
+      "type": "document"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpVfgvej_1761411513.pdf",
+      "type": "document"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpikp66c_1764937419.pdf",
+      "type": "document"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpQkrgHM_1764937157.pdf",
+      "type": "Account Opening Statement"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpV7Xt1H_1764937288.pdf",
+      "type": "Bank Statement"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phplNvXve_1764937295.pdf",
+      "type": "Cancelled Cheque"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpdNU5Zc_1772537580.pdf",
+      "type": "Estimate Copy"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpRQWxms_1764936293.pdf",
+      "type": "Encumbrance Certificate"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpXWQNCN_1761674692.pdf",
+      "type": "ROR"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpqXPcRi_1761674956.pdf",
+      "type": "Share Allocation Agreement"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpGNZmz5_1761674784.pdf",
+      "type": "Plot No."
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phprZOgx9_1761674945.pdf",
+      "type": "Power of Attorney Document"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php3UZ4Fm_1761675035.pdf",
+      "type": "Encumbrance Certificate"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php8O5uFJ_1761675069.pdf",
+      "type": "ROR"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpFWHPqB_1761675383.pdf",
+      "type": "Share Allocation Agreement"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpdoAA97_1761675178.pdf",
+      "type": "Plot No."
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpWXgMtE_1772448658.pdf",
+      "type": "Power of Attorney Document"
+    },
+    {
+      "type": "Approved layout 1",
+      "link": "https://reraapps.odisha.gov.in/dms/public/library/pdfjsnewds/web/viewer.html?fileId=189502&text=0e7767eec11383d0f1e467b573157614d5232d45ee68b0151b63bee2a94cda84",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpGNRs1Q_1772537124.pdf",
+      "type": "Share Allocation Agreement"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpH3rFUm_1756550587.pdf",
+      "type": "Advocate Report"
+    },
+    {
+      "type": "Approved layout 2",
+      "link": "https://reraapps.odisha.gov.in/dms/public/library/pdfjsnewds/web/viewer.html?fileId=235780&text=2d82259c68697b38819537c9293d4087951a19d4158625fb44a3edbc3b0e256d",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "type": "Site Plan 1",
+      "link": "https://reraapps.odisha.gov.in/dms/public/library/pdfjsnewds/web/viewer.html?fileId=209425&text=081cc62f4fc83e1da78840005045caccc45429be1b472250f936c057c300059b",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpt2DACG_1775044807.pdf",
+      "type": "Nakhsha Location"
+    },
+    {
+      "type": "Approved layout 3",
+      "link": "https://reraapps.odisha.gov.in/dms/public/library/pdfjsnewds/web/viewer.html?fileId=209427&text=92589f4579ce665c5406ae222a5cdfd3673af1c51d9d3f64c734a841167b1313",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "type": "Approved layout 4",
+      "link": "https://reraapps.odisha.gov.in/dms/public/library/pdfjsnewds/web/viewer.html?fileId=null&text=5eb43ad8ee1b16152ea84d651acd5fced3e42fe55a88ed901a5d457a78be7da7",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpiwVmlv_1756988503.pdf",
+      "type": "Annual Report for FY 2024-25"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpb2d0Ls_1756988565.pdf",
+      "type": "Annual Report for FY 2023-24"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpv7oHc9_1756988577.pdf",
+      "type": "Annual Report for FY 2022-23"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpb5J9iZ_1756988588.pdf",
+      "type": "IT Return for FY 2024-25"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpIg58xN_1756988603.pdf",
+      "type": "IT Return for FY 2023-24"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpaS1kyB_1756988613.pdf",
+      "type": "IT Return for FY 2022-23"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpVk0AzO_1761395063.pdf",
+      "type": "Audit Report for FY 2024-25"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpQCtEFC_1761395075.pdf",
+      "type": "Audit Report for FY 2023-24"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php0zmHQa_1761395070.pdf",
+      "type": "Audit Report for FY 2022-23"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php5q17Ti_1756988754.pdf",
+      "type": "Fire Safety Certificate - undertaking/affidavit"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpsMWsFu_1761394281.pdf",
+      "type": "Conveyance Deed"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpQG2HdP_1764852146.pdf",
+      "type": "Allotment letter format"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpfCQ4UF_1764852487.pdf",
+      "type": "Affidavit in Form-A as per clause-l of sub-section-2 of section-4 of the Act"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpUkoK9O_1761414097.pdf",
+      "type": "Affidavit for providing Fire Fighting Equipments"
+    },
+    {
+      "type": "approval letter 1",
+      "link": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=209655&text=3d1bfaf539726a11b5999dc0586004444ba1287095b55a9511114e4ad3a3b616",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpjdLvyw_1772449735.pdf",
+      "type": "Corrigendum Letters"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpm04PQ2_1775044937.pdf",
+      "type": "Clarification Letter regarding submission of GPA for Plot no. 59/6613"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phprWxAtY_1775045938.pdf",
+      "type": "GPA (Purna Chandra Sahoo & Narendra Kumar Sahoo)"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpyXfgF0_1761394177.pdf",
+      "type": "SCHEDULE ‘A’"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpgtztmI_1761394184.pdf",
+      "type": "SCHEDULE ‘B’"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpci8Myf_1761394275.pdf",
+      "type": "SCHEDULE ‘C’"
+    }
+  ],
+  "document_urls": [
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Approved layout 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Approved layout 2"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Site Plan 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Approved layout 3"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Approved layout 4"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "approval letter 1"
+    }
+  ]
+}

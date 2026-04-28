@@ -28,7 +28,7 @@ from pydantic import ValidationError
 from core.checkpoint import reset_checkpoint
 from core.config import settings
 from core.crawler_base import generate_project_key, random_delay, safe_get, safe_post
-from core.db import get_project_by_key, upsert_project, insert_crawl_error
+from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
 from core.project_normalizer import (
@@ -36,6 +36,7 @@ from core.project_normalizer import (
     merge_data_sections,
     normalize_project_payload,
 )
+from core.s3 import compute_md5, upload_document, get_s3_url
 
 LISTING_URL  = "https://rera.bihar.gov.in/RegisteredPP.aspx"
 FILANPRINT   = "https://rera.bihar.gov.in/Filanprint.aspx"
@@ -211,6 +212,7 @@ def _parse_detail_page(html: str) -> dict:
                 return v
         return ""
 
+    pin_code = _f(loc_kv, "pin code", "pincode", "pin", "zip")
     loc_raw: dict = {
         "address":  _f(loc_kv, "project address"),
         "district": _f(loc_kv, "district"),
@@ -218,6 +220,7 @@ def _parse_detail_page(html: str) -> dict:
         "anchal":   _f(loc_kv, "anchal"),
         "mauja":    _f(loc_kv, "mauja"),
         "city":     _f(loc_kv, "city/town"),
+        "pin_code": pin_code,
     }
     try:
         lat = float(_f(loc_kv, "latitude of end point of the plot"))
@@ -257,6 +260,52 @@ def _parse_detail_page(html: str) -> dict:
         except (ValueError, AttributeError):
             return None
 
+    # ── Promoter entity details → normalized promoters_details field ──────────
+    prom_details: dict = {
+        "type_of_firm":    _f(prom_kv, "promoter type"),
+        "pan_no":          _f(prom_kv, "pan number"),
+        "registration_no": _f(prom_kv, "company registration no /deed no."),
+    }
+    prom_details = {k: v for k, v in prom_details.items() if v}
+
+    # ── Document links — all .pdf hrefs on the Filanprint.aspx page ──────────
+    # Bihar RERA stores documents at well-known URL path patterns:
+    #   /Registration_Certificate/RERAP...pdf  → Registration Certificate
+    #   /All_Document/RERAP...pdf              → project documents (label from link text)
+    #   /PassBook/RERAP...pdf                  → bank passbook
+    docs: list[dict] = []
+    for a in soup.find_all("a", href=True):
+        href: str = a["href"]
+        if ".pdf" not in href.lower():
+            continue
+        # Ensure a single "/" separator between domain and path (href may lack
+        # a leading "/" when it's a relative path like "All_Document/RERAP…pdf")
+        if href.startswith("http"):
+            full_url = href
+        else:
+            full_url = f"https://{DOMAIN}/{href.lstrip('/')}"
+        raw_label = a.get_text(separator=" ", strip=True)
+        if "/Registration_Certificate/" in href:
+            doc_type = "Registration Certificate"
+        elif "/PassBook/" in href:
+            doc_type = raw_label or "Bank Passbook"
+        elif "/All_Document/" in href:
+            doc_type = raw_label or "Project Document"
+        else:
+            doc_type = raw_label or "Document"
+        docs.append({"link": full_url, "type": doc_type})
+
+    land_area_val  = _safe_float(_f(proj_kv, "total area of land (sq mt)"))
+    const_area_val = _safe_float(_f(proj_kv, "total covered area (sq mtr)"))
+    land_area_details: dict | None = None
+    if land_area_val or const_area_val:
+        land_area_details = {
+            "land_area": str(land_area_val) if land_area_val else None,
+            "land_area_unit": "Sq mt",
+            "construction_area": str(const_area_val) if const_area_val else None,
+            "construction_area_unit": "Sq mtr",
+        }
+
     out: dict = {
         # project info
         "project_type":              _f(proj_kv, "project type"),
@@ -264,36 +313,46 @@ def _parse_detail_page(html: str) -> dict:
         "project_description":       _f(proj_kv, "project description"),
         "estimated_commencement_date": _f(proj_kv, "project start date"),
         "estimated_finish_date":     _f(proj_kv, "project end date"),
-        "land_area":                 _safe_float(_f(proj_kv, "total area of land (sq mt)")),
-        "construction_area":         _safe_float(_f(proj_kv, "total covered area (sq mtr)")),
+        "land_area":                 land_area_val,
+        "construction_area":         const_area_val,
+        "land_area_details":         land_area_details,
         "total_floor_area_under_residential": _safe_float(_f(proj_kv, "total builtup area (sq. mtr.)")),
         # location
         "project_location_raw": {k: v for k, v in loc_raw.items() if v},
         "project_city":          _f(loc_kv, "city/town"),
+        "project_pin_code":      pin_code or None,
         # promoter / contact
         "promoter_contact_details": contact or None,
         "promoter_address_raw":     addr or None,
+        # promoter entity metadata
+        "promoters_details": prom_details or None,
         # structured
         "bank_details":          bank or None,
         "members_details":       members or None,
         "professional_information": vendors or None,
         "building_details":      buildings or None,
-        # project cost
+        # documents
+        "uploaded_documents": docs or None,
+        # project cost — use schema-allowed key names
         "project_cost_detail": {
-            "development_cost_lakh": _safe_float(_f(proj_kv, "estimated cost of development (in lakh)")),
-            "land_cost_lakh":        _safe_float(_f(proj_kv, "estimated cost of land (in lakh)")),
+            "estimated_construction_cost": _safe_float(_f(proj_kv, "estimated cost of development (in lakh)")),
+            "cost_of_land":               _safe_float(_f(proj_kv, "estimated cost of land (in lakh)")),
         },
-        # detail page source
+        # data JSONB — only Bihar-allowed keys: link, type, govt_type, land_area_unit, construction_area_unit
         "data": {
-            "application_no":   _f(prom_kv, "your application number"),
-            "promoter_type":    _f(prom_kv, "promoter type"),
-            "pan_number":       _f(prom_kv, "pan number"),
-            "company_reg_no":   _f(prom_kv, "company registration no /deed no."),
-            "contact_person":   _f(contact_kv, "name of contact person"),
-            "contact_desig":    _f(contact_kv, "designation of contact person"),
-            "completion_months": _f(proj_kv, "proposed period of completion (in month)"),
+            "govt_type":              "state",
+            "land_area_unit":         "Sq mt" if land_area_val else None,
+            "construction_area_unit": "Sq mtr" if const_area_val else None,
         },
     }
+    # Inject registration certificate link+type into data if available
+    reg_cert_url = next(
+        (d["link"] for d in docs if "/Registration_Certificate/" in d.get("link", "")),
+        None,
+    )
+    if reg_cert_url:
+        out["data"]["link"] = reg_cert_url
+        out["data"]["type"] = "Registration Certificate"
     # Strip None-valued keys from nested dicts
     out["project_cost_detail"] = {k: v for k, v in out["project_cost_detail"].items() if v is not None}
     return out
@@ -302,7 +361,13 @@ def _parse_detail_page(html: str) -> dict:
 # ── Sentinel ──────────────────────────────────────────────────────────────────
 
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
-    """Verify the site is reachable and returns a project table."""
+    """Verify the site is reachable and its project GridView table returns rows.
+
+    Bihar's detail pages require Playwright popup capture, so the sentinel does
+    a lightweight listing-page check rather than a full detail-page fetch.
+    The config's sentinel_registration_no is logged for observability.
+    """
+    sentinel_reg = config.get("sentinel_registration_no", "")
     resp = safe_get(LISTING_URL, retries=2, logger=logger)
     if not resp:
         logger.error("Sentinel: listing page unreachable", step="sentinel")
@@ -312,8 +377,93 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     if not table or not table.find("tr"):
         logger.error("Sentinel: project table not found in response", step="sentinel")
         return False
-    logger.info("Sentinel passed", step="sentinel")
+    data_rows = _parse_page_rows(soup)
+    if not data_rows:
+        logger.error("Sentinel: GridView table has no data rows — site structure may have changed",
+                     step="sentinel")
+        return False
+    logger.info(
+        f"Sentinel passed: {len(data_rows)} projects visible on page 1"
+        + (f" (sentinel_reg={sentinel_reg!r})" if sentinel_reg else ""),
+        step="sentinel",
+    )
     return True
+
+
+# ── Document processing ────────────────────────────────────────────────────────
+
+def _process_documents(
+    project_key: str,
+    documents: list[dict],
+    run_id: int,
+    site_id: str,
+    logger: CrawlerLogger,
+) -> tuple[list[dict], int]:
+    """Download, MD5-check, and upload each document PDF to S3.
+
+    Follows the spec's process_documents() pattern:
+      for each PDF: download → compute_md5 → compare with project_documents
+                  → upload to S3 if new/changed → update project_documents row
+
+    Returns:
+        enriched_documents: same list with 's3_link' injected for uploaded docs
+        upload_count: number of documents actually uploaded (new or changed)
+    """
+    enriched: list[dict] = []
+    upload_count = 0
+
+    for doc in documents:
+        url = doc.get("link")
+        doc_type = doc.get("type", "document")
+        if not url:
+            enriched.append(doc)
+            continue
+
+        # Build a deterministic filename from the document type label
+        slug = re.sub(r"[^a-z0-9]+", "_", doc_type.lower()).strip("_") or "document"
+        filename = f"{slug}.pdf"
+
+        try:
+            resp = safe_get(url, logger=logger, timeout=60.0)
+            if not resp or len(resp.content) < 100:
+                enriched.append(doc)
+                logger.warning(f"Document download failed or too small: {url}", step="documents")
+                continue
+
+            data = resp.content
+            md5 = compute_md5(data)
+            s3_key = upload_document(
+                project_key, filename, data, dry_run=settings.DRY_RUN_S3
+            )
+            if s3_key is None:
+                enriched.append(doc)
+                logger.warning(f"S3 upload returned None for {url}", step="documents")
+                continue
+
+            s3_url = get_s3_url(s3_key)
+            upsert_document(
+                project_key=project_key,
+                document_type=doc_type,
+                original_url=url,
+                s3_key=s3_key,
+                s3_bucket=settings.S3_BUCKET_NAME,
+                file_name=filename,
+                md5_checksum=md5,
+                file_size_bytes=len(data),
+            )
+            enriched.append({**doc, "s3_link": s3_url})
+            upload_count += 1
+            logger.info(f"Document uploaded: {doc_type!r}", s3_key=s3_key, step="documents")
+
+        except Exception as exc:
+            enriched.append(doc)
+            logger.error(f"Document processing error: {exc}", url=url, step="documents")
+            insert_crawl_error(
+                run_id, site_id, "S3_UPLOAD_FAILED", str(exc),
+                url=url, project_key=project_key,
+            )
+
+    return enriched, upload_count
 
 
 # ── Parsing ───────────────────────────────────────────────────────────────────
@@ -441,79 +591,108 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 continue
 
             key = generate_project_key(reg_no)
-
-            # ── Step 3: Fetch & parse detail page ────────────────────────────
-            # Use positional alignment: detail_url_list[row_idx] matches listing row
             detail_url: str = ""
             if row_idx < len(detail_url_list) and detail_url_list[row_idx]:
                 detail_url = detail_url_list[row_idx]
-            detail_extra: dict = {}
-            if detail_url:
-                detail_resp = safe_get(detail_url, retries=2, logger=logger)
-                if detail_resp:
-                    detail_extra = _parse_detail_page(detail_resp.text)
-                    logger.info(f"Detail parsed for {reg_no!r}", step="detail")
-                else:
-                    logger.warning(f"Detail fetch failed for {reg_no!r}", step="detail")
-            else:
-                logger.warning(f"No detail URL for row {row_idx} ({reg_no!r})", step="detail")
-
-            # ── Step 4: Merge listing + detail, upsert ───────────────────────
+            logger.set_project(
+                key=key,
+                reg_no=reg_no,
+                url=detail_url or LISTING_URL,
+                page=current_page,
+            )
             try:
-                # listing fields win for the core identifiers; detail fills gaps
-                merged: dict = {
-                    **detail_extra,
-                    # listing fields always take priority for these
-                    "project_name":            raw["project_name"],
-                    "project_registration_no": reg_no,
-                    "promoter_name":           raw["promoter_name"],
-                    "submitted_date":          raw["submitted_date"],
-                    # merge location: detail loc_raw is richer; listing address as fallback
-                    "project_location_raw": {
-                        **raw.get("project_location_raw", {}),
-                        **detail_extra.get("project_location_raw", {}),
-                    },
-                    "domain": DOMAIN,
-                    "url":    detail_url or LISTING_URL,
-                    "state":  config.get("state", "Bihar"),
-                    # merge data sub-dicts
-                    "data": merge_data_sections(
-                        detail_extra.get("data"),
-                        {"listing_address": raw.get("project_location_raw", {}).get("address", "")},
-                    ),
-                }
-                # Remove None values to avoid overwriting good DB data with nulls
-                merged = {k: v for k, v in merged.items() if v is not None}
 
-                normalized = normalize_project_payload(
-                    merged, config,
-                    machine_name=machine_name,
-                    machine_ip=machine_ip,
-                )
-                record  = ProjectRecord(**normalized)
-                db_dict = record.to_db_dict()
-                status  = upsert_project(db_dict)
-                items_processed += 1
-
-                if status == "new":
-                    counters["projects_new"] += 1
-                    logger.info(f"New project: {reg_no}", project_key=key, step="upsert")
-                elif status == "updated":
-                    counters["projects_updated"] += 1
-                    logger.info(f"Updated: {reg_no}", project_key=key, step="upsert")
+                # ── Step 3: Fetch & parse detail page ────────────────────────────
+                # Use positional alignment: detail_url_list[row_idx] matches listing row
+                detail_extra: dict = {}
+                if detail_url:
+                    detail_resp = safe_get(detail_url, retries=2, logger=logger)
+                    if detail_resp:
+                        detail_extra = _parse_detail_page(detail_resp.text)
+                        logger.info(f"Detail parsed for {reg_no!r}", step="detail")
+                    else:
+                        logger.warning(f"Detail fetch failed for {reg_no!r}", step="detail")
                 else:
-                    counters["projects_skipped"] += 1
+                    logger.warning(f"No detail URL for row {row_idx} ({reg_no!r})", step="detail")
 
-            except ValidationError as exc:
-                counters["error_count"] += 1
-                logger.error(f"Validation error for {reg_no}: {exc}", project_key=key, step="validate")
-                insert_crawl_error(run_id, config["id"], "VALIDATION_FAILED", str(exc),
-                                   detail_url or LISTING_URL, project_key=key)
-            except Exception as exc:
-                counters["error_count"] += 1
-                logger.error(f"Unexpected error for {reg_no}: {exc}", project_key=key, step="upsert")
-                insert_crawl_error(run_id, config["id"], "CRAWLER_EXCEPTION", str(exc),
-                                   detail_url or LISTING_URL, project_key=key)
+                # ── Step 4: Merge listing + detail, upsert ───────────────────────
+                try:
+                    # listing fields win for the core identifiers; detail fills gaps
+                    merged: dict = {
+                        **detail_extra,
+                        # listing fields always take priority for these
+                        "project_name":            raw["project_name"],
+                        "project_registration_no": reg_no,
+                        "promoter_name":           raw["promoter_name"],
+                        "submitted_date":          raw["submitted_date"],
+                        # merge location: detail loc_raw is richer; listing address as fallback
+                        "project_location_raw": {
+                            **raw.get("project_location_raw", {}),
+                            **detail_extra.get("project_location_raw", {}),
+                        },
+                        "domain": DOMAIN,
+                        "url":    detail_url or LISTING_URL,
+                        "state":  config.get("state", "Bihar"),
+                        # merge data sub-dicts
+                        "data": merge_data_sections(
+                            detail_extra.get("data"),
+                            {"listing_address": raw.get("project_location_raw", {}).get("address", "")},
+                        ),
+                    }
+                    # Remove None values to avoid overwriting good DB data with nulls
+                    merged = {k: v for k, v in merged.items() if v is not None}
+
+                    normalized = normalize_project_payload(
+                        merged, config,
+                        machine_name=machine_name,
+                        machine_ip=machine_ip,
+                    )
+                    record  = ProjectRecord(**normalized)
+                    db_dict = record.to_db_dict()
+                    status  = upsert_project(db_dict)
+                    items_processed += 1
+
+                    if status == "new":
+                        counters["projects_new"] += 1
+                        logger.info(f"New project: {reg_no}", step="upsert")
+                    elif status == "updated":
+                        counters["projects_updated"] += 1
+                        logger.info(f"Updated: {reg_no}", step="upsert")
+                    else:
+                        counters["projects_skipped"] += 1
+
+                    # ── Step 5: Process documents (weekly_deep or new projects) ──
+                    # Spec §13: process_documents() → download → md5 → S3 upload
+                    uploaded_docs = detail_extra.get("uploaded_documents") or []
+                    if uploaded_docs and (mode == "weekly_deep" or status == "new"):
+                        enriched_docs, doc_count = _process_documents(
+                            key, uploaded_docs, run_id, config["id"], logger,
+                        )
+                        counters["documents_uploaded"] += doc_count
+                        if doc_count:
+                            # Write enriched uploaded_documents + derived document_urls back
+                            doc_urls = [
+                                {"link": d["s3_link"], "type": d.get("type")}
+                                for d in enriched_docs if d.get("s3_link")
+                            ]
+                            upsert_project({
+                                "key": key,
+                                "uploaded_documents": enriched_docs,
+                                "document_urls": doc_urls,
+                            })
+
+                except ValidationError as exc:
+                    counters["error_count"] += 1
+                    logger.error(f"Validation error for {reg_no}: {exc}", step="validate")
+                    insert_crawl_error(run_id, config["id"], "VALIDATION_FAILED", str(exc),
+                                       project_key=key, url=detail_url or LISTING_URL)
+                except Exception as exc:
+                    counters["error_count"] += 1
+                    logger.error(f"Unexpected error for {reg_no}: {exc}", step="upsert")
+                    insert_crawl_error(run_id, config["id"], "CRAWLER_EXCEPTION", str(exc),
+                                       project_key=key, url=detail_url or LISTING_URL)
+            finally:
+                logger.clear_project()
 
             random_delay(*delay_range)
 
@@ -529,7 +708,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         soup = _fetch_page(current_page, form_fields, logger)
         if soup is None:
             logger.error(f"Failed to fetch page {current_page}", step="listing")
-            insert_crawl_error(run_id, config["id"], "HTTP_ERROR", f"page {current_page} failed", LISTING_URL)
+            insert_crawl_error(run_id, config["id"], "HTTP_ERROR", f"page {current_page} failed", url=LISTING_URL)
             break
         random_delay(*delay_range)
 

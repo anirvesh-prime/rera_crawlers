@@ -23,6 +23,147 @@ from core.project_schema import (
     TEXT_FIELDS,
 )
 
+_JSON_FIELD_ALLOWED_KEYS: dict[str, set[str]] = {
+    "project_location_raw": {
+        "city", "district", "exact_location", "has_same_data", "house_no_building_name",
+        "latitude", "locality", "longitude", "pin_code", "plot_no", "post_office",
+        "processed_latitude", "processed_longitude", "raw_address", "state",
+        "survey_resurvey_number", "taluk", "village",
+    },
+    "promoter_address_raw": {
+        "building_name", "city", "correspondence_address", "district",
+        "house_no_building_name", "locality", "pin_code", "plot_no", "raw_address",
+        "registered_address", "state", "taluk", "village",
+    },
+    "promoter_contact_details": {"email", "mobile no", "phone", "telephone_no", "website"},
+    "bank_details": {
+        "IFSC", "account_name", "account_no", "account_type", "address", "bank_name",
+        "branch", "district", "email", "phone", "pin_code", "scan_copy_of_cheque",
+        "state", "telephone_no", "updated",
+    },
+    "data": {
+        "START_PAGE", "actual_start_date", "agent_type", "arrived_date", "complete_html_url",
+        "completion_month", "completion_year", "construction_area_1", "construction_area_alter",
+        "construction_area_unit", "construction_unit", "construction_units", "data_cert",
+        "detail_url", "district", "district_promo", "doc_decoded", "email", "end_date",
+        "estimated_construction_cost", "flats", "form_c", "govt_type", "has_same_data",
+        "house_no_building_name_promo", "is_processed", "land_area_unit", "land_area_units",
+        "lat", "latitude", "link", "link_download", "links_download", "locality_promo",
+        "long", "longitude", "names", "no_of_plots", "no_of_units", "phone",
+        "pin_code_promo", "project_district", "project_id", "project_location", "promo_id",
+        "promo_type", "promoter_type", "promoter_url", "qp_url", "raw_address", "rc",
+        "regis_cert", "state_promo", "status", "taluk_promo", "temp", "temp_promoter",
+        "total_completion_percentage", "total_unit", "type", "type_of_units",
+        "unbuilt_area", "village_promo",
+    },
+    "project_cost_detail": {
+        "cost_of_land", "estimated_construction_cost", "estimated_project_cost",
+        "fund_from_allottees", "fund_from_bank", "fund_from_promoter", "total_project_cost",
+    },
+    "building_details": {
+        "amount_paid", "balcony_area", "block_name", "booking_detail", "booking_status",
+        "carpet_area", "flat_name", "flat_type", "floor_no", "max_flat_value",
+        "min_flat_value", "no_of_plots", "no_of_units", "open_area", "total_area", "updated",
+    },
+    "members_details": {"email", "has_same_data", "name", "phone", "photo", "position", "raw_address"},
+    "professional_information": {
+        "address", "effective_date", "email", "has_same_data", "key_real_estate_projects",
+        "liscence_no", "mobile", "name", "pan_no", "phone", "registration_no", "role",
+        "type", "updated",
+    },
+    "promoters_details": {
+        "GSTIN", "experience_outside_state", "experience_state", "gst_no", "name",
+        "objective", "pan", "pan_card", "pan_no", "photo", "promoters_details",
+        "reg_no", "registration_certificate", "registration_no", "type_of_firm",
+    },
+    "construction_progress": {
+        "building_name", "date_of_reporting", "dated_on", "has_same_data",
+        "progress_percentage", "remarks", "status", "title", "updated",
+    },
+    "provided_faciltiy": {"description", "facility", "has_same_data", "name", "status"},
+    "land_detail": {
+        "any_encumbrance", "covered_area", "encumbrance_certificate", "khata_no", "mouza",
+        "no_of_plots", "open_area", "plot_area", "plot_no", "registration_place", "ror_doc",
+        "sale_deed", "title_holder_name", "total_area",
+    },
+    "land_area_details": {"construction_area", "construction_area_unit", "land_area", "land_area_unit"},
+    "status_update": {
+        "amenity_detail", "booked_detail", "booking_details", "building_detail",
+        "building_details", "construction_progress", "date_of_reporting", "end_date",
+        "gallery_url", "plot_detail", "progress_detail", "proposed_timeline", "qpr_docs",
+        "qpr_url", "quarter", "ref_no", "sold_apartment", "start_date", "submitted_on",
+        "updated", "updated_date", "year",
+    },
+    "authorised_signatory_details": {
+        "email", "name", "official_address", "pan_no", "permanent_address", "phone",
+        "photo", "present_address", "raw_address", "role",
+    },
+    "co_promoter_details": {
+        "comm_address", "email", "land_share", "mobile", "name", "pan_no", "phone",
+        "photo", "present_address", "raw_data", "role", "survey_no",
+    },
+    "complaints_litigation_details": {"count"},
+    "proposed_timeline": {"proposed_end_date", "status", "title"},
+}
+
+_JSON_FIELD_KEY_ALIASES: dict[str, dict[str, str]] = {
+    "project_location_raw": {
+        "pincode": "pin_code",
+        "address": "raw_address",
+        "survey_no": "survey_resurvey_number",
+    },
+    "promoter_address_raw": {
+        "pincode": "pin_code",
+        "address": "raw_address",
+        "address_text": "raw_address",
+    },
+    "promoter_contact_details": {
+        "E-mail": "email",
+        "Email": "email",
+        "Mobile": "phone",
+        "mobile": "phone",
+        "Telephone": "telephone_no",
+    },
+    "bank_details": {
+        "ifsc": "IFSC",
+        "ifsc_code": "IFSC",
+        "ifsccode": "IFSC",
+    },
+}
+
+_STATE_JSON_FIELD_ALLOWED_KEYS: dict[str, dict[str, set[str]]] = {
+    "bihar": {
+        "project_location_raw": {"plot_no", "district", "latitude", "longitude", "raw_address"},
+        "promoter_address_raw": {"raw_address"},
+        "data": {"link", "type", "govt_type", "land_area_unit", "construction_area_unit"},
+    },
+    "kerala": {
+        "data": {"govt_type", "land_area_unit", "construction_area_unit"},
+    },
+    "maharashtra": {
+        "project_location_raw": {"state", "taluk", "plot_no", "village", "district", "locality", "pin_code"},
+        "data": {
+            "START_PAGE", "agent_type", "project_id", "state_promo", "taluk_promo", "village_promo",
+            "district_promo", "land_area_unit", "locality_promo", "pin_code_promo",
+            "project_district", "construction_area_unit", "construction_area_alter",
+            "estimated_construction_cost", "house_no_building_name_promo",
+        },
+    },
+    "puducherry": {
+        # The Pondicherry detail page uses raw_address and structured address fields
+        "promoter_address_raw": {"raw_address", "registered_address", "correspondence_address"},
+        "promoter_contact_details": {"email", "phone"},
+    },
+    "rajasthan": {
+        "project_location_raw": {"state", "taluk", "village", "locality", "pin_code", "raw_address", "house_no_building_name"},
+        "data": {"temp", "type", "no_of_plots", "is_processed", "land_area_unit", "construction_area_unit"},
+    },
+}
+
+_STATE_JSON_SINGLETON_OBJECT_FIELDS: dict[str, set[str]] = {
+    "puducherry": {"promoter_contact_details"},
+}
+
 
 def get_machine_context() -> tuple[str | None, str | None]:
     machine_name = socket.gethostname()
@@ -31,6 +172,11 @@ def get_machine_context() -> tuple[str | None, str | None]:
     except OSError:
         machine_ip = None
     return machine_name, machine_ip
+
+
+def normalize_state_key(value: Any) -> str:
+    text = clean_string(value) or ""
+    return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
 
 
 def clean_string(value: Any) -> str | None:
@@ -253,6 +399,66 @@ def normalize_document_records(documents: Any) -> list[dict[str, Any]] | None:
     return normalized or None
 
 
+def _allowed_json_keys(field_name: str, state_key: str | None) -> set[str] | None:
+    if state_key:
+        state_fields = _STATE_JSON_FIELD_ALLOWED_KEYS.get(state_key, {})
+        if field_name in state_fields:
+            return state_fields[field_name]
+    return _JSON_FIELD_ALLOWED_KEYS.get(field_name)
+
+
+def _field_aliases(field_name: str) -> dict[str, str]:
+    return _JSON_FIELD_KEY_ALIASES.get(field_name, {})
+
+
+def _should_flatten_singleton_json(field_name: str, state_key: str | None) -> bool:
+    if not state_key:
+        return False
+    return field_name in _STATE_JSON_SINGLETON_OBJECT_FIELDS.get(state_key, set())
+
+
+def _normalize_structured_json_item(field_name: str, item: Any, state_key: str | None = None) -> Any:
+    if not isinstance(item, dict):
+        return item
+
+    aliases = _field_aliases(field_name)
+    allowed = _allowed_json_keys(field_name, state_key)
+    normalized_item: dict[str, Any] = {}
+
+    for key, raw_value in item.items():
+        mapped_key = aliases.get(str(key), str(key))
+        if allowed is not None and mapped_key not in allowed:
+            continue
+        normalized_item[mapped_key] = raw_value
+
+    return clean_json(normalized_item)
+
+
+def normalize_structured_json(field_name: str, value: Any, *, state_key: str | None = None) -> Any:
+    cleaned = clean_json(value)
+    if cleaned in (None, "", [], {}):
+        return None
+
+    if (
+        field_name not in _JSON_FIELD_ALLOWED_KEYS
+        and field_name not in _JSON_FIELD_KEY_ALIASES
+        and (not state_key or field_name not in _STATE_JSON_FIELD_ALLOWED_KEYS.get(state_key, {}))
+    ):
+        return cleaned
+
+    if isinstance(cleaned, dict):
+        return _normalize_structured_json_item(field_name, cleaned, state_key=state_key)
+
+    if isinstance(cleaned, list):
+        result = [_normalize_structured_json_item(field_name, item, state_key=state_key) for item in cleaned]
+        filtered = [item for item in result if item not in (None, "", [], {})]
+        if _should_flatten_singleton_json(field_name, state_key) and len(filtered) == 1 and isinstance(filtered[0], dict):
+            return filtered[0]
+        return filtered or None
+
+    return cleaned
+
+
 def build_document_urls(documents: Any) -> list[dict[str, Any]] | None:
     if not documents:
         return None
@@ -309,7 +515,12 @@ def build_document_filename(doc: dict[str, Any], default_ext: str = ".pdf") -> s
     return f"{slug}{ext}"
 
 
-def document_result_entry(doc: dict[str, Any], s3_url: str, file_name: str) -> dict[str, Any]:
+def document_result_entry(
+    doc: dict[str, Any],
+    s3_url: str,
+    file_name: str | None = None,
+    **_: Any,
+) -> dict[str, Any]:
     entry = {
         "type": doc.get("type") or doc.get("label") or "document",
         "link": doc.get("source_url") or doc.get("url"),
@@ -346,6 +557,7 @@ def normalize_project_payload(
 ) -> dict[str, Any]:
     data = copy.deepcopy(payload)
     raw_snapshot = data.pop("data", None)
+    state_key = normalize_state_key(config.get("state") or data.get("state"))
 
     normalized: dict[str, Any] = {}
     unmapped_fields: dict[str, Any] = {}
@@ -370,7 +582,7 @@ def normalize_project_payload(
             if key in {"uploaded_documents", "document_urls"}:
                 cleaned = normalize_document_records(value)
             else:
-                cleaned = clean_json(value)
+                cleaned = normalize_structured_json(key, value, state_key=state_key)
         elif key in ARRAY_FIELDS:
             cleaned = normalize_array(value)
         else:
@@ -404,7 +616,9 @@ def normalize_project_payload(
     if unmapped_fields:
         merged_raw = merge_data_sections(merged_raw, {"unmapped_fields": unmapped_fields})
     if merged_raw:
-        normalized["data"] = merged_raw
+        cleaned_data = normalize_structured_json("data", merged_raw, state_key=state_key)
+        if cleaned_data:
+            normalized["data"] = cleaned_data
 
     if normalized.get("uploaded_documents"):
         normalized["uploaded_documents"] = normalize_document_records(normalized["uploaded_documents"])

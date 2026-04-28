@@ -137,6 +137,8 @@ def _parse_listing_cards(soup: BeautifulSoup) -> list[dict]:
 _DETAIL_LABEL_MAP: dict[str, str] = {
     "promoter":           "promoter_name",
     "date of registration": "approved_on_date",
+    "date of application":  "submitted_date",
+    "application date":     "submitted_date",
     "project type":       "project_type",
     "project status":     "status_of_the_project",
     "project description": "project_description",
@@ -145,14 +147,20 @@ _DETAIL_LABEL_MAP: dict[str, str] = {
     "district/region":    "project_city",
 }
 
-_LOCATION_DETAIL_LABELS = {
-    "address",
-    "project address",
-    "district/region",
-    "taluk",
-    "village",
-    "ward",
-    "block",
+# Map raw label → normalized key accepted by project_location_raw whitelist
+_LOCATION_LABEL_TO_KEY: dict[str, str] = {
+    "address":        "raw_address",
+    "project address": "raw_address",
+    "district/region": "district",
+    "district":       "district",
+    "taluk":          "taluk",
+    "village":        "village",
+    "ward":           "ward",
+    "block":          "block",
+    "pin code":       "pin_code",
+    "pincode":        "pin_code",
+    "latitude":       "latitude",
+    "longitude":      "longitude",
 }
 
 
@@ -186,17 +194,30 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
                 i += 1
         for label, value in pairs:
             raw[label] = value
-            if label.lower().strip() in _LOCATION_DETAIL_LABELS and value:
-                location_raw[label] = value
-            schema_field = _DETAIL_LABEL_MAP.get(label.lower().strip())
+            label_lower = label.lower().strip()
+            # Normalize location label to whitelisted key and accumulate
+            loc_key = _LOCATION_LABEL_TO_KEY.get(label_lower)
+            if loc_key and value:
+                location_raw[loc_key] = value
+            schema_field = _DETAIL_LABEL_MAP.get(label_lower)
             if schema_field and value and schema_field not in out:
                 # Registration date comes as "Wed Mar 25 16:15:36 IST 2026" —
                 # convert to YYYY-MM-DD so _parse_dt in the model can handle it.
-                if schema_field == "approved_on_date":
+                if schema_field in ("approved_on_date", "submitted_date"):
                     value = _parse_pondicherry_date(value) or value
                 out[schema_field] = value
-            if label.lower().strip() == "project cost" and value:
-                out["project_cost_detail"] = {"project_cost": value}
+            if label_lower in ("project cost", "estimated project cost", "total project cost") and value:
+                out["project_cost_detail"] = {"total_project_cost": value}
+            if label_lower in ("land area", "plot area", "total land area") and value:
+                out["land_area"] = value
+
+    # Always populate land_area_details so the field is present even when values are null
+    out["land_area_details"] = {k: v for k, v in {
+        "land_area":              str(out["land_area"]) if out.get("land_area") else None,
+        "land_area_unit":         "Sq Mtr" if out.get("land_area") else None,
+        "construction_area":      None,
+        "construction_area_unit": "Sq Mtr",
+    }.items() if v is not None}
 
     if location_raw:
         out["project_location_raw"] = location_raw
@@ -356,12 +377,14 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 "is_live":                 False,
                 "machine_name":            machine_name,
                 "crawl_machine_ip":        machine_ip,
-                "promoter_address_raw": {
-                    "promoter_type":   card["promoter_type"],
-                    "address_text":    card["promoter_address_text"],
-                    "revoke_reason":   card["revoke_reason"],
-                } if any([card["promoter_type"], card["promoter_address_text"]]) else None,
             }
+
+            # Promoters details from listing card (promoter type is always available)
+            if card.get("promoter_type") or card.get("promoter_name"):
+                data["promoters_details"] = {k: v for k, v in {
+                    "type_of_firm": card.get("promoter_type"),
+                    "name":         card.get("promoter_name"),
+                }.items() if v}
 
 
 
@@ -374,9 +397,23 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 for k, v in detail.items():
                     if v is not None and not k.startswith("_"):
                         data[k] = v
-                data["data"] = merge_data_sections({"listing_card": card}, data.get("data"))
+                # Build data JSONB with schema-allowed keys
+                _raw_addr = (data.get("project_location_raw") or {}).get("raw_address") if isinstance(data.get("project_location_raw"), dict) else None
+                data["data"] = merge_data_sections(
+                    {"listing_card": card},
+                    data.get("data"),
+                    {
+                        "govt_type":     "state",
+                        "is_processed":  False,
+                        "promoter_type": card.get("promoter_type") or None,
+                        "raw_address":   _raw_addr,
+                    },
+                )
+                # Fallback: use approved_on_date as submitted_date if site doesn't expose it separately
+                if not data.get("submitted_date") and data.get("approved_on_date"):
+                    data["submitted_date"] = data["approved_on_date"]
             else:
-                data["data"] = {"listing_card": card}
+                data["data"] = {"listing_card": card, "govt_type": "state", "is_processed": False}
 
             logger.info("Normalizing and validating", step="normalize")
             try:

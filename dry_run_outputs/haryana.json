@@ -1,0 +1,133 @@
+{
+  "key": "16032437746445458599",
+  "project_registration_no": "RERA-GRG-741-2020",
+  "url": "https://haryanarera.gov.in/view_project/project_preview_open/1444",
+  "state": "haryana",
+  "domain": "haryanarera.gov.in",
+  "project_name": "102 EDEN ESTATE",
+  "promoter_name": "COUNTRYWIDE PROMOTERS PRIVATE LIMITED",
+  "status_of_the_project": "ONGOING",
+  "acknowledgement_no": "GGM/415/147/2020/31 DATED 09.10.2020",
+  "project_city": "GURUGRAM",
+  "project_state": "haryana",
+  "crawl_machine_ip": "127.0.0.1",
+  "machine_name": "Anirveshs-MacBook-Air.local",
+  "project_location_raw": {
+    "raw_address": "SECTOR 102 & 102 A GURUGRAM",
+    "district": "GURUGRAM"
+  },
+  "promoter_contact_details": {
+    "phone": "9717790021",
+    "email": "rahul.sharma@bptp.com"
+  },
+  "uploaded_documents": [
+    {
+      "link": "https://haryanarera.gov.in/assistancecontrol/print_quarterly_schedules/Mg==/NzQx/MjAyMA==",
+      "type": "Quarterly Progress Report"
+    },
+    {
+      "type": "Rera Registration Certificate 1",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://haryanarera.gov.in/project/view_uploaded_Document_open/461b422733MTg1NjQ=",
+      "type": "COPY OF LICENSE ALONG WITH SCHEDULE OF LAND"
+    },
+    {
+      "type": "LAYOUT PLAN 1",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://haryanarera.gov.in/project/view_uploaded_Document_open/7c9f237ff4MTg1NzI=",
+      "type": "DECLARATION SUPPORTED BY AFFIDAVIT DULY SIGNED BY THE PROMOTER TO BE ENCLOSED."
+    },
+    {
+      "type": "COMMERCIAL SITES 1",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://haryanarera.gov.in/project/view_uploaded_Document_open/7a1692b43cMTg5MTU=",
+      "type": "NON DEFAULT CERTIFICATE FROM A CHARTERED ACCOUNTANT"
+    },
+    {
+      "link": "https://haryanarera.gov.in/project/view_uploaded_Document_open/436cf8c3a3MTg5Njk=",
+      "type": "CASH FLOW STATEMENT OF THE PROPOSED PROJECT"
+    },
+    {
+      "link": "https://haryanarera.gov.in/project/view_uploaded_Document_open/db9009f36bMTg5MTY=",
+      "type": "CERTIFICATE FROM A CHARTERED ACCOUNTANT CERTIFYING THAT THE INFORMSTION PROVIDED BY THE APPLICANT IN FORM REP-1-C-X IS CORRECT AS PER THE BOOKS OF ACCOUNTS/ BALANCE SHEET OF THE APPLICANT"
+    },
+    {
+      "link": "https://haryanarera.gov.in/assistancecontrol/view_corrigendum/ODM1",
+      "type": "OC uploaded"
+    },
+    {
+      "link": "https://haryanarera.gov.in/assistancecontrol/view_corrigendum/MTQzMg==",
+      "type": "Addendum to the Registration Certificate- Changes in UD areas adjacent to additional license no. 165 of 2024 dated 28.11.2024."
+    }
+  ],
+  "authorised_signatory_details": {
+    "name": "RAHUL SHARMA",
+    "role": "Authorised reprsentative for correspondance with Authority",
+    "phone": "9717790021",
+    "email": "rahul.sharma@bptp.com"
+  },
+  "co_promoter_details": [
+    {
+      "name": "RAKESH ROSHAN",
+      "role": "Director 1",
+      "phone": "8800043101",
+      "email": "rakesh.roshan@bptp.com"
+    },
+    {
+      "name": "RAJEEV GUPTA",
+      "role": "Director 2",
+      "phone": "9810403257",
+      "email": "rajeev.gupta@bptp.com"
+    }
+  ],
+  "members_details": {
+    "name": "RAHUL BHATNAGAR",
+    "phone": "9810163594",
+    "position": "Contact person at site office"
+  },
+  "data": {
+    "govt_type": "state",
+    "is_processed": false
+  },
+  "promoters_details": {
+    "name": "COUNTRYWIDE PROMOTERS PRIVATE LIMITED"
+  },
+  "land_area_details": {
+    "land_area": "126.674",
+    "land_area_unit": "Sqr/mtrs"
+  },
+  "submitted_date": "2020-09-11 12:18:20+00:00",
+  "estimated_finish_date": "2024-04-30 00:00:00+00:00",
+  "number_of_residential_units": 808,
+  "config_id": 11813,
+  "land_area": 126.674,
+  "is_updated": false,
+  "is_duplicate": false,
+  "iw_processed": false,
+  "checked_updates": false,
+  "rera_housing_found": false,
+  "is_live": false,
+  "alternative_rera_ids": [
+    "granted"
+  ],
+  "document_urls": [
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Rera Registration Certificate 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "LAYOUT PLAN 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "COMMERCIAL SITES 1"
+    }
+  ]
+}

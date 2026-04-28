@@ -375,8 +375,9 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
         "State/ UT", "District", "Taluk", "Panchayat/ Municipality/ Corporation", "Pin Code",
     }
     for panel in soup.find_all("div", class_=lambda c: c and "panel-default" in c):
-        h2 = panel.find("h2", class_=lambda c: c and "panel-title" in c)
-        section = h2.get_text(strip=True) if h2 else ""
+        # Support h2 or h3 panel titles (new site versions may use h3)
+        heading = panel.find(["h2", "h3"], class_=lambda c: c and "panel-title" in c)
+        section = heading.get_text(strip=True) if heading else ""
         if "promoter" not in section.lower():
             continue
         ordered = _extract_panel_labels_ordered(panel)
@@ -412,6 +413,30 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
                 all_labels["Name of the Organization"] = org_info["Name of the Organization"]
             if "Organization Type" in org_info:
                 all_labels["Organization Type"] = org_info["Organization Type"]
+
+            # Extract promoter contact details (phone / email) from org_info
+            _PHONE_LABELS = {
+                "mobile number", "mobile no", "mobile no.", "mobile",
+                "phone", "phone no", "phone number", "telephone", "contact number",
+                "mob no", "mob no.",
+            }
+            _EMAIL_LABELS = {
+                "email", "e-mail", "email id", "email address", "email id.",
+            }
+            contact_phone = None
+            contact_email = None
+            for k, v in org_info.items():
+                kl = k.lower().strip()
+                if kl in _PHONE_LABELS and v and not contact_phone:
+                    contact_phone = v
+                elif kl in _EMAIL_LABELS and v and not contact_email:
+                    contact_email = v
+            if contact_phone or contact_email:
+                contact_entry = {k: v for k, v in
+                                 {"phone": contact_phone, "email": contact_email}.items() if v}
+                if not out.get("promoter_contact_details"):
+                    out["promoter_contact_details"] = [contact_entry]
+
         if registered:
             promoter_addr["registered_address"] = registered
         if communication:
@@ -434,28 +459,71 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
             out[f] = _extract_number(str(out[f]))
 
     # ── Step 3: Derived JSONB fields from all_labels ──────────────────────────
-    _LOCATION_KEYS = {
-        "Survey/ Resurvey Number(s)", "Patta No:/ Thandapper Details",
-        "State", "District", "Taluk", "Village", "Street",
-        "Locality", "Pin Code",
-        "Boundaries East", "Boundaries West",
-        "Boundaries North", "Boundaries South",
+    # Map Kerala PrintPreview label names → normalizer-compatible (lowercase) keys
+    _LOCATION_KEY_MAP = {
+        "Survey/ Resurvey Number(s)": "survey_resurvey_number",
+        "Patta No:/ Thandapper Details": "plot_no",
+        "State": "state",
+        "District": "district",
+        "Taluk": "taluk",
+        "Village": "village",
+        "Street": "raw_address",
+        "Locality": "locality",
+        "Pin Code": "pin_code",
+        "Boundaries East": "boundaries_east",
+        "Boundaries West": "boundaries_west",
+        "Boundaries North": "boundaries_north",
+        "Boundaries South": "boundaries_south",
     }
     _LAND_KEYS = {k for k in all_labels
                   if any(w in k for w in ("Land Area", "Floor Area", "Units", "Building Count"))}
 
-    loc = {k: v for k, v in all_labels.items() if k in _LOCATION_KEYS and v}
+    loc = {_LOCATION_KEY_MAP[k]: v for k, v in all_labels.items()
+           if k in _LOCATION_KEY_MAP and v}
     if loc:
         out["project_location_raw"] = loc
-        out["project_city"]    = loc.get("District", out.get("project_city"))
-        out["project_pin_code"] = loc.get("Pin Code", out.get("project_pin_code"))
+        out["project_city"]    = loc.get("district", out.get("project_city"))
+        out["project_pin_code"] = loc.get("pin_code", out.get("project_pin_code"))
 
     land = {k: v for k, v in all_labels.items() if k in _LAND_KEYS and v}
     if land:
         out["land_detail"] = land
 
     # promoter_address_raw is set in Step 1b above via ordered per-panel extraction.
-    # Nothing to do here — don't overwrite it.
+    # Fallback: if step 1b found no usable registered/communication address
+    # (e.g. panel says "No Records Found", site uses h3, or markup changed),
+    # build a proxy address from the project location labels.
+    _existing_paddr = out.get("promoter_address_raw")
+    _has_reg_addr = (
+        isinstance(_existing_paddr, dict)
+        and bool(_existing_paddr.get("registered_address") or _existing_paddr.get("communication_address"))
+    )
+    if not _has_reg_addr:
+        _fb_addr = {k: v for k, v in {
+            "State/ UT": all_labels.get("State/ UT") or all_labels.get("State"),
+            "Taluk":     all_labels.get("Taluk"),
+            "District":  all_labels.get("District"),
+            "Locality":  all_labels.get("Locality"),
+            "Pin Code":  all_labels.get("Pin Code"),
+            "House Number/ Building Name": all_labels.get("House Number/ Building Name"),
+        }.items() if v not in (None, "", "NA")}
+        if _fb_addr:
+            out["promoter_address_raw"] = {"registered_address": _fb_addr}
+
+    # Fallback: if step 1b found no contact details, scan all_labels for phone/email.
+    if "promoter_contact_details" not in out:
+        _phone_keys = {"mobile number", "mobile no", "mobile no.", "mobile", "phone",
+                       "phone no", "phone number", "telephone", "contact number", "mob no",
+                       "primary contact no", "contact no", "contact no."}
+        _email_keys = {"email", "e-mail", "email id", "email address", "email id."}
+        _fb_phone = next((v for k, v in all_labels.items()
+                          if k.lower().strip() in _phone_keys and v), None)
+        _fb_email = next((v for k, v in all_labels.items()
+                          if k.lower().strip() in _email_keys and v), None)
+        if _fb_phone or _fb_email:
+            out["promoter_contact_details"] = [
+                {k: v for k, v in {"phone": _fb_phone, "email": _fb_email}.items() if v}
+            ]
 
     financier = all_labels.get("Name of the Financier (If any)", "")
     if financier and financier.strip():
@@ -494,7 +562,31 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
             out["past_experience_of_promoter"]  = len(rows)
 
         elif "professional" in sec:
-            out["professional_information"] = rows
+            # Map Kerala PrintPreview column names → normalizer-compatible keys
+            _PROF_COL_MAP = {
+                "professional name": "name",
+                "name": "name",
+                "professional type": "role",
+                "type of professional": "type",
+                "rera certificate no.": "registration_no",
+                "rera certificate no": "registration_no",
+                "registration number": "registration_no",
+                "registration no.": "registration_no",
+                "name of the firm": "name",
+                "address of the firm": "address",
+                "key projects completed": "key_real_estate_projects",
+                "pan no": "pan_no",
+                "pan no.": "pan_no",
+                "email": "email",
+                "mobile": "mobile",
+            }
+            mapped_rows = []
+            for r in rows:
+                mapped = {_PROF_COL_MAP.get(k.lower().strip(), k): v
+                          for k, v in r.items() if v}
+                if mapped:
+                    mapped_rows.append(mapped)
+            out["professional_information"] = mapped_rows or rows
 
         elif "litigation" in sec:
             out["complaints_litigation_details"] = {"rows": rows}
@@ -867,19 +959,26 @@ def apply_kerala_legacy_shape(record: dict[str, Any]) -> dict[str, Any]:
     out["estimated_finish_date"] = None
 
     raw_location = out.get("project_location_raw") if isinstance(out.get("project_location_raw"), dict) else {}
+    # project_location_raw keys are now stored in normalized (lowercase/underscore) form
+    # from _parse_print_preview. Support both old capitalized keys and new normalized keys.
     legacy_location = {
-        "state": labels.get("State") or labels.get("State/ UT") or raw_location.get("State") or raw_location.get("State/ UT"),
-        "taluk": labels.get("Taluk") or raw_location.get("Taluk"),
+        "state": (labels.get("State") or labels.get("State/ UT")
+                  or raw_location.get("state") or raw_location.get("State")),
+        "taluk": labels.get("Taluk") or raw_location.get("taluk") or raw_location.get("Taluk"),
         "plot_no": (
             labels.get("Patta No:/ Thandapper Details")
             or labels.get("Patta No")
+            or raw_location.get("plot_no")
             or raw_location.get("Patta No:/ Thandapper Details")
-            or raw_location.get("Patta No")
         ),
-        "village": labels.get("Village") or raw_location.get("Village"),
-        "district": labels.get("District") or raw_location.get("District"),
-        "pin_code": labels.get("Pin Code") or raw_location.get("Pin Code"),
-        "survey_resurvey_number": labels.get("Survey/ Resurvey Number(s)") or raw_location.get("Survey/ Resurvey Number(s)"),
+        "village": labels.get("Village") or raw_location.get("village") or raw_location.get("Village"),
+        "district": labels.get("District") or raw_location.get("district") or raw_location.get("District"),
+        "pin_code": labels.get("Pin Code") or raw_location.get("pin_code") or raw_location.get("Pin Code"),
+        "survey_resurvey_number": (
+            labels.get("Survey/ Resurvey Number(s)")
+            or raw_location.get("survey_resurvey_number")
+            or raw_location.get("Survey/ Resurvey Number(s)")
+        ),
     }
     legacy_location = {k: v for k, v in legacy_location.items() if v not in (None, "", "NA", "/ Thandapper Details")}
     if legacy_location:

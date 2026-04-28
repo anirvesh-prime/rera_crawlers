@@ -1,0 +1,45 @@
+[
+  {
+    "site_id": "maharashtra_rera",
+    "state": "maharashtra",
+    "output_file": "dry_run_outputs/maharashtra.json",
+    "captured_reg_no": "PP1190002502346",
+    "captured_name": "VISION CITY 3",
+    "sample_file": "state_projects_sample/maharashtra.json",
+    "sample_reg_no": "PP1190002502346",
+    "sample_name": "VISION CITY 3",
+    "comparison": {
+      "coverage": "25/25 (100.0%)",
+      "fields_matched": [
+        "acknowledgement_no",
+        "approved_on_date",
+        "authorised_signatory_details",
+        "bank_details",
+        "co_promoter_details",
+        "estimated_finish_date",
+        "land_area",
+        "land_area_details",
+        "last_modified",
+        "professional_information",
+        "project_city",
+        "project_cost_detail",
+        "project_location_raw",
+        "project_name",
+        "project_pin_code",
+        "project_registration_no",
+        "project_state",
+        "project_type",
+        "promoter_address_raw",
+        "promoter_contact_details",
+        "promoter_name",
+        "promoters_details",
+        "status_of_the_project",
+        "submitted_date",
+        "uploaded_documents"
+      ],
+      "missing_from_output": [],
+      "extra_in_output": [],
+      "type_mismatches": {}
+    }
+  }
+]

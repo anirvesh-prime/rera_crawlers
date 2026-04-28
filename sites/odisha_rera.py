@@ -239,13 +239,58 @@ _OVERVIEW_LABEL_MAP: dict[str, str] = {
     "RERA Regd. No.":       "project_registration_no",
 }
 
-_FINANCIAL_KEYS = {
-    "Estimated Project Cost",
-    "Fund to be invested by promoter from own source",
-    "Funds to be mobilized from allottees",
-    "Funds to be mobilized through Bank finance",
-    "Funds to be mobilized through Investor",
+# Maps the Odisha label text → normalized project_cost_detail key
+_FINANCIAL_LABEL_MAP: dict[str, str] = {
+    "Estimated Project Cost":                       "total_project_cost",
+    "Fund to be invested by promoter from own source": "fund_from_promoter",
+    "Funds to be mobilized from allottees":         "fund_from_allottees",
+    "Funds to be mobilized through Bank finance":   "fund_from_bank",
+    "Funds to be mobilized through Investor":       "fund_from_investor",
 }
+
+# Keep backward-compatible set for lookup
+_FINANCIAL_KEYS = set(_FINANCIAL_LABEL_MAP)
+
+
+def _parse_unit_table(soup: BeautifulSoup) -> list[dict]:
+    """Parse the flat/unit inventory table from the overview tab.
+
+    Returns a list of unit dicts with keys flat_name, flat_type, carpet_area.
+    """
+    units: list[dict] = []
+    for table in soup.find_all("table"):
+        headers_raw = [th.get_text(strip=True).lower() for th in table.find_all("th")]
+        if not headers_raw:
+            first_tr = table.find("tr")
+            if first_tr:
+                headers_raw = [td.get_text(strip=True).lower() for td in first_tr.find_all("td")]
+        hset = set(headers_raw)
+        if not ({"flat", "unit", "carpet"} & hset or
+                any("carpet" in h or "flat" in h or "unit" in h for h in hset)):
+            continue
+        idx: dict[str, int] = {}
+        for i, h in enumerate(headers_raw):
+            if "flat name" in h or "unit name" in h or "flat no" in h:
+                idx["flat_name"] = i
+            elif "flat type" in h or "unit type" in h or "type" in h:
+                idx["flat_type"] = i
+            elif "carpet" in h:
+                idx["carpet_area"] = i
+        if len(idx) < 2:
+            continue
+        for tr in table.find_all("tr")[1:]:
+            cells = tr.find_all("td")
+            row: dict = {}
+            for field, i in idx.items():
+                if i < len(cells):
+                    v = cells[i].get_text(strip=True)
+                    if v:
+                        row[field] = v
+            if row:
+                units.append(row)
+        if units:
+            break
+    return units
 
 
 def _parse_overview(soup: BeautifulSoup) -> dict:
@@ -259,17 +304,114 @@ def _parse_overview(soup: BeautifulSoup) -> dict:
         if val:
             out[field] = val
 
-    building_fields = ["Building Type", "Planning Authority", "Authority Details"]
-    bld = {k: labels[k] for k in building_fields if k in labels}
-    if labels.get("Number of Units"):
-        bld["number_of_units"] = labels["Number of Units"]
-    if bld:
-        out["building_details"] = bld
+    # ── Building details — try unit table first, fall back to meta-dict ──────
+    unit_rows = _parse_unit_table(soup)
+    if unit_rows:
+        out["building_details"] = unit_rows
+    else:
+        building_fields = ["Building Type", "Planning Authority", "Authority Details"]
+        bld = {k: labels[k] for k in building_fields if k in labels}
+        if bld:
+            raw["building_meta"] = bld  # store as raw only to avoid type mismatch
 
-    financial = {k: labels[k] for k in _FINANCIAL_KEYS if k in labels}
-    if financial:
-        out["project_cost_detail"] = financial
-        raw["financial_details"] = financial
+    # Number of units (residential)
+    num_units_raw = labels.get("Number of Units") or labels.get("No. of Units")
+    if num_units_raw:
+        try:
+            out["number_of_residential_units"] = int(re.sub(r"[^\d]", "", num_units_raw))
+        except (ValueError, TypeError):
+            pass
+
+    # Project location
+    loc_val = labels.get("Project Location") or labels.get("Location")
+    if loc_val:
+        out["project_location_raw"] = {"raw_address": loc_val}
+
+    # ── Land details — parse Plot No / Khata No table rows ──────────────────
+    # Some projects embed land parcel info in the overview as a table
+    land_rows: list[dict] = []
+    for table in soup.find_all("table"):
+        headers_raw = [th.get_text(strip=True).lower() for th in table.find_all("th")]
+        if not headers_raw:
+            first_tr = table.find("tr")
+            if first_tr:
+                headers_raw = [td.get_text(strip=True).lower() for td in first_tr.find_all("td")]
+        hset = set(headers_raw)
+        if not ({"plot", "khata", "survey"} & hset or
+                any("plot" in h or "khata" in h or "survey" in h for h in hset)):
+            continue
+        idx_land: dict[str, int] = {}
+        for i, h in enumerate(headers_raw):
+            if "plot" in h:
+                idx_land["plot_no"] = i
+            elif "khata" in h:
+                idx_land["khata_no"] = i
+            elif "survey" in h:
+                idx_land["survey_no"] = i
+            elif "area" in h:
+                idx_land["area"] = i
+        if not idx_land:
+            continue
+        for tr in table.find_all("tr")[1:]:
+            cells = tr.find_all("td")
+            row: dict = {}
+            for field, i in idx_land.items():
+                if i < len(cells):
+                    v = cells[i].get_text(strip=True)
+                    if v and v != "--":
+                        row[field] = v
+            if row:
+                land_rows.append(row)
+    if land_rows:
+        out["land_detail"] = land_rows
+
+    # ── Proposed timeline ─────────────────────────────────────────────────────
+    commencement = (labels.get("Proposed Date of Commencement")
+                    or labels.get("Date of Commencement")
+                    or labels.get("Commencement Date"))
+    completion   = (labels.get("Proposed Date of Completion")
+                    or labels.get("Date of Completion")
+                    or labels.get("Completion Date"))
+    if commencement or completion:
+        out["proposed_timeline"] = {k: v for k, v in {
+            "commencement_date": commencement,
+            "completion_date":   completion,
+        }.items() if v}
+
+    # ── Financial / project cost ───────────────────────────────────────────
+    financial_raw = {k: v for k, v in labels.items() if k in _FINANCIAL_KEYS and v and v != "--"}
+    if financial_raw:
+        out["project_cost_detail"] = {_FINANCIAL_LABEL_MAP[k]: v for k, v in financial_raw.items()}
+        raw["financial_details"] = financial_raw
+
+    # ── Provided facilities / amenities ───────────────────────────────────
+    # Facility names appear as <strong> siblings of facility <label>s or as
+    # standalone <strong> elements inside a "Facilities" / "Amenities" section.
+    # We capture all <strong> values that didn't already appear as label values.
+    label_values_set = {v.strip().lower() for v in labels.values() if v}
+    facilities: list[dict] = []
+    for strong in soup.find_all("strong"):
+        name = strong.get_text(strip=True)
+        if (name and name.lower() not in label_values_set
+                and len(name) > 3 and not re.match(r"^[\d.]+$", name)):
+            # Only include if it looks like a facility name (not a number/date)
+            # and is adjacent to a facility section
+            parent = strong.parent
+            in_facility_section = False
+            el = parent
+            for _ in range(6):
+                if el is None:
+                    break
+                cls = " ".join(el.get("class", []))
+                txt_snippet = el.get_text(separator=" ", strip=True)[:100].lower()
+                if any(w in txt_snippet for w in ("facilit", "amenity", "amenities")):
+                    in_facility_section = True
+                    break
+                el = el.parent
+            if in_facility_section:
+                facilities.append({"name": name})
+    if facilities:
+        out["provided_faciltiy"] = facilities
 
     bank_accounts = _parse_bank_accounts(soup)
     if bank_accounts:
@@ -281,63 +423,84 @@ def _parse_overview(soup: BeautifulSoup) -> dict:
         raw["professionals"] = professionals
         out["professional_information"] = professionals
 
-    if labels.get("Project Location"):
-        out["project_location_raw"] = {"project_location": labels["Project Location"]}
-
     out["data"] = raw
     out["_doc_links"] = _extract_doc_links(soup)
     return out
 
 
-_PROMOTER_LABEL_MAP: dict[str, str | None] = {
-    "Company Name":                  "promoter_name",
-    "Registration No.":              None,
-    "Entity":                        None,
-    "Email Id":                      None,
-    "Mobile":                        None,
-    "GST No.":                       None,
-    "Correspondence Office Address": None,
-    "Registered Office Address":     None,
-}
-
-
 def _parse_promoter_tab(soup: BeautifulSoup) -> dict:
-    """Parse Promoter Details tab."""
+    """Parse Promoter Details tab.
+
+    Extracts promoter company info, contact details, address, and co-promoter
+    board members from the Angular-rendered promoter section.
+    """
     labels = _parse_label_values(soup)
     out: dict = {}
-    addr_raw: dict = {}
-    contact_raw: dict = {}
 
-    for lbl, field in _PROMOTER_LABEL_MAP.items():
-        val = labels.get(lbl)
-        if not val:
-            continue
-        if field:
-            out[field] = val
-        if "Address" in lbl or lbl == "Entity":
-            addr_raw[lbl] = val
-        else:
-            contact_raw[lbl] = val
+    # ── Company / entity ──────────────────────────────────────────────────────
+    company   = labels.get("Company Name")
+    gst_no    = labels.get("GST No.")
+    entity    = labels.get("Entity")
+    reg_no    = labels.get("Registration No.") or labels.get("Registration No")
+    if company:
+        out["promoter_name"] = company
+    promoters: dict = {}
+    for k, v in {"name": company, "gst_no": gst_no, "type_of_firm": entity,
+                 "registration_no": reg_no}.items():
+        if v:
+            promoters[k] = v
+    if promoters:
+        out["promoters_details"] = promoters
 
-    if addr_raw:
-        out["promoter_address_raw"] = addr_raw
-    if contact_raw:
-        out["promoter_contact_details"] = contact_raw
+    # ── Contact ───────────────────────────────────────────────────────────────
+    email  = labels.get("Email Id") or labels.get("Email")
+    mobile = labels.get("Mobile") or labels.get("Mobile Number")
+    if email or mobile:
+        out["promoter_contact_details"] = {
+            k: v for k, v in {"email": email, "phone": mobile}.items() if v
+        }
 
-    # Board members — each appears as a row: name | role | email | phone
+    # ── Address ───────────────────────────────────────────────────────────────
+    # For company promoters: "Registered Office Address" / "Correspondence Office Address"
+    # For individual promoters: "Office Address" / "Address" / "Permanent Address"
+    reg_addr  = (labels.get("Registered Office Address")
+                 or labels.get("Registered Address")
+                 or labels.get("Office Address"))
+    corr_addr = (labels.get("Correspondence Office Address")
+                 or labels.get("Correspondence Address")
+                 or labels.get("Permanent Address")
+                 or labels.get("Address"))
+    # Don't double-count if the same value was already found under reg_addr
+    if corr_addr and corr_addr == reg_addr:
+        corr_addr = None
+    if reg_addr or corr_addr:
+        out["promoter_address_raw"] = {
+            k: v for k, v in {
+                "registered_address":      reg_addr,
+                "correspondence_address":  corr_addr,
+            }.items() if v
+        }
+
+    # ── Board members / co-promoters ──────────────────────────────────────────
     board: list[dict] = []
     for card in soup.find_all("div", class_=lambda c: c and "col-md" in c):
         strongs = [s.get_text(strip=True) for s in card.find_all("strong")]
         texts   = [p.get_text(strip=True) for p in card.find_all("p") if p.get_text(strip=True)]
-        if len(strongs) >= 2 and len(texts) >= 2:
-            board.append({
-                "name":  strongs[0],
-                "role":  texts[0] if texts else "",
-                "email": strongs[1] if len(strongs) > 1 else "",
-                "phone": strongs[2] if len(strongs) > 2 else "",
-            })
+        if len(strongs) >= 2 and len(texts) >= 1:
+            entry: dict = {"name": strongs[0]}
+            if texts:
+                entry["role"] = texts[0]
+            if len(strongs) > 1 and strongs[1]:
+                entry["email"] = strongs[1]
+            if len(strongs) > 2 and strongs[2]:
+                entry["phone"] = strongs[2]
+            # Capture photo if present (img or a link)
+            img = card.find("img", src=True)
+            if img and "reraapps" in img.get("src", ""):
+                entry["photo"] = img["src"]
+            board.append(entry)
     if board:
-        out["members_details"] = board
+        out["co_promoter_details"] = board
 
     out["_raw"] = labels
     return out

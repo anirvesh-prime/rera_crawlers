@@ -35,6 +35,14 @@ Every new site must be classified before a crawler is written. Classification pr
 3. If page renders without JS → Type 1
 4. Otherwise → Type 3
 
+### CAPTCHA Handling Policy
+- If a site has a real, server-validated CAPTCHA, use `core/captcha_solver.py` as the shared integration point instead of embedding site-specific socket/OCR code inside the crawler.
+- For Playwright-based flows, first extract the rendered CAPTCHA image from the page and call `solve_captcha_from_page(...)`. Keep a site-specific fallback only when the portal exposes a more reliable bypass, such as a readable canvas draw sequence or reusable token flow.
+- Do not force the shared solver into pages where the CAPTCHA is only client-side decoration and the backend does not validate it. In those cases, keep the simpler site-specific path.
+- Current status:
+  - Maharashtra uses the shared solver against the rendered CAPTCHA canvas, with canvas-text interception retained as fallback.
+  - Punjab keeps its dummy client-side CAPTCHA fill because the backend does not verify the image text.
+
 ---
 
 ## 3. Technology Stack

@@ -122,6 +122,9 @@ def run_site(site_cfg: dict, mode: str) -> dict:
         update_crawl_run(run_id, "failed", counts)
         insert_crawl_error(run_id, site_id, "CRAWLER_EXCEPTION", str(exc))
         logger.error(f"Crawl failed: {exc}")
+    finally:
+        logger.log_run_key_summary(limit=10)
+        logger.close()
 
     elapsed = time.monotonic() - t0
     return {"site_id": site_id, "run_id": run_id, "elapsed_s": round(elapsed, 1), **counts}

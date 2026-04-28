@@ -1,0 +1,53 @@
+{
+  "key": "11457700923222560908",
+  "project_registration_no": "DLRERA2026P0005",
+  "url": "https://rera.delhi.gov.in/registered_promoters_list?page=0",
+  "state": "delhi",
+  "domain": "rera.delhi.gov.in",
+  "project_name": "Commercial-D, Packages 'A' & 'B' Part of Re-Development of GPRA Colony, Ring Road- The Bharat Business Park",
+  "promoter_name": "NBCC (INDIA) LIMITED AND LAND & DEVELOPMENT OFFICER, MINISTRY OF HOUSING AND URBAN AFFAIRS",
+  "status_of_the_project": "On going",
+  "project_state": "delhi",
+  "crawl_machine_ip": "127.0.0.1",
+  "machine_name": "Anirveshs-MacBook-Air.local",
+  "project_location_raw": {
+    "raw_address": "Ring Rod, Sarojini Nagar, New Delhi , Sarojini Nagar, Delhi, South West Delhi , 110023",
+    "pin_code": "110023"
+  },
+  "promoter_address_raw": {
+    "registered_address": "H5GP+4Q6 Grah Kalyan Kendra, Community Centre, Public Library, E1506, Shaheed Sudhir Sabharwal Marg, Netaji Nagar Market, Netaji Nagar,New Delhi,,,"
+  },
+  "promoter_contact_details": {
+    "email": "mudit.bhatnagar@nbccindia.com",
+    "phone": "9999295375"
+  },
+  "uploaded_documents": [
+    {
+      "link": "https://rera.delhi.gov.in/sites/default/files/certification_document/DLRERA2026P0005_0.pdf",
+      "type": "Registration Certificate",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.delhi.gov.in/online_view_periodic_progress_reports_history/DLRERA2026P0005",
+      "type": "QPR History"
+    }
+  ],
+  "data": {
+    "email": "mudit.bhatnagar@nbccindia.com",
+    "link": "https://rera.delhi.gov.in/sites/default/files/certification_document/DLRERA2026P0005_0.pdf"
+  },
+  "estimated_finish_date": "2031-02-18 00:00:00+05:30",
+  "config_id": 10,
+  "is_updated": false,
+  "is_duplicate": false,
+  "iw_processed": false,
+  "checked_updates": false,
+  "rera_housing_found": false,
+  "is_live": false,
+  "document_urls": [
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Registration Certificate"
+    }
+  ]
+}

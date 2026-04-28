@@ -1,0 +1,34 @@
+{
+  "key": "11033758616623610456",
+  "project_registration_no": "TN/20/Building/Offline/0001/2025",
+  "url": "https://rera.tn.gov.in/registered-building/tn",
+  "state": "tamil_nadu",
+  "domain": "rera.tn.gov.in",
+  "project_name": "Garden Villas",
+  "project_type": "residential",
+  "promoter_name": "1) M/s. St.Angelo's VNCT Ventures LLP and 2) Thiru. Malayalingam",
+  "status_of_the_project": "Completed",
+  "project_state": "TAMIL NADU",
+  "project_description": "Construction of Registration of Residential Building’s with 64 Individual Units in the land comprised in S.Nos.220/2A1, 220/6, 220/5A, 221/1A of Kodikulam IInd Bit Village, Madurai North Taluk, Madurai District.",
+  "crawl_machine_ip": "127.0.0.1",
+  "machine_name": "Anirveshs-MacBook-Air.local",
+  "data": {
+    "govt_type": "state",
+    "is_processed": false
+  },
+  "approved_on_date": "2025-05-14 00:00:00+00:00",
+  "config_id": 14374,
+  "is_updated": false,
+  "is_duplicate": false,
+  "iw_processed": false,
+  "checked_updates": false,
+  "rera_housing_found": false,
+  "is_live": false,
+  "uploaded_documents": [
+    {
+      "link": "https://rera.tn.gov.in/cms/reg_projects_tamilnadu/Approval_Details/2025/1-2025.pdf",
+      "type": "Approval Details"
+    }
+  ],
+  "document_urls": null
+}

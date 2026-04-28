@@ -1,0 +1,763 @@
+{
+  "key": "11556458300468864867",
+  "project_registration_no": "JHARERA/PROJECT/107/2018",
+  "url": "https://jharera.jharkhand.gov.in/Home/ViewProjectProfile/3331",
+  "state": "jharkhand",
+  "domain": "jharera.jharkhand.gov.in",
+  "project_name": "OCEANIK EMPIRE",
+  "project_state": "jharkhand",
+  "crawl_machine_ip": "127.0.0.1",
+  "machine_name": "Anirveshs-MacBook-Air.local",
+  "project_location_raw": {
+    "raw_address": "beside water tank, argora kathal more road"
+  },
+  "bank_details": [
+    {
+      "account_no": "STATE BANK OF INDIA",
+      "account_name": "41123102918"
+    }
+  ],
+  "project_cost_detail": {
+    "estimated_project_cost": "300990169.00"
+  },
+  "building_details": [
+    {
+      "flat_name": "1",
+      "carpet_area": "B00"
+    },
+    {
+      "flat_name": "2",
+      "carpet_area": "B101"
+    },
+    {
+      "flat_name": "3",
+      "carpet_area": "B102"
+    },
+    {
+      "flat_name": "4",
+      "carpet_area": "B103"
+    },
+    {
+      "flat_name": "5",
+      "carpet_area": "B104"
+    },
+    {
+      "flat_name": "6",
+      "carpet_area": "B105"
+    },
+    {
+      "flat_name": "7",
+      "carpet_area": "B106"
+    },
+    {
+      "flat_name": "8",
+      "carpet_area": "B107"
+    },
+    {
+      "flat_name": "9",
+      "carpet_area": "B201"
+    },
+    {
+      "flat_name": "10",
+      "carpet_area": "B202"
+    },
+    {
+      "flat_name": "11",
+      "carpet_area": "B203"
+    },
+    {
+      "flat_name": "12",
+      "carpet_area": "B204"
+    },
+    {
+      "flat_name": "13",
+      "carpet_area": "B301"
+    },
+    {
+      "flat_name": "14",
+      "carpet_area": "B302"
+    },
+    {
+      "flat_name": "15",
+      "carpet_area": "B303"
+    },
+    {
+      "flat_name": "16",
+      "carpet_area": "B304"
+    },
+    {
+      "flat_name": "17",
+      "carpet_area": "B305"
+    },
+    {
+      "flat_name": "18",
+      "carpet_area": "B306"
+    },
+    {
+      "flat_name": "19",
+      "carpet_area": "B307"
+    },
+    {
+      "flat_name": "20",
+      "carpet_area": "B401"
+    },
+    {
+      "flat_name": "21",
+      "carpet_area": "1A"
+    },
+    {
+      "flat_name": "22",
+      "carpet_area": "1B"
+    },
+    {
+      "flat_name": "23",
+      "carpet_area": "1C"
+    },
+    {
+      "flat_name": "24",
+      "carpet_area": "1D"
+    },
+    {
+      "flat_name": "25",
+      "carpet_area": "1E"
+    },
+    {
+      "flat_name": "26",
+      "carpet_area": "1F"
+    },
+    {
+      "flat_name": "27",
+      "carpet_area": "1G"
+    },
+    {
+      "flat_name": "28",
+      "carpet_area": "1H"
+    },
+    {
+      "flat_name": "29",
+      "carpet_area": "2A"
+    },
+    {
+      "flat_name": "30",
+      "carpet_area": "2B"
+    },
+    {
+      "flat_name": "31",
+      "carpet_area": "B402"
+    },
+    {
+      "flat_name": "32",
+      "carpet_area": "B403"
+    },
+    {
+      "flat_name": "33",
+      "carpet_area": "B404"
+    },
+    {
+      "flat_name": "34",
+      "carpet_area": "B405"
+    },
+    {
+      "flat_name": "35",
+      "carpet_area": "B501"
+    },
+    {
+      "flat_name": "36",
+      "carpet_area": "B502"
+    },
+    {
+      "flat_name": "37",
+      "carpet_area": "B503"
+    },
+    {
+      "flat_name": "38",
+      "carpet_area": "B504"
+    },
+    {
+      "flat_name": "39",
+      "carpet_area": "B505"
+    },
+    {
+      "flat_name": "40",
+      "carpet_area": "B601"
+    },
+    {
+      "flat_name": "41",
+      "carpet_area": "2C"
+    },
+    {
+      "flat_name": "42",
+      "carpet_area": "2D"
+    },
+    {
+      "flat_name": "43",
+      "carpet_area": "2E"
+    },
+    {
+      "flat_name": "44",
+      "carpet_area": "2F"
+    },
+    {
+      "flat_name": "45",
+      "carpet_area": "2G"
+    },
+    {
+      "flat_name": "46",
+      "carpet_area": "2H"
+    },
+    {
+      "flat_name": "47",
+      "carpet_area": "3A"
+    },
+    {
+      "flat_name": "48",
+      "carpet_area": "3B"
+    },
+    {
+      "flat_name": "49",
+      "carpet_area": "3C"
+    },
+    {
+      "flat_name": "50",
+      "carpet_area": "3D"
+    },
+    {
+      "flat_name": "51",
+      "carpet_area": "B602"
+    },
+    {
+      "flat_name": "52",
+      "carpet_area": "B603"
+    },
+    {
+      "flat_name": "53",
+      "carpet_area": "B604"
+    },
+    {
+      "flat_name": "54",
+      "carpet_area": "B605"
+    },
+    {
+      "flat_name": "55",
+      "carpet_area": "B701"
+    },
+    {
+      "flat_name": "56",
+      "carpet_area": "B702"
+    },
+    {
+      "flat_name": "57",
+      "carpet_area": "B703"
+    },
+    {
+      "flat_name": "58",
+      "carpet_area": "B704"
+    },
+    {
+      "flat_name": "59",
+      "carpet_area": "B705"
+    },
+    {
+      "flat_name": "60",
+      "carpet_area": "B801"
+    },
+    {
+      "flat_name": "61",
+      "carpet_area": "3E"
+    },
+    {
+      "flat_name": "62",
+      "carpet_area": "3F"
+    },
+    {
+      "flat_name": "63",
+      "carpet_area": "3G"
+    },
+    {
+      "flat_name": "64",
+      "carpet_area": "3H"
+    },
+    {
+      "flat_name": "65",
+      "carpet_area": "4A"
+    },
+    {
+      "flat_name": "66",
+      "carpet_area": "4B"
+    },
+    {
+      "flat_name": "67",
+      "carpet_area": "4D"
+    },
+    {
+      "flat_name": "68",
+      "carpet_area": "4E"
+    },
+    {
+      "flat_name": "69",
+      "carpet_area": "4F"
+    },
+    {
+      "flat_name": "70",
+      "carpet_area": "B802"
+    },
+    {
+      "flat_name": "71",
+      "carpet_area": "B803"
+    },
+    {
+      "flat_name": "72",
+      "carpet_area": "B804"
+    },
+    {
+      "flat_name": "73",
+      "carpet_area": "B805"
+    },
+    {
+      "flat_name": "74",
+      "carpet_area": "B901"
+    },
+    {
+      "flat_name": "75",
+      "carpet_area": "B902"
+    },
+    {
+      "flat_name": "76",
+      "carpet_area": "B903"
+    },
+    {
+      "flat_name": "77",
+      "carpet_area": "B904"
+    },
+    {
+      "flat_name": "78",
+      "carpet_area": "B905"
+    },
+    {
+      "flat_name": "79",
+      "carpet_area": "B1001"
+    },
+    {
+      "flat_name": "80",
+      "carpet_area": "4G"
+    },
+    {
+      "flat_name": "81",
+      "carpet_area": "4H"
+    },
+    {
+      "flat_name": "82",
+      "carpet_area": "5A"
+    },
+    {
+      "flat_name": "83",
+      "carpet_area": "5B"
+    },
+    {
+      "flat_name": "84",
+      "carpet_area": "5C"
+    },
+    {
+      "flat_name": "85",
+      "carpet_area": "5D"
+    },
+    {
+      "flat_name": "86",
+      "carpet_area": "5E"
+    },
+    {
+      "flat_name": "87",
+      "carpet_area": "5F"
+    },
+    {
+      "flat_name": "88",
+      "carpet_area": "5G"
+    },
+    {
+      "flat_name": "89",
+      "carpet_area": "5H"
+    },
+    {
+      "flat_name": "90",
+      "carpet_area": "6A"
+    },
+    {
+      "flat_name": "91",
+      "carpet_area": "6B"
+    },
+    {
+      "flat_name": "92",
+      "carpet_area": "6C"
+    },
+    {
+      "flat_name": "93",
+      "carpet_area": "6D"
+    },
+    {
+      "flat_name": "94",
+      "carpet_area": "6E"
+    },
+    {
+      "flat_name": "95",
+      "carpet_area": "6F"
+    },
+    {
+      "flat_name": "96",
+      "carpet_area": "6G"
+    },
+    {
+      "flat_name": "97",
+      "carpet_area": "6H"
+    },
+    {
+      "flat_name": "98",
+      "carpet_area": "7A"
+    },
+    {
+      "flat_name": "99",
+      "carpet_area": "7B"
+    },
+    {
+      "flat_name": "100",
+      "carpet_area": "7C"
+    },
+    {
+      "flat_name": "101",
+      "carpet_area": "7D"
+    },
+    {
+      "flat_name": "102",
+      "carpet_area": "7E"
+    },
+    {
+      "flat_name": "103",
+      "carpet_area": "7F"
+    },
+    {
+      "flat_name": "104",
+      "carpet_area": "7G"
+    },
+    {
+      "flat_name": "105",
+      "carpet_area": "7H"
+    },
+    {
+      "flat_name": "106",
+      "carpet_area": "8A"
+    },
+    {
+      "flat_name": "107",
+      "carpet_area": "8B"
+    },
+    {
+      "flat_name": "108",
+      "carpet_area": "8C"
+    },
+    {
+      "flat_name": "109",
+      "carpet_area": "8D"
+    },
+    {
+      "flat_name": "110",
+      "carpet_area": "8E"
+    },
+    {
+      "flat_name": "111",
+      "carpet_area": "8F"
+    },
+    {
+      "flat_name": "112",
+      "carpet_area": "8G"
+    },
+    {
+      "flat_name": "113",
+      "carpet_area": "8H"
+    },
+    {
+      "flat_name": "114",
+      "carpet_area": "9A"
+    },
+    {
+      "flat_name": "115",
+      "carpet_area": "9B"
+    },
+    {
+      "flat_name": "116",
+      "carpet_area": "9C"
+    },
+    {
+      "flat_name": "117",
+      "carpet_area": "9D"
+    },
+    {
+      "flat_name": "118",
+      "carpet_area": "9E"
+    },
+    {
+      "flat_name": "119",
+      "carpet_area": "9F"
+    },
+    {
+      "flat_name": "120",
+      "carpet_area": "9G"
+    },
+    {
+      "flat_name": "121",
+      "carpet_area": "9H"
+    },
+    {
+      "flat_name": "122",
+      "carpet_area": "10A"
+    },
+    {
+      "flat_name": "123",
+      "carpet_area": "10B"
+    },
+    {
+      "flat_name": "124",
+      "carpet_area": "10C"
+    },
+    {
+      "flat_name": "125",
+      "carpet_area": "10D"
+    },
+    {
+      "flat_name": "126",
+      "carpet_area": "10E"
+    },
+    {
+      "flat_name": "127",
+      "carpet_area": "10F"
+    },
+    {
+      "flat_name": "128",
+      "carpet_area": "10G"
+    },
+    {
+      "flat_name": "129",
+      "carpet_area": "10H"
+    },
+    {
+      "flat_name": "130",
+      "carpet_area": "11A"
+    },
+    {
+      "flat_name": "131",
+      "carpet_area": "11B"
+    },
+    {
+      "flat_name": "132",
+      "carpet_area": "11C"
+    },
+    {
+      "flat_name": "133",
+      "carpet_area": "11D"
+    },
+    {
+      "flat_name": "134",
+      "carpet_area": "11E"
+    },
+    {
+      "flat_name": "135",
+      "carpet_area": "11F"
+    },
+    {
+      "flat_name": "136",
+      "carpet_area": "11G"
+    },
+    {
+      "flat_name": "137",
+      "carpet_area": "11H"
+    },
+    {
+      "flat_name": "138",
+      "carpet_area": "B1002"
+    },
+    {
+      "flat_name": "139",
+      "carpet_area": "B1003"
+    },
+    {
+      "flat_name": "140",
+      "carpet_area": "B1004"
+    },
+    {
+      "flat_name": "141",
+      "carpet_area": "B1005"
+    },
+    {
+      "flat_name": "142",
+      "carpet_area": "B1101"
+    },
+    {
+      "flat_name": "143",
+      "carpet_area": "B1102"
+    },
+    {
+      "flat_name": "144",
+      "carpet_area": "4C"
+    },
+    {
+      "flat_name": "145",
+      "carpet_area": "B1103"
+    },
+    {
+      "flat_name": "146",
+      "carpet_area": "B1104"
+    },
+    {
+      "flat_name": "147",
+      "carpet_area": "B1105"
+    },
+    {
+      "flat_name": "148",
+      "carpet_area": "B1201"
+    },
+    {
+      "flat_name": "149",
+      "carpet_area": "B1202"
+    },
+    {
+      "flat_name": "150",
+      "carpet_area": "B1203"
+    },
+    {
+      "flat_name": "151",
+      "carpet_area": "B1204"
+    },
+    {
+      "flat_name": "152",
+      "carpet_area": "B1205"
+    }
+  ],
+  "co_promoter_details": [
+    {
+      "name": "PANKAJ KUMAR",
+      "role": "Partner",
+      "photo": "https://jharera.jharkhand.gov.in/Home/ViewDocument/152098"
+    },
+    {
+      "name": "ABHINAV GIRISH",
+      "role": "Partner",
+      "photo": "https://jharera.jharkhand.gov.in/Home/ViewDocument/152101"
+    },
+    {
+      "name": "PURUSHOTTAM KUMAR",
+      "role": "Partner",
+      "photo": "https://jharera.jharkhand.gov.in/Home/ViewDocument/152104"
+    }
+  ],
+  "professional_information": [
+    {
+      "name": "MOHAN KUMAR",
+      "email": "skagarawal112@gmail.com",
+      "mobile": "7079395956",
+      "pan_no": "DYJPK2625H",
+      "address": "PUNDAG RANCHI"
+    },
+    {
+      "name": "Archiect Name",
+      "email": "Email id",
+      "mobile": "Mobile",
+      "pan_no": "PAN No.",
+      "address": "Address"
+    },
+    {
+      "name": "AVINASH KR KESHRI",
+      "email": "avi2k5@gmail.com",
+      "mobile": "8826301177",
+      "pan_no": "BMDPK2486E",
+      "address": "BOOTY MORE RANCHI"
+    },
+    {
+      "name": "structural engineer Name",
+      "email": "Email Id",
+      "mobile": "Mobile Number",
+      "pan_no": "PAN No.",
+      "address": "Address"
+    },
+    {
+      "name": "SUNIL KUMAR SINGH",
+      "email": "sunilsingh.achievers@gmail.com",
+      "mobile": "9431590618",
+      "pan_no": "AKUPS3436Q",
+      "address": "KIADRU RANCHI"
+    },
+    {
+      "name": "MOHAN KUMAR",
+      "email": "skagarawal112@gmail.com",
+      "mobile": "7079395956",
+      "pan_no": "DYJPK2625H",
+      "address": "PUNDAG RANCHI"
+    },
+    {
+      "name": "AVINASH KR KESHRI",
+      "email": "avi2k5@gmail.com",
+      "mobile": "8826301177",
+      "pan_no": "BMDPK2486E",
+      "address": "BOOTY MORE RANCHI"
+    },
+    {
+      "name": "SUNIL KUMAR SINGH",
+      "email": "sunilsingh.achievers@gmail.com",
+      "mobile": "9431590618",
+      "pan_no": "AKUPS3436Q",
+      "address": "KIADRU RANCHI"
+    }
+  ],
+  "land_detail": [
+    {
+      "sale_deed": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/155113"
+    },
+    {
+      "sale_deed": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/155113"
+    },
+    {
+      "sale_deed": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/155117"
+    },
+    {
+      "sale_deed": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/155121"
+    },
+    {
+      "sale_deed": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/155125"
+    },
+    {
+      "sale_deed": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/155129"
+    },
+    {
+      "sale_deed": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/155133"
+    },
+    {
+      "sale_deed": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/155137"
+    },
+    {
+      "sale_deed": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/155141"
+    },
+    {
+      "sale_deed": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/155145"
+    },
+    {
+      "sale_deed": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/155149"
+    },
+    {
+      "sale_deed": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/155153"
+    },
+    {
+      "sale_deed": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/155157"
+    },
+    {
+      "sale_deed": "https://jharera.jharkhand.gov.in/FirstLevel/ViewDocument/156717"
+    }
+  ],
+  "data": {
+    "govt_type": "state",
+    "is_processed": false
+  },
+  "config_id": 14209,
+  "is_updated": false,
+  "is_duplicate": false,
+  "iw_processed": false,
+  "checked_updates": false,
+  "rera_housing_found": false,
+  "is_live": false
+}

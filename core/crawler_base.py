@@ -19,7 +19,7 @@ _UINT64_MASK = (1 << 64) - 1
 
 
 def _project_hash_seed() -> bytes:
-    seed_text = os.environ.get("PYTHONHASHSEED", settings.PYTHONHASHSEED)
+    seed_text = os.environ.get("PYTHONHASHSEED", "0")
     try:
         seed = int(seed_text)
     except ValueError:

@@ -1,0 +1,64 @@
+{
+  "key": "17474881117080113836",
+  "project_registration_no": "PRPY133450",
+  "url": "https://prera.py.gov.in/reraAppOffice/viewProjectDetailPage?projectID=567",
+  "state": "puducherry",
+  "domain": "prera.py.gov.in",
+  "project_name": "PROPOSED RESIDENTIAL LAYOUT",
+  "project_type": "Plotted Development",
+  "promoter_name": "KANCHARLA SRI RAMA KRISHNAYYA",
+  "status_of_the_project": "Ongoing",
+  "project_city": "YANAM",
+  "project_state": "puducherry",
+  "project_description": "TS NO A/3/41/2 METTACUR YANAM",
+  "crawl_machine_ip": "127.0.0.1",
+  "machine_name": "Anirveshs-MacBook-Air.local",
+  "project_location_raw": {
+    "raw_address": "TS NO A/3/41/2 METTACUR YANAM",
+    "district": "YANAM",
+    "taluk": "YANAM",
+    "village": "Mettakur"
+  },
+  "promoter_contact_details": {
+    "email": "mmbuilderspdy@gmail.com",
+    "phone": "9440103718"
+  },
+  "project_cost_detail": {
+    "total_project_cost": "10000000"
+  },
+  "data": {
+    "govt_type": "state",
+    "is_processed": false,
+    "promoter_type": "Individual",
+    "raw_address": "TS NO A/3/41/2 METTACUR YANAM"
+  },
+  "promoters_details": {
+    "type_of_firm": "Individual",
+    "name": "KANCHARLA SRI RAMA KRISHNAYYA"
+  },
+  "land_area_details": {
+    "construction_area_unit": "Sq Mtr"
+  },
+  "submitted_date": "2026-04-21 00:00:00+00:00",
+  "estimated_commencement_date": "2026-03-19 00:00:00+00:00",
+  "estimated_finish_date": "2031-03-18 00:00:00+00:00",
+  "approved_on_date": "2026-04-21 00:00:00+00:00",
+  "config_id": 4,
+  "is_updated": false,
+  "is_duplicate": false,
+  "iw_processed": false,
+  "checked_updates": false,
+  "rera_housing_found": false,
+  "is_live": false,
+  "uploaded_documents": [
+    {
+      "link": "https://prera.py.gov.in/reraAppOffice/getdocument?DOC_ID=12329",
+      "type": "FROM B.pdf"
+    },
+    {
+      "link": "https://prera.py.gov.in/reraAppOffice/getdocument?DOC_ID=12383",
+      "type": "Registration Certificate File No. 507-221-PRERA(P) -YANAM-2026.pdf"
+    }
+  ],
+  "document_urls": null
+}
