@@ -133,7 +133,7 @@ SITES: list[dict] = [
         "listing_url": "https://gujrera.gujarat.gov.in/#/home-p/registered-project-listing",
         "crawler_module": "sites.gujarat_rera",
         "crawler_type": "api",
-        "enabled": False,
+        "enabled": True,
         "rate_limit_delay": (1, 3),
         "max_retries": 3,
         "sentinel_registration_no": "PR/GJ/SURAT/CHORASI/SUDA/CAA00202/A1C/EX1/041221",

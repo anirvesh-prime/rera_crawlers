@@ -1217,7 +1217,10 @@ def _download_print_preview_document(
             page = browser_session.new_page()
             page.goto(print_preview_url, wait_until="domcontentloaded", timeout=_PLAYWRIGHT_PAGE_TIMEOUT_MS)
             page_cache[print_preview_url] = page
-        page.wait_for_selector(selector, timeout=15_000)
+        # Short timeout — if the button isn't immediately available the page
+        # likely requires a live session cookie the headless browser doesn't
+        # have; we fall back to direct GET rather than blocking for 15 s.
+        page.wait_for_selector(selector, timeout=3_000)
         with page.expect_download(timeout=_PLAYWRIGHT_DOWNLOAD_START_TIMEOUT_MS) as download_info:
             page.locator(selector).click()
         download = download_info.value
@@ -1238,7 +1241,9 @@ def _download_print_preview_document(
             except OSError:
                 pass
     except Exception as exc:
-        logger.warning("Playwright download failed; falling back to direct GET", error=str(exc), url=print_preview_url)
+        # Expected on headless servers without a live RERA session cookie;
+        # _handle_document will fall back to direct GET automatically.
+        logger.debug("Playwright download skipped; using direct GET", error=str(exc), url=print_preview_url)
         return None
 
 
