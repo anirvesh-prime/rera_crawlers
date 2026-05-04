@@ -1,0 +1,379 @@
+{
+  "key": "4303895041291968771",
+  "project_registration_no": "RERAA KM 49 OF 2024-2025",
+  "url": "https://rera.assam.gov.in/view_project/searchprojectDetail/1897",
+  "state": "assam",
+  "domain": "rera.assam.gov.in",
+  "project_name": "UTTARAYAN HARMONY 2",
+  "promoter_name": "UTTARAYAN BUILDERS AND DEVELOPERS",
+  "status_of_the_project": "NEW",
+  "acknowledgement_no": "RERA-ASM-990-2023",
+  "project_pin_code": "781037",
+  "project_state": "assam",
+  "crawl_machine_ip": "127.0.0.1",
+  "machine_name": "Anirveshs-MacBook-Air.local",
+  "project_location_raw": {
+    "raw_address": "UTTARAYAN HARMONY,BAGHORBARI,SATGAON,GUWAHATI,ASSAM.",
+    "district": "KAMRUP METRO",
+    "village": "SATGAON",
+    "pin_code": "781037",
+    "post_office": "BAGHORBARI"
+  },
+  "promoter_address_raw": {
+    "raw_address": "PODDAR COMPLEX,1ST FLOOR,M.S. ROAD,OPP. KALI MANDIR,FANCY BAZAR,GUWAHATI,KAMRUP METRO P.O FANCY BAZAR PINCODE-781001",
+    "correspondence_address": "PODDAR COMPLEX,1ST FLOOR,M.S. ROAD,OPP. KALI MANDIR,FANCY BAZAR,GUWAHATI,KAMRUP METRO P.O FANCY BAZAR PINCODE-781001"
+  },
+  "promoter_contact_details": {
+    "phone": "9903900299",
+    "email": "harmony@uttarayangroup.com"
+  },
+  "bank_details": {
+    "bank_name": "STATE BANK OF INDIA",
+    "branch": "1ST FLOOR",
+    "account_no": "39968459965",
+    "IFSC": "SBIN0012259"
+  },
+  "project_cost_detail": {
+    "total_project_cost": "80961026 Lakhs",
+    "estimated_project_cost": "80961026 Lakhs",
+    "cost_of_land": "13493505 Lakhs",
+    "estimated_construction_cost": "59716309 Lakhs"
+  },
+  "building_details": [
+    {
+      "flat_type": "3",
+      "carpet_area": "1439.10",
+      "no_of_units": "18"
+    },
+    {
+      "flat_type": "4",
+      "carpet_area": "599.34",
+      "no_of_units": "6"
+    }
+  ],
+  "uploaded_documents": [
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzQ2Nzc=",
+      "type": "LATEST JAMABANDI COPY OF THE PROPOSED PROJECT LAND"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzQ2Nzk=",
+      "type": "LATEST NON ENCUMBRANCE CERTIFICATE"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMDc=",
+      "type": "POWER OF ATTORNEY"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMDg=",
+      "type": "TRACE MAP SHOWING NEARBY BY STREAMS, PONDS ETC."
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU4MDY=",
+      "type": "DEVELOPMENT AGREEMENT OR DEED OF AGREEMENT"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzQ2ODA=",
+      "type": "PLANNING PERMIT FROM COMPETENT AUTHORITY"
+    },
+    {
+      "type": "APPROVED DRAWING 1",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMjk="
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMzA=",
+      "type": "NO OBJECTION CERTIFICATE FROM THE COMPETENT AUTHORITY"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU0MTk=",
+      "type": "LOCATIONAL MAP INCLUDING LATITUDE AND LONGITUDE"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU4NTI=",
+      "type": "FIRE NOC"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU4NTM=",
+      "type": "COMMENCEMENT CERTIFICATE OF THE PROJECT"
+    },
+    {
+      "type": "PLAN OF DEVELOPMENT WORKS 1",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU5NjQ="
+    },
+    {
+      "type": "CARPET AREA 1",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNDk="
+    },
+    {
+      "type": "ARCHITECT, STRUCTURAL ENGINEER AND CONTRACTOR DETAILS Certificate 1",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNTA="
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/NDU2NzY=",
+      "type": "PROJECT COST ESTIMATE"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzQ2ODM=",
+      "type": "REGISTRATION CERTIFICATE OF THE ENTITY"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMDk=",
+      "type": "PAN CARD OF THE ENTITY"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU0MDY=",
+      "type": "LETTER OF AUTHORIZATION FOR AUTHORIZED SIGNATORY"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU4MDU=",
+      "type": "DEED OF PARTNERSHIP"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU2MDM=",
+      "type": "FORM B, DULY NOTARIZED"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNDc=",
+      "type": "DRAFT ALLOTMENT LETTER"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNDg=",
+      "type": "DRAFT CONVEYENCE DEED"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNTI=",
+      "type": "DRAFT FOR AGREEMENT FOR SALE"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU3Nzg=",
+      "type": "PHOTOCOPY OF BANK DRAFT"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNTU=",
+      "type": "AUDITED BALANCE SHEET OF THE PROMOTER FOR THE IMMEDIATELY PRECEDING THREE (3) FINANCIAL YEARS"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNTY=",
+      "type": "INCOME TAX RETURN OF THE PROMOTER FOR THE IMMEDIATELY PRECEDING THREE (3) FINANCIAL YEARS"
+    },
+    {
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/NDU2Nzc=",
+      "type": "BANK MANAGER'S LETTER MENTIONING THAT THE ACCOUNT HAS BEEN OPENED IN COMPLIANCE \nWITH THE SECTION 4(2)(L)(D) OF REAL ESTATE (REGULATION AND DEVELOPMENT) ACT, 2016"
+    }
+  ],
+  "authorised_signatory_details": {
+    "name": "MAHESH KALANI",
+    "email": "MAHESHKALANI212@GMAIL.COM",
+    "phone": "9864060704",
+    "present_address": "1ST FLOOR PODDER COMPLEX OPP KALI MANDIR FANCY BAZAR GUWAHATI-781001"
+  },
+  "co_promoter_details": [
+    {
+      "name": "HANUMAN MAL KALANI",
+      "email": "SANJAYKALANI679@GMAIL.COM",
+      "phone": "9435016679",
+      "present_address": "1ST FLOOR PODDER COMPLEX OPP KALI MANDIR FANCY BAZAR GUWAHATI-781001",
+      "role": "Partner 1"
+    },
+    {
+      "name": "DEEPJYOTI BARUAH",
+      "email": "DJBARUAH@UTTARAYANGROUP.COM",
+      "phone": "9864031390",
+      "present_address": "1ST FLOOR PODDER COMPLEX OPP KALI MANDIR FANCY BAZAR GUWAHATI-781001",
+      "role": "Partner 2"
+    },
+    {
+      "name": "PREETI RATHI",
+      "email": "AYUSSHR@UTTARAYANGROUP.COM",
+      "phone": "9854060701",
+      "present_address": "1ST FLOOR PODDER COMPLEX OPP KALI MANDIR FANCY BAZAR GUWAHATI-781001",
+      "role": "Partner 3"
+    },
+    {
+      "name": "RAKESH CHOUDHURY",
+      "email": "rakesh@uttarayangroup.com",
+      "phone": "9435045293",
+      "present_address": "1ST FLOOR PODDER COMPLEX OPP KALI MANDIR FANCY BAZAR GUWAHATI-781001",
+      "role": "Partner 4"
+    },
+    {
+      "name": "MAHESH KALANI",
+      "email": "MAHESHKALANI212@GMAIL.COM",
+      "phone": "9864060704",
+      "present_address": "1ST FLOOR PODDER COMPLEX OPP KALI MANDIR FANCY BAZAR GUWAHATI-781001"
+    }
+  ],
+  "provided_faciltiy": [
+    {
+      "facility": "INTERNAL ROADS AND PAVEMENTS",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 5.18",
+      "status": "AS PER PROJECT REPORT"
+    },
+    {
+      "facility": "WATER SUPPLY SYSTEM",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 53.74",
+      "status": "AS PER PROJECT REPORT"
+    },
+    {
+      "facility": "STORM WATER DRAINAGE",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 17.00",
+      "status": "AS PER PROJECT REPORT"
+    },
+    {
+      "facility": "ELECTRICITY SUPPLY SYSTEM",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 22.39",
+      "status": "AS PER PROJECT REPORT"
+    },
+    {
+      "facility": "SEWAGE TREATMENT & GARBAGE DISPOSAL",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 6.38",
+      "status": "AS PER PROJECT REPORT"
+    },
+    {
+      "facility": "STREET LIGHTING",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 0",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "SECURITY AND FIRE FIGHTING",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 0",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "PLAYGROUNDS AND PARKS",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 34943",
+      "status": "AS PER PROJECT REPORT"
+    },
+    {
+      "facility": "CLUB HOUSE/COMMUNITY CENTRE",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 0",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "SHOPPING AREA",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 0",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "RENEWABLE ENERGY SYSTEM",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 0",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "SCHOOL",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 0",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "HOSPITAL/DISPENSARY",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 0",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "ANY OTHER",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 0",
+      "status": "YET TO BE PREPARED"
+    }
+  ],
+  "land_detail": {
+    "mouza": "GUWAHATI",
+    "total_area": "1270.67"
+  },
+  "members_details": [
+    {
+      "name": "TAMANNA TABASSUM",
+      "phone": "9854040007",
+      "email": "mktgsaleshead@uttarayangroup.com",
+      "position": "MARKETING AND SALED HEAD"
+    }
+  ],
+  "data": {
+    "govt_type": "state",
+    "construction_area_1": "1439.10 18 599.34 6",
+    "construction_unit": "In Square Meter"
+  },
+  "promoters_details": {
+    "name": "UTTARAYAN BUILDERS AND DEVELOPERS",
+    "pan_no": "XXXX573L",
+    "registration_no": "RFKAMM173Z198OF20212022"
+  },
+  "land_area_details": {
+    "land_area": "1270.67",
+    "land_area_unit": "(Sqr/mtrs)",
+    "construction_area": 29499.84,
+    "construction_area_unit": "In Square Meter"
+  },
+  "submitted_date": "2023-12-01 12:51:31+00:00",
+  "estimated_commencement_date": "2023-12-01 00:00:00+00:00",
+  "estimated_finish_date": "2026-12-31 00:00:00+00:00",
+  "number_of_residential_units": 24,
+  "config_id": 11804,
+  "land_area": 1270.67,
+  "construction_area": 29499.84,
+  "is_updated": false,
+  "is_duplicate": false,
+  "iw_processed": false,
+  "checked_updates": false,
+  "rera_housing_found": false,
+  "is_live": false,
+  "document_urls": [
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "APPROVED DRAWING 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "PLAN OF DEVELOPMENT WORKS 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "CARPET AREA 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "ARCHITECT, STRUCTURAL ENGINEER AND CONTRACTOR DETAILS Certificate 1"
+    }
+  ],
+  "project_type": null,
+  "project_city": null,
+  "last_modified": null,
+  "actual_commencement_date": null,
+  "actual_finish_date": null,
+  "approved_on_date": null,
+  "past_experience_of_promoter": null,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "number_of_commercial_units": null,
+  "complaints_litigation_details": null,
+  "project_description": null,
+  "professional_information": null,
+  "development_agreement_detail": null,
+  "construction_progress": null,
+  "retrieved_on": null,
+  "last_updated": null,
+  "updated_fields": null,
+  "project_images": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": null,
+  "status_update": null,
+  "iw_part_processed": null,
+  "last_crawled_date": null,
+  "doc_ocr_url": null,
+  "proposed_timeline": null,
+  "checked_updates_date": null,
+  "alternative_rera_ids": null
+}

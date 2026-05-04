@@ -1,18 +1,410 @@
 {
-  "key": "7587077351940606246",
-  "project_registration_no": "PBRERA-SAS81-PC0297",
-  "url": "https://rera.punjab.gov.in/reraindex/publicview/projectinfo",
+  "key": "7289926874449142659",
+  "project_registration_no": "PBRERA-LDH44-PR0597",
+  "url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=1",
   "state": "punjab",
   "domain": "rera.punjab.gov.in",
-  "project_name": "Velora Accolade",
-  "promoter_name": "Velora Buildtech LLP (Other than Individual)",
+  "project_name": "GARDEN HOMES",
+  "project_type": "(1) Residential (Plotted Development)",
+  "promoter_name": "Harpreet Singh Khatra (Individual)",
+  "status_of_the_project": "On-going",
   "project_state": "punjab",
+  "project_description": "1. Structure :- NA 2. Flooring :- NA 3. Wall Finishing :- NA 4. Sanitary Fittings :- NA 5. Electrical Fittings :- NA 6. Kitchen :- NA",
   "crawl_machine_ip": "127.0.0.1",
   "machine_name": "Anirveshs-MacBook-Air.local",
   "project_location_raw": {
-    "district": "Sahibzada Ajit Singh Nagar (Mohali)"
+    "plot_no": "5//16(3-16)6//13(3-15)6//14(4-13)",
+    "raw_address": "MACHIWARA ROAD, , SAMRALA, LUDHIANA Jagraon , Ludhiana , Punjab - 141114"
   },
+  "promoter_contact_details": {
+    "email": "Gardenhomes2017[at]gmail.com",
+    "mobile no": "9814040225"
+  },
+  "bank_details": [
+    {
+      "bank_name": "State Bank of India",
+      "branch": "sirhind road patiala",
+      "account_no": "65283244496",
+      "IFSC": "SBIN0050360",
+      "account_name": "HARPREET SINGH KHATRA",
+      "address": "ADJOINING GEETA PETROL PUMP , sirhind road patiala Patiala , Punjab - 147004"
+    }
+  ],
+  "project_cost_detail": {
+    "total_project_cost": 36520850.0
+  },
+  "building_details": [
+    {
+      "flat_type": "Residential Plot",
+      "no_of_units": "101",
+      "carpet_area": "175.77 (in sqr mtrs)",
+      "open_area": "0 (in sqr mtrs)",
+      "balcony_area": "0 (in sqr mtrs)"
+    }
+  ],
+  "complaints_litigation_details": [
+    {
+      "count": 0
+    }
+  ],
+  "uploaded_documents": [
+    {
+      "type": "Approved Layout Plan",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126Approved_Layout_Planf581c422-fbff-4ebd-b21a-b43667f6dd61.pdf"
+    },
+    {
+      "type": "Approved Project Site OR Location Map",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126Approved_Project_Site_OR_Location_Map6f470442-f4f4-4109-b59e-9052b420a92d.pdf"
+    },
+    {
+      "type": "Sanctioned Building Plan",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126Sanctioned_Building_Plana4a17275-6b04-42ab-a541-7525028b977c.pdf"
+    },
+    {
+      "type": "Pro forma Agreement of Sale to be signed with allottees",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126Pro_forma_Agreement_of_Sale_to_be_signed_with_allotteesec79894c-d7a2-49ff-9674-e598f11ea195.pdf"
+    },
+    {
+      "type": "Pro forma of Allotment Letter to be provided to allottees",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126Pro_forma_of_Allotment_Letter_to_be_provided_to_allottees7a6ad0c4-4a9d-41ff-ba2f-16f0e9e827a7.pdf"
+    },
+    {
+      "type": "Pro forma of Conveyance Deed to be signed with allottees",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126Pro_forma_of_Conveyance_Deed_to_be_signed_with_allottees04c88a34-0a77-46e8-83c7-41f43f4da440.pdf"
+    },
+    {
+      "type": "Architects Certificate (Form 1)",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20200108Architects_Certificate_(Form_1)845c2387-1a11-44c0-95c3-a3b7b8387aa0.pdf"
+    },
+    {
+      "type": "Authenticated Copy of Form B",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126Authenticated_Copy_of_Form_B65a84207-143e-4dc8-89d8-de380edb98eb.pdf"
+    },
+    {
+      "type": "CA Certificate (Form 3)",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126CA_Certificate_(Form_3)6182e8d4-0d45-49ec-a614-28439eb12e9a.pdf"
+    },
+    {
+      "type": "Engineers Certificate (Form 2)",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20200108Engineers_Certificate_(Form_2)c1b17a04-a033-4ad0-a2e4-854672745061.pdf"
+    },
+    {
+      "type": "CLU Certificate",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126CLU_Certificate6ac18aa2-e197-4c21-a756-14f8d5bb9290.pdf"
+    },
+    {
+      "type": "Copy of Registration as Promoter",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126Copy_of_Registration_as_Promoter2f0d9064-016c-4e42-a06c-2e2b762e25b4.pdf"
+    },
+    {
+      "type": "License to develop colony or society from Competent Authority",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126License_to_develop_colony_or_society_from_Competent_Authority6d380666-d54e-4444-b8af-f72581a3588c.pdf"
+    },
+    {
+      "type": "NOC from NHAI/ PWD",
+      "link": "https://rera.punjab.gov.in/rera/readwritedataProject/11075//ApprovalDocument_20200213e978ede4-ae1e-438c-a005-5bea939f84fb.pdf"
+    },
+    {
+      "type": "Pollution Clearance from Punjab Pollution Control Board",
+      "link": "https://rera.punjab.gov.in/rera/readwritedataProject/11075//ApprovalDocument_20191230cd812c70-636b-42dc-bedf-c5aa6d58d79b.pdf"
+    },
+    {
+      "type": "Land Title Search Report",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20200213Land_Title_Search_Report4c60e90d-389b-4ab2-a224-bf2d63f1286c.pdf"
+    },
+    {
+      "type": "Latest Jamabandi Document",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126Latest_Jamabandi_Documentb0adcdd5-a0c4-413c-a74c-45253cc744f2.pdf"
+    },
+    {
+      "type": "Legal Title Deed(s) - In case Land is owned by Promoter",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126Legal_Title_Deed(s)_-_In_case_Land_is_owned_by_Promoter7ac81e84-7cdf-4437-8baa-ff08886d5bf4.pdf"
+    },
+    {
+      "type": "Non Encumbrance Certificate",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126Non_Encumbrance_Certificatef36b0377-0788-4718-bbe1-dae517adc5bf.jpg"
+    },
+    {
+      "type": "Project Land Khasra Report or Plan",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126Project_Land_Khasra_Report_or_Plancabafff8-d3a3-4235-96b0-8d7464484a83.pdf"
+    },
+    {
+      "type": "Advertisement and Brochure/ Prospectus",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectPhoto/11075/20191126AdvProspectusca67b7aa-b33d-497c-a446-15a492af5c3e.pdf"
+    }
+  ],
+  "co_promoter_details": {
+    "name": "HARPREET SINGH KHATRA",
+    "email": "gardenhomes2017@gmail.com",
+    "mobile": "9814017613",
+    "present_address": "H.No 33, Brar Street near 22 railway crossing, Patiala , Patiala , Punjab - 147001",
+    "raw_data": "<span> HARPREET SINGH KHATRA <br/> H.No 33, Brar Street near 22 railway crossing, Patiala , <br/> Patiala , Punjab - 147001 <br/> E-Mail: <a href=\"mailto:gardenhomes2017[at]gmail.com\">gardenhomes2017[at]gmail.com</a> Mobile Phone: 9814017613 </span>"
+  },
+  "professional_information": [
+    {
+      "name": "RAJESH KUMAR",
+      "role": "Architect",
+      "key_real_estate_projects": "BALAJI ENCLAVE",
+      "email": "rajeshrana64909[at]gmail.com",
+      "phone": "9988741909",
+      "address": "VPO LALRU , Sahibzada Ajit Singh Nagar (Mohali) , Punjab - 140501"
+    }
+  ],
+  "construction_progress": [
+    {
+      "title": "Street Lighting",
+      "progress_percentage": "30.00"
+    },
+    {
+      "title": "Rain Water Harvesting",
+      "progress_percentage": "0.00"
+    },
+    {
+      "title": "Park",
+      "progress_percentage": "100.00"
+    },
+    {
+      "title": "Water Supply System",
+      "progress_percentage": "50.00"
+    },
+    {
+      "title": "Sewerage and Drainage System",
+      "progress_percentage": "75.00"
+    },
+    {
+      "title": "Solid Waste Management and Disposal",
+      "progress_percentage": "0.00"
+    },
+    {
+      "title": "Electricity Supply Transformer and Sub Station",
+      "progress_percentage": "20.00"
+    }
+  ],
+  "data": {
+    "project_id": "11075",
+    "promo_id": "1810",
+    "promo_type": "1",
+    "govt_type": "state",
+    "land_area_unit": "(in sqr mtrs)",
+    "construction_area_unit": "(in sqr mtrs)"
+  },
+  "promoters_details": {
+    "experience_state": "0 (in years)",
+    "experience_outside_state": "0 (in years)"
+  },
+  "status_update": [
+    {
+      "year": "2020",
+      "ref_no": "QUP2020F20210881",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=881&inQUProject_DN=QUP2020F20210881&inQUProjectYear=2020&inQUProjectQTR=FirstQTR",
+      "quarter": "QTR-I (January-March)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=881&inQUProject_DN=QUP2020F20210881&inQUProjectYear=2020&inQUProjectQTR=FirstQTR",
+      "date_of_reporting": "2021-05-12 00:00:00+00:00"
+    },
+    {
+      "year": "2020",
+      "ref_no": "QUP2020S20210882",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=882&inQUProject_DN=QUP2020S20210882&inQUProjectYear=2020&inQUProjectQTR=SecondQTR",
+      "quarter": "QTR-II (April-June)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=882&inQUProject_DN=QUP2020S20210882&inQUProjectYear=2020&inQUProjectQTR=SecondQTR",
+      "date_of_reporting": "2021-05-12 00:00:00+00:00"
+    },
+    {
+      "year": "2020",
+      "ref_no": "QUP2020T20210883",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=883&inQUProject_DN=QUP2020T20210883&inQUProjectYear=2020&inQUProjectQTR=ThirdQTR",
+      "quarter": "QTR-III (July-September)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=883&inQUProject_DN=QUP2020T20210883&inQUProjectYear=2020&inQUProjectQTR=ThirdQTR",
+      "date_of_reporting": "2021-05-12 00:00:00+00:00"
+    },
+    {
+      "year": "2020",
+      "ref_no": "QUP2020L20210884",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=884&inQUProject_DN=QUP2020L20210884&inQUProjectYear=2020&inQUProjectQTR=FourthQTR",
+      "quarter": "QTR-IV (October-December)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=884&inQUProject_DN=QUP2020L20210884&inQUProjectYear=2020&inQUProjectQTR=FourthQTR",
+      "date_of_reporting": "2021-05-12 00:00:00+00:00"
+    },
+    {
+      "year": "2021",
+      "ref_no": "QUP2021F20210885",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=885&inQUProject_DN=QUP2021F20210885&inQUProjectYear=2021&inQUProjectQTR=FirstQTR",
+      "quarter": "QTR-I (January-March)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=885&inQUProject_DN=QUP2021F20210885&inQUProjectYear=2021&inQUProjectQTR=FirstQTR",
+      "date_of_reporting": "2021-05-12 00:00:00+00:00"
+    },
+    {
+      "year": "2021",
+      "ref_no": "QUP2021S20231000",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1000&inQUProject_DN=QUP2021S20231000&inQUProjectYear=2021&inQUProjectQTR=SecondQTR",
+      "quarter": "QTR-II (April-June)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1000&inQUProject_DN=QUP2021S20231000&inQUProjectYear=2021&inQUProjectQTR=SecondQTR",
+      "date_of_reporting": "2023-03-01 00:00:00+00:00"
+    },
+    {
+      "year": "2021",
+      "ref_no": "QUP2021T20231001",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1001&inQUProject_DN=QUP2021T20231001&inQUProjectYear=2021&inQUProjectQTR=ThirdQTR",
+      "quarter": "QTR-III (July-September)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1001&inQUProject_DN=QUP2021T20231001&inQUProjectYear=2021&inQUProjectQTR=ThirdQTR",
+      "date_of_reporting": "2023-03-01 00:00:00+00:00"
+    },
+    {
+      "year": "2021",
+      "ref_no": "QUP2021L20231002",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1002&inQUProject_DN=QUP2021L20231002&inQUProjectYear=2021&inQUProjectQTR=FourthQTR",
+      "quarter": "QTR-IV (October-December)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1002&inQUProject_DN=QUP2021L20231002&inQUProjectYear=2021&inQUProjectQTR=FourthQTR",
+      "date_of_reporting": "2023-03-01 00:00:00+00:00"
+    },
+    {
+      "year": "2022",
+      "ref_no": "QUP2022F20231003",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1003&inQUProject_DN=QUP2022F20231003&inQUProjectYear=2022&inQUProjectQTR=FirstQTR",
+      "quarter": "QTR-I (January-March)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1003&inQUProject_DN=QUP2022F20231003&inQUProjectYear=2022&inQUProjectQTR=FirstQTR",
+      "date_of_reporting": "2023-03-01 00:00:00+00:00"
+    },
+    {
+      "year": "2022",
+      "ref_no": "QUP2022S20231004",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1004&inQUProject_DN=QUP2022S20231004&inQUProjectYear=2022&inQUProjectQTR=SecondQTR",
+      "quarter": "QTR-II (April-June)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1004&inQUProject_DN=QUP2022S20231004&inQUProjectYear=2022&inQUProjectQTR=SecondQTR",
+      "date_of_reporting": "2023-03-01 00:00:00+00:00"
+    },
+    {
+      "year": "2022",
+      "ref_no": "QUP2022T20231005",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1005&inQUProject_DN=QUP2022T20231005&inQUProjectYear=2022&inQUProjectQTR=ThirdQTR",
+      "quarter": "QTR-III (July-September)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1005&inQUProject_DN=QUP2022T20231005&inQUProjectYear=2022&inQUProjectQTR=ThirdQTR",
+      "date_of_reporting": "2023-03-01 00:00:00+00:00"
+    },
+    {
+      "year": "2022",
+      "ref_no": "QUP2022L20231006",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1006&inQUProject_DN=QUP2022L20231006&inQUProjectYear=2022&inQUProjectQTR=FourthQTR",
+      "quarter": "QTR-IV (October-December)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1006&inQUProject_DN=QUP2022L20231006&inQUProjectYear=2022&inQUProjectQTR=FourthQTR",
+      "date_of_reporting": "2023-03-01 00:00:00+00:00"
+    },
+    {
+      "year": "2023",
+      "ref_no": "QUP2023F20233257",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=3257&inQUProject_DN=QUP2023F20233257&inQUProjectYear=2023&inQUProjectQTR=FirstQTR",
+      "quarter": "QTR-I (January-March)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=3257&inQUProject_DN=QUP2023F20233257&inQUProjectYear=2023&inQUProjectQTR=FirstQTR",
+      "date_of_reporting": "2023-08-17 00:00:00+00:00"
+    },
+    {
+      "year": "2023",
+      "ref_no": "QUP2023S20233258",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=3258&inQUProject_DN=QUP2023S20233258&inQUProjectYear=2023&inQUProjectQTR=SecondQTR",
+      "quarter": "QTR-II (April-June)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=3258&inQUProject_DN=QUP2023S20233258&inQUProjectYear=2023&inQUProjectQTR=SecondQTR",
+      "date_of_reporting": "2023-08-17 00:00:00+00:00"
+    },
+    {
+      "year": "2023",
+      "ref_no": "QUP2023T20234721",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=4721&inQUProject_DN=QUP2023T20234721&inQUProjectYear=2023&inQUProjectQTR=ThirdQTR",
+      "quarter": "QTR-III (July-September)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=4721&inQUProject_DN=QUP2023T20234721&inQUProjectYear=2023&inQUProjectQTR=ThirdQTR",
+      "date_of_reporting": "2023-12-12 00:00:00+00:00"
+    },
+    {
+      "year": "2023",
+      "ref_no": "QUP2023L20240035",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=35&inQUProject_DN=QUP2023L20240035&inQUProjectYear=2023&inQUProjectQTR=FourthQTR",
+      "quarter": "QTR-IV (October-December)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=35&inQUProject_DN=QUP2023L20240035&inQUProjectYear=2023&inQUProjectQTR=FourthQTR",
+      "date_of_reporting": "2024-01-06 00:00:00+00:00"
+    },
+    {
+      "year": "2024",
+      "ref_no": "QUP2024F20241018",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1018&inQUProject_DN=QUP2024F20241018&inQUProjectYear=2024&inQUProjectQTR=FirstQTR",
+      "quarter": "QTR-I (January-March)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1018&inQUProject_DN=QUP2024F20241018&inQUProjectYear=2024&inQUProjectQTR=FirstQTR",
+      "date_of_reporting": "2024-04-15 00:00:00+00:00"
+    },
+    {
+      "year": "2024",
+      "ref_no": "QUP2024S20243232",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=3232&inQUProject_DN=QUP2024S20243232&inQUProjectYear=2024&inQUProjectQTR=SecondQTR",
+      "quarter": "QTR-II (April-June)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=3232&inQUProject_DN=QUP2024S20243232&inQUProjectYear=2024&inQUProjectQTR=SecondQTR",
+      "date_of_reporting": "2024-12-10 00:00:00+00:00"
+    },
+    {
+      "year": "2024",
+      "ref_no": "QUP2024T20243233",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=3233&inQUProject_DN=QUP2024T20243233&inQUProjectYear=2024&inQUProjectQTR=ThirdQTR",
+      "quarter": "QTR-III (July-September)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=3233&inQUProject_DN=QUP2024T20243233&inQUProjectYear=2024&inQUProjectQTR=ThirdQTR",
+      "date_of_reporting": "2024-12-10 00:00:00+00:00"
+    },
+    {
+      "year": "2024",
+      "ref_no": "QUP2024L20250079",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=79&inQUProject_DN=QUP2024L20250079&inQUProjectYear=2024&inQUProjectQTR=FourthQTR",
+      "quarter": "QTR-IV (October-December)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=79&inQUProject_DN=QUP2024L20250079&inQUProjectYear=2024&inQUProjectQTR=FourthQTR",
+      "date_of_reporting": "2025-01-06 00:00:00+00:00"
+    },
+    {
+      "year": "2025",
+      "ref_no": "QUP2025F20251168",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1168&inQUProject_DN=QUP2025F20251168&inQUProjectYear=2025&inQUProjectQTR=FirstQTR",
+      "quarter": "QTR-I (January-March)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1168&inQUProject_DN=QUP2025F20251168&inQUProjectYear=2025&inQUProjectQTR=FirstQTR",
+      "date_of_reporting": "2025-04-11 00:00:00+00:00"
+    },
+    {
+      "year": "2025",
+      "ref_no": "QUP2025S20254205",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=4205&inQUProject_DN=QUP2025S20254205&inQUProjectYear=2025&inQUProjectQTR=SecondQTR",
+      "quarter": "QTR-II (April-June)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=4205&inQUProject_DN=QUP2025S20254205&inQUProjectYear=2025&inQUProjectQTR=SecondQTR",
+      "date_of_reporting": "2025-11-04 00:00:00+00:00"
+    },
+    {
+      "year": "2025",
+      "ref_no": "QUP2025T20254206",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=4206&inQUProject_DN=QUP2025T20254206&inQUProjectYear=2025&inQUProjectQTR=ThirdQTR",
+      "quarter": "QTR-III (July-September)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=4206&inQUProject_DN=QUP2025T20254206&inQUProjectYear=2025&inQUProjectQTR=ThirdQTR",
+      "date_of_reporting": "2025-11-04 00:00:00+00:00"
+    },
+    {
+      "year": "2025",
+      "ref_no": "QUP2025L20261936",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1936&inQUProject_DN=QUP2025L20261936&inQUProjectYear=2025&inQUProjectQTR=FourthQTR",
+      "quarter": "QTR-IV (October-December)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1936&inQUProject_DN=QUP2025L20261936&inQUProjectYear=2025&inQUProjectQTR=FourthQTR",
+      "date_of_reporting": "2026-04-22 00:00:00+00:00"
+    },
+    {
+      "year": "2026",
+      "ref_no": "QUP2026F20261937",
+      "qpr_url": "https://rera.punjab.gov.in/reraindex/PublicView/ProjectQuarterlyUpdateViewDetails?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1937&inQUProject_DN=QUP2026F20261937&inQUProjectYear=2026&inQUProjectQTR=FirstQTR",
+      "quarter": "QTR-I (January-March)",
+      "gallery_url": "https://rera.punjab.gov.in/reraindex/PublicView/QuarterlyUpdatesGalleryImages?inProject_ID=11075&inPromoter_ID=1810&inPromoterType=11075&inQUProject_ID=1937&inQUProject_DN=QUP2026F20261937&inQUProjectYear=2026&inQUProjectQTR=FirstQTR",
+      "date_of_reporting": "2026-04-22 00:00:00+00:00"
+    }
+  ],
+  "land_area_details": {
+    "land_area": 33131.5466,
+    "land_area_unit": "(in sqr mtrs)",
+    "construction_area": 33131.5466,
+    "construction_area_unit": "(in sqr mtrs)"
+  },
+  "actual_commencement_date": "2017-09-27 00:00:00+00:00",
+  "estimated_finish_date": "2024-11-10 00:00:00+00:00",
   "config_id": 6,
+  "land_area": 33131.5466,
+  "construction_area": 33131.5466,
   "is_updated": false,
   "is_duplicate": false,
   "iw_processed": false,

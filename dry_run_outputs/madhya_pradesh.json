@@ -1,0 +1,609 @@
+{
+  "key": "7468147621538600986",
+  "project_registration_no": "P-BPL-24-4939",
+  "url": "https://www.rera.mp.gov.in/view_project_details.php?id=L2NFS0wybnFhMFppUVV3MVduMFpEZz09",
+  "state": "madhya pradesh",
+  "domain": "rera.mp.gov.in",
+  "project_name": "RESIDENTIAL CUM COMMERCIAL PROJECT AT ALAM NAGAR - BHOPAL UNDER PRADHAN MANTRI AWAS YOJNA (URBAN) -",
+  "project_type": "New",
+  "promoter_name": "MUNICIPAL CORPORATION BHOPAL",
+  "status_of_the_project": "Approved",
+  "project_state": "Madhya Pradesh",
+  "crawl_machine_ip": "127.0.0.1",
+  "machine_name": "Anirveshs-MacBook-Air.local",
+  "project_location_raw": {
+    "state": "Madhya Pradesh",
+    "district": "Bhopal",
+    "taluk": "Huzur",
+    "raw_address": "Kh. No. 103/1, 105, 107, 115/1 at Gram Piplani Chamaran (Kalpana Nagar, Alam Nagar), Tehsil Huzoor, District Bhopal",
+    "city": "Bhopal"
+  },
+  "promoter_address_raw": {
+    "raw_address": "Bhopal Municipal Corporation, PMAY, (HFA CELL), Third Floor, ISBT Bhavan, Hoshangabad Road, Habibganj, Bhopal - 462011"
+  },
+  "promoter_contact_details": {
+    "email": "bmcmp.hfa@gmail.com",
+    "phone": "9424499853"
+  },
+  "bank_details": {
+    "account_no": "537102010026175",
+    "bank_name": "Union Bank of India",
+    "branch": "Zone II, MP Nagar",
+    "account_name": "Commissioner Municipal Corporation Bhopal HFA Alamnagar",
+    "IFSC": "UBIN0553719"
+  },
+  "project_cost_detail": {
+    "estimated_construction_cost": 184948000.0
+  },
+  "building_details": [
+    {
+      "updated": true,
+      "flat_name": "Apartment",
+      "flat_type": "2 BHK",
+      "carpet_area": "56.38",
+      "no_of_units": "56"
+    },
+    {
+      "updated": true,
+      "flat_name": "Commercial Property",
+      "flat_type": "Shop",
+      "carpet_area": "12.24",
+      "no_of_units": "4"
+    },
+    {
+      "updated": true,
+      "flat_name": "Commercial Property",
+      "flat_type": "Office/Commercial",
+      "carpet_area": "16",
+      "no_of_units": "7"
+    },
+    {
+      "updated": true,
+      "flat_name": "Commercial Property",
+      "flat_type": "Office/Commercial",
+      "carpet_area": "27.36",
+      "no_of_units": "28"
+    },
+    {
+      "updated": true,
+      "flat_name": "Commercial Property",
+      "flat_type": "Shop",
+      "carpet_area": "31.32",
+      "no_of_units": "3"
+    },
+    {
+      "updated": true,
+      "flat_name": "Commercial Property",
+      "flat_type": "Shop",
+      "carpet_area": "37.8",
+      "no_of_units": "1"
+    },
+    {
+      "updated": true,
+      "flat_name": "Commercial Property",
+      "flat_type": "Shop",
+      "carpet_area": "38.88",
+      "no_of_units": "2"
+    },
+    {
+      "updated": true,
+      "flat_name": "Commercial Property",
+      "flat_type": "Shop",
+      "carpet_area": "46.44",
+      "no_of_units": "2"
+    }
+  ],
+  "professional_information": [
+    {
+      "name": "Mehta and Associates LLP",
+      "role": "Consultant",
+      "email": "info@mehtaandassociates.org"
+    }
+  ],
+  "data": {
+    "govt_type": "state",
+    "START_PAGE": "0",
+    "is_processed": false
+  },
+  "promoters_details": {
+    "name": "MUNICIPAL CORPORATION BHOPAL",
+    "type_of_firm": "Government/Semi Government Agency",
+    "promoters_details": [
+      {
+        "name": "Santosh Kumar Gupta",
+        "promoter_type": "Government/Semi Government Agency",
+        "role": "Developer",
+        "email": "bmcmp.hfa@gmail.com",
+        "present_address": "Bhopal Municipal Corporation, PMAY, (HFA CELL), Third Floor, ISBT Bhavan, Hoshangabad Road, Habibganj, Bhopal - 462011"
+      }
+    ]
+  },
+  "status_update": {
+    "qpr_docs": [
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/ee8b9e957376771917077130.pdf",
+        "type": "Engineer's Certificate",
+        "quarter": "Jan 2026 - Mar 2026"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/39973099177617177128e166.pdf",
+        "type": "chartered accountant certificate",
+        "quarter": "Jan 2026 - Mar 2026"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/824bc9567533311111007946.pdf",
+        "type": "Bank Statement",
+        "quarter": "Jan 2026 - Mar 2026"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/2460bf211672914411476d4d.pdf",
+        "type": "Engineer's Certificate",
+        "quarter": "Oct 2025 - Dec 2025"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/734bab69624619126132417e.pdf",
+        "type": "chartered accountant certificate",
+        "quarter": "Oct 2025 - Dec 2025"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/242189211141666711b7f685.pdf",
+        "type": "Bank Statement",
+        "quarter": "Oct 2025 - Dec 2025"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/bb9307837111366388943ad3.pdf",
+        "type": "Engineer's Certificate",
+        "quarter": "Jul 2025 - Sep 2025"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/0dd3411161112136267a7d4a.pdf",
+        "type": "chartered accountant certificate",
+        "quarter": "Jul 2025 - Sep 2025"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/c15c7a236217611287ec09f9.pdf",
+        "type": "Bank Statement",
+        "quarter": "Jul 2025 - Sep 2025"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/570eb75153144731137c4ffb.pdf",
+        "type": "Engineer's Certificate",
+        "quarter": "Apr 2025 - Jun 2025"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/2887d041353331333309936f.pdf",
+        "type": "chartered accountant certificate",
+        "quarter": "Apr 2025 - Jun 2025"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/73e5341334133114353c969f.pdf",
+        "type": "Bank Statement",
+        "quarter": "Apr 2025 - Jun 2025"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/91c229122914112911be5d4c.pdf",
+        "type": "Engineer's Certificate",
+        "quarter": "Jan 2025 - Mar 2025"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/5612ed4111192111217c5fcb.pdf",
+        "type": "chartered accountant certificate",
+        "quarter": "Jan 2025 - Mar 2025"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/69c7be14119196472750273c.pdf",
+        "type": "Bank Statement",
+        "quarter": "Jan 2025 - Mar 2025"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/d89a41181333757237a749b1.pdf",
+        "type": "Engineer's Certificate",
+        "quarter": "Jul 2024 - Sep 2024"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/778a1a771835232272d1dd79.pdf",
+        "type": "chartered accountant certificate",
+        "quarter": "Jul 2024 - Sep 2024"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/64b23981853773737748c76f.pdf",
+        "type": "Bank Statement",
+        "quarter": "Jul 2024 - Sep 2024"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/6c5e7a3751555135153ca58b.pdf",
+        "type": "Engineer's Certificate",
+        "quarter": "Oct 2024 - Dec 2024"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/74d313115335718153f2e5c2.pdf",
+        "type": "chartered accountant certificate",
+        "quarter": "Oct 2024 - Dec 2024"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/36217b111121318328e34677.pdf",
+        "type": "Bank Statement",
+        "quarter": "Oct 2024 - Dec 2024"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/d6df4c781123122128776cd0.pdf",
+        "type": "Engineer's Certificate",
+        "quarter": "Apr 2024 - Jun 2024"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/36edb57332238322828e04fc.pdf",
+        "type": "chartered accountant certificate",
+        "quarter": "Apr 2024 - Jun 2024"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/9f771d7487721226222b5364.pdf",
+        "type": "Bank Statement",
+        "quarter": "Apr 2024 - Jun 2024"
+      }
+    ]
+  },
+  "estimated_commencement_date": "2021-11-17 00:00:00+00:00",
+  "estimated_finish_date": "2027-05-16 00:00:00+00:00",
+  "approved_on_date": "2024-07-25 00:00:00+00:00",
+  "config_id": 12898,
+  "is_updated": false,
+  "is_duplicate": false,
+  "iw_processed": false,
+  "checked_updates": false,
+  "rera_housing_found": false,
+  "is_live": true,
+  "project_images": [
+    "https://www.rera.mp.gov.in/upload/project_upload/781b2f7755759577918a1be0.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/4dd32d1971117717391f2d91.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/7112d4771973177397f490e2.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/f8d945377311173537e1e79f.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/5af26c1777151715770068aa.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/b26ca119991391116750aab7.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/bb6e1d517115797191623641.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/acd4d63671777771791caaad.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/d977ed63117537196966f7f5.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/bea5f6196573737165ff3d59.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/aac8cd7157777357510e1a64.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/b2f92c5955795111534c782c.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/70d4a21961677776917507c8.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/582b63717711519753bb4339.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/bacfab97976717767117ad84.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/4ee33177611717767633833b.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/3f309c191571517755725f1c.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/ba78f74161766171763c19b2.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/a0f0f5626171674296c37db2.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/97a5f591112264421486cddc.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/1104e0612611224667024417.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/fae4e32622941924276405a0.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/ba657d629126122176a6f7ff.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/a682589666246127126fc680.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/5e3853922124777691447f24.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/905fe6172996192112c2182c.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/6346e4646166617141cbc594.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/cdc7b461126691212654bd16.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/8c302b21111962191166fa71.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/eb8b8f266111616194bcdb3b.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/f14ba1119119112619198863.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/22a351666694126221b17dbd.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/e11d90126111132827166895.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/34a26d1626666263219d523b.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/f611e41186286672263ac188.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/147c15382237231111305953.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/338a1a61261711111722a1df.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/818d71626116131222f8b2b1.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/7dbe6e822221111626df20b9.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/81fe0311116611782798f1bc.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/96b4e47278178361819736ed.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/6a73cd172763628221f780f7.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/f00bbd611126711117bd3f46.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/b9ab0e1172186172716f6183.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/16ada0226672266181e75544.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/d409826673116113284152be.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/a2e26c621218168212c9c8ab.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/ee6cf711435374533100f7aa.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/a2cc643133113314344fcd99.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/d253784353131571535075fb.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/483a03443533573443cc1758.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/b795f3151754737375603df6.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/68db561133333135537d2fd6.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/bb93071571533335332c464a.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/57d00a3445131333511fb74b.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/c350f931117713451317189d.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/ae080c131333313313fbcd22.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/5108c6173311451373e46804.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/6c4b65331113141114ad1599.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/b4c6b933331313131374a496.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/7243ee43153347337491029b.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/26acaf331131175433875468.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/2788f9333354433341a5a0bc.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/5056f81131317517147c44c2.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/91eb26792111212141e74b6a.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/e4d314171919211242f43c17.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/d111e21214969411145a017d.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/ef9793129111926646ccda9a.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/5ac07066719291192777d277.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/1fb52e111179149791fc60f2.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/55023e9497694114610f041c.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/3a8e5171742144121283f90a.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/4098ff162119141111cb279a.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/01d1ec111116619271ab213a.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/b2fb06261711417612fbe02b.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/bc6a3f7171496941194dcae8.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/d4a9bb11177119111753bad6.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/babfa9111179117714dee6ed.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/b9bf4a976917911721742dd9.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/071f78513873853313fc2b38.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/30d1ba328223117322e6a145.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/9e521d2771713321123be14d.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/608bcc737825217383c1aef7.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/0a9b1f3231377131270838ac.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/acddcb78271311233726758a.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/8ffeee252773177381d9903b.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/959e1682288722232246e1ae.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/5ed20533123871872258f9a3.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/9025815273312875386bc6f3.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/38efe5712777717323de4d36.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/9b379a515315157388b346f3.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/4a7dfd83127121771268382b.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/d1b6261213577777782fc63b.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/c63918117118755527df3c20.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/41d6952763623774220ba0c6.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/078a713262787237610d8398.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/6d8bbb33343247477196e263.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/a0baae63223777121615d78b.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/76662b232374363436f8d71a.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/e85d21737734716421165783.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/b721a824322331432843f1ca.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/a3f734382431222422118799.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/7e4b82481717137727200605.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/35ac99178728128333bdfb47.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/4c6ec63778131428434bdef4.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/530fc84741332773129199cf.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/42802f3633238222646279ef.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/5a6987826172342234598585.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/3b09991343242263664272fb.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/c69fc73557571251174d230c.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/a41dbe3878731111173cc821.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/1f2355253153227775cbf1d0.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/fb1bbb83183517153357432b.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/8dc5b5777283111223a79dff.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/a607df751533781311dc08af.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/679437778133285112f832e8.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/521e0c281771777111c0dd40.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/7752d22872121287812f2935.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/8743bb5325837117313aa72e.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/48f0e813111271573734ae38.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/4982c511353252313517f69d.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/bd1a291731711733231718af.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/dc59b118817188381107af2b.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/cd765d3355815775838568ff.jpeg"
+  ],
+  "uploaded_documents": [
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/1bebe791292199299941db61.pdf,https://www.rera.mp.gov.in/upload/project_upload/81315f294229293232ef5bb3.pdf",
+      "type": "Rera Registration Certificate",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/1bebe791292199299941db61.pdf,https://www.rera.mp.gov.in/upload/project_upload/81315f294229293232ef5bb3.pdf",
+      "type": "Rera Order",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/778181188441.pdf",
+      "type": "1 Affidavit",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/5579bc548151118151a27da0.pdf",
+      "type": "2 Affidavit Cum Declaration",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/115115111571.pdf",
+      "type": "3 Approval Town Country Planning",
+      "updated": true
+    },
+    {
+      "type": "Brochure 1",
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/59e2bf1441474481143d2bf3.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/53fb0521225445517494e01a.pdf",
+      "type": "Building Permission Authority 1",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/718818818888.pdf",
+      "type": "Building Permission Authority 2",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/147171867148.pdf",
+      "type": "6 Ca Certificate",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/115115111131.pdf",
+      "type": "7 Colonisers License",
+      "updated": true
+    },
+    {
+      "type": "Common Area facilities 1",
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/357511715313.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/222691771219.pdf",
+      "type": "9 Consent Land Owner",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/454878427417.pdf",
+      "type": "10 Development Permission",
+      "updated": true
+    },
+    {
+      "type": "Development work plan 1",
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/117782111521.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/514188681115.pdf",
+      "type": "12 Draft Agreement",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/111921611229.pdf",
+      "type": "13 Encumbrances On Land",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/451118458164.pdf",
+      "type": "14 Engr Certificate",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/27aac22322731121115c46ab.pdf",
+      "type": "15 Khasra Form",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/137113117454.pdf",
+      "type": "16 Nazul Clearance Case",
+      "updated": true
+    },
+    {
+      "type": "Project Specifications 1",
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/135331333777.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "type": "Sanction Building Plan 1",
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/8a7bfb112542124224ba2ce3.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "type": "Sanction Building Plan 2",
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/c80cc61113754741518457bc.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "type": "Sanction Building Plan 3",
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/17105045300sanctionbuildingplan.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "type": "Sanction Layout Plan 1",
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/0a2e18711311342123d3f236.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "type": "Sanction Layout Plan 2",
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/155111714111.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/417678171155.pdf",
+      "type": "20 Schedule A",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/178877886151.pdf",
+      "type": "21 Schedule B",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/417175116811.pdf",
+      "type": "22 Schedule C2",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/511118114878.pdf",
+      "type": "23 Schedule C3",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/718485178811.pdf",
+      "type": "24 Schedule D",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/481814711671.pdf",
+      "type": "25 Schedule E",
+      "updated": true
+    },
+    {
+      "type": "Brochure 2",
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/615411175181.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/070f9f118178137554a9520e.pdf",
+      "type": "27 Schedule G",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/280a224884741781112b49be.pdf",
+      "type": "28 Schedule H",
+      "updated": true
+    },
+    {
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/f89447388384371171cda92b.pdf",
+      "type": "29 Stilt Base Parking",
+      "updated": true
+    },
+    {
+      "type": "Engineer Certificate 1",
+      "link": "https://www.rera.mp.gov.in/upload/project_upload/6b3cd015133754711773007d.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    }
+  ],
+  "document_urls": [
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Brochure 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Common Area facilities 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Development work plan 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Project Specifications 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Sanction Building Plan 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Sanction Building Plan 2"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Sanction Building Plan 3"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Sanction Layout Plan 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Sanction Layout Plan 2"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Brochure 2"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Engineer Certificate 1"
+    }
+  ]
+}

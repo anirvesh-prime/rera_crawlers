@@ -1,112 +1,869 @@
 {
-  "key": "16032437746445458599",
-  "project_registration_no": "RERA-GRG-741-2020",
-  "url": "https://haryanarera.gov.in/view_project/project_preview_open/1444",
+  "key": "7072234067304281575",
+  "project_registration_no": "RERA-PKL-456-2019",
+  "url": "https://haryanarera.gov.in/view_project/project_preview_open/502",
   "state": "haryana",
   "domain": "haryanarera.gov.in",
-  "project_name": "102 EDEN ESTATE",
-  "promoter_name": "COUNTRYWIDE PROMOTERS PRIVATE LIMITED",
+  "project_name": "PROJECT AREA 11302.54 SQ. MTRS. COMMERCIAL CUM RESIDENTIAL COLONY (ROYAL RESIDENCY FARIDABAD)",
+  "promoter_name": "ROBUST BUILDWELL PVT. LTD.",
   "status_of_the_project": "ONGOING",
-  "acknowledgement_no": "GGM/415/147/2020/31 DATED 09.10.2020",
-  "project_city": "GURUGRAM",
+  "acknowledgement_no": "124 OF 2017 DATED 28.8.2017",
+  "project_city": "FARIDABAD",
   "project_state": "haryana",
   "crawl_machine_ip": "127.0.0.1",
   "machine_name": "Anirveshs-MacBook-Air.local",
   "project_location_raw": {
-    "raw_address": "SECTOR 102 & 102 A GURUGRAM",
-    "district": "GURUGRAM"
+    "taluk": "FARIDABAD",
+    "district": "FARIDABAD",
+    "raw_address": "VILLAGE BHATOLA, SECTOR 79, FARIDABAD"
+  },
+  "promoter_address_raw": {
+    "raw_address": "OMAXE CITY CENTRE SECTOR 79 FARIDABAD 121004 HARYANA"
   },
   "promoter_contact_details": {
-    "phone": "9717790021",
-    "email": "rahul.sharma@bptp.com"
+    "telephone_no": "0114189668",
+    "phone": "9876911201",
+    "email": "haryana_rera@omaxe.com",
+    "website": "http://omaxe.com"
   },
+  "bank_details": {
+    "bank_name": "YES BANK, SOUTH EX. PART -2",
+    "account_no": "1666300000105",
+    "IFSC": "YESB0000016"
+  },
+  "project_cost_detail": {
+    "total_project_cost": "17436.9 lakhs",
+    "estimated_project_cost": 1743690000,
+    "cost_of_land": 44000000,
+    "estimated_construction_cost": "14670.0 lakhs"
+  },
+  "building_details": [
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "16.17",
+      "no_of_units": "6"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "18.3",
+      "no_of_units": "6"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "19.05",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "19.32",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "19.7",
+      "no_of_units": "10"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "19.88",
+      "no_of_units": "6"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "20.35",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "22.02",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "22.3",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "22.39",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "23.04",
+      "no_of_units": "6"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "24.25",
+      "no_of_units": "4"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "25.27",
+      "no_of_units": "4"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "25.64",
+      "no_of_units": "10"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "25.73",
+      "no_of_units": "4"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "26.2",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "27.03",
+      "no_of_units": "4"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "27.5",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "27.96",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "33.91",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "34.1",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "34.37",
+      "no_of_units": "4"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "34.93",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "36.23",
+      "no_of_units": "1"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "36.33",
+      "no_of_units": "1"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "36.79",
+      "no_of_units": "6"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type 2 BHK",
+      "carpet_area": "148.64",
+      "no_of_units": "6"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type 3BHK",
+      "carpet_area": "176.98",
+      "no_of_units": "84"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type 3BHK",
+      "carpet_area": "178.84",
+      "no_of_units": "78"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type 3BHK",
+      "carpet_area": "180.70",
+      "no_of_units": "9"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type 3BHK",
+      "carpet_area": "191.38",
+      "no_of_units": "3"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type PENTHOUSE",
+      "carpet_area": "412.02",
+      "no_of_units": "3"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type PENTHOUSE",
+      "carpet_area": "414.72",
+      "no_of_units": "3"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "5.76",
+      "no_of_units": "4"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "8.18",
+      "no_of_units": "4"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "8.27",
+      "no_of_units": "1"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "9.01",
+      "no_of_units": "3"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "9.75",
+      "no_of_units": "4"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "9.94",
+      "no_of_units": "12"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "10.03",
+      "no_of_units": "1"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "10.13",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "10.22",
+      "no_of_units": "7"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "10.31",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "10.5",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "11.43",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "11.71",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "11.98",
+      "no_of_units": "1"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "12.08",
+      "no_of_units": "4"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "12.26",
+      "no_of_units": "1"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "12.91",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "13.01",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "13.19",
+      "no_of_units": "4"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "13.56",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "13.84",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "14.03",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "14.49",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "14.77",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "15.42",
+      "no_of_units": "1"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "15.89",
+      "no_of_units": "5"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "16.17",
+      "no_of_units": "6"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "18.3",
+      "no_of_units": "6"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "19.05",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "19.32",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "19.7",
+      "no_of_units": "10"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "19.88",
+      "no_of_units": "6"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "20.35",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "22.02",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "22.3",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "22.39",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "23.04",
+      "no_of_units": "6"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "24.25",
+      "no_of_units": "4"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "25.27",
+      "no_of_units": "4"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "25.64",
+      "no_of_units": "10"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "25.73",
+      "no_of_units": "4"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "26.2",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "27.03",
+      "no_of_units": "4"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "27.5",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "27.96",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "33.91",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "34.19",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "34.37",
+      "no_of_units": "4"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "34.93",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "36.23",
+      "no_of_units": "1"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "36.33",
+      "no_of_units": "1"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "36.6",
+      "no_of_units": "6"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "36.79",
+      "no_of_units": "6"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "37.35",
+      "no_of_units": "4"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "37.72",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "38",
+      "no_of_units": "1"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "39.38",
+      "no_of_units": "3"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "39.95",
+      "no_of_units": "1"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "42.83",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "44.69",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "45.23",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "53.98",
+      "no_of_units": "2"
+    },
+    {
+      "flat_type": "APARTMENT/SHOPS/OTHER BUILDINGS Type ROYAL STREET",
+      "carpet_area": "80.55",
+      "no_of_units": "4"
+    }
+  ],
   "uploaded_documents": [
     {
-      "link": "https://haryanarera.gov.in/assistancecontrol/print_quarterly_schedules/Mg==/NzQx/MjAyMA==",
+      "type": "Rera Registration Certificate 1",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://haryanarera.gov.in/assistancecontrol/print_quarterly_schedules/MQ==/NDU2/MjAxOQ==",
       "type": "Quarterly Progress Report"
     },
     {
-      "type": "Rera Registration Certificate 1",
-      "s3_link": "https://s3.example.com/dry-run"
+      "type": "COMMERCIAL SITES 1",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
-      "link": "https://haryanarera.gov.in/project/view_uploaded_Document_open/461b422733MTg1NjQ=",
+      "link": "https://haryanarera.gov.in/project/view_uploaded_Document_open/f35a57833aMzI5MQ==",
       "type": "COPY OF LICENSE ALONG WITH SCHEDULE OF LAND"
     },
     {
       "type": "LAYOUT PLAN 1",
-      "s3_link": "https://s3.example.com/dry-run"
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
-      "link": "https://haryanarera.gov.in/project/view_uploaded_Document_open/7c9f237ff4MTg1NzI=",
-      "type": "DECLARATION SUPPORTED BY AFFIDAVIT DULY SIGNED BY THE PROMOTER TO BE ENCLOSED."
-    },
-    {
-      "type": "COMMERCIAL SITES 1",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://haryanarera.gov.in/project/view_uploaded_Document_open/7a1692b43cMTg5MTU=",
+      "link": "https://haryanarera.gov.in/project/view_uploaded_Document_open/44266c275fMzI5Mw==",
       "type": "NON DEFAULT CERTIFICATE FROM A CHARTERED ACCOUNTANT"
     },
     {
-      "link": "https://haryanarera.gov.in/project/view_uploaded_Document_open/436cf8c3a3MTg5Njk=",
+      "link": "https://haryanarera.gov.in/project/view_uploaded_Document_open/2d34a7df45Mzc3Mw==",
+      "type": "DECLARATION SUPPORTED BY AFFIDAVIT DULY SIGNED BY THE PROMOTER TO BE ENCLOSED."
+    },
+    {
+      "type": "DEMARCATION PLAN 1",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "ZONING PLAN 1",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "LAYOUT PLAN 2",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://haryanarera.gov.in/project/view_uploaded_Document_open/3d5eaaf687NTgyNQ==",
       "type": "CASH FLOW STATEMENT OF THE PROPOSED PROJECT"
     },
     {
-      "link": "https://haryanarera.gov.in/project/view_uploaded_Document_open/db9009f36bMTg5MTY=",
+      "link": "https://haryanarera.gov.in/project/view_uploaded_Document_open/ae475e0a41NTg3MQ==",
+      "type": "A COMPLETE SET OF THE LAST APPROVED  BUILDING PLANS"
+    },
+    {
+      "link": "https://haryanarera.gov.in/project/view_uploaded_Document_open/d845186f6dNTgyNg==",
       "type": "CERTIFICATE FROM A CHARTERED ACCOUNTANT CERTIFYING THAT THE INFORMSTION PROVIDED BY THE APPLICANT IN FORM REP-1-C-X IS CORRECT AS PER THE BOOKS OF ACCOUNTS/ BALANCE SHEET OF THE APPLICANT"
     },
     {
-      "link": "https://haryanarera.gov.in/assistancecontrol/view_corrigendum/ODM1",
-      "type": "OC uploaded"
-    },
-    {
-      "link": "https://haryanarera.gov.in/assistancecontrol/view_corrigendum/MTQzMg==",
-      "type": "Addendum to the Registration Certificate- Changes in UD areas adjacent to additional license no. 165 of 2024 dated 28.11.2024."
+      "link": "https://haryanarera.gov.in/assistancecontrol/view_corrigendum/MTUx",
+      "type": "CORRIGENDUM"
     }
   ],
   "authorised_signatory_details": {
-    "name": "RAHUL SHARMA",
+    "name": "RITU GUPTA",
     "role": "Authorised reprsentative for correspondance with Authority",
-    "phone": "9717790021",
-    "email": "rahul.sharma@bptp.com"
+    "present_address": "Near Post Office Gupta Sotre SCF 33 Sector 16D Chandigarh Sector 15 160015",
+    "phone": "9876911201",
+    "email": "haryana_rera@omaxe.com",
+    "pan_no": "XXXX510B"
   },
   "co_promoter_details": [
     {
-      "name": "RAKESH ROSHAN",
+      "name": "PAVAN AGARWAL",
       "role": "Director 1",
-      "phone": "8800043101",
-      "email": "rakesh.roshan@bptp.com"
+      "present_address": "B.D-294 Ansal Avantika Colony Ghaziabad 201001 Uttarpradesh India",
+      "phone": "9876911201",
+      "email": "haryana_rera@omaxe.com",
+      "pan_no": "XXXX908L"
     },
     {
-      "name": "RAJEEV GUPTA",
+      "name": "DEEPAK GARG",
       "role": "Director 2",
-      "phone": "9810403257",
-      "email": "rajeev.gupta@bptp.com"
+      "present_address": "14988 Balbir Nagar Extn 60 Foot Road Shahdara Delhi 110032 Delhi India",
+      "phone": "9876911201",
+      "email": "haryana_rera@omaxe.com",
+      "pan_no": "XXXX553M"
+    },
+    {
+      "name": "RADHA SHAKTI GARG",
+      "role": "Director 3",
+      "present_address": "8731 Acharya Nagar Kanpur 208003 Uttarpradesh India",
+      "phone": "9876911201",
+      "email": "haryana_rera@omaxe.com",
+      "pan_no": "XXXX750B"
+    },
+    {
+      "name": "MANISH GARG",
+      "role": "Director 4",
+      "present_address": "Shop No- A- 22 JJ Colony DDA Market Tigri Delhi 110062 Delhi India",
+      "phone": "9876911201",
+      "email": "haryana_rera@omaxe.com",
+      "pan_no": "XXXX261Q"
+    },
+    {
+      "name": "GOPAL SINGH BISHT",
+      "role": "Director 5",
+      "present_address": "Flat No. S-1 Bld No. B-10 Ajnara Apartments DLF Dilshad Ext-2 Bhopura Sahibabad Gaziabad 201005",
+      "phone": "9876911201",
+      "email": "haryana_rera@omaxe.com",
+      "pan_no": "XXXX831N"
+    }
+  ],
+  "provided_faciltiy": [
+    {
+      "facility": "INTERNAL ROADS AND PAVEMENTS",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 35",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "WATER SUPPLY SYSTEM",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 35",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "STORM WATER DRAINAGE",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 38",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "ELECTRICITY SUPPLY SYSTEM",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 83",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "SEWAGE TREATMENT & GARBAGE DISPOSAL",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 30",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "STREET LIGHTING",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 28",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "SECURITY AND FIRE FIGHTING",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 44",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "PLAYGROUNDS AND PARKS",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 35",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "CLUB HOUSE/COMMUNITY CENTRE",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 0",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "SHOPPING AREA",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 0",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "RENEWABLE ENERGY SYSTEM",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 0",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "SCHOOL",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 0",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "HOSPITAL/DISPENSARY",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 0",
+      "status": "YET TO BE PREPARED"
+    },
+    {
+      "facility": "ANY OTHER",
+      "description": "Estimated cost (In Lakhs)(Within the project area only): 0",
+      "status": "YET TO BE PREPARED"
+    }
+  ],
+  "construction_progress": [
+    {
+      "title": "total_completion_percentage",
+      "progress_percentage": 85
     }
   ],
   "members_details": {
-    "name": "RAHUL BHATNAGAR",
-    "phone": "9810163594",
-    "position": "Contact person at site office"
+    "name": "PREM SINGH DAGAR",
+    "phone": "9999999815",
+    "position": "Contact person"
   },
   "data": {
     "govt_type": "state",
-    "is_processed": false
+    "is_processed": false,
+    "rc": "https://haryanarera.gov.in/view_project/view_certificate/NzA=",
+    "qp_url": "https://haryanarera.gov.in/assistancecontrol/print_quarterly_schedules/MQ==/NDU2/MjAxOQ==",
+    "land_area_unit": "Sqr/mtrs",
+    "construction_area_unit": "Square Meters"
   },
   "promoters_details": {
-    "name": "COUNTRYWIDE PROMOTERS PRIVATE LIMITED"
+    "name": "ROBUST BUILDWELL PRIVATE LIMITED",
+    "pan_no": "XXXX560L"
   },
+  "status_update": [
+    {
+      "date_of_reporting": "2018-12-31 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2019-03-31 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2019-06-30 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2019-09-30 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2019-12-31 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2020-03-31 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2020-06-30 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2020-09-30 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2020-12-31 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2021-03-31 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2021-06-30 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2021-09-30 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2021-12-31 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2022-03-31 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2022-06-30 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2022-09-30 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2022-12-31 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2023-03-31 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2023-06-30 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2023-09-30 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2023-12-31 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2024-03-31 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2024-06-30 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2024-09-30 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2024-12-31 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2025-03-31 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2025-06-30 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2025-09-30 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2025-12-31 00:00:00+00:00",
+      "updated": true
+    },
+    {
+      "date_of_reporting": "2026-03-31 00:00:00+00:00",
+      "updated": true
+    }
+  ],
   "land_area_details": {
-    "land_area": "126.674",
-    "land_area_unit": "Sqr/mtrs"
+    "land_area": "11302.54",
+    "land_area_unit": "Sqr/mtrs",
+    "construction_area": 4597.513,
+    "construction_area_unit": "Square Meters"
   },
-  "submitted_date": "2020-09-11 12:18:20+00:00",
-  "estimated_finish_date": "2024-04-30 00:00:00+00:00",
-  "number_of_residential_units": 808,
+  "submitted_date": "2019-06-14 11:25:50+00:00",
+  "estimated_commencement_date": "2018-08-01 00:00:00+00:00",
+  "estimated_finish_date": "2021-07-30 00:00:00+00:00",
+  "actual_finish_date": "2021-06-30 00:00:00+00:00",
+  "number_of_residential_units": 381,
   "config_id": 11813,
-  "land_area": 126.674,
+  "land_area": 11302.54,
+  "construction_area": 4597.513,
   "is_updated": false,
   "is_duplicate": false,
   "iw_processed": false,
@@ -114,20 +871,65 @@
   "rera_housing_found": false,
   "is_live": false,
   "alternative_rera_ids": [
-    "granted"
+    "17 of 2012 dated 02.03.2012 AND 62 of 2012 dated 15.06.2012"
   ],
   "document_urls": [
     {
       "link": "https://s3.example.com/dry-run",
+      "updated": true,
       "type": "Rera Registration Certificate 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "COMMERCIAL SITES 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
       "type": "LAYOUT PLAN 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "COMMERCIAL SITES 1"
+      "updated": true,
+      "type": "DEMARCATION PLAN 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "ZONING PLAN 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "LAYOUT PLAN 2"
     }
-  ]
+  ],
+  "project_type": null,
+  "project_pin_code": null,
+  "last_modified": null,
+  "actual_commencement_date": null,
+  "approved_on_date": null,
+  "past_experience_of_promoter": null,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "number_of_commercial_units": null,
+  "complaints_litigation_details": null,
+  "project_description": null,
+  "professional_information": null,
+  "development_agreement_detail": null,
+  "land_detail": null,
+  "retrieved_on": null,
+  "last_updated": null,
+  "updated_fields": null,
+  "project_images": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": null,
+  "iw_part_processed": null,
+  "last_crawled_date": null,
+  "doc_ocr_url": null,
+  "proposed_timeline": null,
+  "checked_updates_date": null
 }

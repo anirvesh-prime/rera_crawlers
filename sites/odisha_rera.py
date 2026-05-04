@@ -251,11 +251,44 @@ _FINANCIAL_LABEL_MAP: dict[str, str] = {
 # Keep backward-compatible set for lookup
 _FINANCIAL_KEYS = set(_FINANCIAL_LABEL_MAP)
 
+# Maps Odisha bank fieldset label text → normalized key
+# Actual labels observed on rera.odisha.gov.in bank fieldsets:
+#   "A/C Holder Name", "A/C Number", "Branch Name", "Telephone No. of Branch", "Mobile No."
+_BANK_LABEL_MAP: dict[str, str] = {
+    # Account holder / name
+    "A/C Holder Name":            "account_name",
+    "Account Holder Name":        "account_name",
+    "Account Name":               "account_name",
+    # Account number
+    "A/C Number":                 "account_no",
+    "Account No.":                "account_no",
+    "Account Number":             "account_no",
+    # IFSC
+    "IFSC Code":                  "IFSC",
+    "IFSC":                       "IFSC",
+    # Bank name
+    "Bank Name":                  "bank_name",
+    # Branch
+    "Branch Name":                "branch",
+    "Branch":                     "branch",
+    "Branch Address":             "branch",
+    # Phone / mobile
+    "Mobile No.":                 "phone",
+    "Mobile":                     "phone",
+    # Telephone (landline)
+    "Telephone No. of Branch":    "telephone_no",
+    "Telephone No.":              "telephone_no",
+    "Telephone":                  "telephone_no",
+    "Tel. No.":                   "telephone_no",
+    "Landline":                   "telephone_no",
+}
+
 
 def _parse_unit_table(soup: BeautifulSoup) -> list[dict]:
-    """Parse the flat/unit inventory table from the overview tab.
+    """Parse the flat/unit inventory table from the overview or status-update tab.
 
-    Returns a list of unit dicts with keys flat_name, flat_type, carpet_area.
+    Returns a list of unit dicts with keys flat_name, flat_type, carpet_area,
+    and optionally balcony_area.
     """
     units: list[dict] = []
     for table in soup.find_all("table"):
@@ -276,6 +309,8 @@ def _parse_unit_table(soup: BeautifulSoup) -> list[dict]:
                 idx["flat_type"] = i
             elif "carpet" in h:
                 idx["carpet_area"] = i
+            elif "balcony" in h or "terrace" in h:
+                idx["balcony_area"] = i
         if len(idx) < 2:
             continue
         for tr in table.find_all("tr")[1:]:
@@ -291,6 +326,129 @@ def _parse_unit_table(soup: BeautifulSoup) -> list[dict]:
         if units:
             break
     return units
+
+
+def _parse_timeline_table(soup: BeautifulSoup) -> list[dict]:
+    """Parse the construction milestone / timeline table from the Status Update tab.
+
+    Returns a list of dicts with keys: title, status, proposed_end_date.
+    """
+    milestones: list[dict] = []
+    for table in soup.find_all("table"):
+        headers_raw = [th.get_text(strip=True).lower() for th in table.find_all("th")]
+        if not headers_raw:
+            first_tr = table.find("tr")
+            if first_tr:
+                headers_raw = [td.get_text(strip=True).lower() for td in first_tr.find_all("td")]
+        joined = " ".join(headers_raw)
+        if not any(w in joined for w in ("activity", "milestone", "phase", "stage",
+                                         "proposed", "completion", "progress")):
+            continue
+        idx: dict[str, int] = {}
+        for i, h in enumerate(headers_raw):
+            if any(w in h for w in ("activity", "milestone", "stage", "title",
+                                    "phase", "work", "description")):
+                idx["title"] = i
+            elif "status" in h:
+                idx["status"] = i
+            elif "actual" in h:
+                # "Actual date of completion" — keep separately; don't let it
+                # overwrite the scheduled/proposed date column.
+                idx.setdefault("actual_end_date", i)
+            elif any(w in h for w in ("proposed", "scheduled", "end date", "date")):
+                # Prefer "scheduled"/"proposed" col; only set once.
+                idx.setdefault("proposed_end_date", i)
+        if "title" not in idx:
+            continue
+        for tr in table.find_all("tr")[1:]:
+            cells = tr.find_all("td")
+            row: dict = {}
+            for field, i in idx.items():
+                if i < len(cells):
+                    v = cells[i].get_text(strip=True)
+                    if v:
+                        row[field] = v
+            if row:
+                milestones.append(row)
+        if milestones:
+            break
+    return milestones
+
+
+def _parse_booking_status_cards(soup: BeautifulSoup) -> list[dict]:
+    """Parse the Booking Status tab's card-based unit/floor layout.
+
+    The tab renders a <table> where each <tr> represents one floor.
+    Within each row, unit cards (div.card.green-card) hold the type,
+    carpet area, balcony area, and unit number (flat_name).
+    Parking tooltip sub-tables (class="tooltip-table") are ignored.
+    """
+    units: list[dict] = []
+    for tr in soup.find_all("tr"):
+        floor_span = tr.find("span", class_=lambda c: c and "plot-floor" in c)
+        if not floor_span:
+            continue
+        for green_card in tr.find_all("div", class_=lambda c: c and "green-card" in c):
+            # Skip cards embedded inside parking tooltip tables
+            if green_card.find_parent("table", class_=lambda c: c and "tooltip-table" in c):
+                continue
+            header_div = green_card.find("div", class_="card-header")
+            body_div   = green_card.find("div", class_="card-body")
+            footer_div = green_card.find("div", class_="card-footer")
+
+            flat_type    = header_div.get_text(strip=True) if header_div else ""
+            flat_name    = footer_div.get_text(strip=True) if footer_div else ""
+            carpet_area  = ""
+            balcony_area = ""
+
+            if body_div:
+                for label_div in body_div.find_all("div", class_="details-label"):
+                    # Skip labels inside parking tooltip sub-tables only.
+                    # The booking-status layout is itself a <table>, so we must
+                    # NOT use a bare find_parent("table") — that would skip all
+                    # detail labels.  Only skip the tooltip-table variant.
+                    if label_div.find_parent("table", class_=lambda c: c and "tooltip-table" in c):
+                        continue
+                    lbl = label_div.get_text(strip=True)
+                    val_div = label_div.find_next_sibling("div")
+                    val = val_div.get_text(strip=True) if val_div else ""
+                    lbl_lower = lbl.lower()
+                    if lbl in ("CA", "A") or "carpet" in lbl_lower:
+                        carpet_area = val
+                    elif lbl in ("B/V A", "TA") or "balcony" in lbl_lower or "terrace" in lbl_lower or "veranda" in lbl_lower:
+                        balcony_area = val
+
+            entry: dict = {}
+            if flat_name:
+                entry["flat_name"] = flat_name
+            if flat_type:
+                entry["flat_type"] = flat_type
+            if carpet_area:
+                entry["carpet_area"] = carpet_area
+            if balcony_area:
+                entry["balcony_area"] = balcony_area
+            if entry:
+                units.append(entry)
+    return units
+
+
+def _parse_status_update_tab(soup: BeautifulSoup) -> dict:
+    """Parse a status-related tab (Booking Status or Project Milestone).
+
+    When given the Booking Status HTML, returns building_details via card parser.
+    When given the Project Milestone HTML, returns proposed_timeline via table parser.
+    Combines both if the soup contains data for both (legacy compatibility).
+    """
+    out: dict = {}
+    unit_rows = _parse_booking_status_cards(soup)
+    if not unit_rows:                     # fallback to table-based parser
+        unit_rows = _parse_unit_table(soup)
+    if unit_rows:
+        out["building_details"] = unit_rows
+    timeline = _parse_timeline_table(soup)
+    if timeline:
+        out["proposed_timeline"] = timeline
+    return out
 
 
 def _parse_overview(soup: BeautifulSoup) -> dict:
@@ -327,41 +485,49 @@ def _parse_overview(soup: BeautifulSoup) -> dict:
     if loc_val:
         out["project_location_raw"] = {"raw_address": loc_val}
 
-    # ── Land details — parse Plot No / Khata No table rows ──────────────────
-    # Some projects embed land parcel info in the overview as a table
+    # ── Land details — parse Plot fieldsets (label→strong / label→a) ──────────
+    # The Odisha RERA site renders land parcels as <fieldset> blocks with
+    # <legend>Plot N</legend>.  Each plot's fields are label-control → <strong>
+    # pairs, and document links (ROR, Encumbrance Certificate) are <a href>.
     land_rows: list[dict] = []
-    for table in soup.find_all("table"):
-        headers_raw = [th.get_text(strip=True).lower() for th in table.find_all("th")]
-        if not headers_raw:
-            first_tr = table.find("tr")
-            if first_tr:
-                headers_raw = [td.get_text(strip=True).lower() for td in first_tr.find_all("td")]
-        hset = set(headers_raw)
-        if not ({"plot", "khata", "survey"} & hset or
-                any("plot" in h or "khata" in h or "survey" in h for h in hset)):
+    for fieldset in soup.find_all("fieldset"):
+        legend = fieldset.find("legend")
+        if not legend:
             continue
-        idx_land: dict[str, int] = {}
-        for i, h in enumerate(headers_raw):
-            if "plot" in h:
-                idx_land["plot_no"] = i
-            elif "khata" in h:
-                idx_land["khata_no"] = i
-            elif "survey" in h:
-                idx_land["survey_no"] = i
-            elif "area" in h:
-                idx_land["area"] = i
-        if not idx_land:
+        if not re.match(r"Plot\s+\d+", legend.get_text(strip=True), re.IGNORECASE):
             continue
-        for tr in table.find_all("tr")[1:]:
-            cells = tr.find_all("td")
-            row: dict = {}
-            for field, i in idx_land.items():
-                if i < len(cells):
-                    v = cells[i].get_text(strip=True)
-                    if v and v != "--":
-                        row[field] = v
-            if row:
-                land_rows.append(row)
+        row: dict = {}
+        for div in fieldset.find_all("div", class_=lambda c: c and "details-project" in c):
+            label = div.find("label", class_="label-control")
+            if not label:
+                continue
+            lbl_txt = label.get_text(strip=True).lower().rstrip(".")
+            # Text value in <strong>
+            val_el  = div.find("strong")
+            val     = val_el.get_text(strip=True) if val_el else ""
+            # Document link in <a href>
+            link_el = div.find("a", href=True)
+            link    = link_el["href"] if link_el else ""
+            if "plot no" in lbl_txt:
+                if val:  row["plot_no"] = val
+            elif "mouza" in lbl_txt or "mauza" in lbl_txt:
+                if val:  row["mouza"] = val
+            elif "khata" in lbl_txt:
+                if val:  row["khata_no"] = val
+            elif "plot area" in lbl_txt:
+                if val:  row["plot_area"] = val
+            elif "kisama" in lbl_txt or "land type" in lbl_txt or "registration place" in lbl_txt:
+                if val:  row["registration_place"] = val
+            elif "encumbrance certificate" in lbl_txt:
+                if link: row["any_encumbrance"] = link
+            elif lbl_txt == "ror" or "record of right" in lbl_txt:
+                if link: row["ror_doc"] = link
+            elif "plot fully" in lbl_txt:
+                if val:  row["plot_fully_included"] = val
+            elif "encumbrance over" in lbl_txt:
+                if val:  row["encumbrance_over_plot"] = val
+        if row:
+            land_rows.append(row)
     if land_rows:
         out["land_detail"] = land_rows
 
@@ -441,7 +607,18 @@ def _parse_promoter_tab(soup: BeautifulSoup) -> dict:
     company   = labels.get("Company Name")
     gst_no    = labels.get("GST No.")
     entity    = labels.get("Entity")
-    reg_no    = labels.get("Registration No.") or labels.get("Registration No")
+    # Collect ALL "Registration No." label values (company reg + previous RERA
+    # reg nos all use the same label text on the promoter tab).  Concatenate
+    # them with a space to match the expected schema format.
+    _reg_nos: list[str] = []
+    for _lbl in soup.find_all("label", class_="label-control"):
+        if _lbl.get_text(strip=True) in ("Registration No.", "Registration No"):
+            _sib = _lbl.find_next_sibling("strong") or _lbl.find_next_sibling("span")
+            if _sib:
+                _v = _sib.get_text(strip=True)
+                if _v and _v != "--":
+                    _reg_nos.append(_v)
+    reg_no = " ".join(_reg_nos) if _reg_nos else None
     if company:
         out["promoter_name"] = company
     promoters: dict = {}
@@ -449,16 +626,27 @@ def _parse_promoter_tab(soup: BeautifulSoup) -> dict:
                  "registration_no": reg_no}.items():
         if v:
             promoters[k] = v
+    # Capture registration certificate document link if present on the promoter tab
+    for lbl_tag in soup.find_all("label", class_="label-control"):
+        lbl_txt = lbl_tag.get_text(strip=True).lower()
+        if "registration" in lbl_txt and "cert" in lbl_txt:
+            a_tag = lbl_tag.find_next("a", href=True)
+            if a_tag and "reraapps" in a_tag.get("href", ""):
+                promoters["registration_certificate"] = a_tag["href"]
+                break
     if promoters:
         out["promoters_details"] = promoters
 
     # ── Contact ───────────────────────────────────────────────────────────────
     email  = labels.get("Email Id") or labels.get("Email")
     mobile = labels.get("Mobile") or labels.get("Mobile Number")
-    if email or mobile:
-        out["promoter_contact_details"] = {
-            k: v for k, v in {"email": email, "phone": mobile}.items() if v
-        }
+    tel_no = (labels.get("Telephone No.") or labels.get("Telephone")
+              or labels.get("Tel. No.") or labels.get("Landline"))
+    contact: dict = {k: v for k, v in {"email": email, "phone": mobile}.items() if v}
+    if tel_no:
+        contact["telephone_no"] = tel_no
+    if contact:
+        out["promoter_contact_details"] = contact
 
     # ── Address ───────────────────────────────────────────────────────────────
     # For company promoters: "Registered Office Address" / "Correspondence Office Address"
@@ -470,9 +658,8 @@ def _parse_promoter_tab(soup: BeautifulSoup) -> dict:
                  or labels.get("Correspondence Address")
                  or labels.get("Permanent Address")
                  or labels.get("Address"))
-    # Don't double-count if the same value was already found under reg_addr
-    if corr_addr and corr_addr == reg_addr:
-        corr_addr = None
+    # Always include correspondence_address even if it matches registered_address —
+    # both fields are expected in the output schema.
     if reg_addr or corr_addr:
         out["promoter_address_raw"] = {
             k: v for k, v in {
@@ -482,23 +669,39 @@ def _parse_promoter_tab(soup: BeautifulSoup) -> dict:
         }
 
     # ── Board members / co-promoters ──────────────────────────────────────────
+    # Card layout: <h5> name, <p> role, then <strong> email, <strong> phone.
+    # Only entries that have a role text or a reraapps photo are actual persons;
+    # this filters out raw company-info rows and previous-project table rows that
+    # share the same col-md container class.
     board: list[dict] = []
     for card in soup.find_all("div", class_=lambda c: c and "col-md" in c):
         strongs = [s.get_text(strip=True) for s in card.find_all("strong")]
         texts   = [p.get_text(strip=True) for p in card.find_all("p") if p.get_text(strip=True)]
-        if len(strongs) >= 2 and len(texts) >= 1:
-            entry: dict = {"name": strongs[0]}
-            if texts:
-                entry["role"] = texts[0]
-            if len(strongs) > 1 and strongs[1]:
-                entry["email"] = strongs[1]
-            if len(strongs) > 2 and strongs[2]:
-                entry["phone"] = strongs[2]
-            # Capture photo if present (img or a link)
-            img = card.find("img", src=True)
-            if img and "reraapps" in img.get("src", ""):
-                entry["photo"] = img["src"]
+        # Name lives in <h5> or <h4>/<h6>; fall back to first <strong> only
+        # when no heading is found (older page variants)
+        name_tag = card.find("h5") or card.find("h4") or card.find("h6")
+        name     = name_tag.get_text(strip=True) if name_tag else ""
+        if not name and strongs:
+            name = strongs[0]
+            strongs = strongs[1:]   # already consumed as name
+        if not name and not strongs:
+            continue
+        entry: dict = {"name": name} if name else {}
+        if texts:
+            entry["role"] = texts[0]
+        # With the heading holding the name, strongs[0]=email, strongs[1]=phone
+        if len(strongs) > 0 and strongs[0]:
+            entry["email"] = strongs[0]
+        if len(strongs) > 1 and strongs[1]:
+            entry["phone"] = strongs[1]
+        # Capture photo if present
+        img = card.find("img", src=True)
+        if img and "reraapps" in img.get("src", ""):
+            entry["photo"] = img["src"]
+        if entry:
             board.append(entry)
+    # Keep only genuine person entries (have a role or a reraapps photo)
+    board = [e for e in board if e.get("role") or e.get("photo")]
     if board:
         out["co_promoter_details"] = board
 
@@ -621,15 +824,32 @@ def _open_detail_page(page: Page, reg: str, logger: CrawlerLogger) -> bool:
 
 
 def _parse_bank_accounts(soup: BeautifulSoup) -> list[dict]:
-    """Parse the bank account fieldsets (Master, RERA Designated, Promoter)."""
+    """Parse the bank account fieldsets (Master, RERA Designated, Promoter).
+
+    Only fieldsets whose legend contains 'account' are treated as bank entries;
+    land plot fieldsets (Plot 1, Plot 2, …) are skipped.  Raw label text is
+    normalised through _BANK_LABEL_MAP so the output matches the schema keys.
+    """
     accounts: list[dict] = []
     for fieldset in soup.find_all("fieldset"):
         legend = fieldset.find("legend")
         if not legend:
             continue
-        vals = {k: v for k, v in _parse_label_values(fieldset).items() if v}
-        if vals:
-            accounts.append({"account_type": legend.get_text(strip=True), **vals})
+        legend_text = legend.get_text(strip=True)
+        # Skip land plot fieldsets
+        if re.match(r"Plot\s+\d+", legend_text, re.IGNORECASE):
+            continue
+        # Only process bank-related fieldsets
+        if "account" not in legend_text.lower():
+            continue
+        raw_vals = _parse_label_values(fieldset)
+        normalized: dict = {}
+        for label, val in raw_vals.items():
+            if val:
+                key = _BANK_LABEL_MAP.get(label, label)
+                normalized[key] = val
+        if normalized:
+            accounts.append(normalized)
     return accounts
 
 
@@ -637,18 +857,64 @@ def _parse_bank_accounts(soup: BeautifulSoup) -> list[dict]:
 # ── Sentinel check ────────────────────────────────────────────────────────────
 
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger, page: Page) -> bool:
+    """
+    Data-quality sentinel for Odisha RERA.
+    Loads state_projects_sample/odisha.json as the baseline, navigates to the
+    sentinel project's detail page via the supplied Playwright page, parses the
+    Overview tab, and verifies ≥ 80% field coverage.
+    """
+    import json as _json
+    import os as _os
+    from core.sentinel_utils import check_field_coverage
+
     sentinel_reg = config.get("sentinel_registration_no", "")
     if not sentinel_reg:
-        logger.warning("No sentinel configured — skipping")
+        logger.warning("No sentinel_registration_no configured — skipping", step="sentinel")
         return True
-    key = generate_project_key(sentinel_reg)
-    if not get_project_by_key(key):
-        logger.warning("Sentinel not in DB yet — skipping check")
+
+    sample_path = _os.path.join(
+        _os.path.dirname(_os.path.dirname(__file__)),
+        "state_projects_sample", "odisha.json",
+    )
+    try:
+        with open(sample_path) as fh:
+            baseline: dict = _json.load(fh)
+    except FileNotFoundError:
+        logger.warning("Sample baseline not found — skipping coverage check",
+                       path=sample_path, step="sentinel")
         return True
-    if sentinel_reg not in page.content():
-        logger.error("Sentinel not found on listing page", reg=sentinel_reg)
+
+    detail_url = baseline.get("url", "")
+    if not detail_url or "project-details" not in detail_url:
+        logger.warning("Sentinel: no valid detail URL in sample — skipping", step="sentinel")
+        return True
+
+    logger.info(f"Sentinel: navigating to detail for {sentinel_reg}",
+                url=detail_url, step="sentinel")
+    try:
+        page.goto(detail_url, wait_until="networkidle", timeout=40_000)
+        _wait_for_loaders(page)
+        soup  = BeautifulSoup(page.content(), "lxml")
+        fresh = _parse_overview(soup)
+        fresh.pop("_doc_links", None)
+        fresh.pop("data", None)
+    except Exception as exc:
+        logger.error(f"Sentinel: navigation/parse error — {exc}", step="sentinel")
         return False
-    logger.info("Sentinel check passed", reg=sentinel_reg)
+
+    if not fresh:
+        logger.error("Sentinel: no data extracted", url=detail_url, step="sentinel")
+        return False
+
+    if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
+        insert_crawl_error(
+            run_id, config.get("id", "odisha_rera"),
+            "SENTINEL_FAILED",
+            f"Coverage below 80% for sentinel project {sentinel_reg}",
+        )
+        return False
+
+    logger.info("Sentinel check passed", reg=sentinel_reg, step="sentinel")
     return True
 
 
@@ -706,14 +972,17 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
         page    = browser.new_page()
+
+        # ── Sentinel health check ────────────────────────────────────────────
+        if not _sentinel_check(config, run_id, logger, page):
+            logger.error("Sentinel failed — aborting crawl", step="sentinel")
+            counts["error_count"] += 1
+            browser.close()
+            return counts
+
         page.goto(LISTING_URL, wait_until="networkidle", timeout=40000)
         page.wait_for_timeout(5000)
         _dismiss_modal(page)
-
-        if not _sentinel_check(config, run_id, logger, page):
-            insert_crawl_error(run_id, site_id, "SENTINEL_FAILED", "Sentinel check failed")
-            browser.close()
-            return counts
 
         page_num = 1
         while True:
@@ -796,6 +1065,51 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     except Exception as e:
                         logger.warning(f"Promoter tab failed for {reg}: {e}")
 
+                    # ── Parse Booking Status tab (unit/flat inventory) ────
+                    status_update_data: dict = {}
+                    try:
+                        _dismiss_modal(page)
+                        page.click("text=Booking Status", timeout=8000)
+                        page.wait_for_timeout(3000)
+                        try:
+                            page.wait_for_load_state("networkidle", timeout=8000)
+                        except Exception:
+                            pass
+                        # Scroll to trigger lazy-rendering of all floor cards
+                        for _pct in (0.3, 0.6, 1.0):
+                            page.evaluate(
+                                f"window.scrollTo(0, document.body.scrollHeight * {_pct})"
+                            )
+                            page.wait_for_timeout(400)
+                        units = _parse_booking_status_cards(
+                            BeautifulSoup(page.content(), "lxml")
+                        )
+                        if units:
+                            status_update_data["building_details"] = units
+                    except Exception as e:
+                        logger.warning(f"Booking Status tab failed for {reg}: {e}")
+
+                    # ── Parse Project Milestone tab (construction timeline) ─
+                    try:
+                        _dismiss_modal(page)
+                        page.click("text=Project Milestone", timeout=8000)
+                        page.wait_for_timeout(3000)
+                        try:
+                            page.wait_for_load_state("networkidle", timeout=8000)
+                        except Exception:
+                            pass
+                        # Extra scroll to trigger any lazy-loaded milestone rows
+                        # (Angular may populate date cells after the initial render)
+                        _scroll_full(page)
+                        page.wait_for_timeout(1000)
+                        milestones = _parse_timeline_table(
+                            BeautifulSoup(page.content(), "lxml")
+                        )
+                        if milestones:
+                            status_update_data["proposed_timeline"] = milestones
+                    except Exception as e:
+                        logger.warning(f"Project Milestone tab failed for {reg}: {e}")
+
                     # ── Parse Documents tab ───────────────────────────────
                     try:
                         _dismiss_modal(page)
@@ -811,9 +1125,17 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     except Exception as e:
                         logger.warning(f"Documents tab failed for {reg}: {e}")
 
+                    # ── Normalize registration cert label ─────────────────
+                    # The detail page may label the cert "Registration Certificate"
+                    # (from a label-control tag on the overview).  Normalise to the
+                    # canonical schema name so document_urls includes it correctly.
+                    for _doc in doc_links:
+                        if _doc.get("label", "").strip().lower() == "registration certificate":
+                            _doc["label"] = "RERA Registration Certificate 1"
+
                     # ── Add registration cert from listing card ───────────
                     if card.get("cert_url"):
-                        cert_doc = {"label": "registration_certificate", "url": card["cert_url"]}
+                        cert_doc = {"label": "RERA Registration Certificate 1", "url": card["cert_url"]}
                         if cert_doc["url"] not in {d["url"] for d in doc_links}:
                             doc_links.insert(0, cert_doc)
 
@@ -863,6 +1185,23 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     card_data      = {k: v for k, v in card.items()
                                       if k not in ("cert_url", "phone") and v is not None}
 
+                    # Derive project_location for the data blob
+                    _proj_loc_raw = overview_data.get("project_location_raw")
+                    _project_location = (
+                        _proj_loc_raw.get("raw_address")
+                        if isinstance(_proj_loc_raw, dict) else None
+                    )
+
+                    # Determine regis_cert URL: prefer direct card cert_url (from
+                    # listing page icon); fall back to the resolved RERA Registration
+                    # Certificate doc link (for dry-run / direct-URL mode).
+                    _regis_cert = card.get("cert_url")
+                    if not _regis_cert:
+                        for _doc in doc_links:
+                            if _doc.get("label", "").lower() == "rera registration certificate 1":
+                                _regis_cert = _doc.get("url")
+                                break
+
                     data: dict = {
                         "key":              key,
                         "state":            config["state"],
@@ -879,8 +1218,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         "data": merge_data_sections(
                             # PROD-compatible metadata — must be first so raw sections don't overwrite
                             {
-                                "govt_type":   "state",
-                                "is_processed": False,
+                                "govt_type":        "state",
+                                "is_processed":     False,
+                                "regis_cert":       _regis_cert,
+                                "project_location": _project_location,
                             },
                             {
                                 "source_url": detail_url,
@@ -891,6 +1232,17 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                             {"promoter_tab": promoter.get("_raw")} if promoter.get("_raw") else None,
                         ),
                     }
+
+                    # ── Merge Status Update tab data ──────────────────────
+                    # building_details and proposed_timeline from Status Update
+                    # override overview values when present; also stored as
+                    # status_update for downstream change-detection.
+                    if status_update_data:
+                        if "building_details" in status_update_data:
+                            data["building_details"] = status_update_data["building_details"]
+                        if "proposed_timeline" in status_update_data:
+                            data["proposed_timeline"] = status_update_data["proposed_timeline"]
+                        data["status_update"] = [status_update_data]
                     if card.get("phone"):
                         existing_contact = data.get("promoter_contact_details")
                         if isinstance(existing_contact, dict):

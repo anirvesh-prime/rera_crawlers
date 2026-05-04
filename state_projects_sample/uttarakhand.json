@@ -76,8 +76,7 @@
   "data": {
     "govt_type": "state",
     "raw_address": "Village Jawalapur , Tehsil Jawalapur, Haridwar,Haridwar, Uttarakhand",
-    "is_processed": false,
-    "land_area_unit": "Plotted Development",
+    "land_area_unit": "sq Mt.",
     "construction_area_unit": "sq Mt."
   },
   "promoters_details": null,
@@ -115,8 +114,8 @@
   "iw_processed": true,
   "last_crawled_date": "2026-04-21 20:04:55.991773+00:00",
   "land_area_details": {
-    "land_area": "Plotted",
-    "land_area_unit": "Plotted Development",
+    "land_area": "13660.0",
+    "land_area_unit": "sq Mt.",
     "construction_area": "0.0",
     "construction_area_unit": "sq Mt."
   },

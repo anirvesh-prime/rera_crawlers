@@ -1,35 +1,150 @@
 {
-  "key": "10597149491446115799",
-  "project_registration_no": "PRTR01200001",
-  "url": "https://reraonline.tripura.gov.in/viewProjectDetailPage?projectID=01200001",
+  "key": "1731382315881895046",
+  "project_registration_no": "PRTR03240386",
+  "url": "https://reraonline.tripura.gov.in/viewProjectDetailPage?projectID=386",
   "state": "tripura",
   "domain": "reraonline.tripura.gov.in",
-  "project_name": "PARIJAAT",
-  "project_type": "Residential/Group Housing",
-  "promoter_name": "CROSS COUNTRY PROJECTS",
+  "project_name": "Roodraksh Pearl",
+  "project_type": "Mixed Development",
+  "promoter_name": "Roodraksh Realtors",
+  "status_of_the_project": "New Project Launch",
   "project_state": "Tripura",
+  "project_description": "B+G+9 Building ,3BHK=57 Nos ,2BHK=39 Nos ,1BHK=9 nos and 2 Nos commercial Space",
   "crawl_machine_ip": "127.0.0.1",
   "machine_name": "Anirveshs-MacBook-Air.local",
   "project_location_raw": {
-    "raw_address": "103, Parijaat, Cross Country Projects, Near Tripura University, Suryamani Nagar, Babul Chowmuhani, Agartala - 799130 , Babul Chowmuhani, Sadar,West Tripura, Tripura"
+    "raw_address": "S.D.O Chowmuhani ,Chanmari",
+    "district": "Tripura",
+    "taluk": "West Tripura",
+    "has_same_data": true
   },
+  "promoter_contact_details": {
+    "email": "rajeev@prozone.in",
+    "phone": "9862184953"
+  },
+  "professional_information": [
+    {
+      "role": "Architects",
+      "name": "Sanyam Surana",
+      "email": "Sanyam.surana@outlook.com",
+      "address": "Surana Bhawan, Tokobari Road,Guwahati,Kamrup Metropolitan,Assam",
+      "has_same_data": true
+    },
+    {
+      "role": "Structural Engineers",
+      "name": "Er. Amarjit Sau",
+      "email": "virajee.agt@gmail.com",
+      "address": "M.G. Bazar,Near V2 mall,Ramthakur Sangha,Agartala,West Tripura,Tripura",
+      "has_same_data": true
+    }
+  ],
+  "members_details": [
+    {
+      "name": "Sanjay Chhabra",
+      "position": "Board Member",
+      "phone": "9435012011",
+      "email": "chhbrasanjay2000@gmail.com",
+      "has_same_data": true
+    },
+    {
+      "name": "Rajeev Sanchet",
+      "position": "Board Member",
+      "phone": "9401411111",
+      "email": "rajeev@prozone.in",
+      "has_same_data": true
+    }
+  ],
   "data": {
-    "govt_type": "state"
-  },
-  "promoters_details": {
-    "name": "CROSS COUNTRY PROJECTS"
-  },
-  "land_area_details": {
-    "land_area": "1417.0",
-    "land_area_unit": "sq Mtr",
+    "govt_type": "state",
+    "raw_address": "S.D.O Chowmuhani ,Chanmari",
+    "land_area_unit": "sq ft",
     "construction_area_unit": "Sq Mtr"
   },
+  "promoters_details": {
+    "name": "Roodraksh Realtors"
+  },
+  "land_area_details": {
+    "land_area": "3856.97",
+    "land_area_unit": "sq ft",
+    "construction_area": "14210.69",
+    "construction_area_unit": "Sq Mtr"
+  },
+  "submitted_date": "2024-03-16 17:38:42+00:00",
+  "estimated_commencement_date": "2023-12-20 00:00:00+00:00",
+  "estimated_finish_date": "2026-12-28 00:00:00+00:00",
+  "number_of_residential_units": 105,
   "config_id": 11807,
-  "land_area": 1417.0,
+  "land_area": 3856.97,
+  "construction_area": 14210.69,
   "is_updated": false,
   "is_duplicate": false,
   "iw_processed": false,
   "checked_updates": false,
   "rera_housing_found": false,
-  "is_live": true
+  "is_live": true,
+  "project_images": [
+    "https://reraonline.tripura.gov.in/resources/images/face-book.jpg",
+    "https://reraonline.tripura.gov.in/resources/images/linkedin.jpg",
+    "https://reraonline.tripura.gov.in/reraimage?IMG_ID=11487",
+    "https://reraonline.tripura.gov.in/reraimage?IMG_ID=11514"
+  ],
+  "uploaded_documents": [
+    {
+      "link": "https://reraonline.tripura.gov.in/resources/staticpage/FAQ.pdf",
+      "type": "FAQ"
+    },
+    {
+      "link": "https://reraonline.tripura.gov.in/resources/staticpage/Form_B.pdf",
+      "type": "Form B"
+    },
+    {
+      "link": "https://reraonline.tripura.gov.in/download?DOC_ID=11490",
+      "type": "Sanjay K. Chhabra.jpeg"
+    },
+    {
+      "link": "https://reraonline.tripura.gov.in/download?DOC_ID=11489",
+      "type": "Rajeev San..jpeg"
+    },
+    {
+      "link": "https://reraonline.tripura.gov.in/download?DOC_ID=",
+      "type": "document"
+    }
+  ],
+  "document_urls": null,
+  "acknowledgement_no": null,
+  "project_pin_code": null,
+  "project_city": null,
+  "promoter_address_raw": null,
+  "last_modified": null,
+  "actual_commencement_date": null,
+  "actual_finish_date": null,
+  "approved_on_date": null,
+  "past_experience_of_promoter": null,
+  "bank_details": null,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "project_cost_detail": null,
+  "number_of_commercial_units": null,
+  "building_details": null,
+  "complaints_litigation_details": null,
+  "authorised_signatory_details": null,
+  "co_promoter_details": null,
+  "provided_faciltiy": null,
+  "development_agreement_detail": null,
+  "construction_progress": null,
+  "land_detail": null,
+  "retrieved_on": null,
+  "last_updated": null,
+  "updated_fields": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": null,
+  "status_update": null,
+  "iw_part_processed": null,
+  "last_crawled_date": null,
+  "doc_ocr_url": null,
+  "proposed_timeline": null,
+  "checked_updates_date": null,
+  "alternative_rera_ids": null
 }

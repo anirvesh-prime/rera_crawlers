@@ -39,11 +39,22 @@ from core.project_normalizer import (
 from core.s3 import compute_md5, upload_document, get_s3_url
 from core.config import settings
 
-BASE_URL         = "https://rera.tn.gov.in"
-CMS_INDEX_URL    = f"{BASE_URL}/cms/reg_projects_building_tamilnadu.php"
+BASE_URL              = "https://rera.tn.gov.in"
+CMS_INDEX_URL         = f"{BASE_URL}/cms/reg_projects_building_tamilnadu.php"
+# CMS index pages for layout project types (Normal and Regularisation)
+CMS_LAYOUT_INDEX_URLS = [
+    f"{BASE_URL}/cms/reg_projects_normallayout_tamilnadu.php",
+    f"{BASE_URL}/cms/reg_projects_regularisationlayout_tamilnadu.php",
+]
+# URL templates for each project type (used as fallback when CMS index is unreachable)
+_TYPE_URL_TEMPLATES = {
+    "Building":               f"{BASE_URL}/cms/reg_projects_tamilnadu/Building/{{year}}.php",
+    "NormalLayout":           f"{BASE_URL}/cms/reg_projects_tamilnadu/NormalLayout/{{year}}.php",
+    "RegularisationLayout":   f"{BASE_URL}/cms/reg_projects_tamilnadu/RegularisationLayout/{{year}}.php",
+}
 STATE_CODE       = "TN"
 DOMAIN           = "rera.tn.gov.in"
-# Years present on the portal (oldest to newest; new years auto-discovered from CMS page)
+# Years present on the portal (oldest to newest; new years auto-discovered from CMS pages)
 _KNOWN_YEARS     = list(range(2017, 2027))
 
 
@@ -81,34 +92,67 @@ def _extract_number(text: str | None) -> float | None:
 
 # ── CMS index → year listing URLs ────────────────────────────────────────────
 
-def _get_year_listing_urls(logger: CrawlerLogger) -> list[str]:
+def _discover_urls_from_cms(index_url: str, logger: CrawlerLogger) -> list[str]:
     """
-    Fetch the CMS index page and extract all year-specific building listing URLs.
-    Falls back to _KNOWN_YEARS if the page is unreachable.
+    Fetch one CMS index page and return all year-listing URLs found on it.
+    Matches any /cms/reg_projects_tamilnadu/<Type>/<YYYY>.php pattern.
     """
-    resp = safe_get(CMS_INDEX_URL, logger=logger, timeout=30.0)
+    resp = safe_get(index_url, logger=logger, timeout=30.0)
     if not resp:
-        logger.warning("CMS index unreachable; falling back to known years", url=CMS_INDEX_URL)
-        return [
-            f"{BASE_URL}/cms/reg_projects_tamilnadu/Building/{y}.php"
-            for y in sorted(_KNOWN_YEARS, reverse=True)
-        ]
-    urls: list[str] = []
+        return []
+    found: list[str] = []
     seen: set[str] = set()
-    for href in re.findall(r'https?://rera\.tn\.gov\.in/cms/reg_projects_tamilnadu/Building/\d{4}\.php', resp.text):
+    for href in re.findall(
+        r'https?://rera\.tn\.gov\.in/cms/reg_projects_tamilnadu/[^/]+/\d{4}\.php',
+        resp.text,
+    ):
         if href not in seen:
             seen.add(href)
-            urls.append(href)
-    if not urls:
-        logger.warning("No year URLs found on CMS index; using known years", url=CMS_INDEX_URL)
-        return [
-            f"{BASE_URL}/cms/reg_projects_tamilnadu/Building/{y}.php"
+            found.append(href)
+    return found
+
+
+def _get_year_listing_urls(logger: CrawlerLogger) -> list[str]:
+    """
+    Fetch all CMS index pages (Building + Layout types) and return all
+    year-specific listing URLs, sorted newest-first.
+    Falls back to _KNOWN_YEARS for each type when the index page is unreachable.
+    """
+    all_urls: list[str] = []
+    seen: set[str] = set()
+
+    # Discover building listing URLs
+    building_urls = _discover_urls_from_cms(CMS_INDEX_URL, logger)
+    if not building_urls:
+        logger.warning("Building CMS index unreachable; using fallback years", url=CMS_INDEX_URL)
+        building_urls = [
+            _TYPE_URL_TEMPLATES["Building"].format(year=y)
             for y in sorted(_KNOWN_YEARS, reverse=True)
         ]
-    # Sort newest first so we process recent projects first
-    urls.sort(key=lambda u: re.search(r"(\d{4})\.php", u).group(1), reverse=True)
-    logger.info(f"Discovered {len(urls)} year listing URLs")
-    return urls
+    for u in building_urls:
+        if u not in seen:
+            seen.add(u)
+            all_urls.append(u)
+
+    # Discover layout listing URLs
+    for layout_index in CMS_LAYOUT_INDEX_URLS:
+        layout_urls = _discover_urls_from_cms(layout_index, logger)
+        if not layout_urls:
+            logger.warning("Layout CMS index unreachable; using fallback", url=layout_index)
+            # Derive the type from the index URL filename
+            m = re.search(r"reg_projects_(\w+)_tamilnadu", layout_index, re.I)
+            type_key = m.group(1).title() if m else "NormalLayout"
+            tmpl = _TYPE_URL_TEMPLATES.get(type_key, _TYPE_URL_TEMPLATES["NormalLayout"])
+            layout_urls = [tmpl.format(year=y) for y in sorted(_KNOWN_YEARS, reverse=True)]
+        for u in layout_urls:
+            if u not in seen:
+                seen.add(u)
+                all_urls.append(u)
+
+    # Sort newest year first within each type by year number, preserving type grouping
+    all_urls.sort(key=lambda u: re.search(r"(\d{4})\.php", u).group(1), reverse=True)
+    logger.info(f"Discovered {len(all_urls)} year listing URLs (building + layout)")
+    return all_urls
 
 
 # ── Listing table parser ──────────────────────────────────────────────────────
@@ -169,15 +213,19 @@ def _parse_listing_row(tds) -> dict | None:
         td6_html = str(tds[6])
         td6_soup = tds[6]
         promoter_uuid = project_uuid = lat = lng = None
+        promoter_full_url = project_full_url = None
         for a in td6_soup.find_all("a", href=True):
             href = a["href"]
             uuid_match = _UUID_RE.search(href)
             if not uuid_match:
                 continue
+            full = href if href.startswith("http") else f"{BASE_URL}{href}"
             if "public-view1" in href:
                 promoter_uuid = uuid_match.group(0)
+                promoter_full_url = full
             elif "public-view2" in href:
                 project_uuid = uuid_match.group(0)
+                project_full_url = full
 
         lat_m = _LAT_RE.search(td6_html)
         lng_m = _LNG_RE.search(td6_html)
@@ -221,12 +269,9 @@ def _parse_listing_row(tds) -> dict | None:
             "latitude": lat,
             "longitude": lng,
             "form_c_url": form_c_url,
-            "promoter_url": (
-                f"{BASE_URL}/public-view1/building/pfirm/{promoter_uuid}" if promoter_uuid else None
-            ),
-            "detail_url": (
-                f"{BASE_URL}/public-view2/building/pfirm/{project_uuid}" if project_uuid else None
-            ),
+            # Use the actual href from the listing to preserve project type (building/layout)
+            "promoter_url": promoter_full_url,
+            "detail_url": project_full_url,
             "uploaded_documents": docs or None,
         }
         return {k: v for k, v in row.items() if v not in (None, "", [], {})}
@@ -265,17 +310,21 @@ def _parse_listing_row(tds) -> dict | None:
     td6_html = str(tds[6])
     td6_soup = tds[6]
     promoter_uuid = project_uuid = lat = lng = None
+    promoter_full_url = project_full_url = None
 
     for a in td6_soup.find_all("a", href=_UUID_RE):
         href = a["href"]
+        full = href if href.startswith("http") else f"{BASE_URL}{href}"
         if "public-view1" in href:
             m = _UUID_RE.search(href)
             if m:
                 promoter_uuid = m.group(0)
+                promoter_full_url = full
         elif "public-view2" in href:
             m = _UUID_RE.search(href)
             if m:
                 project_uuid = m.group(0)
+                project_full_url = full
 
     lat_m = _LAT_RE.search(td6_html)
     lng_m = _LNG_RE.search(td6_html)
@@ -307,12 +356,9 @@ def _parse_listing_row(tds) -> dict | None:
         "latitude":                lat,
         "longitude":               lng,
         "form_c_url":              form_c_url,
-        "promoter_url": (
-            f"{BASE_URL}/public-view1/building/pfirm/{promoter_uuid}" if promoter_uuid else None
-        ),
-        "detail_url": (
-            f"{BASE_URL}/public-view2/building/pfirm/{project_uuid}" if project_uuid else None
-        ),
+        # Preserve the full URL from the listing href (handles building/layout/etc.)
+        "promoter_url": promoter_full_url,
+        "detail_url":   project_full_url,
     }
 
 
@@ -340,10 +386,12 @@ def _extract_kv_pairs(soup: BeautifulSoup) -> dict[str, str]:
     """
     General-purpose key-value extractor for Tamil Nadu RERA detail pages.
 
-    Handles three common Bootstrap-panel patterns:
+    Handles four common patterns:
     1. <th> / <td> pairs in a table row
     2. <label>Key :</label> followed by sibling or parent text
     3. <strong>Key:</strong> followed by text node
+    4. <p1>Key :</p1> inside .form-group div, value in sibling div's <p> tag
+       (used on layout project pages)
     """
     out: dict[str, str] = {}
 
@@ -397,6 +445,28 @@ def _extract_kv_pairs(soup: BeautifulSoup) -> dict[str, str]:
             if after_key and key not in out:
                 out[key] = after_key
 
+    # Pattern 4: <p1>Key :</p1> inside .form-group div (layout pages)
+    # Value lives in the sibling <div><p>...</p></div>
+    for fg in soup.find_all("div", class_="form-group"):
+        for p1_tag in fg.find_all("p1"):
+            raw_key = p1_tag.get_text(strip=True).rstrip(":").strip()
+            if not raw_key or len(raw_key) > 150:
+                continue
+            p1_parent = p1_tag.parent
+            if not p1_parent:
+                continue
+            sibling_div = p1_parent.find_next_sibling("div")
+            if not sibling_div:
+                continue
+            p_tag = sibling_div.find("p")
+            if not p_tag:
+                continue
+            # Use separator=" " to join <br>-separated lines with a space
+            val = p_tag.get_text(separator=" ", strip=True)
+            # Skip Font Awesome icon placeholders (empty or pure dashes)
+            if val and val.strip("-").strip():
+                out.setdefault(raw_key, val)
+
     return out
 
 
@@ -405,15 +475,20 @@ _PROMOTER_LABEL_MAP: dict[str, str] = {
     "name of the promoter":           "promoter_name",
     "promoter name":                  "promoter_name",
     "name":                           "promoter_name",
+    # Layout-page promoter labels
+    "firm name":                      "promoter_name",
+    "type of promoter":               "_promoter_org_type",
     "type of organisation":           "_promoter_org_type",
     "type of organization":           "_promoter_org_type",
     "organisation type":              "_promoter_org_type",
+    "company registration no":        "_promoter_reg_no",
     "registration number":            "_promoter_reg_no",
     "gstin":                          "_promoter_gst",
     "gst number":                     "_promoter_gst",
     "email":                          "_email",
     "email id":                       "_email",
     "mobile number":                  "_phone",
+    "mobile no. 1":                   "_phone",
     "mobile no":                      "_phone",
     "phone":                          "_phone",
     "pan number":                     "_pan",
@@ -429,49 +504,242 @@ _PROMOTER_LABEL_MAP: dict[str, str] = {
 
 # Project detail page label→schema field mapping
 _PROJECT_LABEL_MAP: dict[str, str] = {
-    "project name":                         "project_name",
-    "type of project":                      "project_type",
-    "project type":                         "project_type",
-    "status of the project":                "status_of_the_project",
-    "project status":                       "status_of_the_project",
-    "stage of construction":                "status_of_the_project",
-    "date of registration":                 "approved_on_date",
-    "registration date":                    "approved_on_date",
-    "proposed date of commencement":        "estimated_commencement_date",
-    "proposed date of completion":          "estimated_finish_date",
-    "actual date of commencement":          "actual_commencement_date",
-    "actual date of completion":            "actual_finish_date",
-    "extended date of completion":          "estimated_finish_date",
-    "number of residential units":          "number_of_residential_units",
-    "total residential units":              "number_of_residential_units",
-    "number of commercial units":           "number_of_commercial_units",
-    "total commercial units":              "number_of_commercial_units",
-    "land area":                            "land_area",
-    "total land area":                      "land_area",
-    "construction area":                    "construction_area",
-    "carpet area":                          "construction_area",
-    "pin code":                             "project_pin_code",
-    "pincode":                              "project_pin_code",
-    "district":                             "project_city",
-    "city":                                 "project_city",
-    "taluk":                                "_taluk",
-    "village":                              "_village",
-    "survey number":                        "_survey_no",
-    "survey/resurvey number":               "_survey_no",
-    "survey / resurvey number":             "_survey_no",
-    "latitude":                             "_latitude",
-    "longitude":                            "_longitude",
-    "bank name":                            "_bank_name",
-    "bank branch":                          "_bank_branch",
-    "ifsc code":                            "_ifsc",
-    "account number":                       "_account_no",
-    "account no":                           "_account_no",
-    "cost of land":                         "_cost_of_land",
-    "total project cost":                   "_total_project_cost",
-    "estimated construction cost":          "_estimated_construction_cost",
+    "project name":                                 "project_name",
+    "type of project":                              "project_type",
+    "project type":                                 "project_type",
+    "status of the project":                        "status_of_the_project",
+    "project status":                               "status_of_the_project",
+    "stage of construction":                        "status_of_the_project",
+    "date of registration":                         "approved_on_date",
+    "registration date":                            "approved_on_date",
+    "proposed date of commencement":                "estimated_commencement_date",
+    "proposed date of completion":                  "estimated_finish_date",
+    "actual date of commencement":                  "actual_commencement_date",
+    "actual date of completion":                    "actual_finish_date",
+    "extended date of completion":                  "estimated_finish_date",
+    # Layout-page date labels
+    "project completion date":                      "estimated_finish_date",
+    "project commencement date":                    "estimated_commencement_date",
+    # Layout-page approval date (planning permission)
+    "planning permission approval / renewal date":  "approved_on_date",
+    "planning permission approval date":            "approved_on_date",
+    "planning permission date":                     "approved_on_date",
+    "number of residential units":                  "number_of_residential_units",
+    "total residential units":                      "number_of_residential_units",
+    # Layout-page plot counts map to residential units
+    "total no of plots":                            "number_of_residential_units",
+    "regular plots":                                "number_of_residential_units",
+    "number of commercial units":                   "number_of_commercial_units",
+    "total commercial units":                       "number_of_commercial_units",
+    "land area":                                    "land_area",
+    "total land area":                              "land_area",
+    # Layout-page area labels
+    "total layout area (sq.m)":                     "land_area",
+    "total layout area":                            "land_area",
+    "net area (area for registration) (sq.m)":      "land_area",
+    "construction area":                            "construction_area",
+    "carpet area":                                  "construction_area",
+    "pin code":                                     "project_pin_code",
+    "pincode":                                      "project_pin_code",
+    "district":                                     "_project_district",
+    "city":                                         "project_city",
+    "taluk":                                        "_taluk",
+    "village":                                      "_village",
+    "survey number":                                "_survey_no",
+    "survey/resurvey number":                       "_survey_no",
+    "survey / resurvey number":                     "_survey_no",
+    "latitude":                                     "_latitude",
+    "longitude":                                    "_longitude",
+    # Layout-page address field (holds survey no + Village/City/Taluk/Pincode lines)
+    "address":                                      "_raw_address",
+    # Layout-page location state
+    "state":                                        "_location_state",
+    "bank name":                                    "_bank_name",
+    "bank branch":                                  "_bank_branch",
+    # Layout-page bank labels
+    "branch name":                                  "_bank_branch",
+    "bank email id":                                "_bank_email",
+    "ifsc code":                                    "_ifsc",
+    "account number":                               "_account_no",
+    "account no":                                   "_account_no",
+    "separate account no for the project":          "_account_no",
+    "cost of land":                                 "_cost_of_land",
+    # Layout-page cost labels
+    "land cost(market value)":                      "_cost_of_land",
+    "total project cost":                           "_total_project_cost",
+    "development cost":                             "_estimated_construction_cost",
+    "estimated construction cost":                  "_estimated_construction_cost",
 }
 
 
+
+# ── Layout address / location parser ─────────────────────────────────────────
+
+def _parse_layout_address(raw: str) -> dict:
+    """
+    Parse the combined Address field found on layout project detail pages.
+    The field embeds survey number, village, city/town, taluk, and pincode
+    as separate <br>-separated lines, e.g.:
+        "Survey No : 778/2, 781/1B … Village : Thaiyur A Village
+         City/Town : Thaiyur Taluk : Thiruporur … Pincode : 603103"
+    Returns a dict of internal keys (_survey_no, _village, _city, _taluk, _project_pincode).
+    """
+    # Lookahead anchors — any of these starts a new sub-field
+    _NEXT = r"(?=Village\s*:|City(?:/Town)?\s*:|Taluk\s*:|State\s*:|District\s*:|Pincode\s*:|$)"
+    out: dict[str, str] = {}
+    # Survey/resurvey number: text before the first "Village :" marker
+    village_idx = re.search(r"Village\s*:", raw, re.I)
+    if village_idx:
+        survey_part = raw[: village_idx.start()].strip()
+        survey_part = re.sub(r"^Survey\s+No\s*:\s*", "", survey_part, flags=re.I).strip()
+        if survey_part:
+            out["_survey_no"] = survey_part
+    m = re.search(r"Village\s*:\s*(.+?)" + _NEXT, raw, re.I)
+    if m:
+        out["_village"] = m.group(1).strip()
+    m = re.search(r"City(?:/Town)?\s*:\s*(.+?)" + _NEXT, raw, re.I)
+    if m:
+        out["_city"] = m.group(1).strip()
+    m = re.search(r"Taluk\s*:\s*(.+?)" + _NEXT, raw, re.I)
+    if m:
+        out["_taluk"] = m.group(1).strip()
+    m = re.search(r"Pincode\s*:\s*(\d+)", raw, re.I)
+    if m:
+        out["_project_pincode"] = m.group(1)
+    return out
+
+
+def _parse_promoter_address(raw: str) -> dict:
+    """
+    Parse the promoter Address field which embeds structured location info, e.g.:
+        "Door No : 8 Floor Street Name : … Village : Nungambakkam
+         City : Chennai State : Tamil Nadu District : Chennai Pincode : 600006"
+    Returns a promoter_address_raw dict.
+    """
+    addr: dict[str, str] = {"raw_address": raw}
+    m = re.search(r"Village\s*:\s*(.+?)(?=City\s*:|State\s*:|District\s*:|Pincode\s*:|$)", raw, re.I)
+    if m:
+        addr["village"] = m.group(1).strip()
+    m = re.search(r"City\s*:\s*(.+?)(?=State\s*:|District\s*:|Pincode\s*:|$)", raw, re.I)
+    if m:
+        addr["city"] = m.group(1).strip()
+    m = re.search(r"State\s*:\s*(.+?)(?=District\s*:|Pincode\s*:|$)", raw, re.I)
+    if m:
+        addr["state"] = m.group(1).strip()
+    m = re.search(r"District\s*:\s*(.+?)(?=Pincode\s*:|$)", raw, re.I)
+    if m:
+        addr["district"] = m.group(1).strip()
+    m = re.search(r"Pincode\s*:\s*(\d+)", raw, re.I)
+    if m:
+        addr["pin_code"] = m.group(1)
+    return addr
+
+
+# ── Director / partner block extractor (p1/p layout pages) ───────────────────
+
+def _extract_director_blocks_p1p(soup: BeautifulSoup) -> list[dict]:
+    """
+    Extract director/partner info from sequential <p1>/<p> form-group pairs
+    on the promoter detail page (layout project format).
+    """
+    _DIRECTOR_LABELS = {"director / partner name", "partner name", "director name", "member name"}
+    # Collect all (lowercase_label, raw_label, value) triples in document order
+    all_pairs: list[tuple[str, str, str]] = []
+    for fg in soup.find_all("div", class_="form-group"):
+        for p1_tag in fg.find_all("p1"):
+            raw_key = p1_tag.get_text(strip=True).rstrip(":").strip()
+            p1_parent = p1_tag.parent
+            if not p1_parent:
+                continue
+            sib = p1_parent.find_next_sibling("div")
+            if sib:
+                p_tag = sib.find("p")
+                val = p_tag.get_text(separator=" ", strip=True) if p_tag else ""
+                all_pairs.append((raw_key.lower(), raw_key, val))
+
+    members: list[dict] = []
+    i = 0
+    while i < len(all_pairs):
+        low_key, raw_key, val = all_pairs[i]
+        if low_key in _DIRECTOR_LABELS and val.strip():
+            position = "Director" if "director" in low_key else "Partner" if "partner" in low_key else "Member"
+            member: dict = {"name": val.strip(), "position": position}
+            j = i + 1
+            while j < len(all_pairs) and j < i + 12:
+                k2, _, v2 = all_pairs[j]
+                if k2 in _DIRECTOR_LABELS:
+                    break
+                if v2.strip():
+                    if k2 in ("email id", "email"):
+                        member.setdefault("email", v2.strip())
+                    elif k2.startswith("mobile no"):
+                        member.setdefault("phone", v2.strip())
+                    elif k2 == "address":
+                        member["raw_address"] = v2.strip()
+                j += 1
+            members.append(member)
+        i += 1
+    return members
+
+
+# ── Surveyor / professional block extractor (p1/p layout pages) ──────────────
+
+def _extract_surveyor_blocks_p1p(soup: BeautifulSoup) -> list[dict]:
+    """
+    Extract surveyor / professional info from sequential <p1>/<p> form-group pairs
+    on the project detail page (layout project format).
+    """
+    _PROF_KEYS = ("surveyor name", "architect name", "engineer name", "professional name")
+
+    all_pairs: list[tuple[str, str, str]] = []
+    for fg in soup.find_all("div", class_="form-group"):
+        for p1_tag in fg.find_all("p1"):
+            raw_key = p1_tag.get_text(strip=True).rstrip(":").strip()
+            p1_parent = p1_tag.parent
+            if not p1_parent:
+                continue
+            sib = p1_parent.find_next_sibling("div")
+            if sib:
+                p_tag = sib.find("p")
+                val = p_tag.get_text(separator=" ", strip=True) if p_tag else ""
+                all_pairs.append((raw_key.lower(), raw_key, val))
+
+    professionals: list[dict] = []
+    i = 0
+    while i < len(all_pairs):
+        low_key, raw_key, val = all_pairs[i]
+        if any(low_key == pk for pk in _PROF_KEYS) and val.strip():
+            if "surveyor" in low_key:
+                role = "License Surveyor"
+            elif "architect" in low_key:
+                role = "Architect"
+            elif "engineer" in low_key:
+                role = "Engineer"
+            else:
+                role = raw_key.replace(" Name", "").replace(" name", "").strip()
+            name = val.strip()
+            prof: dict = {"name": name, "role": role}
+            j = i + 1
+            while j < len(all_pairs) and j < i + 15:
+                k2, _, v2 = all_pairs[j]
+                if any(k2 == pk for pk in _PROF_KEYS):
+                    break
+                if v2.strip():
+                    if k2 in ("email id", "email"):
+                        prof.setdefault("email", v2.strip())
+                    elif k2.startswith("mobile no"):
+                        prof.setdefault("phone", v2.strip())
+                    elif k2 == "address" and "address" not in prof:
+                        prof["address"] = v2.strip()
+                    elif "registration no" in k2 or "license no" in k2:
+                        prof.setdefault("registration_no", v2.strip())
+                    elif "local body" in k2:
+                        # Append local body name to make name match sample format
+                        prof["name"] = f"{prof['name']} {v2.strip()}"
+                j += 1
+            professionals.append(prof)
+        i += 1
+    return professionals
 
 
 # ── Promoter detail page (public-view1) ──────────────────────────────────────
@@ -509,15 +777,23 @@ def _parse_promoter_page(url: str, logger: CrawlerLogger) -> dict:
         }
 
     # Promoter address (structured)
-    addr: dict[str, str] = {}
-    for raw_k in ("_address", "_state", "_district", "_city", "_pin_code"):
-        if mapped.get(raw_k):
-            addr[raw_k.lstrip("_")] = mapped[raw_k]
-    if addr:
-        out["promoter_address_raw"] = addr
+    # For layout pages the Address field is a rich multi-line string; parse it.
+    raw_addr = mapped.get("_address")
+    if raw_addr:
+        parsed_addr = _parse_promoter_address(raw_addr)
+        out["promoter_address_raw"] = parsed_addr
+    else:
+        addr: dict[str, str] = {}
+        for raw_k in ("_address", "_state", "_district", "_city", "_pin_code"):
+            if mapped.get(raw_k):
+                addr[raw_k.lstrip("_")] = mapped[raw_k]
+        if addr:
+            out["promoter_address_raw"] = addr
 
-    # Members / directors table
+    # Members / directors — try table format first, fall back to p1/p blocks
     members = _extract_members_table(soup)
+    if not members:
+        members = _extract_director_blocks_p1p(soup)
     if members:
         out["members_details"] = members
 
@@ -537,7 +813,14 @@ def _parse_promoter_page(url: str, logger: CrawlerLogger) -> dict:
     reg_cert_link = None
     for a in soup.find_all("a", href=True):
         href = a["href"]
-        if "/public/storage/upload/" in href.lower() and "registration" in a.get_text(" ", strip=True).lower():
+        if "/public/storage/upload/" not in href.lower():
+            continue
+        # The anchor text may be empty on layout pages; fall back to checking
+        # the parent/grandparent element text for "registration" keyword.
+        anchor_text = a.get_text(" ", strip=True).lower()
+        parent_text = (a.parent.get_text(" ", strip=True) if a.parent else "").lower()
+        gp_text = (a.parent.parent.get_text(" ", strip=True) if (a.parent and a.parent.parent) else "").lower()
+        if "registration" in (anchor_text + parent_text + gp_text):
             reg_cert_link = href if href.startswith("http") else f"{BASE_URL}{href}"
             break
     if reg_cert_link:
@@ -613,6 +896,21 @@ def _parse_project_page(url: str, logger: CrawlerLogger) -> dict:
         else:
             out.setdefault(schema_f, raw_val)
 
+    # ── Layout address parsing ────────────────────────────────────────────────
+    # The "Address" field on layout pages embeds Village / City/Town / Taluk /
+    # Pincode as <br>-separated lines.  Parse it and promote the sub-fields.
+    raw_addr = out.pop("_raw_address", None)
+    if raw_addr:
+        parsed_loc = _parse_layout_address(raw_addr)
+        for k, v in parsed_loc.items():
+            out.setdefault(k, v)
+        # Project city: prefer the parsed city/town over the district label
+        if parsed_loc.get("_city"):
+            out["project_city"] = parsed_loc["_city"]
+        # Project pin code from parsed address
+        if parsed_loc.get("_project_pincode"):
+            out.setdefault("project_pin_code", parsed_loc["_project_pincode"])
+
     # Normalise date fields
     for date_field in (
         "approved_on_date", "estimated_commencement_date", "estimated_finish_date",
@@ -639,16 +937,21 @@ def _parse_project_page(url: str, logger: CrawlerLogger) -> dict:
         ("survey_resurvey_number", "_survey_no"),
         ("taluk", "_taluk"),
         ("village", "_village"),
-        ("district", "project_city"),
+        ("city", "_city"),
+        # _project_district comes from the "District" KV label (e.g. "Chennai"),
+        # distinct from _city which is the parsed city/town (e.g. "Thaiyur")
+        ("district", "_project_district"),
         ("pin_code", "project_pin_code"),
+        ("state", "_location_state"),
         ("latitude", "_latitude"),
         ("longitude", "_longitude"),
     ]:
-        val = out.get(src) or out.get(tgt)
+        val = out.get(src)
         if val:
             loc[tgt] = str(val)
-    if "project_city" in out:
-        loc.setdefault("district", out["project_city"])
+    # Fallback: if no district resolved, use project_city
+    if "district" not in loc and out.get("project_city"):
+        loc["district"] = out["project_city"]
     if loc:
         out["project_location_raw"] = loc
 
@@ -657,11 +960,18 @@ def _parse_project_page(url: str, logger: CrawlerLogger) -> dict:
     for tgt, src in [
         ("bank_name", "_bank_name"),
         ("branch", "_bank_branch"),
+        ("email", "_bank_email"),
         ("IFSC", "_ifsc"),
         ("account_no", "_account_no"),
     ]:
         if out.get(src):
             bank[tgt] = out.pop(src)
+    # Fallback: use branch name as bank_name when bank_name label is absent on the page
+    if bank and not bank.get("bank_name") and bank.get("branch"):
+        bank["bank_name"] = bank["branch"]
+    # Add state from location to bank details (portal includes this on building pages)
+    if bank and out.get("_location_state"):
+        bank["state"] = out["_location_state"]
     if bank:
         out["bank_details"] = bank
 
@@ -677,13 +987,19 @@ def _parse_project_page(url: str, logger: CrawlerLogger) -> dict:
     if cost:
         out["project_cost_detail"] = cost
 
-    # Professional information table
+    # Professional information — try table format first, fall back to p1/p blocks
     professionals = _extract_professionals_table(soup)
+    if not professionals:
+        professionals = _extract_surveyor_blocks_p1p(soup)
     if professionals:
         out["professional_information"] = professionals
 
-    # Document links (PDF files in the page)
-    doc_links = _extract_doc_links(soup)
+    # Document links: prefer labeled extraction (p1/p form-group pattern used on
+    # layout pages); fall back to generic link scan for any unlabeled remainder.
+    labeled_docs = _extract_labeled_doc_links(soup)
+    labeled_urls = {d["url"] for d in labeled_docs}
+    generic_docs = [d for d in _extract_doc_links(soup) if d["url"] not in labeled_urls]
+    doc_links = labeled_docs + generic_docs
     if doc_links:
         out["_doc_links"] = doc_links
 
@@ -725,16 +1041,91 @@ def _extract_professionals_table(soup: BeautifulSoup) -> list[dict]:
     return professionals
 
 
+def _extract_labeled_doc_links(soup: BeautifulSoup) -> list[dict]:
+    """
+    Extract document links together with their human-readable labels from two
+    structural patterns used on Tamil Nadu RERA layout project detail pages.
+
+    Pattern A (.form-group divs):
+        Each .form-group div has a <p1>Label :</p1> in one child div and a
+        <p><a href> in the sibling div.
+
+    Pattern B (table rows):
+        <tr><td><p1>Label :</p1></td><td><a href>link</a></td></tr>
+        or <tr><td><p1>Label :</p1><a href>link</a></td></tr>
+
+    Only project-specific uploaded PDFs (/public/storage/upload/ or formcqr)
+    are captured.
+    """
+    docs: list[dict] = []
+    seen: set[str] = set()
+
+    def _is_project_doc(href: str) -> bool:
+        h = href.lower()
+        return "/storage/upload" in h or "formcqr" in h
+
+    def _add(label: str, href: str) -> None:
+        full_url = href if href.startswith("http") else f"{BASE_URL}{href}"
+        if full_url not in seen:
+            seen.add(full_url)
+            docs.append({"label": label, "url": full_url})
+
+    # Pattern A: .form-group divs.
+    # Labels can be in <p1> tags OR <label> tags.
+    # The link may be in ANY sibling div after the label div (not just the immediate next).
+    for fg in soup.find_all("div", class_="form-group"):
+        # Collect label text from p1 or label tags within this form-group
+        label_tag = fg.find("p1") or fg.find("label")
+        if not label_tag:
+            continue
+        raw_label = label_tag.get_text(strip=True).rstrip(":").strip()
+        # Strip common disclaimer suffixes (e.g. "* required")
+        raw_label = raw_label.rstrip("*").strip()
+        if not raw_label:
+            continue
+        label_parent = label_tag.parent
+        if not label_parent:
+            continue
+        # Search ALL sibling divs after the label-parent div for project doc links
+        for sib in label_parent.find_next_siblings("div"):
+            for a in sib.find_all("a", href=True):
+                if _is_project_doc(a["href"]):
+                    _add(raw_label, a["href"])
+
+    # Pattern B: table rows — p1 label cell + adjacent/same cell containing the link
+    for tr in soup.find_all("tr"):
+        tds = tr.find_all("td")
+        for i, td in enumerate(tds):
+            p1_tag = td.find("p1")
+            if not p1_tag:
+                continue
+            raw_label = p1_tag.get_text(strip=True).rstrip(":").strip()
+            if not raw_label:
+                continue
+            # Links may be in the same td or in the immediately adjacent td
+            search_cells = [td] + ([tds[i + 1]] if i + 1 < len(tds) else [])
+            for cell in search_cells:
+                for a in cell.find_all("a", href=True):
+                    if _is_project_doc(a["href"]):
+                        _add(raw_label, a["href"])
+
+    return docs
+
+
 def _extract_doc_links(soup: BeautifulSoup) -> list[dict]:
     """
     Extract direct PDF/document links from a detail page.
-    Skips JavaScript anchors and navigation links.
+    Skips JavaScript anchors, site-wide navigation links (homePageFiles),
+    and any link that is not a project-specific uploaded document.
     """
     docs: list[dict] = []
     seen: set[str] = set()
     for a in soup.find_all("a", href=True):
         href = a["href"]
         if href.lower().startswith("javascript"):
+            continue
+        # Skip site-wide homepage/navigation documents (circulars, forms, annual reports)
+        if "/homePageFiles/" in href:
             continue
         if not (href.lower().endswith(".pdf") or "/storage/upload" in href.lower()
                 or "formcqr" in href.lower() or "/public/" in href.lower()):
@@ -743,10 +1134,12 @@ def _extract_doc_links(soup: BeautifulSoup) -> list[dict]:
         if full_url in seen:
             continue
         seen.add(full_url)
-        label = a.get_text(strip=True) or a.find_next("img", alt=True)
-        if hasattr(label, "get"):
-            label = label.get("alt", "document")
-        label = str(label).strip() or "document"
+        text = a.get_text(strip=True)
+        if text:
+            label = text
+        else:
+            img = a.find("img", alt=True)
+            label = img["alt"].strip() if img and img.get("alt", "").strip() else "document"
         docs.append({"label": label, "url": full_url})
     return docs
 
@@ -828,8 +1221,8 @@ def _build_project_record(
     record: dict[str, Any] = {
         "key":                      project_key,
         "project_registration_no":  reg_no,
-        "state":                    "tamil_nadu",
-        "project_state":            "TAMIL NADU",
+        "state":                    "Tamil Nadu",
+        "project_state":            "Tamil Nadu",
         "domain":                   DOMAIN,
         "config_id":                config_id,
         "url":                      row.get("detail_url") or f"{BASE_URL}/registered-building/tn",
@@ -838,8 +1231,14 @@ def _build_project_record(
         "project_description":      row.get("project_description"),
         "approved_on_date":         row.get("approved_on_date"),
         "estimated_finish_date":    row.get("estimated_finish_date"),
-        "project_type":             "residential",   # building projects default; detail page may refine
     }
+
+    # Default project_type to "residential" only for building projects.
+    # Layout projects (url contains "layout") have plot-based projects and
+    # don't carry a meaningful project_type; the detail page may set it instead.
+    detail_url_hint = (row.get("detail_url") or "").lower()
+    if "layout" not in detail_url_hint:
+        record["project_type"] = "residential"
 
     # Status from listing (completed vs active)
     if row.get("is_completed"):
@@ -900,6 +1299,103 @@ def _build_project_record(
 
 # ── Main entry point ──────────────────────────────────────────────────────────
 
+def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
+    """
+    Data-quality sentinel for Tamil Nadu RERA.
+
+    Goes beyond a simple reachability check: re-scrapes the sentinel project's
+    detail and promoter pages, then verifies that the freshly-extracted record
+    still covers ≥ 80 % of the fields populated in the state_projects_sample
+    baseline.  A portal that silently drops data (changed HTML, missing tabs,
+    etc.) will fail this check and abort the crawl before bad data is written.
+
+    Steps:
+      1. Load state_projects_sample/tamil_nadu.json as the baseline.
+      2. Resolve the sentinel's detail URL and promoter URL from the sample.
+      3. Re-scrape both pages using the existing extraction helpers.
+      4. Merge into a flat dict and call check_field_coverage().
+    """
+    import json as _json
+    import os as _os
+    from core.sentinel_utils import check_field_coverage
+
+    sentinel_reg = config.get("sentinel_registration_no", "")
+    if not sentinel_reg:
+        logger.warning("No sentinel_registration_no configured — skipping", step="sentinel")
+        return True
+
+    # ── Load sample baseline ─────────────────────────────────────────────────
+    sample_path = _os.path.join(
+        _os.path.dirname(_os.path.dirname(__file__)),
+        "state_projects_sample", "tamil_nadu.json",
+    )
+    try:
+        with open(sample_path) as fh:
+            baseline: dict = _json.load(fh)
+    except FileNotFoundError:
+        logger.warning("Sample baseline not found — skipping coverage check", path=sample_path, step="sentinel")
+        return True
+
+    # ── Resolve URLs from the sample ─────────────────────────────────────────
+    detail_url   = baseline.get("url", "")
+    promoter_url = (baseline.get("data") or {}).get("promoter_url", "")
+
+    if not detail_url:
+        logger.warning("Sentinel: no detail URL in sample baseline — skipping", step="sentinel")
+        return True
+
+    # ── Re-scrape the sentinel project ───────────────────────────────────────
+    logger.info(f"Sentinel: scraping {sentinel_reg}", url=detail_url, step="sentinel")
+
+    promoter_data: dict = {}
+    if promoter_url:
+        try:
+            promoter_data = _parse_promoter_page(promoter_url, logger) or {}
+        except Exception as exc:
+            logger.warning(f"Sentinel: promoter page error — {exc}", step="sentinel")
+
+    try:
+        project_data = _parse_project_page(detail_url, logger) or {}
+    except Exception as exc:
+        logger.error(f"Sentinel: project page error — {exc}", step="sentinel")
+        return False
+
+    if not project_data:
+        logger.error("Sentinel: project page returned no data", url=detail_url, step="sentinel")
+        return False
+
+    # ── Build a merged fresh record (flat, no system metadata) ───────────────
+    fresh: dict = {}
+    for k, v in promoter_data.items():
+        if not k.startswith("_") and v not in (None, "", {}, []):
+            fresh[k] = v
+    for k, v in project_data.items():
+        if not k.startswith("_") and v not in (None, "", {}, []):
+            fresh[k] = v
+
+    # Fields that don't come from the detail page but are always knowable:
+    # project_state is set from config in the full crawl; set it here too.
+    fresh.setdefault("project_state", "Tamil Nadu")
+
+    # uploaded_documents are assembled from _doc_links in _build_project_record.
+    # Replicate that here so the coverage check can verify doc extraction still works.
+    doc_links: list[dict] = list(project_data.get("_doc_links") or [])
+    if doc_links:
+        fresh.setdefault("uploaded_documents", doc_links)
+
+    # ── Coverage comparison ───────────────────────────────────────────────────
+    if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
+        insert_crawl_error(
+            run_id, config.get("id", "tamil_nadu_rera"),
+            "SENTINEL_FAILED",
+            f"Coverage below 80% for sentinel project {sentinel_reg}",
+        )
+        return False
+
+    logger.info("Sentinel check passed", reg=sentinel_reg, step="sentinel")
+    return True
+
+
 def run(config: dict, run_id: int, mode: str) -> dict:
     """
     Entry point called by the crawler orchestrator.
@@ -923,10 +1419,16 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     }
     item_limit = settings.CRAWL_ITEM_LIMIT or 0
 
+    # ── Sentinel health check ────────────────────────────────────────────────
+    if not _sentinel_check(config, run_id, logger):
+        logger.error("Sentinel failed — aborting crawl", step="sentinel")
+        counts["error_count"] += 1
+        return counts
+
     # ── Checkpoint handling ──────────────────────────────────────────────────
-    checkpoint = load_checkpoint(site_id, mode) if mode != "full" else {}
+    checkpoint = (load_checkpoint(site_id, mode) if mode != "full" else {}) or {}
     last_project_key: str | None = checkpoint.get("last_project_key")
-    last_page = int((checkpoint or {}).get("last_page", 0))
+    last_page = int(checkpoint.get("last_page", 0))
 
     if mode == "full":
         reset_checkpoint(site_id, mode)

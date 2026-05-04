@@ -122,6 +122,7 @@ _LABEL_TO_FIELD: dict[str, str] = {
     "proposed date of completion":                                       "estimated_finish_date",
     "proposed date of commencement (for new projects)":                  "estimated_commencement_date",
     "proposed date of commencement":                                     "estimated_commencement_date",
+    "project commencement date (for ongoing projects)":                  "estimated_commencement_date",
     "last modified by promoter":                                         "last_modified",
     "date of registration":                                              "approved_on_date",
     "date of submission":                                                "submitted_date",
@@ -175,7 +176,9 @@ def _label_value_from_el(lbl) -> tuple[str, str]:
         inline_val   = raw[first_colon + 1:].strip()
         sibling_val = parent_text[len(raw):].lstrip(": ").strip() if parent_text.startswith(raw) else ""
         if sibling_val:
-            return raw.strip(), sibling_val
+            # Use possible_key (text before the colon) so trailing colons like
+            # "Promoter Name :" are stripped before the _LABEL_TO_FIELD lookup.
+            return possible_key if possible_key else raw.strip(), sibling_val
         if inline_val and possible_key:
             return possible_key, inline_val
 
@@ -417,6 +420,7 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
             # Extract promoter contact details (phone / email) from org_info
             _PHONE_LABELS = {
                 "mobile number", "mobile no", "mobile no.", "mobile",
+                "mobile phone number",
                 "phone", "phone no", "phone number", "telephone", "contact number",
                 "mob no", "mob no.",
             }
@@ -430,7 +434,7 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
                 if kl in _PHONE_LABELS and v and not contact_phone:
                     contact_phone = v
                 elif kl in _EMAIL_LABELS and v and not contact_email:
-                    contact_email = v
+                    contact_email = str(v).replace("[at]", "@")
             if contact_phone or contact_email:
                 contact_entry = {k: v for k, v in
                                  {"phone": contact_phone, "email": contact_email}.items() if v}
@@ -512,13 +516,14 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
 
     # Fallback: if step 1b found no contact details, scan all_labels for phone/email.
     if "promoter_contact_details" not in out:
-        _phone_keys = {"mobile number", "mobile no", "mobile no.", "mobile", "phone",
-                       "phone no", "phone number", "telephone", "contact number", "mob no",
+        _phone_keys = {"mobile number", "mobile no", "mobile no.", "mobile",
+                       "mobile phone number",
+                       "phone", "phone no", "phone number", "telephone", "contact number", "mob no",
                        "primary contact no", "contact no", "contact no."}
         _email_keys = {"email", "e-mail", "email id", "email address", "email id."}
         _fb_phone = next((v for k, v in all_labels.items()
                           if k.lower().strip() in _phone_keys and v), None)
-        _fb_email = next((v for k, v in all_labels.items()
+        _fb_email = next((str(v).replace("[at]", "@") for k, v in all_labels.items()
                           if k.lower().strip() in _email_keys and v), None)
         if _fb_phone or _fb_email:
             out["promoter_contact_details"] = [
@@ -572,7 +577,7 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
                 "rera certificate no": "registration_no",
                 "registration number": "registration_no",
                 "registration no.": "registration_no",
-                "name of the firm": "name",
+                "name of the firm": "firm_name",
                 "address of the firm": "address",
                 "key projects completed": "key_real_estate_projects",
                 "pan no": "pan_no",
@@ -610,15 +615,39 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
                     facility_dict[fname] = entry
             if facility_dict:
                 out["provided_faciltiy"] = facility_dict
+                # Build construction_progress in schema-compatible format so it survives
+                # normalization. _build_kerala_legacy_facility_progress is defined below and
+                # available at call time since module is fully loaded before any function runs.
+                _cp = _build_kerala_legacy_facility_progress(facility_dict)
+                if _cp:
+                    out["construction_progress"] = _cp
 
         elif "bank" in sec or "separate bank" in sec:
             out["bank_details"] = {r.get("col_0", ""): r.get("col_1", "") for r in rows}
 
         elif "building" in sec or "permit" in sec:
             if "task" in hdrs or "activity" in hdrs or "percentage of work" in hdrs:
-                out["construction_progress"] = rows
+                # Keep raw task rows for reference but don't overwrite schema-compatible
+                # construction_progress if already set from facilities above.
+                if not out.get("construction_progress"):
+                    out["construction_progress"] = rows
             elif "unit type" in hdrs or "carpet" in hdrs or "super built" in hdrs:
-                building_details["unit_types"] = rows
+                # Build normalized list with schema-compatible keys so it survives normalization.
+                unit_list = []
+                for r in rows:
+                    entry = {k: v for k, v in {
+                        "flat_type":   r.get("Apartment/Villa Type"),
+                        "carpet_area": r.get("Carpet Area"),
+                        "open_area":   r.get("Area of exclusive open terrace"),
+                        "total_area":  r.get("Total area"),
+                        "no_of_units": r.get("Proposed number of apartments"),
+                        "balcony_area": r.get("Area of exclusive balcony"),
+                    }.items() if v not in (None, "", "NA")}
+                    if entry:
+                        unit_list.append(entry)
+                if unit_list:
+                    out["building_details"] = unit_list
+                building_details["unit_types"] = rows  # keep raw for internal use
             elif "parking" in hdrs:
                 building_details["parking_details"] = rows
             else:
@@ -628,7 +657,11 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
             # Row-level metadata; actual URLs come from doc buttons
             out.setdefault("uploaded_documents", rows)
 
+    # Always preserve raw building dict for status_update builder (structure + unit_types rows).
     if building_details:
+        out["_raw_building"] = building_details
+    # Only assign nested building_details dict if a normalized list wasn't already set.
+    if building_details and not isinstance(out.get("building_details"), list):
         out["building_details"] = building_details
 
     # ── Step 5: Document buttons → downloadable URL list ─────────────────────
@@ -655,6 +688,9 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
                              for t in all_tables],
         "doc_button_count": len(all_doc_btns),
         "source_url":       url,
+        # Carry raw structured data through normalization for post-normalization shaping.
+        "_raw_building":    out.get("_raw_building") or None,
+        "_raw_facilities":  out.get("provided_faciltiy") or None,
     }
 
     return {k: v for k, v in out.items() if v is not None and v != "" and v != {} and v != []}
@@ -822,121 +858,120 @@ def _build_kerala_legacy_status_update(
     building: dict[str, Any] | None,
     tasks: list[dict[str, Any]] | None,
     facilities: dict[str, Any] | None,
+    building_list: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]] | None:
     building = building or {}
     tasks = tasks or []
     facilities = facilities or {}
+    building_list = building_list or []
     project_name = record.get("project_name")
 
-    # Prefer building_details.unit_types; fall back to the unit-type table in
-    # data.all_tables (present when building_details was not extracted directly).
+    # Prefer raw unit_types (original HTML keys); fall back to normalized list (schema keys).
     unit_type_rows: list[dict] = list(building.get("unit_types", [])) if isinstance(building, dict) else []
     if not unit_type_rows:
-        for table in record.get("data", {}).get("all_tables", []) if isinstance(record.get("data"), dict) else []:
-            if not isinstance(table, dict):
-                continue
-            if table.get("section") != "Building Details":
-                continue
-            first_row = table.get("first_row", {})
-            if isinstance(first_row, dict) and "Apartment/Villa Type" in first_row:
-                # Reconstruct row list from first_row (all_tables only stores the first row)
-                unit_type_rows = [first_row]
-                # Also include additional rows if stored
-                for extra in table.get("rows", []):
-                    if isinstance(extra, dict) and "Apartment/Villa Type" in extra:
-                        unit_type_rows.append(extra)
-                break
+        unit_type_rows = building_list
 
-    booking_details = []
+    booked_detail = []
     for row in unit_type_rows:
         if not isinstance(row, dict):
             continue
-        flat_type = row.get("Apartment/Villa Type")
-        area = row.get("Carpet Area")
-        total_available = row.get("Proposed number of apartments")
-        booked = row.get("Number of apartments Booked /Sold /Allotted")
-        if flat_type or area or total_available or booked:
-            booking_details.append(
-                {
+        # Support both raw HTML keys (from building.unit_types) and normalized keys (from building_list)
+        flat_type = row.get("Apartment/Villa Type") or row.get("flat_type")
+        area      = row.get("Carpet Area") or row.get("carpet_area")
+        total     = row.get("Proposed number of apartments") or row.get("no_of_units")
+        sold      = row.get("Number of apartments Booked /Sold /Allotted") or "0"
+        if flat_type or area or total:
+            booked_detail.append(
+                {k: v for k, v in {
                     "block": project_name,
-                    "flat_type": flat_type,
-                    "area": area,
-                    "total_available": total_available,
-                    "booked_flats": booked,
-                }
+                    "type":  flat_type,
+                    "area":  area,
+                    "total": total,
+                    "sold":  sold,
+                }.items() if v not in (None, "")}
             )
 
-    building_detail = []
-    for table in record.get("data", {}).get("all_tables", []) if isinstance(record.get("data"), dict) else []:
-        if not isinstance(table, dict):
-            continue
-        if table.get("section") != "Building Details":
-            continue
-        first_row = table.get("first_row")
-        if not isinstance(first_row, dict) or "Building Name" not in first_row:
-            continue
-        building_detail.append(
-            {
-                "flat_name": first_row.get("Building Name") or project_name,
-                "completion_date": first_row.get("Proposed Date of Completion (As committed to allottees)"),
-                "no_basement": first_row.get("Number of Basements"),
-                "no_podium": first_row.get("Number of Podiums"),
-                "no_super_struct": first_row.get("Number of Slab of Super Structure"),
-                "no_stilt": first_row.get("Number of Stilts"),
-            }
-        )
-        break
-
-    progress = []
-    for row in tasks:
-        if not isinstance(row, dict):
-            continue
-        title = row.get("Tasks / Activity")
-        pct = row.get("Percentage of Work")
-        if not title:
-            continue
-        progress.append(
-            {
-                "block": project_name,
-                "title": str(title).strip(),
-                "progress_percentage": str(pct).strip() if pct not in (None, "") else "0",
-            }
-        )
-        if "Common Areas work for each building" in str(title):
-            break
-    if progress:
-        progress.extend([{"block": project_name}, {"block": project_name}])
+    # amenity_detail — facility list with percent_completed and optional remarks
+    amenity_detail = []
     for name, raw in facilities.items():
         if not isinstance(raw, dict):
             continue
         pct = raw.get("completion_pct")
         if pct in (None, ""):
             continue
-        entry = {"title": f"{str(name).strip()} :", "progress_percentage": str(pct).strip()}
+        entry: dict[str, Any] = {
+            "name": f"{str(name).strip()} :",
+            "percent_completed": str(pct).strip(),
+        }
         details = raw.get("details")
         if details not in (None, "", "NA"):
             entry["remarks"] = str(details).strip()
-        progress.append(entry)
+        amenity_detail.append(entry)
 
-    if not booking_details and not building_detail and not progress:
+    # building_detail — from building structure rows
+    building_detail = []
+    for row in (building.get("structure") or [] if isinstance(building, dict) else []):
+        if not isinstance(row, dict):
+            continue
+        bname = row.get("Building Name")
+        if not bname:
+            continue
+        building_detail.append({k: v for k, v in {
+            "name":          bname or project_name,
+            "completion_date": row.get("Proposed Date of Completion (As committed to allottees)"),
+            "no_basement":   row.get("Number of Basements"),
+            "no_podium":     row.get("Number of Podiums"),
+            "no_super_struct": row.get("Number of Slab of Super Structure"),
+            "no_stilt":      row.get("Number of Stilts"),
+        }.items() if v not in (None, "")})
+
+    # Fallback: build minimal building_detail from project metadata when no structure table found.
+    if not building_detail and project_name:
+        _af = record.get("actual_finish_date")
+        _completion_date = None
+        if _af:
+            try:
+                from datetime import datetime as _dt
+                _completion_date = _dt.fromisoformat(str(_af).replace(" ", "T")).strftime("%d/%m/%Y")
+            except (ValueError, TypeError):
+                pass
+        _entry: dict[str, Any] = {"name": project_name}
+        if _completion_date:
+            _entry["completion_date"] = _completion_date
+        building_detail = [_entry]
+
+    # progress_detail — placeholder blocks (mirrors legacy format)
+    progress_detail = [{"block": project_name}, {"block": project_name}] if project_name else []
+
+    if not booked_detail and not amenity_detail and not building_detail:
         return None
 
-    status_update: dict[str, Any] = {"updated": True}
-    if booking_details:
-        status_update["booking_details"] = booking_details
+    result = []
+    if booked_detail:
+        result.append({"booked_detail": booked_detail})
+    if amenity_detail:
+        result.append({"amenity_detail": amenity_detail})
     if building_detail:
-        status_update["building_detail"] = building_detail
-    if progress:
-        status_update["construction_progress"] = progress
-    return [status_update]
+        result.append({"building_detail": building_detail})
+    if progress_detail:
+        result.append({"progress_detail": progress_detail})
+    return result or None
 
 
 def apply_kerala_legacy_shape(record: dict[str, Any]) -> dict[str, Any]:
     out = dict(record)
     labels = out.get("data", {}).get("all_labels", {}) if isinstance(out.get("data"), dict) else {}
-    original_building = out.get("building_details") if isinstance(out.get("building_details"), dict) else {}
+    _bd = out.get("building_details")
+    # Use _raw_building (stored before normalization) for richer status_update data.
+    # _raw_building and _raw_facilities are stored in data dict during parsing so they
+    # survive normalization. Fall back to top-level fields if not in data (older paths).
+    _d = out.get("data") if isinstance(out.get("data"), dict) else {}
+    original_building      = (_d.get("_raw_building") if isinstance(_d.get("_raw_building"), dict)
+                               else (_bd if isinstance(_bd, dict) else {}))
+    original_building_list = _bd if isinstance(_bd, list) else []
     original_task_progress = out.get("construction_progress") if isinstance(out.get("construction_progress"), list) else []
-    original_facilities = out.get("provided_faciltiy") if isinstance(out.get("provided_faciltiy"), dict) else {}
+    original_facilities    = (_d.get("_raw_facilities") if isinstance(_d.get("_raw_facilities"), dict)
+                               else (out.get("provided_faciltiy") if isinstance(out.get("provided_faciltiy"), dict) else {}))
     chosen_addr = _legacy_promoter_address(out, labels) or {}
 
     out["state"] = "kerala"
@@ -945,7 +980,7 @@ def apply_kerala_legacy_shape(record: dict[str, Any]) -> dict[str, Any]:
     out["config_id"] = LEGACY_CONFIG_ID
 
     preview_source_url = out.get("data", {}).get("source_url") if isinstance(out.get("data"), dict) else None
-    if preview_source_url:
+    if preview_source_url and not out.get("url"):
         out["url"] = preview_source_url
 
     if out.get("estimated_commencement_date") and not out.get("actual_commencement_date"):
@@ -997,10 +1032,17 @@ def apply_kerala_legacy_shape(record: dict[str, Any]) -> dict[str, Any]:
         out["promoter_address_raw"] = [legacy_promoter_address]
 
     if out.get("land_area") is not None or out.get("construction_area") is not None:
+        def _fmt_area(v: Any) -> str | None:
+            if v is None:
+                return None
+            try:
+                return f"{float(v):.2f}"
+            except (ValueError, TypeError):
+                return str(v)
         out["land_area_details"] = {
-            "land_area": str(out.get("land_area")) if out.get("land_area") is not None else None,
+            "land_area": _fmt_area(out.get("land_area")),
             "land_area_unit": "Sqmts",
-            "construction_area": str(out.get("construction_area")) if out.get("construction_area") is not None else None,
+            "construction_area": _fmt_area(out.get("construction_area")),
             "construction_area_unit": "in Sqmts",
         }
 
@@ -1014,15 +1056,41 @@ def apply_kerala_legacy_shape(record: dict[str, Any]) -> dict[str, Any]:
     if compact_professionals:
         out["professional_information"] = compact_professionals
 
-    legacy_progress = _build_kerala_legacy_facility_progress(original_facilities)
-    if legacy_progress:
-        out["construction_progress"] = legacy_progress
+    # construction_progress is already built with schema-compatible keys in _parse_print_preview;
+    # only fall back to facility dict here if it wasn't populated during parsing.
+    if not out.get("construction_progress") and original_facilities:
+        legacy_progress = _build_kerala_legacy_facility_progress(original_facilities)
+        if legacy_progress:
+            out["construction_progress"] = legacy_progress
+
+    # Post-normalization fixups for construction_progress to match legacy sample format:
+    # - add has_same_data: True
+    # - ensure progress_percentage has a leading space (normalizer strips it)
+    cp_list = out.get("construction_progress")
+    if isinstance(cp_list, list):
+        fixed_cp = []
+        for item in cp_list:
+            if not isinstance(item, dict):
+                fixed_cp.append(item)
+                continue
+            entry = dict(item)
+            entry["has_same_data"] = True
+            pct = entry.get("progress_percentage")
+            if pct is not None and not str(pct).startswith(" "):
+                entry["progress_percentage"] = f" {str(pct).strip()}"
+            fixed_cp.append(entry)
+        out["construction_progress"] = fixed_cp
+
+    # Normalize promoter_name whitespace (e.g. "Abdul  Rasheed" → "Abdul Rasheed")
+    if out.get("promoter_name"):
+        out["promoter_name"] = " ".join(str(out["promoter_name"]).split())
 
     legacy_status_update = _build_kerala_legacy_status_update(
         out,
         original_building,
         original_task_progress,
         original_facilities,
+        building_list=original_building_list,
     )
     if legacy_status_update:
         out["status_update"] = legacy_status_update
@@ -1030,14 +1098,20 @@ def apply_kerala_legacy_shape(record: dict[str, Any]) -> dict[str, Any]:
     out["project_city"] = None
     out["authorised_signatory_details"] = None
     out["provided_faciltiy"] = None
-    out["building_details"] = None
+    out.pop("_raw_building", None)
+    # Preserve building_details if it is the normalized list; clear internal dicts.
+    if isinstance(out.get("building_details"), dict):
+        out["building_details"] = None
     out["land_detail"] = None
 
-    # Ensure PROD-required fields are present in data, preserving any extra DEV fields
-    existing_data = out.get("data") if isinstance(out.get("data"), dict) else {}
+    # Ensure PROD-required fields are present in data, and strip interim raw fields
+    existing_data = dict(out.get("data") if isinstance(out.get("data"), dict) else {})
+    existing_data.pop("_raw_building", None)
+    existing_data.pop("_raw_facilities", None)
+    # Strip source_url from data after it has been used to set url above.
+    existing_data.pop("source_url", None)
     out["data"] = {
         "govt_type": "state",
-        "is_processed": False,
         "land_area_unit": "Sqmts",
         "construction_area_unit": "in Sqmts",
         **existing_data,
@@ -1309,24 +1383,57 @@ def _document_queue(*doc_groups: list[dict] | None) -> list[dict]:
 # ── Sentinel check ────────────────────────────────────────────────────────────
 
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
+    """
+    Data-quality sentinel for Kerala RERA.
+    Loads state_projects_sample/kerala.json as the baseline, re-scrapes the
+    sentinel project's detail page, and verifies ≥ 80% field coverage.
+    """
+    import json as _json
+    import os as _os
+    from core.sentinel_utils import check_field_coverage
+
     sentinel_reg = config.get("sentinel_registration_no", "")
     if not sentinel_reg:
-        logger.warning("No sentinel configured — skipping")
+        logger.warning("No sentinel_registration_no configured — skipping", step="sentinel")
         return True
-    key = generate_project_key(sentinel_reg)
-    existing = get_project_by_key(key)
-    if not existing:
-        logger.warning("Sentinel not in DB yet — skipping check")
+
+    sample_path = _os.path.join(
+        _os.path.dirname(_os.path.dirname(__file__)),
+        "state_projects_sample", "kerala.json",
+    )
+    try:
+        with open(sample_path) as fh:
+            baseline: dict = _json.load(fh)
+    except FileNotFoundError:
+        logger.warning("Sample baseline not found — skipping coverage check",
+                       path=sample_path, step="sentinel")
         return True
-    soup = _get_explore_page(1, logger)
-    if not soup:
-        logger.error("Sentinel: could not fetch explore-projects page 1")
+
+    detail_url = baseline.get("url", "")
+    if not detail_url:
+        logger.warning("Sentinel: no detail URL in sample — skipping", step="sentinel")
+        return True
+
+    logger.info(f"Sentinel: scraping {sentinel_reg}", url=detail_url, step="sentinel")
+    try:
+        fresh = _scrape_detail_page(detail_url, logger) or {}
+    except Exception as exc:
+        logger.error(f"Sentinel: scrape error — {exc}", step="sentinel")
         return False
-    page_text = soup.get_text()
-    if sentinel_reg not in page_text:
-        logger.error("Sentinel reg number not found on explore-projects page 1", reg=sentinel_reg)
+
+    if not fresh:
+        logger.error("Sentinel: no data extracted", url=detail_url, step="sentinel")
         return False
-    logger.info("Sentinel check passed", reg=sentinel_reg)
+
+    if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
+        insert_crawl_error(
+            run_id, config.get("id", "kerala_rera"),
+            "SENTINEL_FAILED",
+            f"Coverage below 80% for sentinel project {sentinel_reg}",
+        )
+        return False
+
+    logger.info("Sentinel check passed", reg=sentinel_reg, step="sentinel")
     return True
 
 
@@ -1338,12 +1445,14 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     counts = {"projects_found": 0, "projects_new": 0, "projects_updated": 0,
               "projects_skipped": 0, "documents_uploaded": 0, "error_count": 0}
 
+    # ── Sentinel health check ────────────────────────────────────────────────
+    if not _sentinel_check(config, run_id, logger):
+        logger.error("Sentinel failed — aborting crawl", step="sentinel")
+        counts["error_count"] += 1
+        return counts
+
     item_limit = settings.CRAWL_ITEM_LIMIT or 0  # 0 = unlimited
     items_processed = 0
-
-    if not _sentinel_check(config, run_id, logger):
-        insert_crawl_error(run_id, site_id, "SENTINEL_FAILED", "Sentinel check failed")
-        return counts
 
     checkpoint = load_checkpoint(site_id, mode)
     # Resume from the page AFTER the last completed one — the saved page was

@@ -1,0 +1,802 @@
+{
+  "key": "10519471464853025075",
+  "project_registration_no": "TG-APP-71268",
+  "url": "https://rerait.telangana.gov.in/PrintPreview/PrintPreview?q=7tBl7Q%2bne0YC%2bJuWZ1o5D7U%2fBMf%2f%2bZxNCMUjHlNIxKGW8oSVcCENetit4ylunFGT7t4JZGIC%2b2WFGs7LWJggSdNtLNFeZax5RiGpHPLkSpUcv%2bvfRNtr6hwZdFZ4NiZZxvkmqK2%2b4lATrpm8hCXobpzvbormKT9qddg%2fjGZhMz5XgEN968pNIQ%3d%3d",
+  "state": "telangana",
+  "domain": "rerait.telangana.gov.in",
+  "project_name": "SURAKSHA COUNTY",
+  "project_type": "Plotted Development",
+  "promoter_name": "PENUGURI PRABHAKAR",
+  "status_of_the_project": "On-Going Project",
+  "project_pin_code": "506167",
+  "project_city": "Jangaon",
+  "project_state": "telangana",
+  "crawl_machine_ip": "127.0.0.1",
+  "machine_name": "Anirveshs-MacBook-Air.local",
+  "project_location_raw": {
+    "state": "Telangana",
+    "district": "Jangaon",
+    "village": "Shamirpet",
+    "locality": "SHAMIRPET",
+    "pin_code": "506167",
+    "raw_address": "SHAMIRPET, Jangaon, Telangana, Pincode: 506167"
+  },
+  "promoter_address_raw": {
+    "raw_address": "PRABHAKAR HOME, MANCHU KONDA, Khammam, Telangana, Pincode: 507182",
+    "district": "Khammam",
+    "locality": "MANCHU KONDA",
+    "pin_code": "507182",
+    "state": "Telangana",
+    "house_no_building_name": "PRABHAKAR HOME"
+  },
+  "promoter_contact_details": {
+    "phone": "08341684410"
+  },
+  "building_details": [
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "132.77",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "124.73",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "125.01",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "125.30",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "125.59",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "125.87",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "126.17",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "119.89",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "147.09",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "141.95",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "170.77",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "243.98",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "238.52",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "153.95",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "161.92",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "148.92",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "136.13",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "177.75",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "255.87",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "148.64",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "143.96",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "153.22",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "153.24",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "125.38",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "161.41",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "160.91",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "153.7",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "153.67",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "153.65",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "186.8",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "204.52",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "190.11",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "190.10",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "191",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "192.10",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "196.02",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "137.95",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "137.95",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "199.27",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "220.67",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "152.77",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "152.77",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "124.11",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "124.11",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "124.11",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "124.11",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "124.11",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "124.11",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "194.43",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "210.37",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "152.79",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "152.59",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "152.79",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "152.79",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "169.76",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "169.76",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "203.68",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "183.92",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "153.28",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "153.28",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "137.95",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "137.95",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "137.95",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "137.95",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "309.08",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "194.16",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "155.51",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "155.51",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "155.51",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "155.51",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "155.51",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "172.8",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "155.51",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "155.51",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "232.87",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "187.8",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "125.41",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "125.41",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "139.35",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "125.41",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "125.41",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "125.41",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "125.41",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "125.41",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "133.41",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "180.85",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "182.53",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "182.53",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "182.53",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "182.53",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "167.22",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "167.22",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "167.22",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "167.22",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "plot",
+      "no_of_plots": "1",
+      "total_area": "175.46",
+      "booking_detail": "0"
+    }
+  ],
+  "uploaded_documents": [
+    {
+      "type": "Registration Certificate 1",
+      "link": "https://rerait.telangana.gov.in/SearchList/GetShowCertificateFileContent?QueryStringID=UHJvamVjdElEPTU1MjYwJkRpdmlzaW9uPTEmVXNlcklEPTE3MjE4MiZSb2xlSUQ9MSZBcHBJRD03MTI2OCZDaGFyYWN0ZXJEPTUyJkV4dEFwcElEPQ",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    }
+  ],
+  "co_promoter_details": [
+    {
+      "name": "MERUGU SAROJA"
+    },
+    {
+      "name": "MERUGU VASU"
+    },
+    {
+      "name": "MERUGU NEELIMA"
+    },
+    {
+      "name": "MERUGU NIKHIL"
+    },
+    {
+      "name": "MERUGU SUDHAKAR"
+    },
+    {
+      "name": "MERUGU PRABHAKAR"
+    },
+    {
+      "name": "CHENNA BHAVANI"
+    },
+    {
+      "name": "MERUGU SURENDER"
+    },
+    {
+      "name": "MERUGU LAXMI NARAYANA"
+    },
+    {
+      "name": "MERUGU DEVRAJ"
+    },
+    {
+      "name": "YASOJU NARSIMHA CHARY"
+    }
+  ],
+  "professional_information": [
+    {
+      "name": "BASITH ALI",
+      "role": "Architect"
+    },
+    {
+      "name": "MOHAMMED MAQSOOD ANSARI",
+      "role": "Structural Engineer"
+    }
+  ],
+  "construction_progress": [
+    {
+      "title": "Internal Roads & Footpaths :",
+      "remarks": "COMPLETED",
+      "progress_percentage": "100"
+    },
+    {
+      "title": "Water Supply :",
+      "remarks": "COMPLETED",
+      "progress_percentage": "100"
+    },
+    {
+      "title": "Sewerage (Chamber, Lines, Septic Tank , STP) :",
+      "remarks": "COMPLETED",
+      "progress_percentage": "100"
+    },
+    {
+      "title": "Storm Water Drains :",
+      "remarks": "COMPLETED",
+      "progress_percentage": "100"
+    },
+    {
+      "title": "Green Strip/TOT LOT/Park :",
+      "remarks": "COMPLETED",
+      "progress_percentage": "100"
+    },
+    {
+      "title": "Street Lighting :",
+      "remarks": "completed",
+      "progress_percentage": "100"
+    },
+    {
+      "title": "Community Buildings :",
+      "remarks": "NA",
+      "progress_percentage": "0"
+    },
+    {
+      "title": "Treatment And Disposal Of Sewage And Sullage Water :",
+      "remarks": "COMPLETED",
+      "progress_percentage": "100"
+    },
+    {
+      "title": "Solid Waste Management And Disposal :",
+      "remarks": "COMPLETED",
+      "progress_percentage": "100"
+    },
+    {
+      "title": "Water Conservation, Rain water Harvesting :",
+      "remarks": "COMPLETED",
+      "progress_percentage": "100"
+    },
+    {
+      "title": "Energy management :",
+      "remarks": "NA",
+      "progress_percentage": "0"
+    },
+    {
+      "title": "Fire Protection And Fire Safety Requirements :",
+      "remarks": "NA",
+      "progress_percentage": "0"
+    },
+    {
+      "title": "Electrical Meter Room, Sub-Station, Receiving Station :",
+      "remarks": "NA",
+      "progress_percentage": "0"
+    },
+    {
+      "title": "Aggregate area of recreational Open Space :",
+      "remarks": "NA",
+      "progress_percentage": "0"
+    }
+  ],
+  "data": {
+    "data_cert": "UHJvamVjdElEPTU1MjYwJkRpdmlzaW9uPTEmVXNlcklEPTE3MjE4MiZSb2xlSUQ9MSZBcHBJRD03MTI2OCZBY3Rpb249U0VBUkNIJkNoYXJhY3RlckQ9ODcmRXh0QXBwSUQ9",
+    "govt_type": "state",
+    "doc_decoded": "ProjectID=55260&Division=1&UserID=172182&RoleID=1&AppID=71268&Action=SEARCH",
+    "is_processed": false,
+    "land_area_unit": "Total Area(In sqmts)",
+    "construction_area_unit": "Approved Built up Area (In Sqmts)"
+  },
+  "promoters_details": {
+    "name": "PENUGURI"
+  },
+  "land_area_details": {
+    "land_area": "28550.33",
+    "land_area_unit": "Total Area(In sqmts)",
+    "construction_area": "15329.36",
+    "construction_area_unit": "Approved Built up Area (In Sqmts)"
+  },
+  "estimated_finish_date": "2025-09-22 00:00:00+00:00",
+  "approved_on_date": "2023-09-23 00:00:00+00:00",
+  "config_id": 11811,
+  "land_area": 28550.33,
+  "construction_area": 15329.36,
+  "is_updated": false,
+  "is_duplicate": false,
+  "iw_processed": false,
+  "checked_updates": false,
+  "rera_housing_found": false,
+  "is_live": false,
+  "document_urls": [
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Registration Certificate 1"
+    }
+  ],
+  "acknowledgement_no": null,
+  "submitted_date": null,
+  "last_modified": null,
+  "estimated_commencement_date": null,
+  "actual_commencement_date": null,
+  "actual_finish_date": null,
+  "past_experience_of_promoter": null,
+  "bank_details": null,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "project_cost_detail": null,
+  "number_of_residential_units": null,
+  "number_of_commercial_units": null,
+  "complaints_litigation_details": null,
+  "authorised_signatory_details": null,
+  "project_description": null,
+  "provided_faciltiy": null,
+  "development_agreement_detail": null,
+  "land_detail": null,
+  "members_details": null,
+  "retrieved_on": null,
+  "last_updated": null,
+  "updated_fields": null,
+  "project_images": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": null,
+  "status_update": null,
+  "iw_part_processed": null,
+  "last_crawled_date": null,
+  "doc_ocr_url": null,
+  "proposed_timeline": null,
+  "checked_updates_date": null,
+  "alternative_rera_ids": null
+}

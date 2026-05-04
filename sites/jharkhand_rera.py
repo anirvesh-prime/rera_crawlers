@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup, Comment, Tag
 from pydantic import ValidationError
 
 from core.checkpoint import reset_checkpoint
@@ -89,6 +89,25 @@ def _kv_from_table(table: Tag) -> dict[str, str]:
             out[cells[0].lower()] = cells[1]
         elif len(cells) >= 3 and cells[1] in (":", "") and cells[0]:
             out[cells[0].lower()] = cells[2]
+    return out
+
+
+def _kv_from_divrows(soup: BeautifulSoup) -> dict[str, str]:
+    """Extract label→value pairs from Bootstrap div.row / <label> pattern.
+    The Jharkhand portal uses:
+      <div class="row">
+        <div class="col-md-4"><label>Field Name</label></div>
+        <div class="col-md-8"><label>Field Value</label></div>
+      </div>
+    """
+    out: dict[str, str] = {}
+    for row_div in soup.find_all("div", class_="row"):
+        labels = row_div.find_all("label", recursive=True)
+        if len(labels) >= 2:
+            key = _clean(labels[0].get_text()).rstrip(":").lower()
+            val = _clean(" ".join(l.get_text() for l in labels[1:]))
+            if key and val:
+                out[key] = val
     return out
 
 
@@ -184,10 +203,12 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
     # Collect all tables; we'll index them for section-specific parsing
     tables = soup.find_all("table")
 
-    # ── Build a global flat KV dict from all table rows ───────────────────
+    # ── Build a global flat KV dict from all table rows + div rows ───────
     global_kv: dict[str, str] = {}
     for tbl in tables:
         global_kv.update(_kv_from_table(tbl))
+    # The portal now renders core fields in Bootstrap div.row / <label> pairs
+    global_kv.update(_kv_from_divrows(soup))
 
     def _f(*keys: str) -> str:
         for k in keys:
@@ -212,6 +233,16 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
     permit_to    = _f("permit valid to")
     pan_no       = _f("pan no.", "pan no")
     firm_reg_no  = _f("firm registration no.", "firm registration no")
+    # The portal wraps the firm registration field in an HTML comment; also search there
+    if not firm_reg_no:
+        for _cmt in soup.find_all(string=lambda t: isinstance(t, Comment)):
+            _m = re.search(
+                r'firm\s+registration\s+no\.?\s*</label[^>]*>.*?<label[^>]*>\s*([^<\s][^<]*?)\s*</label',
+                str(_cmt), re.IGNORECASE | re.DOTALL,
+            )
+            if _m:
+                firm_reg_no = _m.group(1).strip()
+                break
     email        = _f("email id", "email")
 
     # ── Address ───────────────────────────────────────────────────────────
@@ -227,14 +258,14 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
         lng_val = _safe_float(re.sub(r"[NSEW]", "", lng_str, flags=re.IGNORECASE))
         # Portal swaps labels: "Project Latitude" = East (longitude), "Project Longitude" = North (latitude)
         if lat_val and lng_val:
-            loc_raw["processed_latitude"]  = lat_val   # "Longitude" field = N = true latitude
-            loc_raw["processed_longitude"] = lng_val   # "Latitude"  field = E = true longitude
+            loc_raw["processed_latitude"]  = lng_val   # "Project Longitude" field = North = true latitude
+            loc_raw["processed_longitude"] = lat_val   # "Project Latitude"  field = East  = true longitude
         elif lat_val or lng_val:
-            # If only one is available, store as-is without swap assumption
+            # If only one is available, use directional hint
             if lat_val:
-                loc_raw["processed_latitude"] = lat_val
+                loc_raw["processed_longitude"] = lat_val  # East = true longitude
             if lng_val:
-                loc_raw["processed_longitude"] = lng_val
+                loc_raw["processed_latitude"] = lng_val   # North = true latitude
 
     # ── Promoter name (Builder Details label in Section 2) ────────────────
     promoter_name = _f("builder details")
@@ -249,6 +280,8 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
     # ── Documents from Section 1 rows (MAP, Permit, etc.) ────────────────
     docs: list[dict] = []
     _collected_doc_labels: set[str] = set()
+
+    # Strategy A: Old layout — two-column table rows (label | link)
     for tbl in tables:
         for tr in tbl.find_all("tr"):
             cells = tr.find_all(["td", "th"])
@@ -259,14 +292,53 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
             label_text = _clean(label_cell.get_text()).lower()
             if label_text in _DOC_LABELS or label_text in _DEV_DOC_LABELS:
                 a_tag = value_cell.find("a", href=True)
-                if a_tag:
-                    href = _abs_url(a_tag["href"])
-                else:
-                    href = BASE_URL + "/FirstLevel/ViewDocument"
+                href = _abs_url(a_tag["href"]) if a_tag else BASE_URL + "/FirstLevel/ViewDocument"
                 display_label = _clean(label_cell.get_text())
                 if label_text not in _collected_doc_labels:
                     docs.append({"link": href, "type": display_label})
                     _collected_doc_labels.add(label_text)
+
+    # Strategy B: New layout — Bootstrap div.row with <label> key + <a> link
+    # (Section 1 docs: MAP, Permit, Brochure, etc.)
+    for row_div in soup.find_all("div", class_="row"):
+        labels = row_div.find_all("label", recursive=True)
+        if not labels:
+            continue
+        label_text = _clean(labels[0].get_text()).rstrip(":").lower()
+        if label_text in _DOC_LABELS:
+            a_tag = row_div.find("a", href=True)
+            href = _abs_url(a_tag["href"]) if a_tag else BASE_URL + "/FirstLevel/ViewDocument"
+            display_label = _clean(labels[0].get_text()).rstrip(":")
+            if label_text not in _collected_doc_labels:
+                docs.append({"link": href, "type": display_label})
+                _collected_doc_labels.add(label_text)
+
+    # Strategy C: New layout — single merged <td> containing inline dev-doc links
+    # Format: "Road : <span><a href="...">View</a></span><br/>Supply Water : ..."
+    for tbl in tables:
+        for td in tbl.find_all("td"):
+            colspan = td.get("colspan")
+            if not colspan or int(colspan) < 2:
+                continue
+            cell_text = td.get_text()
+            if not any(lbl in cell_text.lower() for lbl in ("road", "supply water", "seawage")):
+                continue
+            # Walk direct children: NavigableString = label candidate, <span> = link
+            current_label = ""
+            for node in td.children:
+                if isinstance(node, str):
+                    text = _clean(node).rstrip(":").strip()
+                    if text:
+                        current_label = text
+                elif hasattr(node, "name"):
+                    if node.name in ("span", "a"):
+                        a_tag = node if node.name == "a" else node.find("a", href=True)
+                        if a_tag and a_tag.get("href") and current_label:
+                            lbl_lower = current_label.lower()
+                            if lbl_lower in _DEV_DOC_LABELS and lbl_lower not in _collected_doc_labels:
+                                docs.append({"link": _abs_url(a_tag["href"]), "type": current_label})
+                                _collected_doc_labels.add(lbl_lower)
+                        current_label = ""  # reset after consuming link
 
     # ── Co-promoters (Partners/Directors table) ───────────────────────────
     # Some Jharkhand detail pages include a sub-header row (e.g. "Designation",
@@ -298,7 +370,10 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
                 header_row_idx = 0
         else:
             header_row_idx = 0
-        header_cells = [_clean(c.get_text()) for c in rows[header_row_idx].find_all(["th", "td"])]
+        # Use separator=" " so that column headers containing inline <br> tags
+        # (e.g. <th>Present<br>Address</th>) are joined with a space rather than
+        # concatenated ("PresentAddress"), which would break the column-name lookup.
+        header_cells = [_clean(c.get_text(separator=" ")) for c in rows[header_row_idx].find_all(["th", "td"])]
         for tr in rows[header_row_idx + 1:]:
             cells = tr.find_all(["td", "th"])
             if not cells:
@@ -313,7 +388,8 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
             rec: dict = {}
             for col, field in [
                 ("name", "name"), ("role", "role"), ("designation", "role"),
-                ("email", "email"), ("present address", "present_address"),
+                ("email", "email"), ("emaild", "email"),
+                ("present address", "present_address"),
                 ("address", "present_address"),
             ]:
                 v = entry.get(col, "")
@@ -342,18 +418,31 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
         bank_rows: list[dict] = []
         for tr in rows[1:]:
             cells = [_clean(c.get_text(separator=" ")) for c in tr.find_all(["td", "th"])]
-            if len(cells) >= 3 and any(cells):
+            if not any(cells):
+                continue
+            if len(cells) >= 5:
+                # 5-col layout: Account Type | Bank Name | Account No | Account Holder Name | IFSC Code
+                rec: dict = {}
+                if cells[1]: rec["account_no"]   = cells[1]
+                if cells[2]: rec["account_name"] = cells[2]
+                if cells[3]: rec["IFSC"]         = cells[3]
+                if rec:
+                    bank_rows.append(rec)
+            elif len(cells) >= 3:
                 bank_rows.append({"IFSC": cells[0], "account_no": cells[1], "account_name": cells[2]})
-            elif len(cells) == 2 and any(cells):
+            else:
                 bank_rows.append({"account_no": cells[0], "account_name": cells[1]})
         if bank_rows:
             bank_details = bank_rows
         break
 
     # ── Professional information ───────────────────────────────────────────
-    # Jharkhand has SEPARATE tables for contractors (tbl 17), architects (tbl 18),
-    # and structural engineers (tbl 19). Collect from ALL matching tables so we
-    # don't stop at the description-only table (tbl 16) that has no data rows.
+    # Jharkhand has SEPARATE tables for contractors, architects, and structural
+    # engineers. Collect from ALL matching tables; infer role from header text.
+    _PROF_PLACEHOLDER_NAMES = _JHAR_HDR_NAMES | {
+        "contractor name", "archiect name", "structural engineer name",
+        "email id", "mobile", "pan no.", "pan no",
+    }
     prof_all_rows: list[dict] = []
     for tbl in tables:
         rows = tbl.find_all("tr")
@@ -362,6 +451,15 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
         hdr_text = rows[0].get_text(separator="|", strip=True).lower()
         if not any(kw in hdr_text for kw in ("contractor", "archiect", "architect", "engineer", "professional")):
             continue
+        # Infer role from the table's header text
+        if "contractor" in hdr_text:
+            inferred_role = "Contractor"
+        elif "archiect" in hdr_text or "architect" in hdr_text:
+            inferred_role = "Archiect"
+        elif "structural engineer" in hdr_text:
+            inferred_role = "Structural Engineer"
+        else:
+            inferred_role = ""
         # Same combined-row detection as co_promoters above
         row0_cells = rows[0].find_all(["th", "td"])
         if len(rows) >= 2:
@@ -369,7 +467,7 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
             header_row_idx = 1 if (len(row0_cells) > len(row1_cells) and len(row1_cells) <= 8) else 0
         else:
             header_row_idx = 0
-        header_cells = [_clean(c.get_text()) for c in rows[header_row_idx].find_all(["th", "td"])]
+        header_cells = [_clean(c.get_text(separator=" ")) for c in rows[header_row_idx].find_all(["th", "td"])]
         # Skip description-only tables (single cell or no data rows)
         if len(header_cells) <= 1:
             continue
@@ -378,7 +476,8 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
             vals = [_clean(c.get_text(separator=" ")) for c in cells_raw]
             if not any(vals):
                 continue
-            if vals[0].lower().strip() in _JHAR_HDR_NAMES:
+            # Skip header-label rows (placeholder or repeated header)
+            if vals[0].lower().strip() in _PROF_PLACEHOLDER_NAMES:
                 continue
             entry = dict(zip([h.lower() for h in header_cells], vals))
             rec: dict = {}
@@ -394,9 +493,25 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
                 v = entry.get(col, "")
                 if v:
                     rec[field] = v
+            # Add inferred role if not already present
+            if inferred_role and not rec.get("role"):
+                rec["role"] = inferred_role
             if rec and rec.get("name"):
                 prof_all_rows.append(rec)
-    professionals: list[dict] | None = prof_all_rows or None
+    # Deduplicate by (name, email), keeping the LAST occurrence.
+    # Outer wrapper tables are scanned first and assign a generic role; individual
+    # per-role sub-tables come later in document order and carry the correct role,
+    # so "last wins" ensures accurate role assignment.
+    _seen_prof: dict[tuple, int] = {}   # key -> index in _deduped_prof
+    _deduped_prof: list[dict] = []
+    for _row in prof_all_rows:
+        _key = (_row.get("name", "").lower(), _row.get("email", "").lower())
+        if _key in _seen_prof:
+            _deduped_prof[_seen_prof[_key]] = _row   # overwrite with more specific entry
+        else:
+            _seen_prof[_key] = len(_deduped_prof)
+            _deduped_prof.append(_row)
+    professionals: list[dict] | None = _deduped_prof or None
 
     # ── Building / floor / flat details ───────────────────────────────────
     building_details: list[dict] | None = None
@@ -407,17 +522,26 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
         hdr_text = rows[0].get_text(separator="|", strip=True).lower()
         if "flat" not in hdr_text and "floor" not in hdr_text and "carpet" not in hdr_text:
             continue
+        # Determine column indices from header — the portal now uses 6 columns:
+        # Sl.No. | flat No. | floor No. | Completion Status | Sold Status | Carpet Area(in m sq.)
+        # Older pages used 2 columns: Flat Name | Carpet Area
+        hdr_cells = [_clean(c.get_text()) for c in rows[0].find_all(["th", "td"])]
+        hdr_lower  = [h.lower() for h in hdr_cells]
+        flat_idx   = next((i for i, h in enumerate(hdr_lower) if "flat" in h), 0)
+        carpet_idx = next((i for i, h in enumerate(hdr_lower) if "carpet" in h), 1)
+        sold_idx   = next((i for i, h in enumerate(hdr_lower) if "sold" in h), None)
         bldg_rows: list[dict] = []
         for tr in rows[1:]:
             vals = [_clean(c.get_text(separator=" ")) for c in tr.find_all(["td", "th"])]
             if not any(vals):
                 continue
             rec: dict = {}
-            if len(vals) >= 2:
-                rec["flat_name"] = vals[0]
-                rec["carpet_area"] = vals[1]
-            if len(vals) >= 3:
-                rec["sold_status"] = vals[2]
+            if flat_idx < len(vals) and vals[flat_idx]:
+                rec["flat_name"] = vals[flat_idx]
+            if carpet_idx < len(vals) and vals[carpet_idx]:
+                rec["carpet_area"] = vals[carpet_idx]
+            if sold_idx is not None and sold_idx < len(vals) and vals[sold_idx]:
+                rec["sold_status"] = vals[sold_idx]
             if rec.get("flat_name"):
                 bldg_rows.append(rec)
         if bldg_rows:
@@ -434,7 +558,10 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
         if "khata" not in hdr_text and "plot" not in hdr_text and "land" not in hdr_text:
             continue
         land_rows: list[dict] = []
-        header_cells = [_clean(c.get_text()) for c in rows[0].find_all(["th", "td"])]
+        header_cells = [_clean(c.get_text(separator=" ")) for c in rows[0].find_all(["th", "td"])]
+        # Skip wrapper/description tables with a single header cell
+        if len(header_cells) <= 1:
+            continue
         for tr in rows[1:]:
             cells_raw = tr.find_all(["td", "th"])
             vals = [_clean(c.get_text(separator=" ")) for c in cells_raw]
@@ -445,6 +572,8 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
             for col, field in [
                 ("plot no", "plot_no"), ("plot no.", "plot_no"),
                 ("khata no", "khata_no"), ("khata no.", "khata_no"),
+                # "Ownership Detail" column holds the title-holder name on this portal
+                ("ownership detail", "title_holder_name"),
                 ("title holder name", "title_holder_name"),
                 ("title holder", "title_holder_name"),
             ]:
@@ -459,8 +588,16 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
                     break
             if rec:
                 land_rows.append(rec)
-        if land_rows:
-            land_detail = land_rows
+        # Deduplicate by (plot_no, sale_deed) — nested table scanning can repeat rows
+        _seen_land: set = set()
+        _deduped_land: list[dict] = []
+        for _lr in land_rows:
+            _lkey = (_lr.get("plot_no", ""), _lr.get("sale_deed", ""))
+            if _lkey not in _seen_land:
+                _seen_land.add(_lkey)
+                _deduped_land.append(_lr)
+        if _deduped_land:
+            land_detail = _deduped_land
         break
 
     # ── Project cost ──────────────────────────────────────────────────────
@@ -506,22 +643,61 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
 # ── Sentinel ──────────────────────────────────────────────────────────────────
 
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
-    """Verify the listing page is reachable and returns project rows."""
+    """
+    Data-quality sentinel for Jharkhand RERA.
+    Loads state_projects_sample/jharkhand.json as the baseline, re-scrapes the
+    sentinel project's detail page, and verifies ≥ 80% field coverage.
+    """
+    import json as _json
+    import os as _os
+    from core.sentinel_utils import check_field_coverage
+
     sentinel_reg = config.get("sentinel_registration_no", "")
-    resp = safe_get(LISTING_URL, retries=2, logger=logger)
-    if not resp:
-        logger.error("Sentinel: listing page unreachable", step="sentinel")
-        return False
-    soup = BeautifulSoup(resp.text, "lxml")
-    rows = _parse_listing_rows(soup)
-    if not rows:
-        logger.error("Sentinel: no project rows found on listing page", step="sentinel")
-        return False
-    logger.info(
-        f"Sentinel passed: {len(rows)} projects on page 1"
-        + (f" (sentinel_reg={sentinel_reg!r})" if sentinel_reg else ""),
-        step="sentinel",
+    if not sentinel_reg:
+        logger.warning("No sentinel_registration_no configured — skipping", step="sentinel")
+        return True
+
+    sample_path = _os.path.join(
+        _os.path.dirname(_os.path.dirname(__file__)),
+        "state_projects_sample", "jharkhand.json",
     )
+    try:
+        with open(sample_path) as fh:
+            baseline: dict = _json.load(fh)
+    except FileNotFoundError:
+        logger.warning("Sample baseline not found — skipping coverage check",
+                       path=sample_path, step="sentinel")
+        return True
+
+    detail_url = baseline.get("url", "")
+    if not detail_url:
+        logger.warning("Sentinel: no detail URL in sample — skipping", step="sentinel")
+        return True
+
+    logger.info(f"Sentinel: scraping {sentinel_reg}", url=detail_url, step="sentinel")
+    try:
+        resp = safe_get(detail_url, retries=2, logger=logger)
+        if not resp:
+            logger.error("Sentinel: failed to fetch detail page", url=detail_url, step="sentinel")
+            return False
+        fresh = _parse_detail_page(resp.text, detail_url) or {}
+    except Exception as exc:
+        logger.error(f"Sentinel: scrape error — {exc}", step="sentinel")
+        return False
+
+    if not fresh:
+        logger.error("Sentinel: no data extracted", url=detail_url, step="sentinel")
+        return False
+
+    if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
+        insert_crawl_error(
+            run_id, config.get("id", "jharkhand_rera"),
+            "SENTINEL_FAILED",
+            f"Coverage below 80% for sentinel project {sentinel_reg}",
+        )
+        return False
+
+    logger.info("Sentinel check passed", reg=sentinel_reg, step="sentinel")
     return True
 
 
@@ -594,12 +770,16 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     counters = dict(projects_found=0, projects_new=0, projects_updated=0,
                     projects_skipped=0, documents_uploaded=0, error_count=0)
     machine_name, machine_ip = get_machine_context()
+
+    # ── Sentinel health check ────────────────────────────────────────────────
+    if not _sentinel_check(config, run_id, logger):
+        logger.error("Sentinel failed — aborting crawl", step="sentinel")
+        counters["error_count"] += 1
+        return counters
+
     item_limit    = settings.CRAWL_ITEM_LIMIT or 0
     items_processed = 0
     delay_range   = config.get("rate_limit_delay", (2, 4))
-
-    if not _sentinel_check(config, run_id, logger):
-        return counters
 
     current_page = 1
     max_pages    = settings.MAX_PAGES

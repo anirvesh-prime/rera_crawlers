@@ -60,6 +60,25 @@ def _get_listing_response(url: str, logger: CrawlerLogger, params: dict | None =
         return None
 
 
+def _delhi_get(url: str, logger: CrawlerLogger | None = None) -> httpx.Response | None:
+    """GET for Delhi RERA sub-pages.
+
+    The site often returns HTTP 500 while still serving valid HTML content.
+    Unlike safe_get(), this wrapper does NOT call raise_for_status() so that
+    callers can still parse the response body on non-200 codes.
+    """
+    headers = {"User-Agent": settings.user_agents[0]}
+    for attempt in range(1, 4):
+        try:
+            with httpx.Client(timeout=30.0, follow_redirects=True, verify=False) as client:
+                resp = client.get(url, headers=headers)
+            return resp
+        except Exception as exc:
+            if logger:
+                logger.warning(f"GET attempt {attempt}/3 failed: {exc}", url=url)
+    return None
+
+
 # ─── Row-level helpers ────────────────────────────────────────────────────────
 
 def _strong_values(td: Tag) -> dict[str, str]:
@@ -94,6 +113,580 @@ def _strong_values(td: Tag) -> dict[str, str]:
 def _abs(href: str) -> str:
     """Convert a relative href to an absolute URL."""
     return href if href.startswith("http") else urljoin(BASE_URL, href)
+
+
+def _parse_directors_page(html: str) -> list[dict]:
+    """Parse co-promoter/director rows from promoter_directors/{node_id}.
+
+    The page renders a table#view_directors with columns:
+      No. | Designation | Personal Details (b tags) | Photograph (img)
+    Returns a list of dicts with name, email, phone, designation, photo.
+    """
+    soup = BeautifulSoup(html, "lxml")
+    table = soup.find("table", id="view_directors") or soup.find("table")
+    if not table:
+        return []
+
+    results: list[dict] = []
+    for tr in table.select("tbody tr"):
+        cells = tr.find_all("td")
+        if len(cells) < 3:
+            continue
+        designation = cells[1].get_text(strip=True) if len(cells) > 1 else ""
+        personal_td = cells[2]
+
+        # Extract name / email / phone from <b>Label</b> : value pairs
+        name = email = phone = ""
+        for b in personal_td.find_all("b"):
+            label = b.get_text(strip=True).lower().rstrip(":")
+            # Collect the text node(s) immediately after the <b>
+            val_parts: list[str] = []
+            for node in b.next_siblings:
+                tag = getattr(node, "name", None)
+                if tag == "b":
+                    break
+                if tag in ("br", "img"):
+                    continue
+                text = str(node).strip().lstrip(":").strip() if tag is None else ""
+                if text:
+                    val_parts.append(text)
+            val = " ".join(val_parts).strip()
+            if label == "name":
+                name = val
+            elif label == "email":
+                email = val
+            elif label == "phone":
+                phone = val
+
+        photo: str | None = None
+        if len(cells) > 3:
+            img = cells[3].find("img")
+            if img and img.get("src"):
+                photo = _abs(img["src"])
+
+        entry: dict = {k: v for k, v in {
+            "name":        name,
+            "email":       email,
+            "phone":       phone,
+            "designation": designation,
+            "photo":       photo,
+        }.items() if v}
+        if entry.get("name"):
+            results.append(entry)
+
+    return results
+
+
+def _parse_qpr_history(html: str) -> list[dict]:
+    """Parse QPR submission history from online_view_periodic_progress_reports_history.
+
+    The page renders a table with columns:
+      S.No. | Report Due Date | Report Status | Project Name
+    Report Status may contain <a> links to submitted QPR docs.
+    Returns a list of dicts: {end_date, status, uploaded_documents?, updated?}
+    """
+    soup = BeautifulSoup(html, "lxml")
+    table = soup.find("table")
+    if not table:
+        return []
+
+    results: list[dict] = []
+    for tr in table.select("tbody tr"):
+        cells = tr.find_all("td")
+        if len(cells) < 3:
+            continue
+        end_date = cells[1].get_text(strip=True)
+        status_td = cells[2]
+        status = status_td.get_text(strip=True)
+        qpr_docs = [
+            {"link": _abs(a["href"]), "type": "QPR Report"}
+            for a in status_td.find_all("a", href=True)
+        ]
+
+        entry: dict = {"end_date": end_date, "status": status}
+        if qpr_docs:
+            entry["uploaded_documents"] = qpr_docs
+            entry["updated"] = True
+        if end_date or status:
+            results.append(entry)
+
+    return results
+
+
+def _extract_submitted_qprs_url(html: str) -> str | None:
+    """Extract the 'View all submitted QPRs' URL from the QPR history page.
+
+    The link lives in div.view-header and points to
+    all-submiited-qprs-public-view/{project_node_id}.
+    """
+    soup = BeautifulSoup(html, "lxml")
+    a = soup.select_one("div.view-header a[href*='all-submiited-qprs-public-view']")
+    return _abs(a["href"]) if a else None
+
+
+def _parse_submitted_qprs_page(html: str) -> list[dict]:
+    """Parse all-submiited-qprs-public-view/{project_node_id}.
+
+    Table columns:
+      S.No. | QPR Details (linked to node) | Project Name | Quarter Duration
+      Submission Details | Documents | Status
+    Returns list of dicts: {qpr_id, detail_url, quarter_start, quarter_end,
+                             submitted_on, uploaded_documents, status}.
+    """
+    soup = BeautifulSoup(html, "lxml")
+    table = soup.find("table")
+    if not table:
+        return []
+
+    results: list[dict] = []
+    for tr in table.select("tbody tr"):
+        cells = tr.find_all("td")
+        if len(cells) < 6:
+            continue
+
+        # QPR ID and per-QPR detail-page link (node/{qpr_node_id})
+        qpr_a      = cells[1].find("a", href=True)
+        qpr_id     = qpr_a.get_text(strip=True) if qpr_a else ""
+        detail_url = _abs(qpr_a["href"])         if qpr_a else None
+
+        # Quarter dates
+        start_date = end_date = ""
+        for p in cells[3].find_all("p"):
+            txt = p.get_text(strip=True)
+            if "Start Date" in txt:
+                start_date = txt.split(":", 1)[-1].strip()
+            elif "End Date" in txt:
+                end_date   = txt.split(":", 1)[-1].strip()
+
+        # Submission date
+        submitted_on = (
+            cells[4].get_text(separator=" ", strip=True)
+            .replace("Submitted On :", "").strip()
+        )
+
+        # Documents (skip mailto links) — standard uploaded_documents format
+        docs = [
+            {"link": _abs(a["href"]), "type": "QPR Submission Document"}
+            for a in cells[5].find_all("a", href=True)
+            if not a["href"].startswith("mailto")
+        ]
+
+        # Status
+        status = cells[6].get_text(strip=True) if len(cells) > 6 else ""
+
+        entry: dict = {k: v for k, v in {
+            "qpr_id":             qpr_id,
+            "detail_url":         detail_url,
+            "quarter_start":      start_date,
+            "quarter_end":        end_date,
+            "submitted_on":       submitted_on,
+            "uploaded_documents": docs or None,
+            "status":             status,
+        }.items() if v}
+        if entry.get("qpr_id"):
+            results.append(entry)
+
+    return results
+
+
+def _parse_qpr_detail_node(html: str) -> dict:
+    """Parse a QPR detail node page (node/{qpr_node_id}).
+
+    Extracts:
+      qpr_id, quarter_start, quarter_end, submitted_on, status,
+      tower_completion: [{tower, pct_completed}],
+      amenity_completion: [{amenity, pct_completed}],
+      uploaded_documents: [{"link": str, "type": str}]
+    """
+    soup = BeautifulSoup(html, "lxml")
+    main = soup.find(id="main-content") or soup.find("article")
+    if not main:
+        return {}
+
+    result: dict = {}
+
+    # ── QPR header (div.group-qpr-details) ───────────────────────────────
+    header = main.find("div", class_="group-qpr-details")
+    if header:
+        for tbl in header.find_all("table"):
+            cells = tbl.find_all("td")
+            if len(cells) < 2:
+                continue
+            label = cells[0].get_text(strip=True).rstrip(":")
+            value = cells[1].get_text(strip=True)
+            if label == "QPR ID":
+                result["qpr_id"] = value
+            elif label == "Quarter Start Date":
+                result["quarter_start"] = value
+            elif label == "Quarter End Date":
+                result["quarter_end"] = value
+            elif label == "QPR Submitted on":
+                span = cells[1].find("span", class_="date-display-single")
+                result["submitted_on"] = (span.get("content") or value) if span else value
+            elif label == "Status of QPR":
+                result["status"] = value
+
+    # ── Tower completion ──────────────────────────────────────────────────
+    tower_details: list[dict] = []
+    for tower_div in main.find_all(
+        "div",
+        class_=lambda c: c and "field-collection-item-field-select-tower" in c,
+    ):
+        tower_name: str | None = None
+        pct: float | None = None
+        for tbl in tower_div.find_all("table"):
+            cells = tbl.find_all("td")
+            if len(cells) < 2:
+                continue
+            label = cells[0].get_text(strip=True)
+            value = cells[1].get_text(strip=True)
+            if label == "Name of Tower:":
+                tower_name = value
+            elif label == "% Completed:" and tower_name is not None and pct is None:
+                try:
+                    pct = float(value)
+                except ValueError:
+                    pass
+        if tower_name is not None:
+            entry: dict = {"tower": tower_name}
+            if pct is not None:
+                entry["pct_completed"] = pct
+            tower_details.append(entry)
+    if tower_details:
+        result["tower_completion"] = tower_details
+
+    # ── Amenity completion ────────────────────────────────────────────────
+    amenities: list[dict] = []
+    for tbl in main.find_all("table"):
+        cells = tbl.find_all("td")
+        if len(cells) < 2:
+            continue
+        if "Amenities" in cells[0].get_text():
+            amenity_name = cells[1].get_text(strip=True)
+            next_tbl = tbl.find_next_sibling("table")
+            if next_tbl:
+                nc = next_tbl.find_all("td")
+                if len(nc) >= 2 and "% Completed" in nc[0].get_text():
+                    try:
+                        amenities.append({
+                            "amenity":       amenity_name,
+                            "pct_completed": float(nc[1].get_text(strip=True)),
+                        })
+                    except ValueError:
+                        amenities.append({"amenity": amenity_name})
+    if amenities:
+        result["amenity_completion"] = amenities
+
+    # ── Documents ─────────────────────────────────────────────────────────
+    qpr_docs = [
+        {"link": _abs(a["href"]), "type": "QPR Document"}
+        for a in main.find_all("a", href=True)
+        if "/files/qpr/" in a.get("href", "")
+    ]
+    if qpr_docs:
+        result["uploaded_documents"] = qpr_docs
+
+    return {k: v for k, v in result.items() if v not in (None, "", [], {})}
+
+
+def _parse_project_page(html: str) -> dict:
+    """Parse project_page/{project_node_id} — the rich project details page.
+
+    Extracts from each named scroll section:
+      scroll1  → general details (description, website, lat/lng, land_type, dates)
+      scroll2  → area details (land_area, open_area, covered_area, parking)
+      scroll3  → cost estimates (construction_cost_lakhs, project_cost_lakhs, total_cost_lakhs)
+      scroll5  → facilities & amenities table
+      scroll6  → project entity (CA, architect, engineer)
+      scroll7  → uploaded document URLs
+      scroll8  → tower/floor inventory
+
+    Also extracts from the page header:
+      promoter_page URL, RERA status, last_updated, registration certificate PDF.
+    """
+    soup = BeautifulSoup(html, "lxml")
+    for tag in soup.find_all(["script", "style"]):
+        tag.decompose()
+    main = soup.find(id="main-content") or soup.find("form", id="project-page")
+    if not main:
+        return {}
+
+    result: dict = {}
+
+    # ── Header: promoter URL, cert PDF, last updated ──────────────────────────
+    promo_a = main.find("a", href=lambda h: h and "promoter_page" in str(h))
+    if promo_a:
+        result["promoter_page_url"] = _abs(promo_a["href"])
+
+    cert_a = main.find("a", href=lambda h: h and "certification_document" in str(h))
+    if cert_a:
+        result["registration_cert_url"] = _abs(cert_a["href"])
+
+    for span in main.find_all("span"):
+        txt = span.get_text(strip=True)
+        if txt.startswith("Last Updated on"):
+            result["last_updated"] = txt.replace("Last Updated on :", "").strip()
+            break
+
+    # ── Helper: parse col-md-3/col-md-9 label-value rows ─────────────────────
+    def _kv(section_div: BeautifulSoup) -> dict[str, str]:
+        """Parse Bootstrap grid rows into {label: value} pairs.
+
+        Handles both the common col-md-3/col-md-9 layout and the 4-column
+        col-md-3/col-md-3/col-md-3/col-md-3 layout used for Latitude/Longitude.
+        """
+        pairs: dict[str, str] = {}
+        for row in section_div.find_all("div", class_="row"):
+            cols = row.find_all("div", recursive=False)
+            if not cols:
+                continue
+            # Collect all label spans in this row
+            label_cols = [c for c in cols if c.find("span", class_="font-weight-semibold")]
+            if not label_cols:
+                continue
+            # For each label column, its value is the immediately following sibling
+            # that does NOT contain a label span.
+            for lc in label_cols:
+                span = lc.find("span", class_="font-weight-semibold")
+                label = span.get_text(strip=True).rstrip(":").strip() if span else ""
+                if not label:
+                    continue
+                # Find the next sibling div that has no label span
+                idx = cols.index(lc)
+                value_parts: list[str] = []
+                for vc in cols[idx + 1:]:
+                    if vc.find("span", class_="font-weight-semibold"):
+                        break  # next label — stop
+                    value_parts.append(vc.get_text(strip=True))
+                value = " ".join(value_parts).strip()
+                if value:
+                    pairs[label] = value
+        return pairs
+
+    # ── scroll1: General Details + Timelines ─────────────────────────────────
+    s1 = main.find(id="scroll1")
+    if s1:
+        kv = _kv(s1)
+        # Use DB-schema column names directly so the normalizer maps them correctly.
+        _map = {
+            "Description":                "project_description",
+            "Website":                    "website",
+            "Sub District /Tehsil /City": "sub_district",
+            "Latitude":                   "latitude",
+            "Longitude":                  "longitude",
+            "Project Type":               "project_type",
+            "Type of Land":               "land_type",
+            "Start Date":                 "estimated_commencement_date",
+            "End Date":                   "project_end_date",  # kept separate; listing's valid_until → estimated_finish_date
+        }
+        for src, dst in _map.items():
+            if kv.get(src):
+                result[dst] = kv[src]
+
+    # ── scroll2: Area + Parking ───────────────────────────────────────────────
+    s2 = main.find(id="scroll2")
+    if s2:
+        kv = _kv(s2)
+        # land_area / construction_area map directly to DB float columns.
+        _map2 = {
+            "Land Area":                  "land_area",
+            "Open Area":                  "open_area_sqmt",    # no dedicated DB column; stored in data
+            "Covered Area":               "construction_area",
+            "No. of parking":             "total_parking",
+            "No. of open parking":        "open_parking",
+            "No. of covered parking":     "covered_parking",
+            "No. of garage":              "garage_count",
+        }
+        for src, dst in _map2.items():
+            if kv.get(src):
+                result[dst] = kv[src]
+
+    # ── scroll3: Cost → project_cost_detail JSONB ─────────────────────────────
+    s3 = main.find(id="scroll3")
+    if s3:
+        kv = _kv(s3)
+        cost_detail: dict = {}
+        if kv.get("Cost of construction"):
+            cost_detail["estimated_construction_cost"] = kv["Cost of construction"]
+        if kv.get("Cost of project"):
+            cost_detail["estimated_project_cost"] = kv["Cost of project"]
+        if kv.get("Total cost of project"):
+            cost_detail["total_project_cost"] = kv["Total cost of project"]
+        if cost_detail:
+            result["project_cost_detail"] = cost_detail
+
+    # ── scroll5: Facilities & Amenities table ─────────────────────────────────
+    s5 = main.find(id="scroll5")
+    if s5:
+        amenities: list[dict] = []
+        for tr in s5.select("table tbody tr"):
+            cells = tr.find_all("td")
+            if len(cells) < 3:
+                continue
+            name   = cells[1].get_text(strip=True)
+            detail = cells[2].get_text(strip=True)
+            status = cells[3].get_text(strip=True) if len(cells) > 3 else ""
+            if name:
+                amenities.append({k: v for k, v in {
+                    "name": name, "detail": detail, "status": status,
+                }.items() if v})
+        if amenities:
+            result["amenities"] = amenities
+
+    # ── scroll6: Project Entity (CA, Architects, Engineers, etc.) ────────────
+    s6 = main.find(id="scroll6")
+    if s6:
+        _TAB_ROLES = {
+            "CA1":               "CA",
+            "architecht1":       "Architect",
+            "engineer1":         "Engineer",
+            "st_engineer1":      "Structural Engineer",
+            "associate_agent1":  "Real Estate Agent",
+        }
+        _LABEL_MAP = {
+            "ca registration no.":       "registration_no",
+            "coa registration no.":      "registration_no",
+            "rera registration no":      "registration_no",
+            "name":                      "name",
+            "mobile no.":                "mobile",
+            "mobile no":                 "mobile",
+            "e-mail address":            "email",
+            "email address":             "email",
+        }
+        professionals: list[dict] = []
+        for tab_id, role in _TAB_ROLES.items():
+            tab = s6.find(id=tab_id)
+            if not tab:
+                continue
+            kv = _kv(tab)
+            entry: dict = {"type": role}
+            for raw_label, val in kv.items():
+                mapped = _LABEL_MAP.get(raw_label.lower().rstrip("."))
+                if mapped and val:
+                    entry[mapped] = val
+            if len(entry) > 1:   # has at least one field besides "type"
+                professionals.append(entry)
+        if professionals:
+            result["professional_information"] = professionals
+
+    # ── scroll7: Uploaded documents ───────────────────────────────────────────
+    # The table has 3 columns: Document Name | Status | Uploaded Documents.
+    # Each uploaded file is a <button data-pdf_link="..."> (not an <a> tag).
+    s7 = main.find(id="scroll7")
+    if s7:
+        proj_docs: list[dict] = []
+        for tr in s7.select("table tbody tr"):
+            cells = tr.find_all("td")
+            if len(cells) < 3:
+                continue  # category header row (colspan=3)
+            doc_name = cells[0].get_text(strip=True)
+            btn = cells[2].find("button", attrs={"data-pdf_link": True})
+            if btn and btn.get("data-pdf_link"):
+                proj_docs.append({
+                    "link": _abs(btn["data-pdf_link"]),
+                    "type": doc_name or "Project Document",
+                })
+        if proj_docs:
+            result["uploaded_documents"] = proj_docs
+
+    # ── scroll8: Tower/Floor inventory ───────────────────────────────────────
+    # Each tower is ONE top-level table whose <tbody> has 5 rows:
+    #   tr[0]: <th> header row  (Sr.No, Name of Block/Tower, dates, parking)
+    #   tr[1]: <td> data row    (tower name, completion date, parking counts)
+    #   tr[2]: <td colspan=9>   containing nested Apartment Type table
+    #   tr[3]: <td colspan=9>   containing nested Stage/Completion table
+    #   tr[4]: <td colspan=9>   containing nested Facility/Amenity table
+    s8 = main.find(id="scroll8")
+    if s8:
+        towers: list[dict] = []
+        # Only top-level tables (not nested inside another table)
+        for tbl in s8.find_all("table"):
+            if tbl.find_parent("table") is not None:
+                continue
+            tbody = tbl.find("tbody")
+            if not tbody:
+                continue
+            trs = tbody.find_all("tr", recursive=False)
+            if not trs:
+                continue
+
+            # First row must be the header with "Name of Block/Tower"
+            header_ths = [th.get_text(strip=True) for th in trs[0].find_all("th", recursive=False)]
+            if "Name of Block/Tower" not in header_ths:
+                continue
+
+            # Second row: tower data
+            if len(trs) < 2:
+                continue
+            data_cells = trs[1].find_all("td", recursive=False)
+            tower_name      = data_cells[1].get_text(strip=True) if len(data_cells) > 1 else ""
+            completion_date = data_cells[2].get_text(strip=True) if len(data_cells) > 2 else ""
+            if not tower_name:
+                continue
+
+            tower: dict = {"tower": tower_name}
+            if completion_date:
+                tower["proposed_completion"] = completion_date
+
+            # Rows 2–4: each contains one nested sub-table
+            for nested_tr in trs[2:]:
+                sub = nested_tr.find("table")
+                if not sub:
+                    continue
+                sub_first_tr = sub.find("tr")
+                if not sub_first_tr:
+                    continue
+                sub_ths = [th.get_text(strip=True) for th in sub_first_tr.find_all("th")]
+
+                if "Apartment Type" in sub_ths:
+                    # Floor-wise inventory
+                    floors: list[dict] = []
+                    current_floor: str | None = None
+                    for row in sub.find_all("tr"):
+                        tds = row.find_all("td")
+                        if not tds:
+                            continue
+                        # Floor label row: a single wide <td> with "Floor No."
+                        if len(tds) == 1 or (len(tds) > 0 and tds[0].get("colspan", "1") not in ("1", 1)):
+                            txt = tds[0].get_text(strip=True)
+                            if "Floor No." in txt:
+                                current_floor = txt.split(":", 1)[-1].strip()
+                            continue
+                        if len(tds) >= 7 and current_floor is not None:
+                            apt_type = tds[1].get_text(strip=True)
+                            if apt_type and apt_type != "Apartment Type":
+                                floors.append({k: v for k, v in {
+                                    "floor":       current_floor,
+                                    "type":        apt_type,
+                                    "count":       tds[2].get_text(strip=True),
+                                    "carpet_sqmt": tds[3].get_text(strip=True),
+                                    "booked":      tds[6].get_text(strip=True),
+                                    "available":   tds[7].get_text(strip=True) if len(tds) > 7 else "",
+                                }.items() if v})
+                    if floors:
+                        tower["floor_inventory"] = floors
+
+                elif "Stage" in sub_ths:
+                    stages: list[dict] = []
+                    for row in sub.find_all("tr"):
+                        tds = row.find_all("td")
+                        if len(tds) >= 4:
+                            stage = tds[1].get_text(strip=True)
+                            if stage and stage != "Stage":
+                                stages.append({k: v for k, v in {
+                                    "stage":    stage,
+                                    "due_date": tds[2].get_text(strip=True),
+                                    "started":  tds[3].get_text(strip=True),
+                                    "pct_done": tds[4].get_text(strip=True) if len(tds) > 4 else "",
+                                }.items() if v})
+                    if stages:
+                        tower["completion_stages"] = stages
+
+            towers.append(tower)
+        if towers:
+            result["tower_inventory"] = towers
+
+    return {k: v for k, v in result.items() if v not in (None, "", [], {})}
 
 
 def _parse_row(tr: Tag) -> dict | None:
@@ -132,6 +725,14 @@ def _parse_row(tr: Tag) -> dict | None:
         promo_kv.get("phone number", "") or promo_kv.get("phone", "")
     ).strip()
 
+    # "View Photos" link → promoter_directors/{node_id} — used to fetch
+    # co_promoter_details / members_details in the main run() loop.
+    directors_url: str | None = None
+    if promo_td:
+        dir_a = promo_td.find("a", href=True)
+        if dir_a:
+            directors_url = _abs(dir_a["href"])
+
     # ── Project cell ──────────────────────────────────────────────────────────
     proj_kv: dict[str, str] = _strong_values(proj_td) if proj_td else {}
     project_name = proj_kv.get("name", "").strip()
@@ -160,11 +761,19 @@ def _parse_row(tr: Tag) -> dict | None:
     ext_cert = reg_kv.get("extension certificate", "").strip() or None
 
     # ── QPR cell ──────────────────────────────────────────────────────────────
+    # The cell contains two <a> tags:
+    #   <a href="online_view_periodic_progress_reports_history/...">View QPRs
+    #     <a class="product_list" href="project_page/{node_id}">View Project</a>
+    #   </a>
     qpr_url: str | None = None
+    project_page_url: str | None = None
     if qpr_td:
         qpr_a = qpr_td.find("a", href=True)
         if qpr_a:
             qpr_url = _abs(qpr_a["href"])
+        proj_a = qpr_td.find("a", class_="product_list", href=True)
+        if proj_a:
+            project_page_url = _abs(proj_a["href"])
 
     # ── Build sub-dicts ───────────────────────────────────────────────────────
     contact: dict = {
@@ -209,14 +818,60 @@ def _parse_row(tr: Tag) -> dict | None:
         "promoter_contact_details": contact or None,
         "uploaded_documents":       docs or None,
         "data":                     data_snap or None,
+        # Secondary-fetch URLs (used by run() to enrich each project):
+        "_directors_url":           directors_url,     # → co_promoter_details / members_details
+        "_qpr_url":                 qpr_url,           # kept for reference / fallback
+        "_project_page_url":        project_page_url,  # → project details (direct, no QPR hop needed)
     }
     if ext_cert:
         out["extension_certificate"] = ext_cert   # stored in data jsonb via normalizer
     return {k: v for k, v in out.items() if v not in (None, "", [], {})}
 
 
+def _batch_fetch_project_node_ids(
+    reg_nos: list[str],
+    logger: object | None = None,
+) -> dict[int, str]:
+    """POST to the site's visitor/ajax endpoint to resolve registration numbers
+    to project node IDs in one round trip.
+
+    The JS in delhi.js does the same thing: it collects QPR hrefs from the
+    listing table (which contain the reg number), sends them to this endpoint,
+    and gets back a JSON array of node IDs indexed by row position.
+
+    Returns {row_index: node_id_str} for all rows that resolved successfully.
+    """
+    if not reg_nos:
+        return {}
+    # Build the same dict the JS builds: {index: reg_no}
+    payload_data = {str(i): reg_no for i, reg_no in enumerate(reg_nos)}
+    try:
+        import json as _json
+        with httpx.Client(
+            timeout=15.0, follow_redirects=True, verify=False,
+            headers={"User-Agent": "Mozilla/5.0"},
+        ) as c:
+            resp = c.post(
+                f"{BASE_URL}/visitor/ajax",
+                data={"mod": "get_project_nid", "data": _json.dumps(payload_data)},
+            )
+        if resp.status_code not in (200, 500):
+            return {}
+        raw = resp.text.strip()
+        node_ids: list[str] = _json.loads(raw)
+        return {i: nid for i, nid in enumerate(node_ids) if nid}
+    except Exception as exc:
+        if logger:
+            logger.warning(f"batch node_id lookup failed: {exc}")
+        return {}
+
+
 def _parse_listing_page(html: str) -> list[dict]:
-    """Extract all project dicts from a single listing page."""
+    """Extract all project dicts from a single listing page.
+
+    Also calls the visitor/ajax endpoint to resolve project node IDs in one
+    batch request, injecting _project_page_url into each row.
+    """
     soup = BeautifulSoup(html, "lxml")
     results: list[dict] = []
     table = soup.select_one("div.view-content table")
@@ -226,6 +881,21 @@ def _parse_listing_page(html: str) -> list[dict]:
         row = _parse_row(tr)
         if row:
             results.append(row)
+
+    if not results:
+        return results
+
+    # Batch-resolve project node IDs using the same AJAX endpoint the site JS uses.
+    # QPR href format: online_view_periodic_progress_reports_history/{reg_no}
+    reg_nos = [
+        r.get("_qpr_url", "").rstrip("/").rsplit("/", 1)[-1]
+        for r in results
+    ]
+    node_id_map = _batch_fetch_project_node_ids(reg_nos)
+    for i, nid in node_id_map.items():
+        if i < len(results) and nid.isdigit():
+            results[i]["_project_page_url"] = f"{BASE_URL}/project_page/{nid}"
+
     return results
 
 
@@ -241,34 +911,125 @@ def _has_next_page(html: str) -> bool:
 # ─── Sentinel ─────────────────────────────────────────────────────────────────
 
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
-    """Verify the listing page is reachable and returns ≥1 parsed rows."""
-    resp = _get_listing_response(LISTING_URL, logger)
-    if not resp:
-        logger.error("Sentinel: listing page unreachable", step="sentinel")
-        insert_crawl_error(
-            run_id, config["id"], "SENTINEL_FAILED",
-            "Listing page unreachable", url=LISTING_URL,
-        )
-        return False
+    """
+    Data-quality sentinel for Delhi RERA.
 
-    rows = _parse_listing_page(resp.text)
-    if not rows:
-        logger.error(
-            "Sentinel: no rows found — site structure may have changed",
-            step="sentinel",
-        )
-        insert_crawl_error(
-            run_id, config["id"], "SENTINEL_FAILED",
-            "No rows found on listing page", url=LISTING_URL,
-        )
-        return False
+    Loads state_projects_sample/delhi.json as the baseline, searches listing
+    pages 0 and 1 for the sentinel project, then fully enriches that row
+    (project page + directors) exactly as run() would — and verifies ≥ 80%
+    field coverage against the baseline.
+    """
+    import json as _json
+    import os as _os
+    from core.sentinel_utils import check_field_coverage
 
     sentinel_reg = config.get("sentinel_registration_no", _SENTINEL_REG)
-    logger.info(
-        f"Sentinel passed: {len(rows)} rows on page 0"
-        + (f" (expected sentinel {sentinel_reg!r})" if sentinel_reg else ""),
-        step="sentinel",
+
+    sample_path = _os.path.join(
+        _os.path.dirname(_os.path.dirname(__file__)),
+        "state_projects_sample", "delhi.json",
     )
+    try:
+        with open(sample_path) as fh:
+            baseline: dict = _json.load(fh)
+    except FileNotFoundError:
+        logger.warning("Sample baseline not found — skipping coverage check",
+                       path=sample_path, step="sentinel")
+        return True
+
+    # Step 1: verify listing page 0 parses correctly (structural check)
+    page0_resp = _get_listing_response(f"{LISTING_URL}?page=0", logger)
+    if not page0_resp:
+        logger.error("Sentinel: listing page unreachable", step="sentinel")
+        insert_crawl_error(run_id, config["id"], "SENTINEL_FAILED",
+                           "Listing page unreachable", url=LISTING_URL)
+        return False
+    page0_rows = _parse_listing_page(page0_resp.text)
+    if not page0_rows:
+        logger.error("Sentinel: no rows parsed — site structure may have changed",
+                     step="sentinel")
+        insert_crawl_error(run_id, config["id"], "SENTINEL_FAILED",
+                           "No rows found on listing page", url=LISTING_URL)
+        return False
+
+    # Step 2: scan listing pages 0-4 to find the sentinel project row.
+    # The row contains both the listing-level fields (promoter name, address, etc.)
+    # and the _project_page_url injected by the batch AJAX lookup in _parse_listing_page.
+    fresh: dict | None = None
+    proj_page_url: str | None = None
+
+    # Check page 0 rows first (already fetched)
+    found = next(
+        (r for r in page0_rows if r.get("project_registration_no", "").upper() == sentinel_reg.upper()),
+        None,
+    )
+    if found:
+        fresh = found
+    else:
+        for page_no in range(1, 5):
+            page_url = f"{LISTING_URL}?page={page_no}"
+            resp = _get_listing_response(page_url, logger)
+            rows = _parse_listing_page(resp.text) if resp else []
+            found = next(
+                (r for r in rows if r.get("project_registration_no", "").upper() == sentinel_reg.upper()),
+                None,
+            )
+            if found:
+                fresh = found
+                break
+
+    if fresh is None:
+        logger.warning(
+            f"Sentinel: {sentinel_reg} not found on pages 0-4, using first row for structure check",
+            step="sentinel",
+        )
+        fresh = page0_rows[0]
+
+    proj_page_url = fresh.pop("_project_page_url", None)
+    fresh.pop("_directors_url", None)
+    fresh.pop("_qpr_url", None)
+
+    logger.info("Sentinel: enriching row for coverage check", reg=sentinel_reg, step="sentinel")
+
+    # Enrich with project page — same logic as run()
+    if proj_page_url:
+        proj_resp = _delhi_get(proj_page_url, logger=logger)
+        if proj_resp:
+            proj_detail = _parse_project_page(proj_resp.text)
+            if proj_detail:
+                proj_docs = proj_detail.pop("uploaded_documents", None)
+                for k, v in proj_detail.items():
+                    if k not in fresh:
+                        fresh[k] = v
+                if proj_docs:
+                    fresh["uploaded_documents"] = (fresh.get("uploaded_documents") or []) + proj_docs
+
+    # Normalize the raw crawler output so field names match the DB-level baseline
+    # (e.g. land_area_sqmt → land_area, description → project_description, etc.)
+    from core.project_normalizer import normalize_project_payload
+    payload = {
+        **fresh,
+        "url":    proj_page_url or f"{LISTING_URL}?page=0",
+        "domain": DOMAIN,
+        "state":  config.get("state", "delhi"),
+    }
+    payload = {k: v for k, v in payload.items() if v not in (None, "", [], {})}
+    try:
+        normalized = normalize_project_payload(payload, config)
+    except Exception as exc:
+        logger.warning(f"Sentinel: normalization failed ({exc}), comparing raw output",
+                       step="sentinel")
+        normalized = fresh
+
+    if not check_field_coverage(normalized, baseline, threshold=0.80, logger=logger):
+        insert_crawl_error(
+            run_id, config.get("id", "delhi_rera"),
+            "SENTINEL_FAILED",
+            f"Coverage below 80% for sentinel project {sentinel_reg}",
+        )
+        return False
+
+    logger.info("Sentinel check passed", reg=sentinel_reg, step="sentinel")
     return True
 
 
@@ -365,8 +1126,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     delay_range  = config.get("rate_limit_delay", (2, 4))
     max_pages    = settings.MAX_PAGES
 
-    # ── Sentinel ──────────────────────────────────────────────────────────────
+    # ── Sentinel health check ────────────────────────────────────────────────
     if not _sentinel_check(config, run_id, logger):
+        logger.error("Sentinel failed — aborting crawl", step="sentinel")
+        counters["error_count"] += 1
         return counters
 
     # ── Resume from checkpoint ────────────────────────────────────────────────
@@ -414,11 +1177,53 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             key = generate_project_key(reg_no)
             logger.set_project(key=key, reg_no=reg_no, url=page_url, page=page)
             try:
+                # ── Enrich: fetch directors and project details page ──────────
+                fetch_directors  = config.get("fetch_directors", True)
+                directors_url    = row.pop("_directors_url", None)
+                proj_page_url    = row.pop("_project_page_url", None)
+                row.pop("_qpr_url", None)   # no longer used
+
+                if fetch_directors and directors_url and settings.SCRAPE_DETAILS:
+                    dir_resp = _delhi_get(directors_url, logger=logger)
+                    if dir_resp:
+                        directors = _parse_directors_page(dir_resp.text)
+                        if directors:
+                            row["co_promoter_details"] = [
+                                {k: v for k, v in d.items() if k != "photo"}
+                                for d in directors
+                            ]
+                            row["members_details"] = directors
+                            logger.info(
+                                f"Fetched {len(directors)} director(s) for {reg_no}",
+                                step="directors",
+                            )
+                        random_delay(*delay_range)
+
+                if proj_page_url and settings.SCRAPE_DETAILS:
+                    proj_resp = _delhi_get(proj_page_url, logger=logger)
+                    if proj_resp:
+                        proj_detail = _parse_project_page(proj_resp.text)
+                        if proj_detail:
+                            # Merge uploaded_documents lists (don't overwrite)
+                            proj_docs = proj_detail.pop("uploaded_documents", None)
+                            for k, v in proj_detail.items():
+                                if k not in row:
+                                    row[k] = v
+                            if proj_docs:
+                                existing = row.get("uploaded_documents") or []
+                                row["uploaded_documents"] = existing + proj_docs
+                            logger.info(
+                                f"Fetched {proj_page_url} ({len(proj_detail)} fields)"
+                                f" for {reg_no}",
+                                step="project_page",
+                            )
+                    random_delay(*delay_range)
+
                 # ── Build, normalize, upsert ──────────────────────────────────
                 try:
                     payload: dict = {
                         **row,
-                        "url":    page_url,
+                        "url":    proj_page_url or page_url,
                         "domain": DOMAIN,
                         "state":  config.get("state", "delhi"),
                     }

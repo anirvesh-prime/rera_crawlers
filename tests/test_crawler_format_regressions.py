@@ -27,6 +27,7 @@ class CrawlerFormatRegressionTests(unittest.TestCase):
                 "type": "Form C",
                 "link": "https://example.com/form-c.pdf",
                 "s3_link": "https://s3.example.com/form-c.pdf",
+                "updated": True,
             },
         )
 

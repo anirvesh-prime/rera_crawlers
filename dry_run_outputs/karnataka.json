@@ -1,24 +1,1169 @@
 {
-  "key": "17771294475369477753",
-  "project_registration_no": "ACK/KA/RERA/1265/347/PR/070426/010157",
+  "key": "3727982075536494416",
+  "project_registration_no": "PRM/KA/RERA/1250/304/PR/020526/008616",
   "url": "https://rera.karnataka.gov.in/projectViewDetails",
   "state": "karnataka",
   "domain": "rera.karnataka.gov.in",
-  "project_name": "GURUKULAM NEST",
-  "promoter_name": "YASH VALUE SPACES",
-  "acknowledgement_no": "ACK/KA/RERA/1265/347/PR/070426/010157",
-  "project_city": "BAGALKOT",
+  "project_name": "MIZAR",
+  "project_type": "Plotted Development",
+  "promoter_name": "NAGARJUNA STRUCTURAL CORPORATION PRIVATE LIMITED",
+  "status_of_the_project": "Ongoing",
+  "acknowledgement_no": "ACK/KA/RERA/1250/304/PR/200426/010177",
+  "project_pin_code": "560102",
+  "project_city": "BENGALURU URBAN",
   "project_state": "karnataka",
+  "project_description": "Development Of 44 residential Villa Plots in Sy No 194/1, 194/2 at Kolathuru Village, Kasaba Hobli, Hosakote Taluk, Bengaluru Rural Dist",
   "crawl_machine_ip": "127.0.0.1",
   "machine_name": "Anirveshs-MacBook-Air.local",
   "project_location_raw": {
-    "district": "Bagalkot"
+    "district": "Bengaluru Urban",
+    "taluk": "Bengaluru South",
+    "pin_code": "560102",
+    "latitude": "13.077158",
+    "longitude": "77.826657",
+    "raw_address": "Sy No 194/1, 194/2 Kolathuru Village , Kasaba Hobli , Hosakote , Bengaluru Rural, Karnataka - 562114",
+    "processed_latitude": 13.077158,
+    "processed_longitude": 77.826657
   },
+  "promoter_address_raw": {
+    "raw_address": "No 419, First Floor, Above Lei s Showroom,1st Sector,HSR Layout ,Bengaluru South ,Bengaluru Urban-560102",
+    "taluk": "Bengaluru South",
+    "district": "Bengaluru Urban",
+    "pin_code": "560102",
+    "state": "Karnataka"
+  },
+  "bank_details": {
+    "bank_name": "KOTAK MAHINDRA BANK",
+    "account_no": "0052674099",
+    "IFSC": "KKBK0008167",
+    "branch": "Kadugodi",
+    "state": "Karnataka",
+    "district": "Bengaluru Urban",
+    "pin_code": "560102"
+  },
+  "project_cost_detail": {
+    "cost_of_land": "54496204",
+    "estimated_construction_cost": "40512305",
+    "total_project_cost": "95008509"
+  },
+  "building_details": [
+    {
+      "flat_type": "9m X 15m",
+      "total_area": "2700"
+    },
+    {
+      "flat_type": "Odd",
+      "total_area": "3471"
+    }
+  ],
+  "uploaded_documents": [
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=uLW9eaWUKQyzlkXoftwFcQ%3D%3D",
+      "type": "Registration Certificate.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=69YC4UXufvi6vxXK%2Bf%2FB3Q%3D%3D",
+      "type": "Memorandum of Association.PDF",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=%2B%2BKYcDjQVkjHGLDX7SyRCA%3D%3D",
+      "type": "Article of Association.PDF",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=dFfkjgSb9A9u63RorZ2bNA%3D%3D",
+      "type": "Company Pan card and Nagarjuna Pan Card_.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=luNpvIMeDi6iEGzNTS4dHQ%3D%3D",
+      "type": "Company PAN Card.PDF",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=z7NnNJSsPOD97DvJ9zyYDg%3D%3D",
+      "type": "Registration Certificate.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=7%2FyDKemo5V%2FZaN35YFmHMA%3D%3D",
+      "type": "Board Resolution Letter - MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=nIkmpR8oDDjU116gGT4Q6Q%3D%3D",
+      "type": "Company Pan card and Nagarjuna Pan Card_.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=q%2FBFZVKv0hvrS4HAgrpQSA%3D%3D",
+      "type": "Organisation Structure.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=eMxIu3S2ZIKvlQgmOpIidw%3D%3D",
+      "type": "Present : No A -309, SLV Central Park, Bidare Agraha, Kadugodi Plantation , Bengaluru Urban , Karnataka - 560067 Permanent : No A -309, SLV Central Park, Bidare Agraha, Kadugodi Plantation , Bengaluru Urban , Karnataka - 560067 Official : No 419, First Floor, Above Lei s Showroom, 1st Sector, HSR Layout , Bengaluru Urban , Karnataka - 560102",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=GH%2ByIRUT2UnArSi0ntb1bA%3D%3D",
+      "type": "Present : 5-9-245, Shaili Gardenia, Yapral, Alwal , Ranga Reddy , Telangana - 500087 Permanent : 5-9-245, Shaili Gardenia, Yapral, Alwal , Ranga Reddy , Telangana - 500087 Official : No 419, First Floor, Above Lei s Showroom, 1st Sector, HSR Layout , Bengaluru Urban , Karnataka - 560102",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=Vg7tyDyBWBdMI1MDx1CbWQ%3D%3D",
+      "type": "Form 1 CA Certificate MIZAR -.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=R5JG6qH%2FFaLNG%2BEQni016w%3D%3D",
+      "type": "Form-06 MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=HlEsdLLCzzdWP51ePviMXQ%3D%3D",
+      "type": "2024",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=W92P64NyodDE6W%2FyAJu9fg%3D%3D",
+      "type": "2021",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=5i7ESpvY4Eyvq4hS8Y8PBw%3D%3D",
+      "type": "230",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=XXailND%2BocHS6cig%2BYaD7Q%3D%3D",
+      "type": "Document",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=0FVeOIlMGzGI79xc0KNPHg%3D%3D",
+      "type": "Document",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=Jr4KU5uSPxnh47STp9yaYw%3D%3D",
+      "type": "Residential",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=dtmIKfgYwVot80G6RJ39Ig%3D%3D",
+      "type": "HOSAKOTE",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=gFtDRN22iV%2FPrjSYtLNUPw%3D%3D",
+      "type": "1 Acre 16.8 Gunta",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=pLjp0MD7l05tQhk2koKwGA%3D%3D",
+      "type": "230",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=C8kIybYwaNopkJpZHlpckw%3D%3D",
+      "type": "Document",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=IKPtZZmbvUx1%2FoFAW4aDTw%3D%3D",
+      "type": "Document",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=vDXgfr%2BJRtZeNEqCev9RXg%3D%3D",
+      "type": "Residential",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=XforzE8DjwwQa8elfgBDCg%3D%3D",
+      "type": "HOSAKOTE",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=dSM3taJ2Ms1CKxry9oSipA%3D%3D",
+      "type": "1 Acre 13 Gunta",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=422LOfydsBmoXYZz9wGShw%3D%3D",
+      "type": "No Litigation Affidavit.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=5HSJ0rvVQ3lI3zrhFCKRSg%3D%3D",
+      "type": "_Balancesheet with Schedule 2024-25.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=WCHC8i5pl4D8GtfM0OaK9A%3D%3D",
+      "type": "Balancesheet with Schedule 2023-24.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=XBtczam9%2B%2Bzl1Q%2FZ%2BJY1IA%3D%3D",
+      "type": "Balancesheet with Schedule 2022-23.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=%2BZn9e8H8JdtUgHCD%2FZafwQ%3D%3D",
+      "type": "P and L with Schedule 2024-25.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=AP%2FkOtHYotA%2FwQD1u3haWA%3D%3D",
+      "type": "P and L with Schedule 2023 - 24.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=u%2FRAH0MMwQi85EfGywIAag%3D%3D",
+      "type": "P and L with Schedule 2022-23.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=lg8NIXWam%2Fh5E5kHWcqurw%3D%3D",
+      "type": "ITR 2022-23.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=rzszsqM4%2BDn7IeZFmx5Zgw%3D%3D",
+      "type": "ITR 2023-24.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=XSNLFpPlStBddOgX3BytHw%3D%3D",
+      "type": "ITR 2024-25.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=WLLcn2mYsi4ZYB8bphWS3w%3D%3D",
+      "type": "board report 2025.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=Yp2uOvcWEia8lFHvJ1HNWg%3D%3D",
+      "type": "board report 2024.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=KAXe23gzElp3ZfZZgjc8cg%3D%3D",
+      "type": "board report 2023.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=r87jLvEcIDWH%2FWz9MwqD0g%3D%3D",
+      "type": "CashFlowStatement_2024-25.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=aJpEMlpZCPMg6dyfocl6DA%3D%3D",
+      "type": "CashFlowStatement_2023-24.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=hE04dYPUOd9WYWvlIKtYoA%3D%3D",
+      "type": "AuditorReport2024-25.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=2TPakM3%2FMIBphmgyuTMf5g%3D%3D",
+      "type": "AuditorReport2023-2024.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=nI2xsBaMlnQpg8AJmI2M9A%3D%3D",
+      "type": "AuditorReport2022-23.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=auZLwSUKe8DTjZ%2Fg4Mnl7g%3D%3D",
+      "type": "Approved Plan Letter- MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=1yDjREo6yqe4j4T%2Bh31RQQ%3D%3D",
+      "type": "Approved Layout Plan - MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=6%2F%2BnC7CLZ3LQrOsQJC4caA%3D%3D",
+      "type": "Project Specification - MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=v9Gpd3Je7GPzq9g%2FKs7NJA%3D%3D",
+      "type": "NA.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=PGURH1dzUU2bcoENVouH7w%3D%3D",
+      "type": "Relinquishment Deed - MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=j6aEDN6X7aYZLZNxDM%2FcIw%3D%3D",
+      "type": "Proforma AOS - MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=fZg2RkDG6LczVxpsug7tQA%3D%3D",
+      "type": "Allotment Letter - MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=EvuOrA9nHNaK0ahFCkf%2Bew%3D%3D",
+      "type": "Form B Affidavit - MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=GcBCq1VSffI6gizrVnLeZg%3D%3D",
+      "type": "No Voilation Affidavit - MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=cJ3T5AxfEdBgYUbYIRFvWg%3D%3D",
+      "type": "JDA Affidavit - MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=rzPHyh6lxPm3muh%2FpEzRqw%3D%3D",
+      "type": "Kolathur 194 legal opinion.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=Oeb4Ra%2BRg3XqUE4pIk78cQ%3D%3D",
+      "type": "BESCOM NOC - MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=QvR1gXixyIT1VX%2FB8f7Pfg%3D%3D",
+      "type": "Water NOC - MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=xntPQ4o9iWnyKGV54%2Biz1w%3D%3D",
+      "type": "KSPCB (If Applicable)( Annexure - 97 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=4cPElUAs2tOXkKfEOmL9ag%3D%3D",
+      "type": "SEIAA (If Applicable)( Annexure - 98 )"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=XhElqJOAKPjPVjvoHW73Jg%3D%3D",
+      "type": "Kolathur 194 legal opinion.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=0PWnlTkMibH8pxcLhl4ZfQ%3D%3D",
+      "type": "Panchayath parikath.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=nUzBMHW%2FFkiYpoSZKgn9TQ%3D%3D",
+      "type": "3 Order Sheet.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=XVQYDTy0s3%2BLZkKPCiynBA%3D%3D",
+      "type": "4 Death Certificate Narayana Rao.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=Pv5oXeTAfrVPOahzUPoKRQ%3D%3D",
+      "type": "5 Death Certificate Shamanna.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=%2BkoSRv5FB4Me%2FJvPW%2BVIiQ%3D%3D",
+      "type": "Chaithanya Death Certificate.jpeg",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=t5RTBM01Dd%2F79RXlQb0hww%3D%3D",
+      "type": "Death Certificate Sundresh.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=9b09ildsE1d%2Bjsj2g7YRCw%3D%3D",
+      "type": "Akarband Sy No 194-1 and 194-2.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=zx9b%2FRwLKblPuGI12uLUrw%3D%3D",
+      "type": "MR 3-1993-94.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=QGAqp%2Fjpg8SGPlH0Q%2B4wxw%3D%3D",
+      "type": "MR 4 -1993-94.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=cvy%2BQ4Zb2v27swXaeU3msA%3D%3D",
+      "type": "194 MR T104.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=O%2FH9iHorCnSXrPGWQ8Hzeg%3D%3D",
+      "type": "Karab Land Conversion Order 194-1.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=yt7Jq3NSsjF7I%2FyvMPN6qA%3D%3D",
+      "type": "Karab Land Conversion Order 194-2.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=iw78Xb2SwhDyULC%2BkiLiZA%3D%3D",
+      "type": "Change Of Land Use - MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=HsNQehQ3pRVxK6er9foDnw%3D%3D",
+      "type": "GPA - 194-1 Rama Rao.PDF",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=6Pkubqgavu%2BAHDhYBdXoBA%3D%3D",
+      "type": "GPA 194-2 Ashwathamma.PDF",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=FrjiFxKcyQSK2%2FJqadu6Wg%3D%3D",
+      "type": "CDP Map - MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=vr3gbR%2FenZfw9L549DBZjQ%3D%3D",
+      "type": "Village Map - MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=ngEaGokXqbTuZHDLG9GHbw%3D%3D",
+      "type": "ADLR Survey Sktech - MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=gPX8wL7tLImJPTRCXFHU0A%3D%3D",
+      "type": "Abstract Estimation MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=Je2KD9ReucGXYsMRd2T3pw%3D%3D",
+      "type": "Septic Tank - MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=uUQAhGscy3ogrnztovrWyw%3D%3D",
+      "type": "Area Statement - Mizar.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=IfOggE8HKel66iEke3DGbw%3D%3D",
+      "type": "Land Cost Calculation - MIZAR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=Lkze6PIqEj1Y880kMpi40w%3D%3D",
+      "type": "Borewell Photo.jpeg",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=VBGOuUi5luq81U1GJmHkxw%3D%3D",
+      "type": "Form 1 CA Certificate MIZAR -.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=CV81l%2F2ZKpC%2BimVs70t21Q%3D%3D",
+      "type": "1 Order Sheet - In favour of Narayana Rao.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=HA8Ky1KF31xq7rHCOWC%2Brg%3D%3D",
+      "type": "2 Panchayath Parikath 25-8-1979.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=FpvuGHvpBLN7AqAM%2FMWTtQ%3D%3D",
+      "type": "2 Death Certificate Narayana Rao.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=WLr6ztmC%2FZ75%2FxHKuCmMKw%3D%3D",
+      "type": "3 MR 3 1993-94.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=9kTW4U0s8j%2Bx8MxqagL6aA%3D%3D",
+      "type": "3 MR 4 1993-94.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=xhhZgupu9QjnV9SnF%2Blm2w%3D%3D",
+      "type": "4 IHC 350 1996-97.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=f3R6wkH9abjvLuAyB2synw%3D%3D",
+      "type": "5 GPA - 194-1 Rama Rao.PDF",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=ZoWEqs6tACaP0ewxfZGbuQ%3D%3D",
+      "type": "5 GPA 194-2 Ashwathamma.PDF",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=ulIt4LlqYYA6VLbUqhrkiQ%3D%3D",
+      "type": "5 JDA 194 -1 Rama Roa.PDF",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=ropgM1uxyVOssQKQpZDmZw%3D%3D",
+      "type": "5 JDA -194- 2 Ashwathamma.PDF",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=8QVJgs4m5duX6CLQGrKfrQ%3D%3D",
+      "type": "Death Certificate Shamanna.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=3nSQ2ynDFRRkVDD1HsXoWA%3D%3D",
+      "type": "6 Pavathi MR in Favour of Ashwathamma.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=99wRZqP%2B5APq9SJAXxEtcg%3D%3D",
+      "type": "7 Phody MR.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=WbqPCSRNKr1mkoLtuM3jFw%3D%3D",
+      "type": "RAMARAO DEATH CERTIFICATE.jpeg",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=NJtN1rSw4RXgWHk65SWM7g%3D%3D",
+      "type": "8 MR H45 Pavathi MR in favour of Lalithamma.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=ODCWfOWbOrRvkLl5eCWZYw%3D%3D",
+      "type": "Death Certificate Narayana Rao.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=5Wa5TRi8zhUl6RPI9lhBIw%3D%3D",
+      "type": "MIZAR.xlsx",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/certificate?CER_NO=PRM/KA/RERA/1250/304/PR/020526/008616",
+      "type": "Rera Registration Certificate 1",
+      "s3_link": "https://s3.example.com/dry-run"
+    }
+  ],
+  "authorised_signatory_details": {
+    "name": "Pidugu Nagarjuna Reddy",
+    "pan_no": "AAICN3736B",
+    "present_address": "No A -309, SLV Central Park, Bidare Agraha, Kadugodi Plantation , Bengaluru Urban , Karnataka - 560067",
+    "official_address": "No 419, First Floor, Above Lei s Showroom, 1st Sector, HSR Layout , Bengaluru Urban , Karnataka - 560102",
+    "permanent_address": "No A -309, SLV Central Park, Bidare Agraha, Kadugodi Plantation , Bengaluru Urban , Karnataka - 560067",
+    "raw_address": "No A -309, SLV Central Park, Bidare Agraha, Kadugodi Plantation , Bengaluru Urban , Karnataka - 560067"
+  },
+  "co_promoter_details": [
+    {
+      "name": "Lalitha H S",
+      "survey_no": "194/1",
+      "land_share": "40.0",
+      "present_address": "Kolathuru , Hoskote , Bengaluru Urban, Karnataka - 562114",
+      "comm_address": "Kolathuru , Hoskote , Bengaluru Rural, Karnataka - 562114"
+    },
+    {
+      "name": "Ashwathamma",
+      "survey_no": "194/2",
+      "land_share": "40.0",
+      "present_address": "Kolathuru , Hoskote , Bengaluru Rural, Karnataka - 562114",
+      "comm_address": "Kolathuru , Hoskote , Bengaluru Rural, Karnataka - 562114"
+    }
+  ],
+  "professional_information": [
+    {
+      "name": "Reddivari Sunil Kumar",
+      "role": "Accountant",
+      "address": "1-19, Voolapadu, , Ramasamudram , Chittoor , Andhra Pradesh - 517417",
+      "effective_date": "2024",
+      "key_real_estate_projects": "277685"
+    },
+    {
+      "name": "Balaji K N",
+      "role": "Engineers",
+      "address": "No 13/9, Narasaraju Kandigai , Athimanjeri, Pallipattu , Tiruvallur , Tamil Nadu - 631202",
+      "effective_date": "2021",
+      "key_real_estate_projects": "BCCL/BL-3.6/E-0345/21-22"
+    }
+  ],
+  "construction_progress": [
+    {
+      "title": "total_completion_percentage",
+      "progress_percentage": "20 %"
+    }
+  ],
+  "data": {
+    "district": "Bagalkot",
+    "START_PAGE": "0",
+    "project_district": "BENGALURU URBAN",
+    "total_completion_percentage": "20 %",
+    "status": "APPROVED"
+  },
+  "promoters_details": {
+    "gst_no": "NA",
+    "pan_no": "AAICN3736B",
+    "registration_no": "U70100KA2022PTC163717",
+    "objective": "To develop real estate projects"
+  },
+  "proposed_timeline": [
+    {
+      "title": "Formation Of Plots",
+      "status": "Yes",
+      "proposed_end_date": "2026-03-31 00:00:00+00:00"
+    },
+    {
+      "title": "Formation Of Road, Footpath, drainange, erection of Electrical poles",
+      "status": "Yes",
+      "proposed_end_date": "2026-10-31 00:00:00+00:00"
+    },
+    {
+      "title": "Power Supply Work(Transformer & Substation)",
+      "status": "Yes",
+      "proposed_end_date": "2026-08-31 00:00:00+00:00"
+    },
+    {
+      "title": "Plantation Work",
+      "status": "Yes",
+      "proposed_end_date": "2027-06-30 00:00:00+00:00"
+    },
+    {
+      "title": "Other Miscellaneous Work",
+      "status": "Yes",
+      "proposed_end_date": "2029-12-31 00:00:00+00:00"
+    }
+  ],
+  "actual_commencement_date": "2025-12-05 00:00:00+00:00",
+  "estimated_finish_date": "2029-12-31 00:00:00+00:00",
+  "actual_finish_date": "2029-12-31 00:00:00+00:00",
+  "approved_on_date": "2026-05-02 00:00:00+00:00",
+  "number_of_residential_units": 44,
   "config_id": 9,
   "is_updated": false,
   "is_duplicate": false,
   "iw_processed": false,
   "checked_updates": false,
   "rera_housing_found": false,
-  "is_live": false
+  "is_live": false,
+  "project_images": [
+    "https://rera.karnataka.gov.in/download_jc?DOC_ID=0xsi0ryldGv9MIZd6H66eA%3D%3D",
+    "https://rera.karnataka.gov.in/download_jc?DOC_ID=6Ptz8cSX0vcuv0Gft2zafQ%3D%3D",
+    "https://rera.karnataka.gov.in/download_jc?DOC_ID=nMzfQutBfGMXbVr5dn%2Bojw%3D%3D",
+    "https://rera.karnataka.gov.in/download_jc?DOC_ID=FjdlgmBu02k6SHOofdU6eQ%3D%3D",
+    "https://rera.karnataka.gov.in/download_jc?DOC_ID=rjnU1oX4uzDuZ6ehWJ9iOw%3D%3D",
+    "https://rera.karnataka.gov.in/download_jc?DOC_ID=S7UJ159OgiW%2BHC2Vwm3H0A%3D%3D",
+    "https://rera.karnataka.gov.in/download_jc?DOC_ID=LdceZWUHyXx1U2%2FHds3GuQ%3D%3D",
+    "https://rera.karnataka.gov.in/download_jc?DOC_ID=A0jbRBKK5os5CEeNDvpixA%3D%3D",
+    "https://rera.karnataka.gov.in/download_jc?DOC_ID=tVv2alPqoKeBxWufW%2FFOeA%3D%3D"
+  ],
+  "document_urls": [
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Registration Certificate.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Memorandum of Association.PDF"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Article of Association.PDF"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Company Pan card and Nagarjuna Pan Card_.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Company PAN Card.PDF"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Board Resolution Letter - MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Organisation Structure.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Present : No A -309, SLV Central Park, Bidare Agraha, Kadugodi Plantation , Bengaluru Urban , Karnataka - 560067 Permanent : No A -309, SLV Central Park, Bidare Agraha, Kadugodi Plantation , Bengaluru Urban , Karnataka - 560067 Official : No 419, First Floor, Above Lei s Showroom, 1st Sector, HSR Layout , Bengaluru Urban , Karnataka - 560102"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Present : 5-9-245, Shaili Gardenia, Yapral, Alwal , Ranga Reddy , Telangana - 500087 Permanent : 5-9-245, Shaili Gardenia, Yapral, Alwal , Ranga Reddy , Telangana - 500087 Official : No 419, First Floor, Above Lei s Showroom, 1st Sector, HSR Layout , Bengaluru Urban , Karnataka - 560102"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Form 1 CA Certificate MIZAR -.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Form-06 MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "2024"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "2021"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "230"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Document"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Residential"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "HOSAKOTE"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "1 Acre 16.8 Gunta"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "1 Acre 13 Gunta"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "No Litigation Affidavit.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "_Balancesheet with Schedule 2024-25.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Balancesheet with Schedule 2023-24.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Balancesheet with Schedule 2022-23.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "P and L with Schedule 2024-25.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "P and L with Schedule 2023 - 24.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "P and L with Schedule 2022-23.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "ITR 2022-23.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "ITR 2023-24.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "ITR 2024-25.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "board report 2025.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "board report 2024.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "board report 2023.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "CashFlowStatement_2024-25.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "CashFlowStatement_2023-24.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "AuditorReport2024-25.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "AuditorReport2023-2024.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "AuditorReport2022-23.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Approved Plan Letter- MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Approved Layout Plan - MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Project Specification - MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "NA.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Relinquishment Deed - MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Proforma AOS - MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Allotment Letter - MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Form B Affidavit - MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "No Voilation Affidavit - MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "JDA Affidavit - MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Kolathur 194 legal opinion.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "BESCOM NOC - MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Water NOC - MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Panchayath parikath.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "3 Order Sheet.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "4 Death Certificate Narayana Rao.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "5 Death Certificate Shamanna.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Chaithanya Death Certificate.jpeg"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Death Certificate Sundresh.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Akarband Sy No 194-1 and 194-2.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "MR 3-1993-94.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "MR 4 -1993-94.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "194 MR T104.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Karab Land Conversion Order 194-1.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Karab Land Conversion Order 194-2.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Change Of Land Use - MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "GPA - 194-1 Rama Rao.PDF"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "GPA 194-2 Ashwathamma.PDF"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "CDP Map - MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Village Map - MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "ADLR Survey Sktech - MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Abstract Estimation MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Septic Tank - MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Area Statement - Mizar.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Land Cost Calculation - MIZAR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Borewell Photo.jpeg"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "1 Order Sheet - In favour of Narayana Rao.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "2 Panchayath Parikath 25-8-1979.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "2 Death Certificate Narayana Rao.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "3 MR 3 1993-94.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "3 MR 4 1993-94.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "4 IHC 350 1996-97.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "5 GPA - 194-1 Rama Rao.PDF"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "5 GPA 194-2 Ashwathamma.PDF"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "5 JDA 194 -1 Rama Roa.PDF"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "5 JDA -194- 2 Ashwathamma.PDF"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Death Certificate Shamanna.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "6 Pavathi MR in Favour of Ashwathamma.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "7 Phody MR.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "RAMARAO DEATH CERTIFICATE.jpeg"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "8 MR H45 Pavathi MR in favour of Lalithamma.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Death Certificate Narayana Rao.pdf"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "MIZAR.xlsx"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Rera Registration Certificate 1"
+    }
+  ],
+  "promoter_contact_details": null,
+  "submitted_date": null,
+  "last_modified": null,
+  "estimated_commencement_date": null,
+  "past_experience_of_promoter": null,
+  "land_area": null,
+  "construction_area": null,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "number_of_commercial_units": null,
+  "complaints_litigation_details": null,
+  "provided_faciltiy": null,
+  "development_agreement_detail": null,
+  "land_detail": null,
+  "members_details": null,
+  "retrieved_on": null,
+  "last_updated": null,
+  "updated_fields": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": null,
+  "status_update": null,
+  "iw_part_processed": null,
+  "last_crawled_date": null,
+  "land_area_details": null,
+  "doc_ocr_url": null,
+  "checked_updates_date": null,
+  "alternative_rera_ids": null
 }

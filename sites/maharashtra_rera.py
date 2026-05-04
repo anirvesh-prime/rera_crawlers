@@ -1,6 +1,6 @@
 """
 Maharashtra RERA Crawler — maharera.maharashtra.gov.in/projects-search-result
-Type: static listing (httpx + BeautifulSoup) + SPA detail (Playwright + httpx)
+Type: static listing (httpx + BeautifulSoup) + SPA detail (Playwright HTML scraping)
 
 Strategy:
 - Bootstrap-card listing page, server-rendered HTML. Pagination via ?page=N.
@@ -15,12 +15,11 @@ Strategy:
 - Total pages parsed from div.pagination ("of N" text).
 - Detail pages: the detail site (maharerait.maharashtra.gov.in) is an Angular SPA
   gated by a canvas CAPTCHA. Strategy:
-    1. Use Playwright to load the first detail page, solve the CAPTCHA via
+    1. Use Playwright to load the detail page, solve the CAPTCHA via
        core.captcha_solver against the rendered canvas, and fall back to canvas
-       text interception if OCR fails. Capture the JWT Bearer token from
-       authenticatePublic.
-    2. Re-use that token for all subsequent projects via plain httpx API calls.
-    3. Token is valid ~100 minutes; re-acquire if a call returns 401.
+       text interception if OCR fails.
+    2. Once CAPTCHA is accepted, scrape all rendered Angular tab HTML directly.
+    3. Each project gets its own Playwright session — no token management needed.
 - CRAWL_ITEM_LIMIT env variable caps total projects processed.
 - SCRAPE_DETAILS env variable (default True) enables detail fetching.
 - Checkpointing: saves last completed page_no so runs can resume.
@@ -28,10 +27,8 @@ Strategy:
 from __future__ import annotations
 
 import re
-import urllib.parse
 from typing import Optional
 
-import httpx
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 from pydantic import ValidationError
@@ -47,8 +44,6 @@ from core.project_normalizer import get_machine_context, merge_data_sections, no
 
 LISTING_URL  = "https://maharera.maharashtra.gov.in/projects-search-result"
 DETAIL_BASE  = "https://maharerait.maharashtra.gov.in"
-API_BASE     = f"{DETAIL_BASE}/api/maha-rera-public-view-project-registration-service/public/projectregistartion"
-DMS_BASE     = f"{DETAIL_BASE}/api/maha-rera-dms-service/batch-job"
 STATE_CODE   = "MH"
 DOMAIN       = "maharera.maharashtra.gov.in"
 
@@ -208,16 +203,14 @@ _CAPTCHA_INTERCEPT_SCRIPT = """
 _MAX_CAPTCHA_ATTEMPTS = 3
 
 
-def _acquire_mh_token(cert_id: str, logger: CrawlerLogger) -> str | None:
+def _scrape_mh_detail_page(cert_id: str, logger: CrawlerLogger) -> dict:
     """
-    Load maharerait detail page via Playwright, solve the CAPTCHA, submit it,
-    then return the JWT Bearer token from authenticatePublic.
-    The token is valid for ~100 minutes and can be reused for all project API calls.
-    Retries up to _MAX_CAPTCHA_ATTEMPTS times (refreshing the page each attempt).
+    Open maharerait detail page via Playwright, solve CAPTCHA,
+    then scrape the rendered Angular HTML tabs.
+    Returns a flat dict of schema-mapped fields.
+    Returns {} on failure.
     """
     url = f"{DETAIL_BASE}/public/project/view/{cert_id}"
-    token: str | None = None
-
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(headless=True)
@@ -228,25 +221,12 @@ def _acquire_mh_token(cert_id: str, logger: CrawlerLogger) -> str | None:
                 )
             )
             context.add_init_script(_CAPTCHA_INTERCEPT_SCRIPT)
-
-            def _on_resp(resp):
-                nonlocal token
-                if "authenticatePublic" in resp.url and token is None:
-                    try:
-                        obj = resp.json().get("responseObject") or {}
-                        if isinstance(obj, dict):
-                            token = obj.get("accessToken")
-                    except Exception:
-                        pass
-
             page = context.new_page()
-            page.on("response", _on_resp)
             page.goto(url, timeout=45_000)
 
             for attempt in range(1, _MAX_CAPTCHA_ATTEMPTS + 1):
                 logger.info(f"Captcha attempt {attempt}/{_MAX_CAPTCHA_ATTEMPTS}", step="captcha")
 
-                # Wait until the canvas has non-blank pixel data before reading it
                 canvas_ready = wait_for_captcha_canvas(
                     page, "canvas", timeout_ms=20_000, logger=logger
                 )
@@ -256,10 +236,7 @@ def _acquire_mh_token(cert_id: str, logger: CrawlerLogger) -> str | None:
                     continue
 
                 captcha_value = solve_captcha_from_page(
-                    page,
-                    logger=logger,
-                    selectors=["canvas"],
-                    captcha_source="eprocure",
+                    page, logger=logger, selectors=["canvas"], captcha_source="eprocure",
                 )
                 if captcha_value:
                     logger.info(f"Captcha solved via OCR: {captcha_value!r}", step="captcha")
@@ -281,439 +258,477 @@ def _acquire_mh_token(cert_id: str, logger: CrawlerLogger) -> str | None:
 
                 page.fill("input[name='captcha']", captcha_value)
                 page.click("button.next")
-                page.wait_for_timeout(4_000)
-
-                if token:
-                    break  # Token received via response listener — done
+                # Wait for Angular to start rendering — label.form-label is the
+                # earliest reliable indicator that the project detail page has loaded.
+                try:
+                    page.wait_for_selector("label.form-label, .col-md-4 .f-s-15", timeout=10_000)
+                    logger.info("CAPTCHA accepted — Angular content loaded", step="captcha")
+                    break
+                except Exception:
+                    pass
 
                 logger.warning(
-                    f"No token after submit on attempt {attempt} — refreshing", step="captcha"
+                    f"No Angular content after submit on attempt {attempt} — refreshing",
+                    step="captcha",
                 )
                 page.reload(timeout=45_000)
 
+            out = _extract_mh_html_fields(page, cert_id, logger)
             browser.close()
     except Exception as exc:
-        logger.error(f"Playwright CAPTCHA token acquisition failed: {exc}", step="captcha")
+        logger.error(f"Playwright detail scrape failed: {exc}", step="detail")
+        return {}
 
-    if token:
-        logger.info("JWT token acquired for Maharashtra detail API", step="captcha")
-    else:
-        logger.warning("JWT token NOT obtained — detail scraping will be skipped", step="captcha")
-    return token
+    return out
 
 
-def _api_headers(token: str) -> dict:
-    return {
-        "Authorization": f"Bearer {token}",
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-        "User-Agent": "Mozilla/5.0",
-        "Referer": DETAIL_BASE + "/",
-        "Origin": DETAIL_BASE,
+_MH_OVERVIEW_LABEL_MAP: dict[str, str] = {
+    "registration no":                       "project_registration_no",
+    "registration number":                   "project_registration_no",
+    "project type":                          "project_type",
+    "proposed completion date (original)":   "estimated_finish_date",
+    "proposed completion date":              "estimated_finish_date",
+    "completion date":                       "estimated_finish_date",
+    "registration date":                     "approved_on_date",
+    "date of registration":                  "approved_on_date",
+    "approved on":                           "approved_on_date",
+    "start date":                            "estimated_commencement_date",
+    "acknowledgement no":                    "acknowledgement_no",
+    "acknowledgement number":                "acknowledgement_no",
+    "submitted date":                        "submitted_date",
+    "application date":                      "submitted_date",
+}
+
+_MH_STATUS_VALUES = {"active", "revoked", "lapsed", "expired", "extended", "cancelled", "rejected"}
+
+
+def _find_section_container(soup: BeautifulSoup, heading_text: str) -> Optional[BeautifulSoup]:
+    """Return the closest div container that holds the section identified by heading_text."""
+    heading = soup.find(
+        ["h5", "div", "b", "h4"],
+        string=lambda t: t and heading_text.lower() in t.strip().lower(),
+    )
+    if not heading:
+        return None
+    # Walk up to the nearest white-box / wh / card-body container
+    for ancestor in heading.parents:
+        if ancestor.name != "div":
+            continue
+        classes = ancestor.get("class") or []
+        if any(c in classes for c in ("white-box", "card-body", "wh")):
+            return ancestor
+    return heading.find_parent("div")
+
+
+def _extract_col4_pairs(container: BeautifulSoup) -> dict[str, str]:
+    """Extract label.form-label.col-4 → sibling .col-8 value pairs from a section container."""
+    result: dict[str, str] = {}
+    for lbl in container.select("label.form-label.col-4"):
+        parent_row = lbl.find_parent("div", class_="row")
+        val_el = parent_row.select_one(".col-8 .f-w-700, .col-8 .text-font") if parent_row else None
+        if val_el:
+            key = lbl.get_text(strip=True).lower().rstrip(":")
+            value = val_el.get_text(strip=True)
+            if value and value != "-":
+                result[key] = value
+    return result
+
+
+def _parse_mh_label_value_pairs(soup: BeautifulSoup, out: dict, label_map: dict) -> None:
+    """Map label text → schema field using the two layout patterns on the Angular page."""
+    # Pattern 1: .col-md-4 overview grid — label in .f-s-15, value in .f-w-700
+    for el in soup.select(".col-md-4"):
+        lbl_el = el.select_one(".f-s-15")
+        val_el = el.select_one(".f-w-700")
+        if lbl_el and val_el:
+            label = lbl_el.get_text(strip=True).lower().rstrip(":")
+            value = val_el.get_text(strip=True)
+            if label in label_map and value:
+                out[label_map[label]] = value
+
+    # Pattern 2: label.form-label (any) with nearest .f-w-700 or .text-font value
+    for lbl_el in soup.select("label.form-label"):
+        parent = lbl_el.find_parent()
+        val_el = parent.select_one(".f-w-700, .col-12.text-font") if parent else None
+        if val_el:
+            label = lbl_el.get_text(strip=True).lower().rstrip(":")
+            value = val_el.get_text(strip=True)
+            if label in label_map and value and value != "-":
+                out.setdefault(label_map[label], value)
+
+
+def _parse_mh_overview_tab(soup: BeautifulSoup, out: dict) -> None:
+    """Extract project overview fields (type, dates, status) from the full-page HTML."""
+    _parse_mh_label_value_pairs(soup, out, _MH_OVERVIEW_LABEL_MAP)
+
+    # Registration Number + Date of Registration from alternating label.bg-blue.f-w-700 elements
+    bg_blue = soup.select("label.bg-blue.f-w-700")
+    for i in range(0, len(bg_blue) - 1, 2):
+        key = bg_blue[i].get_text(strip=True).lower()
+        val = bg_blue[i + 1].get_text(strip=True)
+        if not val:
+            continue
+        if "registration number" in key or "registration no" in key:
+            out.setdefault("project_registration_no", val)
+        elif "date of registration" in key or "registration date" in key:
+            out.setdefault("approved_on_date", val)
+
+    # Project status from the status badge span
+    for span in soup.select("span"):
+        txt = span.get_text(strip=True)
+        if txt.lower() in _MH_STATUS_VALUES:
+            out.setdefault("status_of_the_project", txt)
+            break
+
+
+def _parse_mh_promoter_tab(soup: BeautifulSoup, out: dict) -> None:
+    """Extract project address, promoter details, and promoter communication address."""
+    # ── Project Address Details ──────────────────────────────────────────────
+    proj_addr_container = _find_section_container(soup, "Project Address Details")
+    if proj_addr_container:
+        pairs = _extract_col4_pairs(proj_addr_container)
+        loc = dict(out.get("project_location_raw") or {})
+        _PROJ_ADDR_MAP = {
+            "locality": "locality", "state/ut": "state", "district": "district",
+            "taluka": "taluk", "village": "village", "pin code": "pin_code",
+        }
+        for lbl, field in _PROJ_ADDR_MAP.items():
+            if lbl in pairs:
+                loc[field] = pairs[lbl]
+        try:
+            if "longitude :" in pairs:
+                loc["longitude"] = float(pairs["longitude :"])
+            if "latitude :" in pairs:
+                loc["latitude"] = float(pairs["latitude :"])
+        except (ValueError, TypeError):
+            pass
+        if loc:
+            out["project_location_raw"] = loc
+        if pairs.get("district"):
+            out.setdefault("project_city", pairs["district"])
+        if pairs.get("pin code"):
+            out.setdefault("project_pin_code", pairs["pin code"])
+
+    # ── Promoter Details ─────────────────────────────────────────────────────
+    promo_container = _find_section_container(soup, "Promoter Details")
+    if promo_container:
+        pairs = _extract_col4_pairs(promo_container)
+        # "Name of Limited Liability Partnership" / "Name of Company" etc.
+        for key, val in pairs.items():
+            if key.startswith("name of") and val:
+                out.setdefault("promoter_name", val)
+                out["promoters_details"] = {"name": val}
+                break
+
+    # ── Promoter Official Communication Address ───────────────────────────────
+    promo_addr_container = _find_section_container(soup, "Promoter Official Communication Address")
+    if promo_addr_container:
+        pairs = _extract_col4_pairs(promo_addr_container)
+        _PROMO_ADDR_MAP = {
+            "unit number": "house_no_building_name",
+            "building name": "building_name",
+            "landmark": "locality",
+            "state/ut": "state",
+            "district": "district",
+            "taluka": "taluk",
+            "village": "village",
+            "pin code": "pin_code",
+        }
+        addr: dict = {}
+        for lbl, field in _PROMO_ADDR_MAP.items():
+            if lbl in pairs:
+                addr[field] = pairs[lbl]
+        if addr:
+            out["promoter_address_raw"] = addr
+        # data extras: state_promo, district_promo, pin_code_promo
+        data_extras: dict = {}
+        if pairs.get("state/ut"):
+            data_extras["state_promo"] = pairs["state/ut"]
+        if pairs.get("district"):
+            data_extras["district_promo"] = pairs["district"]
+        if pairs.get("pin code"):
+            try:
+                data_extras["pin_code_promo"] = int(pairs["pin code"])
+            except (ValueError, TypeError):
+                data_extras["pin_code_promo"] = pairs["pin code"]
+        if data_extras:
+            existing_data = dict(out.get("data") or {})
+            existing_data.update({k: v for k, v in data_extras.items() if k not in existing_data})
+            out["data"] = existing_data
+
+    # ── Promoter contact details (phone / email anywhere on page) ─────────────
+    contact: dict = {}
+    for lbl_el in soup.select("label.form-label.col-4"):
+        parent_row = lbl_el.find_parent("div", class_="row")
+        val_el = parent_row.select_one(".col-8 .f-w-700") if parent_row else None
+        if not val_el:
+            continue
+        lbl_text = lbl_el.get_text(strip=True).lower()
+        value = val_el.get_text(strip=True)
+        if ("phone" in lbl_text or "mobile" in lbl_text) and value and value != "-":
+            contact["phone"] = value
+        elif "email" in lbl_text and value and value != "-":
+            contact["email"] = value
+    if contact:
+        out.setdefault("promoter_contact_details", contact)
+
+
+def _parse_mh_building_tab(soup: BeautifulSoup, out: dict) -> None:
+    """Extract land area and building unit details."""
+    # Land area from white-box label.form-label (not col-4) containers
+    _LAND_LABELS = {
+        "total land area of approved layout (sq. mts.)",
+        "land area for project applied for this registration (sq. mts)",
+        "total land area",
+        "land area",
     }
-
-
-def _post_api(
-    endpoint: str,
-    project_id: str | int,
-    token: str,
-    timeout: float = 15.0,
-    extra: dict | None = None,
-) -> dict | None:
-    """POST to a maharerait project API endpoint and return responseObject or None.
-
-    ``extra`` keys are merged into the JSON body alongside ``projectId``.
-    """
-    body: dict = {"projectId": int(project_id)}
-    if extra:
-        body.update(extra)
-    try:
-        resp = httpx.post(
-            f"{API_BASE}/{endpoint}",
-            json=body,
-            headers=_api_headers(token),
-            timeout=timeout,
-        )
-        if resp.status_code == 200:
-            data = resp.json()
-            if data.get("status") == "1":
-                return data.get("responseObject")
-        elif resp.status_code == 401:
-            return {"_expired": True}
-    except Exception:
-        pass
-    return None
-
-
-def _fetch_mh_project_detail(cert_id: str, token: str, logger: CrawlerLogger) -> dict:
-    """
-    Call key maharerait project APIs for a single project.
-    Returns a flat dict of schema-mapped fields + raw data for the JSONB store.
-    Returns {} if the token is expired (caller should re-acquire).
-    """
-    pid = int(cert_id)
-
-    # ── Status ───────────────────────────────────────────────────────────────
-    status_obj = _post_api("getProjectCurrentStatus", pid, token)
-    if isinstance(status_obj, dict) and status_obj.get("_expired"):
-        logger.warning("JWT token expired — need to re-acquire", step="detail")
-        return {"_token_expired": True}
-
-    status_name = ""
-    if status_obj and isinstance(status_obj, dict):
-        status_name = (status_obj.get("coreStatus") or {}).get("statusName", "")
-
-    # ── General details ────────────────────────────────────────────────────
-    gen_obj = _post_api("getProjectGeneralDetailsByProjectId", pid, token) or {}
-    if isinstance(gen_obj, dict) and gen_obj.get("_expired"):
-        return {"_token_expired": True}
-
-    project_type  = gen_obj.get("projectTypeName", "")
-    finish_date   = gen_obj.get("projectProposeComplitionDate", "")        # revised
-    orig_finish   = gen_obj.get("originalProjectProposeCompletionDate", "")
-    start_date    = gen_obj.get("projectStartDate", "")
-    reg_date      = gen_obj.get("reraRegistrationDate", "")
-    ack_no        = gen_obj.get("acknowledgementNumber", "")
-    reg_no_api    = gen_obj.get("projectRegistartionNo", "")
-
-    # ── Land address ──────────────────────────────────────────────────────
-    land_obj = _post_api("getProjectLandAddressDetails", pid, token) or {}
-    pincode    = land_obj.get("pinCode", "")
-    address    = land_obj.get("addressLine", "")
-    boundaries = {k: land_obj.get(k, "")
-                  for k in ("boundariesEast", "boundariesWest", "boundariesNorth", "boundariesSouth")
-                  if land_obj.get(k)}
-    total_land = land_obj.get("totalAreaSqmts")
-
-    # ── Geo-tagging (lat/lng) ─────────────────────────────────────────────
-    geo_obj = _post_api("getProjectLegalGeoTaggingDetailByProjectId", pid, token) or {}
-    if isinstance(geo_obj, list) and geo_obj:
-        geo_obj = geo_obj[0] or {}
-    latitude  = geo_obj.get("latitude") if isinstance(geo_obj, dict) else None
-    longitude = geo_obj.get("longitude") if isinstance(geo_obj, dict) else None
-
-    # ── Promoter ──────────────────────────────────────────────────────────
-    promo_obj = _post_api("getProjectAndAssociatedPromoterDetails", pid, token) or {}
-    promo_details = (promo_obj.get("promoterDetails") or {}) if isinstance(promo_obj, dict) else {}
-    promoter_name = promo_details.get("promoterName", "")
-    promoter_addr: dict = {}
-    if promo_details:
-        promoter_addr = {
-            "building": promo_details.get("buildingName", ""),
-            "district": promo_details.get("districtName", ""),
-            "state":    promo_details.get("stateName", ""),
-            "pincode":  promo_details.get("pincode", ""),
-        }
-
-    # ── Bank details (API returns a list) ────────────────────────────────
-    bank_raw = _post_api("getProjectPromoterBankDetails", pid, token) or []
-    if isinstance(bank_raw, dict):      # defensive: normalise to list
-        bank_raw = [bank_raw]
-    bank_obj = bank_raw[0] if isinstance(bank_raw, list) and bank_raw else {}
-    bank: dict = {}
-    if isinstance(bank_obj, dict) and bank_obj.get("bankFullName"):
-        bank = {
-            "bank_name": bank_obj.get("bankFullName", ""),
-            "branch":    bank_obj.get("branchFullName") or bank_obj.get("branchName", ""),
-            "IFSC":      bank_obj.get("ifsccode", ""),
-            "address":   bank_obj.get("bankAddress", ""),
-        }
-
-    # ── userProfileId (needed for personnel call) ─────────────────────────
-    user_profile_id = promo_details.get("userProfileId") if promo_details else None
-
-    # ── Authorized Signatory / Single Point of Contact ───────────────────
-    spoc_list = _post_api("getPromoterSpocDetails", pid, token) or []
-    auth_signatory: list = []
-    promoter_contact: dict = {}
-    if isinstance(spoc_list, list):
-        for spoc in spoc_list:
-            if not isinstance(spoc, dict):
-                continue
-            name = " ".join(filter(None, [
-                spoc.get("firstName"), spoc.get("middleName"), spoc.get("lastName"),
-            ])).strip()
-            role = spoc.get("designation", "")
-            if name:
-                auth_signatory.append({"name": name, "role": role})
-            # SPOC has unencrypted phone + email — use for promoter_contact_details
-            if not promoter_contact:
-                ph = spoc.get("mobileNumber", "")
-                em = spoc.get("emailId", "")
-                if ph or em:
-                    promoter_contact = {k: v for k, v in {"phone": ph, "email": em}.items() if v}
-
-    # ── Designated Partners → co_promoter_details ────────────────────────
-    co_promos: list = []
-    if user_profile_id:
-        personnel = _post_api(
-            "fetchPromoterPersonnelContactAddressDetails", pid, token,
-            extra={"userProfileId": user_profile_id},
-        ) or []
-        if isinstance(personnel, list):
-            for p in personnel:
-                if not isinstance(p, dict):
-                    continue
-                name = " ".join(filter(None, [
-                    p.get("firstname"), p.get("middleName"), p.get("lastName"),
-                ])).strip()
-                role = p.get("userProfilePersonnelDesignationId", "Partner")
-                if name:
-                    co_promos.append({"name": name, "role": role})
-
-    # ── Promoter general details (GSTIN, firm type) ──────────────────────
-    gen_promo = _post_api("fetchPromoterGeneralDetails", pid, token) or {}
-    promoters_info: dict = {}
-    if isinstance(gen_promo, dict) and not gen_promo.get("_expired"):
-        promoters_info = {k: v for k, v in {
-            "name":         gen_promo.get("organizationName") or promoter_name or None,
-            "GSTIN":        gen_promo.get("gstinNumber") or None,
-            "pan_no":       None,
-            "type_of_firm": gen_promo.get("organizationType") or None,
-        }.items() if v is not None}
-
-    # ── Better promoter address (has taluk / village names) ──────────────
-    addr_obj = _post_api("getPromoterAddressDetails", pid, token) or {}
-    if isinstance(addr_obj, dict) and not addr_obj.get("_expired") and addr_obj.get("districtName"):
-        promoter_addr = {k: v for k, v in {
-            "state":                  addr_obj.get("stateName"),
-            "taluk":                  addr_obj.get("talukaName"),
-            "village":                addr_obj.get("villageName"),
-            "district":               addr_obj.get("districtName"),
-            "locality":               addr_obj.get("locality") or addr_obj.get("landmark") or None,
-            "pin_code":               addr_obj.get("pinCode"),
-            "building_name":          addr_obj.get("buildingName") if addr_obj.get("buildingName") != "-" else None,
-            "house_no_building_name": addr_obj.get("unitNumber") if addr_obj.get("unitNumber") != "-" else None,
-        }.items() if v}
-
-    # ── Construction progress ─────────────────────────────────────────────
-    act_obj = _post_api("getBuildingWingsActivityDetails", pid, token) or {}
-    construction_progress: list = []
-    if isinstance(act_obj, dict) and not act_obj.get("_expired"):
-        for bldg in (act_obj.get("projectActivityDetails") or []):
-            bname = bldg.get("buildingNameNumber", "")
-            for act in (bldg.get("activities") or []):
-                if act.get("isAvailable") != "1":
-                    continue
-                title = act.get("projectActivityParticularTypeName") or act.get("activityParticularOtherName", "")
-                pct   = act.get("completionPercentage") or 0
-                if title:
-                    pct_str = str(int(pct)) if pct == int(pct) else str(pct)
-                    construction_progress.append({
-                        "title":               title,
-                        "building_name":       bname,
-                        "progress_percentage": pct_str,
-                    })
-
-    # ── Uploaded documents ────────────────────────────────────────────────
-    docs_raw = _post_api("getUploadedDocuments", pid, token) or []
-    uploaded_docs: list = []
-    doc_urls: list = []
-    if isinstance(docs_raw, list):
-        for doc in docs_raw:
-            if not isinstance(doc, dict):
-                continue
-            fname = doc.get("documentFileName") or ""
-            dms_ref = doc.get("documentDmsRefNo") or ""
-            dtype = doc.get("documentDescription") or doc.get("documentDetails") or "Document"
-            if fname and dms_ref:
-                # Construct a reference URL encoding the DMS ref and file name
-                link = (
-                    f"{DMS_BASE}/downloadDocumentForPublicView"
-                    f"?documentId={urllib.parse.quote(dms_ref)}"
-                    f"&fileName={urllib.parse.quote(fname)}"
-                )
-                uploaded_docs.append({"type": dtype, "name": fname, "link": link})
-                doc_urls.append({"type": dtype, "link": link})
-            elif fname:
-                uploaded_docs.append({"type": dtype, "name": fname})
-
-    # ── Land header (construction area, land area details) ───────────────
-    land_hdr = _post_api("getProjectLandHeaderDetails", pid, token) or {}
-    construction_area_val: float | None = None
-    land_area_hdr: float | None = None
-    land_area_details_val: dict = {}
-    if isinstance(land_hdr, dict) and not land_hdr.get("_expired"):
-        try:
-            construction_area_val = float(land_hdr.get("projectProposedNotSanctionedBuildUpArea") or 0) or None
-        except (TypeError, ValueError):
-            pass
-        try:
-            land_area_hdr = float(land_hdr.get("landAreaSqmts") or 0) or None
-        except (TypeError, ValueError):
-            pass
-        if land_area_hdr or construction_area_val:
-            land_area_details_val = {k: v for k, v in {
-                "land_area":               land_area_hdr,
-                "land_area_unit":          "sq mt" if land_area_hdr else None,
-                "construction_area":       construction_area_val,
-                "construction_area_unit":  "sq mt" if construction_area_val else None,
-            }.items() if v is not None}
-
-    # ── Means of finance → project_cost_detail ───────────────────────────
-    finance_obj = _post_api("getProjectMeansOfFinance", pid, token) or {}
-    project_cost: dict = {}
-    if isinstance(finance_obj, dict) and not finance_obj.get("_expired"):
-        est = finance_obj.get("estimated") or {}
-        if isinstance(est, dict):
-            total = est.get("totalEstimatedCostTableA") or est.get("totalFundsForProject")
-            if total is not None:
+    for lbl_el in soup.select("label.form-label:not(.col-4)"):
+        parent = lbl_el.find_parent()
+        val_el = parent.select_one(".f-w-700") if parent else None
+        if val_el:
+            label = lbl_el.get_text(strip=True).lower()
+            value = val_el.get_text(strip=True)
+            if label in _LAND_LABELS and value:
                 try:
-                    project_cost = {"estimated_construction_cost": float(total)}
-                except (TypeError, ValueError):
+                    area = float(value.replace(",", ""))
+                    out.setdefault("land_area", area)
+                    out.setdefault("land_area_details", {"land_area": area, "land_area_unit": "sq mt"})
+                    existing_data = dict(out.get("data") or {})
+                    existing_data.setdefault("land_area_unit", "sq mt")
+                    out["data"] = existing_data
+                except (ValueError, TypeError):
                     pass
+                break
 
-    # ── Sold/Unsold inventory → building_details ─────────────────────────
-    inv_obj = _post_api("getProjectSoldUnsoldInventory", pid, token) or {}
-    building_units: list = []
-    if isinstance(inv_obj, dict) and not inv_obj.get("_expired"):
-        for inv_key, is_sold in [
-            ("projectBuildingSoldInventory", True),
-            ("projectBuildingUnSoldInventory", False),
-        ]:
-            for bldg in (inv_obj.get(inv_key) or []):
-                if not isinstance(bldg, dict):
-                    continue
-                bname = bldg.get("buildingName") or ""
-                wname = bldg.get("buildingWingName") or ""
-                block = f"{bname} {wname}".strip() if wname and wname.upper() != "NA" else bname
-                for unit in (bldg.get("floorsUnitDetails") or []):
-                    if not isinstance(unit, dict):
-                        continue
-                    agreement = unit.get("unitConsiderationAsPerAgreement") or 0.0
-                    reckoner  = unit.get("unitConsiderationAsPerReckonerRate") or 0.0
-                    entry: dict = {
-                        "floor_no":       unit.get("floorName"),
-                        "flat_name":      unit.get("unitNameNumber"),
-                        "block_name":     block or None,
-                        "amount_paid":    unit.get("receivedAmount") if is_sold else 0.0,
-                        "carpet_area":    unit.get("unitCarpetAreaSqmts"),
-                        "max_flat_value": agreement if is_sold else 0.0,
-                        "min_flat_value": reckoner if not is_sold else 0.0,
-                    }
-                    building_units.append({k: v for k, v in entry.items() if v is not None})
+    # Building unit details from wing/unit summary table
+    for table in soup.select("table"):
+        headers = [th.get_text(strip=True).lower() for th in table.select("thead th")]
+        if not any("wing" in h or "identification" in h for h in headers):
+            continue
+        col_map: dict[str, int] = {}
+        for i, h in enumerate(headers):
+            if "identification of building" in h or "wing" in h:
+                col_map.setdefault("flat_type", i)
+            elif "residential apartments" in h or "total no. of residential" in h:
+                col_map["no_of_units"] = i
+            elif "floor" in h and "sanctioned" in h:
+                col_map["floor_no"] = i
+        if col_map:
+            units: list[dict] = []
+            for tr in table.select("tbody tr"):
+                cells = tr.select("td")
+                entry: dict = {}
+                for field, idx in col_map.items():
+                    if idx < len(cells):
+                        val = cells[idx].get_text(strip=True)
+                        if val and val not in ("Total", ""):
+                            entry[field] = val
+                if entry and "flat_type" in entry:
+                    units.append(entry)
+            if units and not out.get("building_details"):
+                out["building_details"] = units
+        break
 
-    # ── Professional information ──────────────────────────────────────────
-    prof_list = _post_api("getProjectProfessional", pid, token) or []
-    professionals: list = []
-    if isinstance(prof_list, list):
-        for p in prof_list:
-            if not isinstance(p, dict):
-                continue
-            name = " ".join(filter(None, [
-                p.get("firstName"), p.get("middleName"), p.get("lastName"),
-            ])).strip() or (p.get("entityCompanyName") or "")
-            role = p.get("executiveOfficerDesignation") or "Professional"
-            addr_parts = [p.get("locality"), p.get("districtName")]
-            entry_p: dict = {
-                "name":    name,
-                "role":    role,
-                "email":   p.get("emailId"),
-                "phone":   p.get("primaryContactNo"),
-                "pan_no":  None,
-                "address": " ".join(filter(None, addr_parts)) or None,
-            }
-            professionals.append({k: v for k, v in entry_p.items() if v is not None})
 
-    # ── Assemble location raw ─────────────────────────────────────────────
-    loc_raw: dict = {}
-    if address:
-        loc_raw["address"] = address
-    if pincode:
-        loc_raw["pincode"] = pincode
-    if boundaries:
-        loc_raw.update(boundaries)
-    if latitude is not None:
-        loc_raw["latitude"]  = latitude
-        loc_raw["longitude"] = longitude
-
-    # ── Submitted date & city from general / promoter ────────────────────
-    submitted_date = gen_obj.get("projectApplicationDate", "")
-    project_city   = promo_details.get("districtName", "")
-
-    out: dict = {
-        "status_of_the_project":       status_name or None,
-        "project_type":                project_type or None,
-        "estimated_finish_date":       finish_date or None,
-        "estimated_commencement_date": start_date or None,
-        "approved_on_date":            reg_date or None,
-        "acknowledgement_no":          ack_no or None,
-    }
-    if reg_no_api:
-        out["project_registration_no"] = reg_no_api
-    if loc_raw:
-        out["project_location_raw"] = loc_raw
-    if pincode:
-        out["project_pin_code"] = pincode
-    if promoter_name:
-        out["promoter_name"] = promoter_name
-    if promoter_addr:
-        out["promoter_address_raw"] = promoter_addr
+def _parse_mh_bank_details(soup: BeautifulSoup, out: dict) -> None:
+    """Extract bank account details from the Bank Details section."""
+    bank_container = _find_section_container(soup, "Bank Details")
+    if not bank_container:
+        return
+    bank: dict = {}
+    for lbl_el in bank_container.select("label.form-label:not(.col-4)"):
+        parent = lbl_el.find_parent()
+        val_el = parent.select_one(".f-w-700, .col-12.text-font") if parent else None
+        if not val_el:
+            continue
+        label = lbl_el.get_text(strip=True).lower().rstrip(":")
+        value = val_el.get_text(strip=True)
+        if not value or value == "-":
+            continue
+        if "bank name" in label:
+            bank["bank_name"] = value
+        elif "ifsc" in label:
+            bank["IFSC"] = value
+        elif "bank address" in label or "address" in label:
+            bank.setdefault("address", value)
+        elif "branch" in label:
+            bank["branch"] = value
     if bank:
         out["bank_details"] = bank
-    if submitted_date:
-        out["submitted_date"] = submitted_date
-    if project_city:
-        out["project_city"] = project_city
-    # Use land header area as more authoritative source; fall back to address area
-    if land_area_hdr is not None:
-        out["land_area"] = land_area_hdr
-    elif total_land is not None:
-        try:
-            out["land_area"] = float(total_land)
-        except (TypeError, ValueError):
-            pass
-    if construction_area_val is not None:
-        out["construction_area"] = construction_area_val
-    if land_area_details_val:
-        out["land_area_details"] = land_area_details_val
-    if project_cost:
-        out["project_cost_detail"] = project_cost
-    if building_units:
-        out["building_details"] = building_units
-    if professionals:
-        out["professional_information"] = professionals
-    if auth_signatory:
-        out["authorised_signatory_details"] = auth_signatory
-    if promoter_contact:
-        out["promoter_contact_details"] = promoter_contact
-    if co_promos:
-        out["co_promoter_details"] = co_promos
-    if promoters_info:
-        out["promoters_details"] = promoters_info
-    if construction_progress:
-        out["construction_progress"] = construction_progress
-    if uploaded_docs:
-        out["uploaded_documents"] = uploaded_docs
-    if doc_urls:
-        out["document_urls"] = doc_urls
 
-    # data JSONB — only Maharashtra-allowed keys (see _STATE_JSON_FIELD_ALLOWED_KEYS)
-    out["data"] = {k: v for k, v in {
-        "project_id":               str(pid),
-        "agent_type":               gen_promo.get("organizationType") if isinstance(gen_promo, dict) else None,
-        "land_area_unit":           "sq mt" if (land_area_hdr or total_land) else None,
-        "construction_area_unit":   "sq mt" if construction_area_val else None,
-        "estimated_construction_cost": str(project_cost.get("estimated_construction_cost")) if project_cost else None,
-        "state_promo":              promo_details.get("stateName") if promo_details else None,
-        "district_promo":           promo_details.get("districtName") if promo_details else None,
-        "pin_code_promo":           promo_details.get("pincode") if promo_details else None,
-    }.items() if v is not None}
+
+def _parse_mh_partner_tables(soup: BeautifulSoup, out: dict) -> None:
+    """
+    Extract co-promoter / designated-partner details, authorised signatories,
+    and project professional information from rendered tables.
+    """
+    _SKIP_ROWS = {"no records found", "no record found", "total"}
+
+    for table in soup.select("table"):
+        headers = [th.get_text(strip=True).lower() for th in table.select("thead th")]
+        rows = table.select("tbody tr")
+
+        # Designated Partners / Co-promoters: [#, Name, Designation, View]
+        if "name" in headers and "designation" in headers:
+            name_idx = headers.index("name")
+            role_idx = headers.index("designation")
+            partners: list[dict] = []
+            for row in rows:
+                cells = [td.get_text(strip=True) for td in row.select("td")]
+                if len(cells) <= max(name_idx, role_idx):
+                    continue
+                name = cells[name_idx]
+                role = cells[role_idx]
+                if name and name.lower() not in _SKIP_ROWS:
+                    partners.append({"name": name, "role": role or "Partner"})
+            if partners:
+                # Check whether it looks like authorised signatories or co-promoters
+                # by inspecting the nearest preceding heading
+                heading_el = table.find_previous(["h5", "b", "h4", "h3"])
+                heading_txt = heading_el.get_text(strip=True).lower() if heading_el else ""
+                if "authorised signatory" in heading_txt or "signatory" in heading_txt:
+                    out.setdefault("authorised_signatory_details", partners)
+                else:
+                    out.setdefault("co_promoter_details", partners)
+
+        # Project Professionals: [#, Professional Name, Certificate No., Professional Type]
+        elif any("professional name" in h for h in headers):
+            name_idx = next((i for i, h in enumerate(headers) if "professional name" in h), None)
+            type_idx = next((i for i, h in enumerate(headers) if "professional type" in h), None)
+            profs: list[dict] = []
+            for row in rows:
+                cells = [td.get_text(strip=True) for td in row.select("td")]
+                if name_idx is None or name_idx >= len(cells):
+                    continue
+                name = cells[name_idx]
+                if not name or name.lower() in _SKIP_ROWS:
+                    continue
+                entry: dict = {"name": name, "role": "Professional"}
+                if type_idx is not None and type_idx < len(cells) and cells[type_idx]:
+                    entry["role"] = cells[type_idx]
+                profs.append(entry)
+            if profs:
+                out.setdefault("professional_information", profs)
+
+
+def _parse_mh_documents_tab(soup: BeautifulSoup, out: dict) -> None:
+    """Collect document links rendered in the Angular page."""
+    docs: list[dict] = []
+    seen: set[str] = set()
+    for a in soup.select("a[href]"):
+        href = a.get("href", "")
+        if not href or href in seen or href.startswith("javascript"):
+            continue
+        if any(kw in href for kw in ("/download", "/dms", ".pdf", "documentId", "/doc/")):
+            abs_url = href if href.startswith("http") else f"{DETAIL_BASE}{href}"
+            label = a.get_text(strip=True) or a.get("title", "Document") or "Document"
+            seen.add(href)
+            docs.append({"label": label, "url": abs_url})
+    if docs:
+        out["uploaded_documents"] = docs
+        out["document_urls"] = [{"type": d["label"], "link": d["url"]} for d in docs]
+
+
+def _extract_mh_html_fields(page, cert_id: str, logger: CrawlerLogger) -> dict:
+    """
+    Scrape all detail fields from the rendered Angular page on maharerait.
+    The site renders all sections in a single HTML page (no tab-click navigation
+    needed). We wait for network idle so Angular finishes its API calls.
+    """
+    out: dict = {}
+
+    # Wait for Angular to finish rendering / API calls
+    try:
+        page.wait_for_load_state("networkidle", timeout=20_000)
+    except Exception:
+        logger.warning("networkidle timeout — scraping page as-is", step="detail")
+
+    # Confirm expected Angular content is present
+    try:
+        page.wait_for_selector("label.form-label, .col-md-4 .f-s-15", timeout=10_000)
+    except Exception:
+        logger.warning("Angular form labels not found on detail page", step="detail")
+
+    soup = BeautifulSoup(page.content(), "lxml")
+
+    _parse_mh_overview_tab(soup, out)      # Registration, status, project type, dates
+    _parse_mh_promoter_tab(soup, out)      # Project address, promoter details & address
+    _parse_mh_building_tab(soup, out)      # Land area, building units
+    _parse_mh_bank_details(soup, out)      # Bank account details
+    _parse_mh_partner_tables(soup, out)    # Designated partners, signatories, professionals
+    _parse_mh_documents_tab(soup, out)     # Document library links
+
+    existing_data = dict(out.get("data") or {})
+    existing_data["project_id"] = str(cert_id)
+    out["data"] = existing_data
+
     return {k: v for k, v in out.items() if v is not None}
 
 
 # ── Sentinel ──────────────────────────────────────────────────────────────────
 
-def _sentinel_check(logger: CrawlerLogger) -> bool:
-    resp = safe_get(LISTING_URL, retries=2, logger=logger)
-    if not resp:
-        logger.error("Sentinel: listing page unreachable", step="sentinel")
+def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
+    """
+    Data-quality sentinel for Maharashtra RERA.
+    Loads state_projects_sample/maharashtra.json as the baseline, re-scrapes
+    the sentinel project's detail page via Playwright, and verifies ≥ 80% field coverage.
+    """
+    import json as _json
+    import os as _os
+    from urllib.parse import urlparse as _urlparse
+    from core.sentinel_utils import check_field_coverage
+
+    sentinel_reg = config.get("sentinel_registration_no", "")
+    if not sentinel_reg:
+        logger.warning("No sentinel_registration_no configured — skipping", step="sentinel")
+        return True
+
+    sample_path = _os.path.join(
+        _os.path.dirname(_os.path.dirname(__file__)),
+        "state_projects_sample", "maharashtra.json",
+    )
+    try:
+        with open(sample_path) as fh:
+            baseline: dict = _json.load(fh)
+    except FileNotFoundError:
+        logger.warning("Sample baseline not found — skipping coverage check",
+                       path=sample_path, step="sentinel")
+        return True
+
+    detail_url = baseline.get("url", "")
+    if not detail_url:
+        logger.warning("Sentinel: no detail URL in sample — skipping", step="sentinel")
+        return True
+
+    # Extract cert_id from URL path (last segment)
+    path_parts = _urlparse(detail_url).path.rstrip("/").split("/")
+    cert_id = path_parts[-1] if path_parts else ""
+    if not cert_id:
+        logger.warning("Sentinel: could not extract cert_id from URL — skipping",
+                       url=detail_url, step="sentinel")
+        return True
+
+    logger.info(f"Sentinel: scraping {sentinel_reg}", cert_id=cert_id, step="sentinel")
+    try:
+        fresh = _scrape_mh_detail_page(cert_id, logger) or {}
+    except Exception as exc:
+        logger.error(f"Sentinel: scrape error — {exc}", step="sentinel")
         return False
-    soup = BeautifulSoup(resp.text, "lxml")
-    if not soup.select("div.shadow.rounded"):
-        logger.error("Sentinel: no project cards found on listing page", step="sentinel")
+
+    if not fresh:
+        logger.error("Sentinel: no data extracted", cert_id=cert_id, step="sentinel")
         return False
-    logger.info("Sentinel passed", step="sentinel")
+
+    if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
+        from core.db import insert_crawl_error as _ice
+        _ice(
+            run_id, config.get("id", "maharashtra_rera"),
+            "SENTINEL_FAILED",
+            f"Coverage below 80% for sentinel project {sentinel_reg}",
+        )
+        return False
+
+    logger.info("Sentinel check passed", reg=sentinel_reg, step="sentinel")
     return True
 
 
@@ -728,7 +743,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     item_limit    = settings.CRAWL_ITEM_LIMIT or 0   # 0 = unlimited
     scrape_detail = settings.SCRAPE_DETAILS
 
-    if not _sentinel_check(logger):
+    # ── Sentinel health check ────────────────────────────────────────────────
+    if not _sentinel_check(config, run_id, logger):
+        logger.error("Sentinel failed — aborting crawl", step="sentinel")
+        counters["error_count"] += 1
         return counters
 
     # ── Determine total pages ────────────────────────────────────────────────
@@ -750,9 +768,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         f"| item_limit={item_limit or 'unlimited'} | scrape_detail={scrape_detail}",
         step="listing",
     )
-
-    # ── Auth token for detail API (acquired lazily on first detail request) ──
-    mh_token: str | None = None
 
     items_processed = 0
     stop_all = False
@@ -800,26 +815,21 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             project_url = detail_url or url
             logger.set_project(key=key, reg_no=reg_no, url=project_url, page=page_no)
             try:
-                # ── Detail page enrichment ───────────────────────────────────
+                # ── Detail page enrichment via Playwright HTML scrape ────────
                 detail_fields: dict = {}
                 if scrape_detail and cert_id:
-                    # Acquire token lazily (once per run)
-                    if mh_token is None:
-                        mh_token = _acquire_mh_token(cert_id, logger)
-
-                    if mh_token:
-                        detail_fields = _fetch_mh_project_detail(cert_id, mh_token, logger)
-                        if detail_fields.get("_token_expired"):
-                            # Re-acquire token and retry once
-                            mh_token = _acquire_mh_token(cert_id, logger)
-                            detail_fields = _fetch_mh_project_detail(cert_id, mh_token, logger) if mh_token else {}
-
-                        detail_fields.pop("_token_expired", None)
+                    detail_fields = _scrape_mh_detail_page(cert_id, logger)
+                    if not detail_fields:
+                        logger.warning(
+                            f"Detail scrape returned empty for {cert_id}", step="detail"
+                        )
+                    else:
                         logger.info(
-                            f"Detail fetched for {reg_no} — status={detail_fields.get('status_of_the_project')!r}",
+                            f"Detail scraped for {reg_no} — "
+                            f"status={detail_fields.get('status_of_the_project')!r}",
                             step="detail",
                         )
-                        random_delay(1, 2)
+                    random_delay(1, 2)
 
                 try:
                     payload: dict = {

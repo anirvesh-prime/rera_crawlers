@@ -45,6 +45,24 @@ BASE_URL     = "https://prera.py.gov.in"
 APP_BASE     = "https://prera.py.gov.in/reraAppOffice"
 STATE_CODE   = "PY"
 DOMAIN       = "prera.py.gov.in"
+STATE_DISPLAY_NAME = "Puducherry"
+
+# Maps normalized fragments of raw document filename to canonical type names.
+_PUDUCHERRY_DOC_TYPE_MAP = [
+    ("fromb",                   "Declaration (Form B)"),
+    ("formb",                   "Declaration (Form B)"),
+    ("declarationformb",        "Declaration (Form B)"),
+    ("registrationcertificate", "Project Registration Certificate"),
+]
+
+
+def _normalize_puducherry_doc_label(raw_label: str) -> str:
+    """Map raw Puducherry document filenames to canonical document type names."""
+    normalized = "".join(c for c in (raw_label or "").lower() if c.isalnum())
+    for fragment, canonical in _PUDUCHERRY_DOC_TYPE_MAP:
+        if fragment in normalized:
+            return canonical
+    return raw_label
 
 
 def _get(url: str, logger: CrawlerLogger):
@@ -135,16 +153,18 @@ def _parse_listing_cards(soup: BeautifulSoup) -> list[dict]:
 # ── Detail page parsing ────────────────────────────────────────────────────────
 
 _DETAIL_LABEL_MAP: dict[str, str] = {
-    "promoter":           "promoter_name",
-    "date of registration": "approved_on_date",
+    "promoter":             "promoter_name",
+    # "Date of Registration" is the submission timestamp — map to submitted_date
+    # so the full HH:MM:SS is preserved instead of being truncated to midnight.
+    "date of registration": "submitted_date",
     "date of application":  "submitted_date",
     "application date":     "submitted_date",
-    "project type":       "project_type",
-    "project status":     "status_of_the_project",
-    "project description": "project_description",
-    "project start date": "estimated_commencement_date",
-    "project end date":   "estimated_finish_date",
-    "district/region":    "project_city",
+    "project type":         "project_type",
+    "project status":       "status_of_the_project",
+    "project description":  "project_description",
+    "project start date":   "estimated_commencement_date",
+    "project end date":     "estimated_finish_date",
+    # district/region only goes to project_location_raw.district, not project_city
 }
 
 # Map raw label → normalized key accepted by project_location_raw whitelist
@@ -195,16 +215,21 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
         for label, value in pairs:
             raw[label] = value
             label_lower = label.lower().strip()
-            # Normalize location label to whitelisted key and accumulate
+            # Normalize location label to whitelisted key and accumulate.
+            # raw_address is only set from the first matching label ("Address")
+            # so that a later "Project Address" field (which may omit commas)
+            # does not overwrite the more complete value already captured.
             loc_key = _LOCATION_LABEL_TO_KEY.get(label_lower)
             if loc_key and value:
-                location_raw[loc_key] = value
+                if loc_key == "raw_address" and "raw_address" in location_raw:
+                    pass  # keep the first (more complete) address
+                else:
+                    location_raw[loc_key] = value
             schema_field = _DETAIL_LABEL_MAP.get(label_lower)
             if schema_field and value and schema_field not in out:
-                # Registration date comes as "Wed Mar 25 16:15:36 IST 2026" —
-                # convert to YYYY-MM-DD so _parse_dt in the model can handle it.
-                if schema_field in ("approved_on_date", "submitted_date"):
-                    value = _parse_pondicherry_date(value) or value
+                # Pass date strings as-is — parse_datetime in the ProjectRecord
+                # validator handles "Wed Mar 25 16:15:36 IST 2026" natively and
+                # preserves the full HH:MM:SS precision.
                 out[schema_field] = value
             if label_lower in ("project cost", "estimated project cost", "total project cost") and value:
                 out["project_cost_detail"] = {"total_project_cost": value}
@@ -219,10 +244,23 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
         "construction_area_unit": "Sq Mtr",
     }.items() if v is not None}
 
+    # Build a fuller raw_address: "<detail address>, <district>, Puducherry"
     if location_raw:
+        _raw_addr = location_raw.get("raw_address", "").strip()
+        _district  = location_raw.get("district", "").strip()
+        if _raw_addr:
+            addr_parts = [_raw_addr]
+            if _district:
+                addr_parts.append(_district)
+            addr_parts.append(STATE_DISPLAY_NAME)
+            location_raw["raw_address"] = ", ".join(addr_parts)
+        location_raw["state"] = STATE_DISPLAY_NAME
         out["project_location_raw"] = location_raw
 
-    # Promoter contact details from the applicant table
+    # Promoter contact details and professional information from page tables.
+    # Table 0: applicant (Name / E-mail / Mobile)
+    # Table 3: Architects
+    # Table 4: Structural Engineers (label headers may say "Engineer Name")
     tables = soup.find_all("table")
     if tables:
         hdrs = [th.get_text(strip=True) for th in tables[0].find_all("th")]
@@ -235,11 +273,44 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
             out["promoter_contact_details"] = rows_data
             raw["applicant_table"] = rows_data
 
+    # Professional information: Architects (table 3) + Engineers (table 4)
+    _PROF_TABLE_ROLES = [(3, "Architects"), (4, "Structural Engineers")]
+    professionals = []
+    for tbl_idx, role in _PROF_TABLE_ROLES:
+        if tbl_idx >= len(tables):
+            continue
+        tbl = tables[tbl_idx]
+        hdrs = [th.get_text(strip=True) for th in tbl.find_all("th")]
+        for tr in tbl.find_all("tr")[1:]:
+            cells = [td.get_text(strip=True) for td in tr.find_all("td")]
+            if not any(cells):
+                continue
+            row_dict = dict(zip(hdrs, cells))
+            entry: dict = {"role": role}
+            for hdr, val in row_dict.items():
+                hdr_l = hdr.lower()
+                if not val:
+                    continue
+                if "name" in hdr_l:
+                    entry["name"] = val
+                elif "email" in hdr_l:
+                    entry["email"] = val
+                elif "address" in hdr_l:
+                    entry["address"] = val
+                elif "mobile" in hdr_l or "phone" in hdr_l:
+                    entry["mobile"] = val
+            if len(entry) > 1:  # role + at least one other field
+                professionals.append(entry)
+    if professionals:
+        out["professional_information"] = professionals
+
     # Document links: href may be absolute ("/reraAppOffice/getdocument?...")
     # or relative ("reraAppOffice/getdocument?...") — always anchor to BASE_URL.
+    # Labels are normalized from raw filenames to canonical document type names.
     doc_links = []
     for a in soup.find_all("a", href=re.compile(r"getdocument")):
-        label = a.get_text(strip=True) or "document"
+        raw_label = a.get_text(strip=True) or "document"
+        label = _normalize_puducherry_doc_label(raw_label)
         href = a["href"]
         if href.startswith("http"):
             full_url = href
@@ -285,24 +356,57 @@ def _handle_document(project_key: str, doc: dict, run_id: int,
 
 
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
-    """Verify the sentinel project still appears on the live Pondicherry listing page."""
+    """
+    Data-quality sentinel for Pondicherry RERA.
+    Loads state_projects_sample/puducherry.json as the baseline, re-scrapes the
+    sentinel project's detail page, and verifies ≥ 80% field coverage.
+    """
+    import json as _json
+    import os as _os
+    from core.sentinel_utils import check_field_coverage
+
     sentinel_reg = config.get("sentinel_registration_no", "")
     if not sentinel_reg:
-        logger.warning("No sentinel configured — skipping")
+        logger.warning("No sentinel_registration_no configured — skipping", step="sentinel")
         return True
-    key = generate_project_key(sentinel_reg)
-    existing = get_project_by_key(key)
-    if not existing:
-        logger.warning("Sentinel not in DB yet — skipping check")
+
+    sample_path = _os.path.join(
+        _os.path.dirname(_os.path.dirname(__file__)),
+        "state_projects_sample", "puducherry.json",
+    )
+    try:
+        with open(sample_path) as fh:
+            baseline: dict = _json.load(fh)
+    except FileNotFoundError:
+        logger.warning("Sample baseline not found — skipping coverage check",
+                       path=sample_path, step="sentinel")
         return True
-    resp = _get(LISTING_URL, logger)
-    if not resp:
-        logger.error("Sentinel: could not fetch Pondicherry listing page")
+
+    detail_url = baseline.get("url", "")
+    if not detail_url:
+        logger.warning("Sentinel: no detail URL in sample — skipping", step="sentinel")
+        return True
+
+    logger.info(f"Sentinel: scraping {sentinel_reg}", url=detail_url, step="sentinel")
+    try:
+        fresh = _parse_detail_page(detail_url, logger) or {}
+    except Exception as exc:
+        logger.error(f"Sentinel: scrape error — {exc}", step="sentinel")
         return False
-    if sentinel_reg not in resp.text:
-        logger.error("Sentinel reg number not found on Pondicherry listing page", reg=sentinel_reg)
+
+    if not fresh:
+        logger.error("Sentinel: no data extracted", url=detail_url, step="sentinel")
         return False
-    logger.info("Sentinel check passed", reg=sentinel_reg)
+
+    if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
+        insert_crawl_error(
+            run_id, config.get("id", "pondicherry_rera"),
+            "SENTINEL_FAILED",
+            f"Coverage below 80% for sentinel project {sentinel_reg}",
+        )
+        return False
+
+    logger.info("Sentinel check passed", reg=sentinel_reg, step="sentinel")
     return True
 
 
@@ -317,8 +421,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     done_regs: set[str] = set(checkpoint.get("done_regs", []))
     item_limit = settings.CRAWL_ITEM_LIMIT or 0
 
+    # ── Sentinel health check ────────────────────────────────────────────────
     if not _sentinel_check(config, run_id, logger):
-        insert_crawl_error(run_id, site_id, "SENTINEL_FAILED", "Sentinel check failed")
+        logger.error("Sentinel failed — aborting crawl", step="sentinel")
+        counts["error_count"] += 1
         return counts
 
     # Fetch listing page
@@ -365,7 +471,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             data: dict = {
                 "key":                     key,
                 "state":                   config["state"],
-                "project_state":           config["state"],
+                # project_state is NOT pre-populated: Puducherry doesn't expose
+                # a separate project_state field on its pages, so it should remain
+                # null rather than being defaulted to the config state key.
                 "project_registration_no": reg_no,
                 "project_name":            card["project_name"] or None,
                 "promoter_name":           card["promoter_name"] or None,
@@ -378,6 +486,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 "machine_name":            machine_name,
                 "crawl_machine_ip":        machine_ip,
             }
+            # Fields populated from the listing card that must not be overwritten
+            # by the detail page (the listing is the canonical source for these).
+            _LISTING_LOCKED_FIELDS = {"status_of_the_project", "project_type",
+                                      "promoter_name", "project_name"}
 
             # Promoters details from listing card (promoter type is always available)
             if card.get("promoter_type") or card.get("promoter_name"):
@@ -396,6 +508,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 doc_links = detail.pop("_doc_links", [])
                 for k, v in detail.items():
                     if v is not None and not k.startswith("_"):
+                        # Don't let detail page values overwrite listing-card fields
+                        # (e.g. listing shows "APPROVED" while detail page says "Ongoing").
+                        if k in _LISTING_LOCKED_FIELDS and data.get(k) is not None:
+                            continue
                         data[k] = v
                 # Build data JSONB with schema-allowed keys
                 _raw_addr = (data.get("project_location_raw") or {}).get("raw_address") if isinstance(data.get("project_location_raw"), dict) else None
@@ -409,9 +525,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         "raw_address":   _raw_addr,
                     },
                 )
-                # Fallback: use approved_on_date as submitted_date if site doesn't expose it separately
-                if not data.get("submitted_date") and data.get("approved_on_date"):
-                    data["submitted_date"] = data["approved_on_date"]
             else:
                 data["data"] = {"listing_card": card, "govt_type": "state", "is_processed": False}
 

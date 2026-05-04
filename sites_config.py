@@ -41,7 +41,9 @@ SITES: list[dict] = [
         "enabled": True,
         "rate_limit_delay": (1, 3),
         "max_retries": 3,
-        "sentinel_registration_no": "",
+        # RAJ/P/2024/3058 (VENTURA by J S BUILDCOM) — used as the sample project
+        # for dry-run comparisons (state_projects_sample/rajasthan.json).
+        "sentinel_registration_no": "RAJ/P/2024/3058",
         "config_id": 2,
     },
     {
@@ -136,6 +138,9 @@ SITES: list[dict] = [
         "enabled": True,
         "rate_limit_delay": (1, 3),
         "max_retries": 3,
+        # Sentinel and dry-run sample align to a known live project ID.
+        "sentinel_registration_no": "PR/GJ/SURAT/CHORYASI/Surat Municipal Corporation/RAA16644/250326/311231",
+        "sentinel_project_id": 30502,
         # Match dry-run comparison against the live sample project (proj_id=30502).
         "dry_run_compare_start_page": 30501,
         "config_id": 8,
@@ -184,6 +189,18 @@ SITES: list[dict] = [
         "max_retries": 3,
         "sentinel_registration_no": "DLRERA2023P0017",
         "config_id": 10,
+        # Secondary-page URLs extracted per-row from the listing HTML:
+        # - directors_url_base + node_id  → co_promoter_details / members_details
+        # - qpr_history_url_base + reg_no → status_update (QPR submission history)
+        "directors_url_base": "https://rera.delhi.gov.in/promoter_directors/",
+        "qpr_history_url_base": "https://rera.delhi.gov.in/online_view_periodic_progress_reports_history/",
+        # Fields that are NOT available on any public Delhi RERA page and
+        # therefore cannot be scraped (project_type, building_details,
+        # land_area, land_area_details, construction_area, project_cost_detail,
+        # professional_information, project_description,
+        # estimated_commencement_date, project_images).
+        "fetch_directors": True,
+        "fetch_qpr_history": True,
     },
     {
         "id": "tamil_nadu_rera",
@@ -191,13 +208,21 @@ SITES: list[dict] = [
         "state_code": "TN",
         "state": "tamil_nadu",
         "domain": "rera.tn.gov.in",
+        # Covers Building, Normal Layout, and Regularisation Layout projects.
+        # The crawler auto-discovers year-listing URLs from three CMS index pages.
         "listing_url": "https://rera.tn.gov.in/registered-building/tn",
+        "cms_index_urls": [
+            "https://rera.tn.gov.in/cms/reg_projects_building_tamilnadu.php",
+            "https://rera.tn.gov.in/cms/reg_projects_normallayout_tamilnadu.php",
+            "https://rera.tn.gov.in/cms/reg_projects_regularisationlayout_tamilnadu.php",
+        ],
         "crawler_module": "sites.tamil_nadu_rera",
         "crawler_type": "static",
         "enabled": False,
         "rate_limit_delay": (1, 3),
         "max_retries": 3,
-        "sentinel_registration_no": "TNRERA/29/BLG/0001/2026",
+        # Layout sample project used for dry-run comparisons
+        "sentinel_registration_no": "TNRERA/29/LO/4544/2025",
         "config_id": 14374,
     },
     {
@@ -234,6 +259,41 @@ SITES: list[dict] = [
         "config_id": 11793,
     },
     {
+        "id": "chhattisgarh_rera",
+        "name": "Chhattisgarh RERA",
+        "state_code": "CG",
+        "state": "chhattisgarh",
+        "domain": "rera.cgstate.gov.in",
+        # ASP.NET WebForms listing — all 2088 project stubs embedded in one page
+        # as a JavaScript map-markers JSON array (lat/lon + MyID link).
+        # Detail pages: /Promoter_Reg_Only_View_Application_new.aspx?MyID={base64_id}
+        "listing_url": "https://rera.cgstate.gov.in/Approved_project_List.aspx",
+        "crawler_module": "sites.chhattisgarh_rera",
+        "crawler_type": "static",
+        "enabled": False,
+        "rate_limit_delay": (2, 4),
+        "max_retries": 3,
+        "sentinel_registration_no": "PCGRERA200618000247",
+        "config_id": 11805,
+    },
+    {
+        "id": "goa_rera",
+        "name": "Goa RERA",
+        "state_code": "GA",
+        "state": "goa",
+        "domain": "rera.goa.gov.in",
+        "listing_url": "https://rera.goa.gov.in/reraApp/home",
+        "crawler_module": "sites.goa_rera",
+        # Playwright needed: listing page has captcha; detail pages use httpx (no captcha).
+        "crawler_type": "playwright",
+        "enabled": False,
+        "rate_limit_delay": (2, 4),
+        "max_retries": 3,
+        "sentinel_registration_no": "PRGO02231914",
+        "sentinel_project_url": "https://rera.goa.gov.in/reraApp/viewProjectDetailPage?projectID=Ospqf/NrToXvyoNgHCYymA==",
+        "config_id": 11806,
+    },
+    {
         "id": "tripura_rera",
         "name": "Tripura RERA",
         "state_code": "TR",
@@ -249,6 +309,186 @@ SITES: list[dict] = [
         "max_retries": 3,
         "sentinel_registration_no": "PRTR03240386",
         "config_id": 11807,
+    },
+    {
+        "id": "wb_rera",
+        "name": "West Bengal RERA",
+        "state_code": "WB",
+        "state": "west bengal",
+        "domain": "rera.wb.gov.in",
+        # Single static listing page (DataTables, all districts, all ~4,250 projects).
+        # Detail pages: /project_details.php?procode=N
+        "listing_url": "https://rera.wb.gov.in/district_project.php?dcode=0",
+        "crawler_module": "sites.west_bengal_rera",
+        "crawler_type": "static",
+        "enabled": False,
+        "rate_limit_delay": (1, 3),
+        "max_retries": 3,
+        "sentinel_registration_no": "WBRERA/P/ALI/2023/000353",
+        "config_id": 11815,
+    },
+    {
+        "id": "telangana_rera",
+        "name": "Telangana RERA",
+        "state_code": "TS",
+        "state": "telangana",
+        "domain": "rerait.telangana.gov.in",
+        # ASP.NET search-form listing with CAPTCHA; results are server-rendered HTML.
+        # Detail pages use an encrypted q-param PrintPreview URL.
+        "listing_url": "https://rerait.telangana.gov.in/SearchList/Search",
+        "crawler_module": "sites.telangana_rera",
+        "crawler_type": "playwright",
+        "enabled": False,
+        "rate_limit_delay": (2, 4),
+        "max_retries": 3,
+        "sentinel_registration_no": "",
+        "config_id": 11811,
+    },
+    {
+        "id": "assam_rera",
+        "name": "Assam RERA",
+        "state_code": "AS",
+        "state": "assam",
+        "domain": "rera.assam.gov.in",
+        # Single static listing page (DataTables, client-side, all ~1200+ projects).
+        # Listing URL: /admincontrol/registered_projects/1
+        # Detail pages: /view_project/searchprojectDetail/{id}
+        # Form-A pages: /view_project/project_preview_open/{id}
+        # Certificate:  /view_project/view_certificate/{base64_id}
+        # Documents:    /project/view_uploaded_Document_open_public/{base64_id}
+        "listing_url": "https://rera.assam.gov.in/admincontrol/registered_projects/1",
+        "crawler_module": "sites.assam_rera",
+        "crawler_type": "static",
+        "enabled": False,
+        "rate_limit_delay": (2, 4),
+        "max_retries": 3,
+        # RERAA KM 49 OF 2024-2025 (UTTARAYAN HARMONY 2) — sample project used for
+        # dry-run comparisons (state_projects_sample/assam.json).
+        "sentinel_registration_no": "RERAA KM 49 OF 2024-2025",
+        "config_id": 11804,
+    },
+    {
+        "id": "himachal_pradesh_rera",
+        "name": "Himachal Pradesh RERA",
+        "state_code": "HP",
+        "state": "himachal pradesh",
+        "domain": "hprera.nic.in",
+        # Dashboard-driven AJAX portal. GetFilteredProjectsPV returns all registered
+        # projects in one response (HTML cards + embedded JSON marker array).
+        # Detail sections are separate AJAX endpoints keyed by encrypted 'qs' token.
+        "listing_url": "https://hprera.nic.in/PublicDashboard",
+        "crawler_module": "sites.himachal_pradesh_rera",
+        "crawler_type": "api",
+        "enabled": False,
+        "rate_limit_delay": (1, 3),
+        "max_retries": 3,
+        # AURAMAH VALLEY PHASE-I (RERAHPSHP01190048) — matches the sample project in
+        # state_projects_sample/himachal_pradesh.json.
+        "sentinel_registration_no": "RERAHPSHP01190048",
+        "config_id": 11808,
+    },
+    {
+        "id": "madhya_pradesh_rera",
+        "name": "Madhya Pradesh RERA",
+        "state_code": "MP",
+        "state": "madhya pradesh",
+        "domain": "rera.mp.gov.in",
+        # PHP site. Listing AJAX endpoint returns all ~8,255 projects in one HTML
+        # table (DataTables client-side). Registration number is only on the detail
+        # page, so every project requires a detail fetch.
+        # Listing AJAX: /project-all-loop.php?show=20&pagenum=1
+        # Detail pages: /view_project_details.php?id=<base64_id>
+        "listing_url": "https://www.rera.mp.gov.in/all-projects/",
+        "listing_ajax_url": "https://www.rera.mp.gov.in/project-all-loop.php",
+        "detail_base_url": "https://www.rera.mp.gov.in/view_project_details.php",
+        "crawler_module": "sites.madhya_pradesh_rera",
+        "crawler_type": "static",
+        "enabled": False,
+        "rate_limit_delay": (1, 3),
+        "max_retries": 3,
+        # P-BPL-24-4939 (RESIDENTIAL CUM COMMERCIAL PROJECT AT ALAM NAGAR - BHOPAL)
+        # used as the sample project for dry-run comparisons
+        # (state_projects_sample/madhya_pradesh.json).
+        "sentinel_registration_no": "P-BPL-24-4939",
+        "sentinel_detail_url": "https://www.rera.mp.gov.in/view_project_details.php?id=L2NFS0wybnFhMFppUVV3MVduMFpEZz09",
+        "config_id": 12898,
+    },
+    {
+        "id": "uttarakhand_rera",
+        "name": "Uttarakhand RERA",
+        "state_code": "UK",
+        "state": "uttarakhand",
+        "domain": "ukrera.uk.gov.in",
+        # Server-rendered Java MVC (Spring Tiles). All registered projects are
+        # returned on a single listing page (pagination is present in JS but
+        # disabled server-side for public view).  Detail pages redirect via 302
+        # to a session-encrypted URL; follow_redirects + session cookie required.
+        # The portal's TLS configuration requires unsafe legacy renegotiation —
+        # crawler uses get_legacy_ssl_context() from core.crawler_base.
+        "listing_url": "https://ukrera.uk.gov.in/viewRegisteredProjects",
+        "detail_base_url": "https://ukrera.uk.gov.in/viewProjectDetailPage",
+        "crawler_module": "sites.uttarakhand_rera",
+        "crawler_type": "static",
+        "enabled": False,
+        "rate_limit_delay": (2, 4),
+        "max_retries": 3,
+        # AARDH KUMBH ENCLAVE (UKREP11250000693 / projectID=1159) — matches
+        # state_projects_sample/uttarakhand.json.
+        "sentinel_registration_no": "UKREP11250000693",
+        "sentinel_project_id": 1159,
+        "config_id": 11814,
+    },
+    {
+        "id": "uttar_pradesh_rera",
+        "name": "Uttar Pradesh RERA",
+        "state_code": "UP",
+        "state": "uttar pradesh",
+        "domain": "www.up-rera.in",
+        # District-wise listing: frm_allprojectdistrictwise.aspx?districtname={district}
+        # All 75 UP districts are iterated; each page is an ASP.NET WebForms GridView
+        # with all projects for that district in the initial HTML response (no pagination).
+        # "View Detail" buttons use __doPostBack — Playwright is required for detail pages.
+        "listing_url": "https://www.up-rera.in/frm_allprojectdistrictwise.aspx",
+        "crawler_module": "sites.uttar_pradesh_rera",
+        "crawler_type": "playwright",
+        "enabled": False,
+        "rate_limit_delay": (2, 5),
+        "max_retries": 3,
+        # Ace Divino — UPRERAPRJ6734 (Gautam Buddha Nagar) is the sample project in
+        # state_projects_sample/uttar_pradesh.json. Used as sentinel and dry-run baseline.
+        "sentinel_registration_no": "UPRERAPRJ6734",
+        "sentinel_district": "Gautam Buddha Nagar",
+        "config_id": 11816,
+    },
+    {
+        "id": "madhya_pradesh_rera_ongoing",
+        "name": "Madhya Pradesh RERA (Ongoing Projects)",
+        "state_code": "MP",
+        "state": "madhya pradesh",
+        "domain": "rera.mp.gov.in",
+        # PHP site — ongoing-projects-specific AJAX listing endpoint.
+        # Returns all ~5,360 ongoing projects in one HTML table fragment (server
+        # ignores show/pagenum and emits every row; DataTables handles client-side
+        # display).  Critically different from the all-projects listing:
+        #   • Column 1 carries the RERA registration number directly → daily_light
+        #     mode can dedup by key before any detail-page fetch.
+        #   • No "status" column (projects are implicitly ongoing by being listed).
+        # Listing AJAX:  /project-ongoing-loop.php?show=20&pagenum=1
+        # Listing page:  /projects-ongoing/  (used as Referer)
+        # Detail pages:  /view_project_details.php?id=<base64_id>[&extid=<base64_id>]
+        "listing_url": "https://www.rera.mp.gov.in/projects-ongoing/",
+        "listing_ajax_url": "https://www.rera.mp.gov.in/project-ongoing-loop.php",
+        "detail_base_url": "https://www.rera.mp.gov.in/view_project_details.php",
+        "crawler_module": "sites.madhya_pradesh_rera_ongoing",
+        "crawler_type": "static",
+        "enabled": False,
+        "rate_limit_delay": (1, 3),
+        "max_retries": 3,
+        # P-BPL-24-4939 (RESIDENTIAL CUM COMMERCIAL PROJECT AT ALAM NAGAR - BHOPAL)
+        # is an ongoing project visible in the ongoing listing; used as the sentinel.
+        "sentinel_registration_no": "P-BPL-24-4939",
+        "sentinel_detail_url": "https://www.rera.mp.gov.in/view_project_details.php?id=L2NFS0wybnFhMFppUVV3MVduMFpEZz09",
+        "config_id": 12899,
     },
 ]
 

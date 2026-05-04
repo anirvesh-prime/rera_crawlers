@@ -1,29 +1,26 @@
 """
 Gujarat RERA Crawler — gujrera.gujarat.gov.in
-Type: JSON REST API (Angular SPA)
+Type: Playwright (Angular SPA — map-API listing + detail page HTML scraping)
 
 Strategy:
-- Enumerate projects by iterating sequential integer IDs via:
-    GET /project_reg/public/alldatabyprojectid/{id}
-  Skip IDs where data.projRegNo is null (gap in DB sequence).
-- Fetch full details via:
-    GET /project_reg/public/getproject-details/{id}
-- Fetch document UIDs via:
-    GET /project_reg/public/getproject-doc/{id}
-- Download documents via:
-    GET /vdms/download/{uid}
-
-The listing search endpoint (/project_reg/public/global-search) has a persistent
-SQL grammar error on the server, so we avoid it entirely.
+- Fetch all registered project IDs in one shot via the public REST API:
+    GET /maplocation/public/getAllLocations
+  This returns ~16 k projects (the old district-filter listing UI was removed
+  from the Angular app and the replacement search API has a server-side SQL bug).
+- For each project, navigate to its detail page via Playwright, wait for the
+  Angular SPA to fully render, then parse the HTML with BeautifulSoup.
+- Documents: collect all anchor links pointing to /vdms/download paths or PDFs
+  from the rendered detail page.
 """
 from __future__ import annotations
 
-import json
+import base64
 import re
-import subprocess
-from datetime import datetime, timezone, timedelta
+from datetime import timezone, timedelta
 
 import httpx
+from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
@@ -44,126 +41,112 @@ from core.project_normalizer import (
 from core.s3 import compute_md5, upload_document, get_s3_url
 from core.config import settings
 
-BASE_URL  = "https://gujrera.gujarat.gov.in"
-API_BASE  = f"{BASE_URL}/project_reg/public"
-VDMS_BASE = f"{BASE_URL}/vdms/download"
-DOMAIN    = "gujrera.gujarat.gov.in"
-STATE     = "Gujarat"
+BASE_URL    = "https://gujrera.gujarat.gov.in"
+VDMS_BASE   = f"{BASE_URL}/vdms/download"
+DOMAIN      = "gujrera.gujarat.gov.in"
+STATE       = "Gujarat"
+LISTING_URL = f"{BASE_URL}/#/home-p/view-registered-project"
 
-# Max project ID to probe. The public registry is now beyond 30k IDs, so the
-# old 25k cap truncates current projects and breaks sample-aligned dry runs.
-_MAX_PROJECT_ID = 50_000
+# Gujarat districts — iterated to discover all registered projects
+GUJARAT_DISTRICTS = [
+    "Ahmedabad", "Amreli", "Anand", "Aravalli", "Banaskantha",
+    "Bharuch", "Bhavnagar", "Botad", "Chhota Udaipur", "Dahod",
+    "Dang", "Devbhoomi Dwarka", "Gandhinagar", "Gir Somnath",
+    "Jamnagar", "Junagadh", "Kheda", "Kutch", "Mahisagar",
+    "Mehsana", "Morbi", "Narmada", "Navsari", "Panchmahal",
+    "Patan", "Porbandar", "Rajkot", "Sabarkantha", "Surat",
+    "Surendranagar", "Tapi", "Vadodara", "Valsad",
+]
 
-# IST offset — dates in the API are returned in IST (+05:30)
-_IST = timezone(timedelta(hours=5, minutes=30))
-
-# ── Document UID key → human-readable label ─────────────────────────────────
-_FINDOC_UID_LABELS: dict[str, str] = {
-    "auditedBalSheetDoc1UId":          "Audited Balance Sheet Year 1",
-    "auditedBalSheetDoc2_UId":         "Audited Balance Sheet Year 2",
-    "auditedBalSheetDoc3UId":          "Audited Balance Sheet Year 3",
-    "auditedProfitLossSheetDoc1UId":   "Audited P&L Sheet Year 1",
-    "auditedProfitLossSheetDoc2UId":   "Audited P&L Sheet Year 2",
-    "auditedProfitLossSheetDoc3UId":   "Audited P&L Sheet Year 3",
-    "cashFlowStmtFileDoc1UId":         "Cash Flow Statement Year 1",
-    "cashFlowStmtFileDoc2UId":         "Cash Flow Statement Year 2",
-    "cashFlowStmtFileDoc3UId":         "Cash Flow Statement Year 3",
-    "cashFlowStmtYear1UId":            "Cash Flow Statement (Alt) Year 1",
-    "cashFlowStmtYear2UId":            "Cash Flow Statement (Alt) Year 2",
-    "cashFlowStmtYear3UId":            "Cash Flow Statement (Alt) Year 3",
-    "auditedReportDoc1UId":            "Auditors Report Year 1",
-    "auditedReportDoc2UId":            "Auditors Report Year 2",
-    "auditedReportDoc3UId":            "Auditors Report Year 3",
-    "auditedReportYear1UId":           "Audited Report Year 1",
-    "auditedReportYear2UId":           "Audited Report Year 2",
-    "auditedReportYear3UId":           "Audited Report Year 3",
-    "auditedBalSheetYear1UId":         "Balance Sheet (Alt) Year 1",
-    "auditedBalSheetYear2UId":         "Balance Sheet (Alt) Year 2",
-    "auditedBalSheetYear3UId":         "Balance Sheet (Alt) Year 3",
-    "auditedProfitLossSheetYear1UId":  "P&L Sheet (Alt) Year 1",
-    "auditedProfitLossSheetYear2UId":  "P&L Sheet (Alt) Year 2",
-    "auditedProfitLossSheetYear3UId":  "P&L Sheet (Alt) Year 3",
-    "directorReportDoc1UId":           "Director Report Year 1",
-    "directorReportDoc2UId":           "Director Report Year 2",
-    "directorReportDoc3UId":           "Director Report Year 3",
-    "auditorsDoc1UId":                 "Auditors Document Year 1",
-    "auditorsDoc2UId":                 "Auditors Document Year 2",
-    "auditorsDoc3UId":                 "Auditors Document Year 3",
-    "anyOtherDocumentUId":             "Other Financial Document",
-    "statutoryDocumentUId":            "Statutory Document",
-}
-
-_PROJDOC_UID_LABELS: dict[str, str] = {
-    "performaForSaleOfAgreementUId":    "Proforma for Sale Agreement",
-    "auditorsDoc1UId":                  "Auditors Document Year 1",
-    "auditorsDoc2UId":                  "Auditors Document Year 2",
-    "auditorsDoc3UId":                  "Auditors Document Year 3",
-    "incomeTaxReturn1UId":              "Income Tax Return Year 1",
-    "incomeTaxReturn2UId":              "Income Tax Return Year 2",
-    "incomeTaxReturn3UId":              "Income Tax Return Year 3",
-    "projectSpecificDocUId":            "Project Specific Document",
-    "drainageAffidavitUid":             "Drainage Affidavit",
-    "directorReportDoc1UId":            "Director Report Year 1",
-    "directorReportDoc2UId":            "Director Report Year 2",
-    "directorReportDoc3UId":            "Director Report Year 3",
-    "directorReportYear1UId":           "Director Report (Alt) Year 1",
-    "directorReportYear2UId":           "Director Report (Alt) Year 2",
-    "directorReportYear3UId":           "Director Report (Alt) Year 3",
-    "panCardDocUId":                    "PAN Card",
-    "photoGraphDocUId":                 "Photograph",
-    "commencementCertDocUId":           "Commencement Certificate",
-    "approveSacPlanDocUId":             "Approved SAC Plan",
-    "approveLayoutPlanDocUId":          "Approved Layout Plan",
-    "agreementFileDocUId":              "Agreement Document",
-    "landLocationFileDocUId":           "Land Location Document",
-    "encumbranceCertificateDocUId":     "Encumbrance Certificate",
-    "areaDevelopmentDocUId":            "Area Development Document",
-    "performaOfAllotmentLetterDocUId":  "Proforma of Allotment Letter",
-    "brochureOfCurrentProjectDocUId":   "Project Brochure",
-    "projectRelatedDocUId":             "Project Related Document",
-    "declarationFormbDocUId":           "Declaration Form B",
-    "declarationFormB1UId":             "Declaration Form B1",
-    "declarationFormB2UId":             "Declaration Form B2",
-    "approvedBuildingPlanPlottingPlanUId": "Approved Building/Plotting Plan",
-    "allNOCsfromAuthoritiesUId":        "All NOCs from Authorities",
-    "titleClearanceCertificateUId":     "Title Clearance Certificate",
-    "titleReportUId":                   "Title Report",
-    "developmentAgreementUId":          "Development Agreement",
-    "propertyCardUId":                  "Property Card",
-    "propertyCard2UId":                 "Property Card 2",
-    "propertyCard3UId":                 "Property Card 3",
-    "buCertificateUId":                 "BU Certificate",
-    "ganttchartForm1AUId":              "Gantt Chart Form 1A",
-    "alloteeConsentDocUId":             "Allottee Consent Document",
-    "statutoryDocumentUId":             "Statutory Document",
-    "anyOtherDocumentUId":              "Other Document",
-    "performaforSaledeedUId":           "Proforma for Sale Deed",
-    "projectphotoUId":                  "Project Photo",
-    "sanctionedLayoutPlanDocUId":       "Sanctioned Layout Plan",
-}
-
-# Professional list key in getproject-details.data → role label
-_PROF_SECTION_ROLES: dict[str, str] = {
-    "englist":   "Structural Engineer",
-    "dev":       "Developer",
-    "calist":    "Chartered Accountant",
-    "agentlist": "Agent",
-    "acrchlist": "Architect",
-    "contr":     "Contractor",
+# HTML label (lowercase, colon-stripped) → schema field name.
+# Fields prefixed with "_" are internal and assembled into compound fields below.
+_LABEL_TO_FIELD: dict[str, str] = {
+    "registration number":          "project_registration_no",
+    "registration no":              "project_registration_no",
+    "project registration no":      "project_registration_no",
+    "rera registration no":         "project_registration_no",
+    "gujrera reg. no.":             "project_registration_no",
+    "application no":               "acknowledgement_no",
+    "acknowledgement no":           "acknowledgement_no",
+    "project name":                 "project_name",
+    "name of project":              "project_name",
+    "project type":                 "project_type",
+    "type of project":              "project_type",
+    "about property":               "project_description",
+    "project status":               "status_of_the_project",
+    "status":                       "status_of_the_project",
+    "promoter name":                "promoter_name",
+    "name of promoter":             "promoter_name",
+    "mobile no":                    "_promoter_mobile",
+    "mobile":                       "_promoter_mobile",
+    "promoter mobile":              "_promoter_mobile",
+    "email":                        "_promoter_email",
+    "email id":                     "_promoter_email",
+    "promoter email":               "_promoter_email",
+    "promoter type":                "_promoter_type",
+    "district":                     "project_city",
+    "district name":                "project_city",
+    "sub district":                 "_sub_district",
+    "sub-district":                 "_sub_district",
+    "taluka":                       "_taluka",
+    "taluk":                        "_taluka",
+    "village":                      "_village",
+    "moje":                         "_village",
+    "pin code":                     "project_pin_code",
+    "pincode":                      "project_pin_code",
+    "project address":              "_project_address",
+    "address":                      "_project_address",
+    "plot no":                      "_plot_no",
+    "final plot no":                "_plot_no",
+    "tp no":                        "_tp_no",
+    "start date":                           "actual_commencement_date",
+    "commencement date":                    "actual_commencement_date",
+    "actual commencement date":             "actual_commencement_date",
+    "project start date":                   "actual_commencement_date",
+    "estimated start date":                 "estimated_commencement_date",
+    "estimated commencement date":          "estimated_commencement_date",
+    "proposed start date":                  "estimated_commencement_date",
+    "completion date":                      "actual_finish_date",
+    "actual completion date":               "actual_finish_date",
+    "project end date":                     "actual_finish_date",
+    "proposed completion date":             "estimated_finish_date",
+    "estimated completion date":            "estimated_finish_date",
+    "estimated end date":                   "estimated_finish_date",
+    "proposed end date":                    "estimated_finish_date",
+    "submission date":                      "submitted_date",
+    "approved date":                        "approved_on_date",
+    "approval date":                        "approved_on_date",
+    "date of approval":                     "approved_on_date",
+    "total land area":                      "land_area",
+    "land area":                            "land_area",
+    "project land area":                    "land_area",
+    "total carpet area":                    "construction_area",
+    "carpet area":                          "construction_area",
+    "total covered area":                   "construction_area",
+    "total open area":                      "_total_open_area",
+    "project estimated cost (rs.)":         "_total_project_cost",
+    "office address":                       "_promoter_address",
+    "total residential units":              "number_of_residential_units",
+    "no of residential units":              "number_of_residential_units",
+    "residential units":                    "number_of_residential_units",
+    "total commercial units":               "number_of_commercial_units",
+    "no of commercial units":               "number_of_commercial_units",
+    "total project cost":                   "_total_project_cost",
+    "estimated cost":                       "_estimated_cost",
+    "cost of land":                         "_cost_of_land",
+    "project description":                  "project_description",
+    "description":                          "project_description",
+    "total floor area under residential":   "total_floor_area_under_residential",
+    "residential floor area":               "total_floor_area_under_residential",
+    "total floor area under commercial":    "total_floor_area_under_commercial_or_other_uses",
+    "commercial floor area":                "total_floor_area_under_commercial_or_other_uses",
 }
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 def _normalize_date(val) -> str | None:
-    """Normalize dates from Gujarat RERA API to canonical ISO string.
-
-    Handles:
-      - ISO with T separator: "2018-01-01T00:00:00.000+0530"
-      - dd-mm-yyyy: "20-09-2017"
-      - yyyy-MM-dd
-      - Already normalized strings
-    """
+    """Normalize date strings found in HTML to canonical ISO format."""
     if val is None:
         return None
     v = str(val).strip()
@@ -175,6 +158,9 @@ def _normalize_date(val) -> str | None:
     m = re.match(r"^(\d{2})-(\d{2})-(\d{4})$", v)
     if m:
         return f"{m.group(3)}-{m.group(2)}-{m.group(1)} 00:00:00+00:00"
+    m = re.match(r"^(\d{2})/(\d{2})/(\d{4})$", v)
+    if m:
+        return f"{m.group(3)}-{m.group(2)}-{m.group(1)} 00:00:00+00:00"
     m = re.match(r"^(\d{4}-\d{2}-\d{2})$", v)
     if m:
         return f"{v} 00:00:00+00:00"
@@ -183,558 +169,663 @@ def _normalize_date(val) -> str | None:
     return v
 
 
-def _s(d: dict, *keys: str) -> str:
-    """Return the first non-empty string value found among keys in dict d."""
-    for k in keys:
-        v = d.get(k)
-        if v is None:
+def _clean(text) -> str:
+    """Strip and collapse whitespace."""
+    if text is None:
+        return ""
+    return re.sub(r"\s+", " ", str(text)).strip()
+
+
+
+def _extract_label_values(soup: BeautifulSoup) -> dict[str, str]:
+    """Generic label→value extractor for Angular-rendered RERA detail pages.
+
+    Primary pattern (gujrera.gujarat.gov.in #/project-preview):
+      <td><strong>Label:-</strong> Value text</td>
+    Also handles multiple <strong> tags per cell:
+      <td><strong>L1:-</strong> V1 <br/> <strong>L2:-</strong> V2</td>
+
+    Falls back to plain <td>Label</td><td>Value</td> for standard tables.
+    """
+    result: dict[str, str] = {}
+
+    # Pattern 1 (primary): <td><strong>Label:-</strong> Value</td>
+    # Iterates every <strong> in every <td>; collects sibling text until next <strong>.
+    # This pattern runs FIRST so its results take priority over fallback patterns.
+    for td in soup.find_all("td"):
+        strongs = td.find_all("strong")
+        if not strongs:
             continue
-        sv = str(v).strip()
-        if sv and sv not in ("null", "None", "0"):
-            return sv
-    return ""
+        for strong in strongs:
+            raw_label = strong.get_text(strip=True)
+            # Strip trailing ":-" or ":" from the label text
+            label = re.sub(r"\s*:-?\s*$", "", raw_label).strip()
+            if not label or len(label) > 120:
+                continue
+            # Collect text from siblings after this <strong> until the next <strong>
+            value_parts: list[str] = []
+            node = strong.next_sibling
+            while node is not None:
+                if getattr(node, "name", None) == "strong":
+                    break
+                if getattr(node, "name", None) == "br":
+                    node = node.next_sibling
+                    continue
+                text = node.get_text(separator=" ") if hasattr(node, "get_text") else str(node)
+                value_parts.append(text)
+                node = node.next_sibling
+            value = _clean(" ".join(value_parts)).strip(", ").strip()
+            if value:
+                result.setdefault(label, value)   # Pattern 1 wins; don't overwrite
 
+    # Pattern 2 (fallback): <th>Label</th><td>Value</td> pairs inside a <tr>
+    for tr in soup.find_all("tr"):
+        ths = tr.find_all("th")
+        tds = tr.find_all("td")
+        if len(ths) == 1 and len(tds) == 1:
+            key = _clean(ths[0].get_text(separator=" "))
+            val = _clean(tds[0].get_text(separator=" "))
+            if key and val and len(key) < 120:
+                result.setdefault(key, val)
 
-def _collect_doc_uids(doc_section: dict, uid_label_map: dict[str, str]) -> list[dict]:
-    """Extract non-null UID entries from a flat doc-section dict."""
-    docs: list[dict] = []
-    seen_uids: set[str] = set()
-    for uid_key, label in uid_label_map.items():
-        uid = doc_section.get(uid_key)
-        if not uid or uid in seen_uids:
+    # Pattern 3 (fallback): plain <td>Label</td><td>Value</td> rows without <strong>
+    # Normalize label by stripping trailing ":-" to avoid duplicates with Pattern 1.
+    for tr in soup.find_all("tr"):
+        cells = [c for c in tr.find_all("td") if not c.find("strong")]
+        i = 0
+        while i < len(cells) - 1:
+            label = re.sub(r"\s*:-?\s*$", "",
+                           _clean(cells[i].get_text(separator=" "))).strip()
+            value = _clean(cells[i + 1].get_text(separator=" "))
+            if label and value and len(label) < 120:
+                result.setdefault(label, value)
+            i += 2
+
+    # Pattern 4 (fallback): <label>Key</label> followed by a sibling element
+    for label_tag in soup.find_all("label"):
+        key = _clean(label_tag.get_text())
+        if not key or len(key) > 120:
             continue
-        seen_uids.add(uid)
-        docs.append({"label": label, "url": f"{VDMS_BASE}/{uid}", "uid": uid})
-    return docs
+        sib = label_tag.find_next_sibling(["span", "strong", "div", "p"])
+        if sib:
+            val = _clean(sib.get_text(separator=" "))
+            if val:
+                result.setdefault(key, val)
 
-
-def _first_non_empty_dict(detail_data: dict, *name_hints: str) -> dict | None:
-    hints = tuple(h.lower() for h in name_hints)
-    for key, value in detail_data.items():
-        if not isinstance(value, dict):
+    # Pattern 5 (fallback): Bootstrap col-* divs where a <strong>/<b> is the label
+    # Non-destructive: collect sibling text after the <strong> instead of extracting it.
+    for div in soup.find_all("div", class_=re.compile(r"\bcol-")):
+        strong = div.find(["strong", "b"])
+        if not strong:
             continue
-        key_l = str(key).lower()
-        if any(hint in key_l for hint in hints):
-            return value
-    return None
-
-
-def _first_non_empty_list(detail_data: dict, *name_hints: str) -> list[dict]:
-    hints = tuple(h.lower() for h in name_hints)
-    for key, value in detail_data.items():
-        if not isinstance(value, list):
+        # Strip trailing ":-" to keep key consistent with Pattern 1
+        key = re.sub(r"\s*:-?\s*$", "", _clean(strong.get_text())).strip()
+        if not key or len(key) > 120:
             continue
-        key_l = str(key).lower()
-        if any(hint in key_l for hint in hints):
-            dict_items = [item for item in value if isinstance(item, dict)]
-            if dict_items:
-                return dict_items
-    return []
+        # Collect text from siblings AFTER the strong tag (non-destructive)
+        val_parts: list[str] = []
+        for node in strong.next_siblings:
+            text = node.get_text(separator=" ") if hasattr(node, "get_text") else str(node)
+            val_parts.append(text)
+        val = _clean(" ".join(val_parts))
+        if val:
+            result.setdefault(key, val)
+
+    return result
 
 
-def _fetch_basic(proj_id: int, client: httpx.Client) -> dict | None:
-    """Call alldatabyprojectid — returns basic project metadata or None."""
-    payload = _fetch_api_json(f"{API_BASE}/alldatabyprojectid/{proj_id}", client=client)
-    if not payload or payload.get("status") != 200:
-        return None
-    data = payload.get("data") or {}
-    if not data.get("projRegNo"):
-        return None
-    return data
-
-
-def _fetch_details(proj_id: int, client: httpx.Client, logger: CrawlerLogger) -> dict:
-    """Call getproject-details — returns raw data dict."""
-    payload = _fetch_api_json(f"{API_BASE}/getproject-details/{proj_id}", client=client)
-    if not payload:
-        return {}
-    try:
-        return payload.get("data") or {}
-    except Exception as e:
-        logger.warning(f"Failed to parse getproject-details/{proj_id}: {e}")
-        return {}
-
-
-def _fetch_docs(proj_id: int, client: httpx.Client) -> dict:
-    """Call getproject-doc — returns {findoc: dict, projectdoc: dict}."""
-    payload = _fetch_api_json(f"{API_BASE}/getproject-doc/{proj_id}", client=client)
-    if not payload:
-        return {}
-    try:
-        return payload.get("data") or {}
-    except Exception:
-        return {}
-
-
-def _fetch_qpr_details(proj_id: int, client: httpx.Client) -> dict:
-    """Call the QPR project-details endpoint used by the public preview page."""
-    payload = _fetch_api_json(
-        f"{API_BASE}/project-app/get-project-details-for-qpr/{proj_id}",
-        client=client,
-    )
-    if not payload:
-        return {}
-    try:
-        return payload.get("data") or {}
-    except Exception:
-        return {}
-
-
-def _fetch_promoter_profile(promoter_id: int, client: httpx.Client) -> dict:
-    """Fetch promoter profile details used by the public preview page."""
-    payload = _fetch_api_json(f"{BASE_URL}/user_reg/promoter/promoter{promoter_id}", client=client)
-    return payload or {}
-
-
-def _curl_json(url: str) -> dict | None:
-    try:
-        proc = subprocess.run(
-            ["curl", "-L", "--silent", "--show-error", "--max-time", "20", url],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-    except Exception:
-        return None
-    try:
-        return json.loads(proc.stdout)
-    except Exception:
-        return None
-
-
-def _curl_bytes(url: str) -> bytes | None:
-    try:
-        proc = subprocess.run(
-            ["curl", "-L", "--silent", "--show-error", "--max-time", "30", url],
-            check=True,
-            capture_output=True,
-        )
-    except Exception:
-        return None
-    return proc.stdout or None
-
-
-def _fetch_api_json(url: str, *, client: httpx.Client) -> dict | None:
-    resp = safe_get(url, retries=2, timeout=12, client=client)
-    if resp:
-        try:
-            return resp.json()
-        except Exception:
-            return None
-    return _curl_json(url)
-
-
-def _extract_fields(  # noqa: C901
-    basic: dict,
-    detail_data: dict,
-    qpr_data: dict | None = None,
-    promoter_profile: dict | None = None,
-) -> dict:
-    """Map Gujarat API response fields to the projects table schema."""
-    pd = detail_data.get("projectDetail") or {}
-    qpr = qpr_data or {}
-    promoter = promoter_profile or {}
+def _extract_html_fields(lv: dict[str, str], proj_id: int) -> dict:
+    """Map a label-value dict (from the rendered HTML) to project schema fields."""
     out: dict = {}
+    # Normalize keys: lowercase, strip trailing ":-" (first-wins to match Pattern 1 priority)
+    norm: dict[str, str] = {}
+    for k, v in lv.items():
+        nk = re.sub(r"\s*:-?\s*$", "", k.lower()).strip()
+        norm.setdefault(nk, v)
 
-    out["project_registration_no"] = basic.get("projRegNo", "")
-    out["project_name"]   = basic.get("projectName") or pd.get("projectName")
-    out["project_type"]   = basic.get("projectType") or pd.get("projectType")
-    out["promoter_name"]  = basic.get("promoterName")
-    out["acknowledgement_no"] = basic.get("projectAckNo")
+    for label_key, schema_field in _LABEL_TO_FIELD.items():
+        val = norm.get(label_key, "")
+        if not val or val.lower() in ("n/a", "na", "-", "null", "none"):
+            continue
+        if schema_field.startswith("_"):
+            out[schema_field] = val          # assembled into compound fields below
+        elif schema_field.endswith("_date"):
+            d = _normalize_date(val)
+            if d:
+                out[schema_field] = d
+        elif schema_field in (
+            "land_area", "construction_area",
+            "total_floor_area_under_residential",
+            "total_floor_area_under_commercial_or_other_uses",
+        ):
+            try:
+                out[schema_field] = float(re.sub(r"[^\d.]", "", val.replace(",", "")))
+            except (ValueError, TypeError):
+                pass
+        elif schema_field in ("number_of_residential_units", "number_of_commercial_units"):
+            try:
+                out[schema_field] = int(val.replace(",", ""))
+            except (ValueError, TypeError):
+                pass
+        else:
+            out[schema_field] = val
 
-    out["status_of_the_project"] = pd.get("projectStatus")
-    out["project_city"]  = pd.get("distName")
-    out["project_state"] = pd.get("stateName") or STATE
-    out["project_pin_code"] = _s(pd, "pinCode") or None
+    # Promoter contact — extract first valid phone/email from potentially multi-value strings
+    def _first_match(text: str, pattern: str) -> str:
+        m = re.search(pattern, text or "")
+        return m.group(0).strip() if m else ""
 
-    out["approved_on_date"]         = _normalize_date(basic.get("approvedDate"))
-    out["submitted_date"]           = _normalize_date(basic.get("appSubmissionDate"))
-    out["actual_commencement_date"] = _normalize_date(pd.get("startDate"))
-    out["actual_finish_date"]       = _normalize_date(pd.get("completionDate"))
+    raw_phone = norm.get("promoter mobile") or norm.get("mobile no") or norm.get("mobile", "")
+    raw_email = norm.get("promoter email") or norm.get("email id") or norm.get("email", "")
+    # Extract first phone number and email from potentially concatenated multi-partner strings
+    phone = _first_match(raw_phone, r"[\d]{10,}")
+    email = _first_match(raw_email, r"[\w.+-]+@[\w.-]+\.[a-zA-Z]{2,}")
+    contact: dict = {}
+    if phone:
+        contact["phone"] = phone
+    if email:
+        contact["email"] = email
+    if contact:
+        out["promoter_contact_details"] = contact
 
-    land_value = pd.get("totAreaOfLand")
-    if land_value in (None, "", "null", "None"):
-        land_value = pd.get("totLandAreaForProjectUnderReg")
-    if land_value in (None, "", "null", "None"):
-        land_value = pd.get("totAreaOfLandLayout")
-    try:
-        if land_value is not None:
-            out["land_area"] = float(land_value)
-    except (ValueError, TypeError):
-        pass
-
-    construction_value = pd.get("totCarpetAreaForProjectUnderReg")
-    if construction_value in (None, "", "null", "None"):
-        construction_value = pd.get("totCarpetArea")
-    if construction_value in (None, "", "null", "None"):
-        construction_value = pd.get("totCoverdArea")
-    try:
-        if construction_value is not None:
-            out["construction_area"] = float(construction_value)
-    except (ValueError, TypeError):
-        pass
-
-    desc = _s(pd, "projectDesc")
-    if desc:
-        out["project_description"] = desc
-
-    cost: dict = {}
-    for api_f, label in (
-        ("totalProjectCost", "total_project_cost"),
-        ("estimatedCost",    "estimated_project_cost"),
-        ("costOfLand",       "cost_of_land"),
-    ):
-        v = pd.get(api_f)
-        if v is not None and str(v).strip() not in ("", "0", "null", "None"):
-            cost[label] = str(v)
-    qpr_total_cost = qpr.get("totalProjectCost")
-    if qpr_total_cost not in (None, "", "0", "null", "None"):
-        cost.setdefault("total_project_cost", str(qpr_total_cost))
-        cost.setdefault("estimated_project_cost", str(qpr_total_cost))
-    if cost:
-        out["project_cost_detail"] = cost
-
-    # Location
-    moje  = _s(pd, "moje")
-    sub   = _s(pd, "subDistName")
-    dist  = _s(pd, "distName")
-    pin   = _s(pd, "pinCode")
-    addr1 = _s(pd, "projectAddress")
-    addr2 = _s(pd, "projectAddress2")
-    plot  = _s(pd, "plotNo", "finalPlotNo")
-    tp    = _s(pd, "tPNo")
+    # project_location_raw
+    district = norm.get("district") or norm.get("district name", "")
+    sub_dist = norm.get("sub district") or norm.get("sub-district", "")
+    taluka   = norm.get("taluka") or norm.get("taluk", "")
+    village  = norm.get("village") or norm.get("moje", "")
+    pin      = norm.get("pin code") or norm.get("pincode", "")
+    address  = norm.get("project address") or norm.get("address", "")
+    plot_no  = norm.get("plot no") or norm.get("final plot no", "")
+    tp_no    = norm.get("tp no", "")
     loc: dict = {}
-    if plot:
-        loc["house_no_building_name"] = plot
-    if tp:
-        loc["tp_no"] = tp
-    if moje:
-        loc["village"] = moje
-    if sub:
-        loc["taluk"] = sub
-    if dist:
-        loc["district"] = dist
+    if plot_no:
+        loc["house_no_building_name"] = plot_no
+    if tp_no:
+        loc["tp_no"] = tp_no
+    if village:
+        loc["village"] = village
+    if sub_dist:
+        loc["taluk"] = sub_dist
+    elif taluka:
+        loc["taluk"] = taluka
+    if district:
+        loc["district"] = district
+        out["project_city"] = district
     if pin:
         loc["pin_code"] = pin
     loc["state"] = STATE
-    raw_parts = [p for p in [addr1, addr2, moje, sub, dist, STATE, pin] if p]
-    if raw_parts:
-        loc["raw_address"] = ", ".join(raw_parts)
+    # raw_address = just the address string from the page (no synthetic city/state suffix)
+    if address:
+        loc["raw_address"] = address
     if loc:
         out["project_location_raw"] = loc
 
-    # Promoter contact
-    promo_contact: dict = {}
-    email = (basic.get("promoterEmailId") or "").strip()
-    phone = (basic.get("promoterMobileNo") or "").strip()
-    if email:
-        promo_contact["email"] = email
-    if phone:
-        promo_contact["phone"] = phone
-    if promo_contact:
-        out["promoter_contact_details"] = promo_contact
-
-    promo_type = (basic.get("promoterType") or "").strip()
-    promo_addr_source = _first_non_empty_dict(detail_data, "promoteraddress", "promoter_address")
-    promo_addr_parts = [
-        _s(promoter, "address"),
-        _s(promoter, "address2"),
-        _s(basic, "promoterAddress", "promoterAdd", "address", "address1"),
-        _s(pd, "promoterAddress", "promoterAdd", "address", "address1"),
-        _s(pd, "address2"),
-        _s(pd, "distName"),
-        _s(pd, "stateName"),
-        _s(pd, "pinCode"),
-    ]
-    promo_addr: dict = {}
-    if promo_addr_source:
-        raw_address = ", ".join(
-            part for part in (
-                _s(promo_addr_source, "address", "address1", "addr1", "line1"),
-                _s(promo_addr_source, "address2", "addr2", "line2"),
-                _s(promo_addr_source, "city", "distName", "district"),
-                _s(promo_addr_source, "state", "stateName"),
-                _s(promo_addr_source, "pinCode", "pincode"),
-            ) if part
-        )
-        if raw_address:
-            promo_addr["raw_address"] = raw_address
-        for src, tgt in (
-            ("city", "city"),
-            ("distName", "district"),
-            ("district", "district"),
-            ("state", "state"),
-            ("stateName", "state"),
-            ("pinCode", "pin_code"),
-            ("pincode", "pin_code"),
-        ):
-            value = _s(promo_addr_source, src)
-            if value:
-                promo_addr[tgt] = value
-    elif any(promo_addr_parts):
-        promo_addr["raw_address"] = " ".join(part for part in promo_addr_parts if part)
-        district = _s(promoter, "districtName") or _s(pd, "distName")
-        state = _s(promoter, "stateName") or _s(pd, "stateName")
-        pin = _s(promoter, "pinCode") or _s(pd, "pinCode")
-        if district:
-            promo_addr["district"] = district
-        if state:
-            promo_addr["state"] = state
-        if pin:
-            promo_addr["pin_code"] = pin
-    if promo_addr:
-        out["promoter_address_raw"] = promo_addr
-
-    # Professionals
-    profs: list[dict] = []
-    seen_names: set[tuple] = set()
-    for section_key, role_label in _PROF_SECTION_ROLES.items():
-        section = detail_data.get(section_key)
-        if not isinstance(section, list):
-            continue
-        for item in section:
-            if not isinstance(item, dict):
-                continue
-            name = _s(item, "name", "fullName", "agentName", "contrName")
-            if not name:
-                continue
-            dedup = (role_label, name.lower())
-            if dedup in seen_names:
-                continue
-            seen_names.add(dedup)
-            entry: dict = {"role": role_label, "name": name}
-            email_p = _s(item, "email", "emailId")
-            phone_p = _s(item, "mobileNo", "contactNo", "mobile")
-            reg_p   = _s(item, "licenceNo", "registrationNo", "reraRegNo")
-            if email_p: entry["email"]           = email_p
-            if phone_p: entry["phone"]           = phone_p
-            if reg_p:   entry["registration_no"] = reg_p
-            profs.append(entry)
-    if profs:
-        out["professional_information"] = profs
-
-    development_rows = [item for item in detail_data.get("dev") or [] if isinstance(item, dict)]
-    if development_rows:
-        building_details: list[dict] = []
-        facilities: list[dict] = []
-        status_updates: list[dict] = []
-
-        for dev_row in development_rows:
-            for unit in dev_row.get("internalDev") or []:
-                if not isinstance(unit, dict):
-                    continue
-                flat_type = _s(unit, "typeOfInventory")
-                if not flat_type:
-                    continue
-                entry: dict[str, str] = {"flat_type": flat_type}
-                if unit.get("noOfInventory") not in (None, ""):
-                    entry["no_of_units"] = str(unit["noOfInventory"])
-                if unit.get("carpetArea") not in (None, ""):
-                    entry["carpet_area"] = str(unit["carpetArea"])
-                if unit.get("areaOfExclusive") not in (None, ""):
-                    entry["open_area"] = str(unit["areaOfExclusive"])
-                if unit.get("areaOfExclusiveOpenTerrace") not in (None, ""):
-                    entry["balcony_area"] = str(unit["areaOfExclusiveOpenTerrace"])
-                building_details.append(entry)
-
-            external_dev = dev_row.get("externalDev") or {}
-            if isinstance(external_dev, dict):
-                for field_name, label in (
-                    ("roadSysetmDevBy", "Road System"),
-                    ("waterSupplyBy", "Water Supply"),
-                    ("sewegeAndDrainageSystemDevBy", "Sewage and Drainage System"),
-                    ("electricityAndTrasfomerSupply", "Electricity Supply and Transformer"),
-                    ("solidWasteSupplyBy", "Solid Waste Management"),
-                ):
-                    value = _s(external_dev, field_name)
-                    if value:
-                        facilities.append({"facility": label, "status": value})
-
-            status_entry: dict[str, object] = {"updated": True}
-            if building_details:
-                status_entry["building_details"] = building_details
-            if facilities:
-                status_entry["amenity_detail"] = facilities
-            if status_entry.keys() != {"updated"}:
-                status_updates.append(status_entry)
-
-        if building_details:
-            out["building_details"] = building_details
-        if facilities:
-            out["provided_faciltiy"] = facilities
-        if status_updates:
-            out["status_update"] = status_updates
-
-    residential_units = _s(
-        pd,
-        "totalResidentialUnits",
-        "noOfResidentialUnits",
-        "totalResiUnits",
-        "residentialUnits",
-        "totResidentialUnit",
+    # project_cost_detail
+    cost: dict = {}
+    raw_cost = (
+        norm.get("project estimated cost (rs.)")
+        or norm.get("total project cost")
+        or norm.get("project cost")
     )
-    if not residential_units:
-        qpr_internal = qpr.get("internalDevDetails") or []
-        for item in qpr_internal:
-            if not isinstance(item, dict):
-                continue
-            value = item.get("noOfInventory")
-            if value not in (None, "", "0"):
-                residential_units = str(value)
-                break
-    if residential_units:
+    if raw_cost:
+        # Strip commas and convert to float-compatible string
+        cost_num = raw_cost.replace(",", "").split()[0]
         try:
-            out["number_of_residential_units"] = int(residential_units.replace(",", ""))
-        except ValueError:
-            pass
+            cost["total_project_cost"] = f"{float(cost_num):.2f}"
+            cost.setdefault("estimated_project_cost", cost["total_project_cost"])
+        except (ValueError, TypeError):
+            cost["total_project_cost"] = raw_cost
+    if norm.get("estimated cost"):
+        cost.setdefault("estimated_project_cost", norm["estimated cost"])
+    if norm.get("cost of land"):
+        cost["cost_of_land"] = norm["cost of land"]
+    if cost:
+        out["project_cost_detail"] = cost
 
-    promoters_details: dict = {}
-    promoter_reg = _s(
-        promoter,
-        "companyRegistrationNumber",
-        "promoterRegistrationNo",
-        "firmRegNo",
-        "registrationNo",
-    ) or _s(basic, "promoterRegNo", "promoterRegistrationNo", "firmRegNo")
-    promoter_pan = _s(promoter, "panNo", "pan") or _s(basic, "promoterPan", "panNo", "pan")
-    if out.get("promoter_name"):
-        promoters_details["name"] = out["promoter_name"]
+    # promoters_details
+    promo_type = norm.get("promoter type", "")
     if promo_type:
-        promoters_details["type_of_firm"] = promo_type
-    if promoter_reg:
-        promoters_details["reg_no"] = promoter_reg
-    if promoter_pan:
-        promoters_details["pan"] = promoter_pan
-    if promoters_details:
-        out["promoters_details"] = promoters_details
+        out["promoters_details"] = {"type_of_firm": promo_type}
 
-    facility_rows = _first_non_empty_list(detail_data, "amenit", "facilit")
-    if facility_rows:
-        facilities: list[dict] = []
-        for item in facility_rows:
-            facility = _s(item, "facility", "amenity", "name", "facilityName", "amenityName")
-            status = _s(item, "status", "availability", "isAvailable")
-            if facility:
-                entry = {"facility": facility}
-                if status:
-                    entry["status"] = status
-                facilities.append(entry)
-        if facilities:
-            out["provided_faciltiy"] = facilities
+    # promoter_address_raw — from "Office Address" label in the promoter section
+    office_addr = norm.get("office address", "")
+    if office_addr:
+        out["promoter_address_raw"] = {"raw_address": office_addr}
 
-    signatory_rows = _first_non_empty_list(detail_data, "signatory", "authorised", "authorized")
-    if not signatory_rows and isinstance(promoter.get("authorizedSignatoryList"), list):
-        signatory_rows = promoter["authorizedSignatoryList"]
-    if signatory_rows:
-        signatories: list[dict] = []
-        for item in signatory_rows:
-            name = _s(item, "name", "signatoryName", "authName")
-            if not name:
-                name = " ".join(
-                    part
-                    for part in (
-                        _s(item, "authsignFirstName"),
-                        _s(item, "authsignMiddleName"),
-                        _s(item, "authsignLastName"),
-                    )
-                    if part
-                ).strip()
-            if not name:
-                continue
-            entry = {"name": name}
-            for src, tgt in (
-                ("email", "email"),
-                ("mobile", "phone"),
-                ("mobileNo", "phone"),
-                ("phone", "phone"),
-                ("photo", "photo"),
-                ("authsignEmailId", "email"),
-                ("authsignMobileNumber", "phone"),
-            ):
-                value = _s(item, src)
-                if value:
-                    entry[tgt] = value
-            auth_photo_uid = _s(item, "authsignPhotUId")
-            if auth_photo_uid and "photo" not in entry:
-                entry["photo"] = f"{VDMS_BASE}/{auth_photo_uid}"
-            signatories.append(entry)
-        if signatories:
-            out["authorised_signatory_details"] = signatories
+    # bank_details — from "Linked Bank Details" section
+    bank: dict = {}
+    bank_name = norm.get("bank name") or norm.get("bank")
+    acct_no = (
+        norm.get("a/c number") or norm.get("account no") or norm.get("account number")
+        or norm.get("ac number") or norm.get("account name")
+    )
+    ifsc = norm.get("ifsc code") or norm.get("ifsc")
+    branch = norm.get("branch name") or norm.get("branch")
+    acct_type = norm.get("account type") or norm.get("type of account")
+    if bank_name:
+        bank["bank_name"] = bank_name
+    if acct_no:
+        bank["account_no"] = acct_no
+    if ifsc:
+        bank["IFSC"] = ifsc
+    if branch:
+        bank["branch"] = branch
+    if acct_type:
+        bank["account_type"] = acct_type
+    if bank:
+        out["bank_details"] = bank
 
-    co_promoter_rows = _first_non_empty_list(detail_data, "copromoter", "co_promoter", "landowner", "land_owner")
-    if not co_promoter_rows and isinstance(promoter.get("assosiateList"), list):
-        co_promoter_rows = promoter["assosiateList"]
-    if co_promoter_rows:
-        co_promoters: list[dict] = []
-        for item in co_promoter_rows:
-            name = _s(item, "name", "coPromoterName", "landOwnerName")
-            if not name:
-                name = " ".join(
-                    part
-                    for part in (
-                        _s(item, "associateFirstName"),
-                        _s(item, "associateMiddleName"),
-                        _s(item, "associateLastName", "lastName"),
-                    )
-                    if part
-                ).strip()
-            if not name:
-                continue
-            entry = {"name": name}
-            for src, tgt in (
-                ("email", "email"),
-                ("mobile", "phone"),
-                ("mobileNo", "phone"),
-                ("phone", "phone"),
-                ("assocaiteEmailId", "email"),
-                ("assocaiteMobileNumber", "phone"),
-            ):
-                value = _s(item, src)
-                if value:
-                    entry[tgt] = value
-            co_promoters.append(entry)
-        if co_promoters:
-            out["co_promoter_details"] = co_promoters
+    # land_area_details — derive from extracted area values + units from raw value strings
+    # Unit is embedded in value strings like "1817.74 Sq Mtrs"; extract it with regex.
+    def _split_num_unit(raw: str) -> tuple[float | None, str]:
+        """Split '3654.26 Sq Mtrs' → (3654.26, 'Sq Mtrs')."""
+        m = re.match(r"^([\d,]+\.?\d*)\s+(.+)$", raw.strip())
+        if m:
+            try:
+                return float(m.group(1).replace(",", "")), m.group(2).strip()
+            except ValueError:
+                pass
+        return None, ""
 
-    out["land_area_details"] = {
-        "land_area":              str(land_value if land_value is not None else ""),
-        "land_area_unit":         "Sq. Mtrs.",
-        "construction_area":      construction_value if construction_value is not None else "",
-        "construction_area_unit": "Sq. Mtrs.",
-        "open_parking_area":      str(pd.get("openParkingArea", "") or ""),
-    }
+    land_area_val  = out.get("land_area")
+    carpet_area_val = out.get("construction_area")
+    if land_area_val or carpet_area_val:
+        lad: dict = {}
+        # Try to get better units from the raw value strings stored in norm
+        covered_raw = norm.get("total covered area", "")
+        land_raw    = norm.get("project land area", "") or norm.get("land area", "")
+        _, construction_unit = _split_num_unit(covered_raw)
+        _, land_unit         = _split_num_unit(land_raw)
+        if land_area_val:
+            lad["land_area"] = (
+                str(int(land_area_val)) if land_area_val == int(land_area_val)
+                else str(land_area_val)
+            )
+            lad["land_area_unit"] = land_unit or "Sq. Mtrs."
+        if carpet_area_val:
+            lad["construction_area"] = carpet_area_val
+            lad["construction_area_unit"] = construction_unit or "Sq. Mtrs."
+        if lad:
+            out["land_area_details"] = lad
 
+    # Remove internal keys
+    for k in [k for k in list(out) if k.startswith("_")]:
+        del out[k]
+
+    out["project_state"] = STATE
     return out
 
 
-def _collect_all_docs(basic: dict, doc_data: dict) -> list[dict]:
-    """Build the full list of document entries for a project."""
+def _extract_doc_links(soup: BeautifulSoup, seen: set[str] | None = None) -> list[dict]:
+    """Collect document download links from the rendered Gujarat detail page HTML."""
     docs: list[dict] = []
-    seen_uids: set[str] = set()
-
-    for uid_key, label in (
-        ("certificateUid",       "RERA Registration Certificate"),
-        ("altcertificateUid",    "Alternate RERA Certificate"),
-        ("extcertificateUid",    "Extension Certificate"),
-        ("altsec15certificateUid", "Alternate Sec-15 Certificate"),
-    ):
-        uid = (basic.get(uid_key) or "").strip()
-        if uid and uid not in seen_uids:
-            seen_uids.add(uid)
-            cat = "certificate" if uid_key == "certificateUid" else "other"
-            docs.append({"label": label, "url": f"{VDMS_BASE}/{uid}", "uid": uid, "category": cat})
-
-    for doc in _collect_doc_uids(doc_data.get("findoc") or {}, _FINDOC_UID_LABELS):
-        if doc["uid"] not in seen_uids:
-            seen_uids.add(doc["uid"])
-            docs.append(doc)
-
-    for doc in _collect_doc_uids(doc_data.get("projectdoc") or {}, _PROJDOC_UID_LABELS):
-        if doc["uid"] not in seen_uids:
-            seen_uids.add(doc["uid"])
-            docs.append(doc)
-
+    if seen is None:
+        seen = set()
+    for a in soup.find_all("a", href=True):
+        href = a["href"].strip()
+        if not href or href in ("#", "javascript:void(0)"):
+            continue
+        if href.startswith("/"):
+            href = f"{BASE_URL}{href}"
+        elif not href.startswith("http"):
+            continue
+        href_lower = href.lower()
+        if not any(x in href_lower for x in ("/vdms/download", "download", "upload")):
+            continue
+        # Skip static/navigational PDFs (annual reports, presentations, news articles)
+        if "/staticpage/" in href_lower or "/resources/staticpage" in href_lower:
+            continue
+        if href in seen:
+            continue
+        seen.add(href)
+        label = _clean(a.get_text(separator=" ")) or a.get("title", "")
+        if not label or label.lower() in ("download", "view", "click here"):
+            parent = a.find_parent(["td", "div", "li"])
+            label = (_clean(parent.get_text(separator=" "))[:80] if parent else "") or "document"
+        docs.append({"label": label, "url": href})
     return docs
+
+
+def _parse_flat_table(soup: BeautifulSoup) -> list[dict] | None:
+    """Parse the Flat Details table on the Gujarat RERA project detail page.
+
+    The table shows per-block aggregate rows with columns like:
+    Flat Type | Block | Total Area | Booked Units ... | Available Units ...
+
+    Returns a list of building_details entries (one per block/flat-type row).
+    """
+    # Column header detection signals (all checked as substrings, lowercase)
+    _FLAT_HEADER_SIGNALS  = {"flat type", "type of flat", "unit type", "usage"}
+    _BLOCK_HEADER_SIGNALS = {"block name", "block", "tower", "wing"}
+    _AREA_HEADER_SIGNALS  = {"carpet area", "total area", "area (sq", "area(sq"}
+    _OPEN_HEADER_SIGNALS  = {"balcony", "open area", "terrace", "veranda"}
+    _UNIT_NO_SIGNALS      = {"flat/ bungalow", "office no", "plot no", "unit no",
+                             "flat no", "bungalow no"}
+    _UNITS_HEADER_SIGNALS = {"total units", "no of units", "no. of units", "booked", "inventory"}
+
+    for table in soup.find_all("table"):
+        rows = table.find_all("tr")
+        if len(rows) < 2:
+            continue
+
+        # Detect header row (prefer <th> cells, fall back to first <td> row)
+        header_cells = rows[0].find_all("th") or rows[0].find_all("td")
+        if not header_cells:
+            continue
+        headers = [_clean(c.get_text(separator=" ")).lower() for c in header_cells]
+        hset = set(headers)
+
+        has_flat  = any(any(s in h for s in _FLAT_HEADER_SIGNALS)  for h in hset)
+        has_block = any(any(s in h for s in _BLOCK_HEADER_SIGNALS) for h in hset)
+        has_area  = any(any(s in h for s in _AREA_HEADER_SIGNALS)  for h in hset)
+
+        if not (has_flat or (has_block and has_area)):
+            continue  # not a Flat Details / unit inventory table
+
+        results: list[dict] = []
+        for row in rows[1:]:
+            cells = row.find_all("td")
+            if not cells:
+                continue
+            vals = [_clean(c.get_text(separator=" ")) for c in cells]
+            entry: dict = {}
+            for header, val in zip(headers, vals):
+                if not val or val in ("-", "N/A", "NA"):
+                    continue
+                if any(s in header for s in _FLAT_HEADER_SIGNALS):
+                    entry["flat_type"] = val
+                elif any(s in header for s in _BLOCK_HEADER_SIGNALS):
+                    entry["block_name"] = val
+                elif any(s in header for s in _UNIT_NO_SIGNALS):
+                    entry["_unit_no"] = val          # temp — used to build flat_name
+                elif any(s in header for s in _AREA_HEADER_SIGNALS):
+                    entry.setdefault("carpet_area", val)
+                elif any(s in header for s in _OPEN_HEADER_SIGNALS):
+                    entry.setdefault("open_area", val)
+                elif any(s in header for s in _UNITS_HEADER_SIGNALS):
+                    entry.setdefault("no_of_units", val)
+
+            # flat_name = just the unit number (block info is already in block_name)
+            unit_no = entry.pop("_unit_no", None)
+            if unit_no:
+                entry["flat_name"] = unit_no
+
+            if entry.get("block_name") or entry.get("flat_name"):
+                results.append(entry)
+
+        if results:
+            return results
+
+    return None
+
+
+def _parse_overview_card(soup: BeautifulSoup) -> dict:
+    """Parse the project overview card that uses the pattern:
+        <p>Label (Unit) <br/><strong>Value</strong></p>
+    Returns a dict of extracted fields.
+    """
+    out: dict = {}
+    for p_tag in soup.find_all("p"):
+        strong = p_tag.find("strong")
+        if not strong:
+            continue
+        # The label is the text content of <p> BEFORE the <br/> or the <strong>
+        label_parts = []
+        for node in p_tag.children:
+            if getattr(node, "name", None) in ("br", "strong"):
+                break
+            text = node.get_text() if hasattr(node, "get_text") else str(node)
+            label_parts.append(text)
+        label = _clean(" ".join(label_parts)).lower()
+        value = _clean(strong.get_text())
+        if not label or not value:
+            continue
+        # Remove parenthetical unit suffixes from the label, e.g. "(Sq Mtrs)"
+        label = re.sub(r"\s*\([^)]*\)\s*$", "", label).strip()
+
+        if "land area" in label:
+            # Extract numeric value (strip commas)
+            num_str = value.replace(",", "")
+            try:
+                out.setdefault("land_area", float(num_str))
+            except ValueError:
+                pass
+        elif "project status" in label or label == "status":
+            out.setdefault("status_of_the_project", value)
+    return out
+
+
+def _parse_avbox_person(avbox) -> dict:
+    """Extract Name, Email Id, Mobile (and optionally Reg No., photo) from an avBox div.
+
+    Preserves a single leading space on name/email/phone values (matching API-source format).
+    """
+    person: dict = {}
+    img = avbox.find("img", src=True)
+    if img and img.get("src", ""):
+        src = img["src"]
+        # Make relative URLs absolute
+        if src.startswith("assets/"):
+            src = f"{BASE_URL}/{src}"
+        if src:
+            person["photo"] = src
+    for p_tag in avbox.find_all("p"):
+        strong = p_tag.find("strong")
+        if not strong:
+            continue
+        key = _clean(strong.get_text()).lower().rstrip(":")
+        # Preserve leading space to match original API-sourced values (rstrip only)
+        raw_val = p_tag.get_text().replace(strong.get_text(), "").rstrip()
+        val = raw_val if raw_val.strip() else ""
+        if not val:
+            continue
+        if key == "name":
+            person["name"] = val
+        elif key in ("email id", "email"):
+            person["email"] = val
+        elif key in ("mobile", "contact"):
+            person["phone"] = val
+        elif key in ("reg no.", "reg no", "registration no"):
+            person["registration_no"] = val
+    return person
+
+
+def _parse_promoter_card(soup: BeautifulSoup) -> dict:
+    """Parse the Promoter Details card (div.promoDetails) for contact, address, promoters_details."""
+    out: dict = {}
+    promo_div = soup.find("div", class_="promoDetails")
+    if not promo_div:
+        return out
+    contact: dict = {}
+    addr_parts = []
+    promo_name = ""
+    promo_type = ""
+    for p_tag in promo_div.find_all("p"):
+        strong = p_tag.find("strong")
+        if not strong:
+            continue
+        key = _clean(strong.get_text()).lower().rstrip(":").rstrip()
+        span = p_tag.find("span")
+        val = _clean(span.get_text()) if span else _clean(
+            p_tag.get_text().replace(strong.get_text(), ""))
+        if not val:
+            continue
+        if key == "contact":
+            contact["phone"] = val
+        elif key == "email id":
+            contact["email"] = val
+        elif key == "address":
+            addr_parts.append(val)
+        elif key == "promoter type":
+            promo_type = val
+        elif key == "promoter name":
+            promo_name = val
+    if contact:
+        out["promoter_contact_details"] = contact
+    if addr_parts:
+        out["promoter_address_raw"] = {"raw_address": " ".join(addr_parts)}
+    # Build promoters_details from card: include name and photo if available
+    promo_details: dict = {}
+    if promo_name:
+        promo_details["name"] = promo_name
+    # Photo is in a sibling div (col-sm-6 col-md-6 user)
+    user_div = promo_div.find_parent("div")
+    if user_div:
+        img = user_div.find("img", src=True)
+        if img and img.get("src", ""):
+            src = img["src"]
+            if src.startswith("assets/"):
+                src = f"{BASE_URL}/{src}"
+            promo_details["photo"] = src
+    if promo_type:
+        promo_details["type_of_firm"] = promo_type
+    if promo_details:
+        out["promoters_details"] = promo_details
+    return out
+
+
+def _parse_partners(soup: BeautifulSoup) -> dict:
+    """Parse co_promoter_details and authorised_signatory_details from assoVenderBox."""
+    co_promoters: list[dict] = []
+    signatories: list[dict] = []
+
+    for asso_box in soup.find_all("div", class_="assoVenderBox"):
+        # Each col within the box has an h2 title (Partners / Signatory Details)
+        for col in asso_box.find_all("div", class_=re.compile(r"\bcol-")):
+            h2 = col.find("h2")
+            if not h2:
+                continue
+            section_title = _clean(h2.get_text()).lower()
+            people = [_parse_avbox_person(ab) for ab in col.find_all("div", class_="avBox")]
+            people = [p for p in people if p.get("name")]
+            if "partner" in section_title:
+                # co-promoters: strip photo field (matches sample format)
+                co_promoters.extend(
+                    {k: v for k, v in p.items() if k != "photo"} for p in people
+                )
+            elif "signatory" in section_title:
+                # signatories keep photo but reorder: name, email, phone, photo
+                for p in people:
+                    ordered: dict = {}
+                    if "name" in p:  ordered["name"] = p["name"]
+                    if "email" in p: ordered["email"] = p["email"]
+                    if "phone" in p: ordered["phone"] = p["phone"]
+                    if "photo" in p: ordered["photo"] = p["photo"]
+                    signatories.append(ordered)
+
+    out: dict = {}
+    if co_promoters:
+        out["co_promoter_details"] = co_promoters
+    if signatories:
+        out["authorised_signatory_details"] = signatories
+    return out
+
+
+def _parse_professionals(soup: BeautifulSoup) -> dict:
+    """Parse Project Professionals (Architects, Engineers, etc.) from assoVenderBox."""
+    professionals: list[dict] = []
+    for asso_box in soup.find_all("div", class_="assoVenderBox"):
+        h2 = asso_box.find("h2")
+        if not h2 or "professional" not in h2.get_text().lower():
+            continue
+        # Each avCol contains an avTitle (type) and avBox entries (people)
+        for av_col in asso_box.find_all("div", class_="avCol"):
+            title_tag = av_col.find(["h3", "h4"], class_="avTitle")
+            if not title_tag:
+                continue
+            prof_type = _clean(title_tag.get_text())
+            for avbox in av_col.find_all("div", class_="avBox"):
+                if avbox.find("b"):  # "Data Not Available" marker
+                    continue
+                person = _parse_avbox_person(avbox)
+                if person.get("name"):
+                    # Order matches sample: name, type, email, phone, registration_no
+                    ordered: dict = {}
+                    ordered["name"] = person.get("name", "")
+                    ordered["type"] = prof_type
+                    if "email" in person: ordered["email"] = person["email"]
+                    if "phone" in person: ordered["phone"] = person["phone"]
+                    if "registration_no" in person: ordered["registration_no"] = person["registration_no"]
+                    professionals.append(ordered)
+    if professionals:
+        return {"professional_information": professionals}
+    return {}
+
+
+def _parse_facilities(soup: BeautifulSoup) -> dict:
+    """Parse the Common Amenities section for provided_faciltiy list."""
+    facilities: list[dict] = []
+    ca_box = soup.find("div", class_="caBox")
+    if not ca_box:
+        return {}
+    for ca_col in ca_box.find_all("div", class_="caCol"):
+        img_div = ca_col.find("div", class_=re.compile(r"\bimg\b"))
+        text_div = ca_col.find("div", class_="text")
+        if not img_div or not text_div:
+            continue
+        # get_text() without separator preserves double-space from <br/> between words,
+        # which matches the sample format (e.g. "Disposal of  sewage water").
+        name = text_div.get_text().strip()
+        if not name:
+            continue
+        # "img-disabled" CSS class = Not Available; absence = Available
+        classes = img_div.get("class", [])
+        status = "Not Available" if "img-disabled" in classes else "Available"
+        # Field order matches sample: status first, then facility
+        facilities.append({"status": status, "facility": name})
+    if facilities:
+        return {"provided_faciltiy": facilities}
+    return {}
+
+
+def _fetch_all_project_ids(page, logger: CrawlerLogger) -> list[int]:
+    """Fetch all registered project IDs from the public map-locations API.
+
+    The endpoint ``/maplocation/public/getAllLocations`` returns a single JSON
+    payload (~14 MB) with every registered project including its numeric
+    ``projectId``.  This replaces the old district-filter scraping approach
+    which broke when the Angular listing page removed the district dropdown.
+
+    Returns project IDs sorted ascending so that checkpoint resume works
+    correctly (we skip any ID <= last saved checkpoint ID).
+    """
+    LOCATIONS_URL = f"{BASE_URL}/maplocation/public/getAllLocations"
+    try:
+        result = page.evaluate(
+            """async (url) => {
+                const resp = await fetch(url);
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                return await resp.json();
+            }""",
+            LOCATIONS_URL,
+        )
+        # The API has a typo: "sataus" instead of "status"
+        api_status = result.get("sataus") or result.get("status")
+        if api_status not in (200, "200"):
+            logger.warning(f"getAllLocations API returned unexpected status: {api_status}")
+
+        data = result.get("data") or []
+        proj_ids = sorted({int(item["projectId"]) for item in data if item.get("projectId")})
+        logger.info(f"Fetched {len(proj_ids)} project IDs from map locations API")
+        return proj_ids
+    except Exception as e:
+        logger.error(f"Failed to fetch project IDs from map locations API: {e}")
+        return []
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def _handle_document(
@@ -748,10 +839,8 @@ def _handle_document(
         return None
     filename = build_document_filename(doc)
     try:
-        resp = safe_get(url, retries=1, timeout=20, client=client)
+        resp = safe_get(url, retries=2, timeout=20, client=client)
         content = resp.content if resp else None
-        if not content or len(content) < 100:
-            content = _curl_bytes(url)
         if not content or len(content) < 100:
             return None
         if content[:5] in (b"<html", b"<!DOC"):
@@ -776,167 +865,330 @@ def _handle_document(
         return None
 
 
-def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger,
-                    client: httpx.Client) -> bool:
+def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
+    """
+    Data-quality sentinel for Gujarat RERA.
+    Loads state_projects_sample/gujarat.json as the baseline, navigates to the
+    sentinel project's detail page via Playwright, and verifies ≥ 80% field coverage.
+    """
+    import json as _json
+    import os as _os
+    from core.sentinel_utils import check_field_coverage
+
     sentinel_reg = config.get("sentinel_registration_no", "")
-    if not sentinel_reg:
-        logger.warning("No sentinel configured — skipping")
+    sentinel_proj_id = config.get("sentinel_project_id")
+    if not sentinel_reg and not sentinel_proj_id:
+        logger.warning("No sentinel configured — skipping", step="sentinel")
         return True
-    key = generate_project_key(sentinel_reg)
-    if not get_project_by_key(key):
-        logger.warning("Sentinel not in DB yet — skipping check")
+
+    sample_path = _os.path.join(
+        _os.path.dirname(_os.path.dirname(__file__)),
+        "state_projects_sample", "gujarat.json",
+    )
+    try:
+        with open(sample_path) as fh:
+            baseline: dict = _json.load(fh)
+    except FileNotFoundError:
+        logger.warning("Sample baseline not found — skipping coverage check",
+                       path=sample_path, step="sentinel")
         return True
-    basic = _fetch_basic(500, client)
-    if not basic:
-        logger.error("Sentinel: could not fetch project ID 500")
+
+    proj_id = sentinel_proj_id or int(baseline.get("sentinel_project_id", 0))
+    if not proj_id:
+        logger.warning("Sentinel: no sentinel_project_id available — skipping", step="sentinel")
+        return True
+
+    encoded_id = base64.b64encode(str(proj_id).encode()).decode()
+    detail_url = f"{BASE_URL}/#/project-preview?id={encoded_id}"
+
+    logger.info(f"Sentinel: navigating to detail page for proj_id={proj_id}",
+                url=detail_url, step="sentinel")
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            ctx     = browser.new_context(ignore_https_errors=True)
+            page    = ctx.new_page()
+            page.goto(detail_url, timeout=30_000, wait_until="networkidle")
+            page.wait_for_timeout(5_000)
+            html  = page.content()
+            ctx.close()
+            browser.close()
+
+        soup = BeautifulSoup(html, "lxml")
+        lv   = _extract_label_values(soup)
+        if not lv:
+            logger.error("Sentinel: no label-value pairs found — site structure may have changed",
+                         url=detail_url, step="sentinel")
+            return False
+        fresh = _extract_html_fields(lv, proj_id)
+    except Exception as exc:
+        logger.error(f"Sentinel: error — {exc}", step="sentinel")
         return False
-    live_reg = basic.get("projRegNo", "")
-    if live_reg != sentinel_reg:
-        logger.error("Sentinel reg no mismatch", expected=sentinel_reg, got=live_reg)
+
+    if not fresh:
+        logger.error("Sentinel: no data extracted", url=detail_url, step="sentinel")
         return False
-    logger.info("Sentinel check passed", reg=sentinel_reg)
+
+    if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
+        insert_crawl_error(
+            run_id, config.get("id", "gujarat_rera"),
+            "SENTINEL_FAILED",
+            f"Coverage below 80% for sentinel project {sentinel_reg}",
+        )
+        return False
+
+    logger.info("Sentinel check passed", reg=sentinel_reg, step="sentinel")
     return True
 
 
 def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
-    logger  = CrawlerLogger(config["id"], run_id)
-    site_id = config["id"]
-    counts  = dict(projects_found=0, projects_new=0, projects_updated=0,
-                   projects_skipped=0, documents_uploaded=0, error_count=0)
-
+    """Main entry point — Playwright map-API listing + detail page HTML scraping."""
+    logger   = CrawlerLogger(config["id"], run_id)
+    site_id  = config["id"]
+    counts   = dict(projects_found=0, projects_new=0, projects_updated=0,
+                    projects_skipped=0, documents_uploaded=0, error_count=0)
     item_limit   = settings.CRAWL_ITEM_LIMIT or 0
-    max_id       = _MAX_PROJECT_ID
-    if settings.MAX_PAGES:
-        max_id = min(max_id, settings.MAX_PAGES * 50)
     machine_name, machine_ip = get_machine_context()
 
-    _timeout = httpx.Timeout(connect=10.0, read=20.0, write=10.0, pool=5.0)
+    _timeout = httpx.Timeout(connect=10.0, read=30.0, write=10.0, pool=5.0)
     session  = httpx.Client(
         timeout=_timeout,
         follow_redirects=True,
         verify=get_legacy_ssl_context(),
     )
 
-    if not _sentinel_check(config, run_id, logger, session):
-        insert_crawl_error(run_id, site_id, "SENTINEL_FAILED", "Sentinel check failed")
-        session.close()
+    # ── Sentinel health check ────────────────────────────────────────────────
+    if not _sentinel_check(config, run_id, logger):
+        logger.error("Sentinel failed — aborting crawl", step="sentinel")
+        counts["error_count"] += 1
         return counts
 
-    checkpoint = load_checkpoint(site_id, mode) or {}
-    resume_from_id = int(checkpoint.get("last_page", 0))
-    if item_limit and resume_from_id == 0:
-        # Dry-run/debug mode: skip the long empty prefix and start near the known live range.
-        resume_from_id = 499
+    checkpoint     = load_checkpoint(site_id, mode) or {}
+    resume_proj_id = int(checkpoint.get("last_page", 0))
+    logger.info(
+        "Starting Gujarat RERA crawl (map-API listing + HTML detail mode)",
+        resume_proj_id=resume_proj_id or "start",
+        item_limit=item_limit or None,
+    )
+
     items_processed = 0
 
-    for proj_id in range(resume_from_id + 1, max_id + 1):
-        if item_limit and items_processed >= item_limit:
-            logger.info(f"Item limit {item_limit} reached — stopping")
-            break
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(headless=True)
+        ctx     = browser.new_context(ignore_https_errors=True)
+        page    = ctx.new_page()
 
-        basic = _fetch_basic(proj_id, session)
-        if basic is None:
-            continue
+        # ── Phase 1: fetch all project IDs via the public map-locations API ───
+        # The district-filter listing page UI was removed from the Angular app;
+        # /maplocation/public/getAllLocations returns all ~16 k registered projects.
+        page.goto(f"{BASE_URL}/#/home", timeout=30_000, wait_until="networkidle")
+        page.wait_for_timeout(2_000)
+        all_proj_ids = _fetch_all_project_ids(page, logger)
+        if not all_proj_ids:
+            logger.error("No project IDs returned from map API — aborting")
+            ctx.close()
+            browser.close()
+            session.close()
+            return counts
 
-        counts["projects_found"] += 1
-        reg_no     = basic["projRegNo"]
-        key        = generate_project_key(reg_no)
-        detail_url = f"{BASE_URL}/#/home-p/registered-project-details/{proj_id}"
-        logger.set_project(key=key, reg_no=reg_no, url=detail_url, page=proj_id)
+        logger.info(f"Total project IDs to process: {len(all_proj_ids)}")
 
-        if mode == "daily_light" and get_project_by_key(key):
-            logger.info("Skipping — already in DB (daily_light)", step="skip")
-            counts["projects_skipped"] += 1
-            logger.clear_project()
-            random_delay(*config.get("rate_limit_delay", (1, 2)))
-            continue
+        # ── Phase 2: scrape each detail page ──────────────────────────────────
+        for proj_id in all_proj_ids:
+            if item_limit and items_processed >= item_limit:
+                logger.info(f"Item limit {item_limit} reached — stopping")
+                break
+            if proj_id <= resume_proj_id:
+                continue
 
-        try:
-            detail_data = _fetch_details(proj_id, session, logger)
-            qpr_data = _fetch_qpr_details(proj_id, session)
-            promoter_profile = {}
-            promoter_id = basic.get("promoterId")
-            if promoter_id not in (None, "", "0"):
-                try:
-                    promoter_profile = _fetch_promoter_profile(int(promoter_id), session)
-                except (TypeError, ValueError):
-                    promoter_profile = {}
-            doc_data    = _fetch_docs(proj_id, session) if mode != "daily_light" else {}
+            # Use the project-preview URL (base64-encoded ID) which renders full HTML
+            encoded_id = base64.b64encode(str(proj_id).encode()).decode()
+            detail_url = f"{BASE_URL}/#/project-preview?id={encoded_id}"
+            logger.info(f"Scraping detail page for project ID {proj_id}", url=detail_url)
 
-            data = _extract_fields(basic, detail_data, qpr_data, promoter_profile)
-            data.update({
-                "key": key, "state": config["state"],
-                "project_state": STATE, "domain": DOMAIN,
-                "config_id": config["config_id"], "url": detail_url,
-                "is_live": True, "machine_name": machine_name,
-                "crawl_machine_ip": machine_ip,
-            })
-            data["data"] = merge_data_sections(
-                {"govt_type": "state", "is_processed": False, "proj_reg_id": proj_id},
-                {"source_api": "alldatabyprojectid", "raw_basic": basic},
-                {"source_api": "getproject-details",  "raw_detail": detail_data},
-                {"source_api": "get-project-details-for-qpr", "raw_qpr": qpr_data},
-                {"source_api": "promoter-profile", "raw_promoter": promoter_profile},
-            )
-
-            logger.info("Normalizing", step="normalize")
             try:
-                normalized = normalize_project_payload(
-                    data, config, machine_name=machine_name, machine_ip=machine_ip)
-                record  = ProjectRecord(**normalized)
-                db_dict = record.to_db_dict()
-            except (ValidationError, ValueError) as e:
-                logger.warning("Validation failed — raw fallback", error=str(e))
-                insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(e),
-                                   project_key=key, url=detail_url, raw_data=data)
+                page.goto(detail_url, timeout=30_000, wait_until="networkidle")
+                page.wait_for_timeout(5_000)
+                html = page.content()
+            except Exception as e:
+                logger.warning(f"Detail page load failed for proj_id={proj_id}: {e}")
                 counts["error_count"] += 1
-                db_dict = normalize_project_payload(
-                    {**data, "data": {"validation_fallback": True, "raw": data.get("data")}},
-                    config, machine_name=machine_name, machine_ip=machine_ip,
+                continue
+
+            soup = BeautifulSoup(html, "lxml")
+            lv   = _extract_label_values(soup)
+            if not lv:
+                logger.warning(f"No label-value pairs found for proj_id={proj_id} — skipping")
+                continue
+
+            reg_no = (
+                lv.get("GUJRERA Reg. No.")
+                or lv.get("Registration No")
+                or lv.get("Registration Number")
+                or lv.get("RERA Registration No")
+                or lv.get("Project Registration No", "")
+            )
+            if not reg_no:
+                logger.warning(f"No registration number in HTML for proj_id={proj_id}")
+                counts["error_count"] += 1
+                continue
+
+            counts["projects_found"] += 1
+            key = generate_project_key(reg_no)
+            logger.set_project(key=key, reg_no=reg_no, url=detail_url, page=proj_id)
+
+            if mode == "daily_light" and get_project_by_key(key):
+                logger.info("Skipping — already in DB (daily_light)", step="skip")
+                counts["projects_skipped"] += 1
+                logger.clear_project()
+                random_delay(*config.get("rate_limit_delay", (1, 2)))
+                continue
+
+            try:
+                data = _extract_html_fields(lv, proj_id)
+
+                # Enrich with fields from additional page sections (higher priority — overrides lv)
+                overview   = _parse_overview_card(soup)
+                promoter_c = _parse_promoter_card(soup)
+                partners   = _parse_partners(soup)
+                profs      = _parse_professionals(soup)
+                facils     = _parse_facilities(soup)
+                for extra in (overview, promoter_c, partners, profs, facils):
+                    for k, v in extra.items():
+                        data[k] = v   # card-section data wins over lv-derived fields
+
+                # Rebuild land_area_details in sample field order: land_area first, then construction
+                land_area = data.get("land_area")
+                construction_area = data.get("construction_area")
+                if land_area or construction_area:
+                    lad_old: dict = data.get("land_area_details") or {}
+                    lad: dict = {}
+                    if land_area:
+                        lad["land_area"] = (
+                            str(int(land_area)) if land_area == int(land_area)
+                            else str(land_area)
+                        )
+                        lad["land_area_unit"] = lad_old.get("land_area_unit", "Sq Mtrs")
+                    ca = lad_old.get("construction_area") or construction_area
+                    cau = lad_old.get("construction_area_unit", "in Sq. Mts.")
+                    if ca:
+                        lad["construction_area"] = ca
+                        lad["construction_area_unit"] = cau
+                    if lad:
+                        data["land_area_details"] = lad
+
+                # building_details — parse the Flat Details table for per-block entries
+                flat_entries = _parse_flat_table(soup)
+                if flat_entries:
+                    data["building_details"] = flat_entries
+
+                    # Derive unit counts from the per-unit inventory if not already set
+                    if not data.get("number_of_residential_units"):
+                        res_count = sum(
+                            1 for e in flat_entries
+                            if e.get("flat_type", "").lower() not in ("commercial", "office", "shop")
+                        )
+                        if res_count:
+                            data["number_of_residential_units"] = res_count
+                    if not data.get("number_of_commercial_units"):
+                        com_count = sum(
+                            1 for e in flat_entries
+                            if e.get("flat_type", "").lower() in ("commercial", "office", "shop")
+                        )
+                        if com_count:
+                            data["number_of_commercial_units"] = com_count
+
+                    # Total carpet area = sum of all individual unit carpet areas
+                    total_carpet = 0.0
+                    for e in flat_entries:
+                        try:
+                            total_carpet += float(e.get("carpet_area", 0) or 0)
+                        except (ValueError, TypeError):
+                            pass
+                    if total_carpet > 0:
+                        # Override "Total Covered Area" (footprint) with actual carpet sum
+                        data["construction_area"] = total_carpet
+                        if "land_area_details" in data and isinstance(data["land_area_details"], dict):
+                            data["land_area_details"]["construction_area"] = total_carpet
+                            # Use the unit from the inventory table header (CARPET AREA in Sq. Mts.)
+                            data["land_area_details"]["construction_area_unit"] = "in Sq. Mts."
+
+                data.update({
+                    "key": key, "state": config["state"],
+                    "project_state": STATE, "domain": DOMAIN,
+                    "config_id": config["config_id"], "url": detail_url,
+                    "is_live": True, "machine_name": machine_name,
+                    "crawl_machine_ip": machine_ip,
+                    "project_registration_no": reg_no,
+                })
+                data["data"] = merge_data_sections(
+                    {"govt_type": "state", "is_processed": False,
+                     "proj_reg_id": proj_id, "project_id": encoded_id,
+                     "detail_url": detail_url},
+                    {"source": "html_scrape", "label_values": lv},
                 )
 
-            action = upsert_project(db_dict)
-            items_processed += 1
-            if action == "new":       counts["projects_new"] += 1
-            elif action == "updated": counts["projects_updated"] += 1
-            else:                     counts["projects_skipped"] += 1
-            logger.info(f"DB: {action}", step="db_upsert")
+                logger.info("Normalizing", step="normalize")
+                try:
+                    normalized = normalize_project_payload(
+                        data, config, machine_name=machine_name, machine_ip=machine_ip)
+                    record  = ProjectRecord(**normalized)
+                    db_dict = record.to_db_dict()
+                except (ValidationError, ValueError) as e:
+                    logger.warning("Validation failed — raw fallback", error=str(e))
+                    insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(e),
+                                       project_key=key, url=detail_url, raw_data=data)
+                    counts["error_count"] += 1
+                    db_dict = normalize_project_payload(
+                        {**data, "data": {"validation_fallback": True, "raw": data.get("data")}},
+                        config, machine_name=machine_name, machine_ip=machine_ip,
+                    )
 
-            if mode != "daily_light":
-                doc_links = _collect_all_docs(basic, doc_data)
-                logger.info(f"Processing {len(doc_links)} documents", step="documents")
-                uploaded_docs: list[dict] = []
-                doc_name_counts: dict[str, int] = {}
-                for doc in doc_links:
-                    selected = select_document_for_download(
-                        config["state"], doc, doc_name_counts, domain=DOMAIN)
-                    if selected:
-                        result = _handle_document(key, selected, run_id, site_id, logger, session)
-                        uploaded_docs.append(result or {"link": doc.get("url"), "type": doc.get("label", "document")})
-                        if result:
-                            counts["documents_uploaded"] += 1
-                    else:
-                        uploaded_docs.append({"link": doc.get("url"), "type": doc.get("label", "document")})
-                if uploaded_docs:
-                    upsert_project({
-                        "key": db_dict["key"], "url": db_dict["url"],
-                        "state": db_dict["state"], "domain": db_dict["domain"],
-                        "project_registration_no": db_dict["project_registration_no"],
-                        "uploaded_documents": uploaded_docs,
-                        "document_urls": build_document_urls(uploaded_docs),
-                    })
+                action = upsert_project(db_dict)
+                items_processed += 1
+                if action == "new":       counts["projects_new"] += 1
+                elif action == "updated": counts["projects_updated"] += 1
+                else:                     counts["projects_skipped"] += 1
+                logger.info(f"DB: {action}", step="db_upsert")
 
-            if proj_id % 100 == 0:
+                if mode != "daily_light":
+                    seen_doc_urls: set[str] = set()
+                    doc_links = _extract_doc_links(soup, seen_doc_urls)
+                    logger.info(f"Processing {len(doc_links)} documents", step="documents")
+                    uploaded_docs: list[dict] = []
+                    doc_name_counts: dict[str, int] = {}
+                    for doc in doc_links:
+                        selected = select_document_for_download(
+                            config["state"], doc, doc_name_counts, domain=DOMAIN)
+                        if selected:
+                            result = _handle_document(key, selected, run_id, site_id, logger, session)
+                            uploaded_docs.append(result or {"link": doc.get("url"), "type": doc.get("label", "document")})
+                            if result:
+                                counts["documents_uploaded"] += 1
+                        else:
+                            uploaded_docs.append({"link": doc.get("url"), "type": doc.get("label", "document")})
+                    if uploaded_docs:
+                        upsert_project({
+                            "key": db_dict["key"], "url": db_dict["url"],
+                            "state": db_dict["state"], "domain": db_dict["domain"],
+                            "project_registration_no": db_dict["project_registration_no"],
+                            "uploaded_documents": uploaded_docs,
+                            "document_urls": build_document_urls(uploaded_docs),
+                        })
+
                 save_checkpoint(site_id, mode, proj_id, key, run_id)
-            random_delay(*config.get("rate_limit_delay", (1, 2)))
+                random_delay(*config.get("rate_limit_delay", (1, 2)))
 
-        except Exception as exc:
-            logger.exception("Project processing failed", exc, step="project_loop", proj_id=proj_id)
-            insert_crawl_error(run_id, site_id, "PROJECT_ERROR", str(exc),
-                               project_key=key, url=detail_url)
-            counts["error_count"] += 1
-        finally:
-            logger.clear_project()
+            except Exception as exc:
+                logger.exception("Project processing failed", exc, step="project_loop", proj_id=proj_id)
+                insert_crawl_error(run_id, site_id, "PROJECT_ERROR", str(exc),
+                                   project_key=key, url=detail_url)
+                counts["error_count"] += 1
+            finally:
+                logger.clear_project()
+
+        ctx.close()
+        browser.close()
 
     session.close()
     reset_checkpoint(site_id, mode)

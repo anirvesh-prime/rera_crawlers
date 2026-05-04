@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     CRAWL_ITEM_LIMIT: int = 0        # 0 = unlimited
     SCRAPE_DETAILS: bool = True      # set False to skip detail-page fetches
     MAX_PAGES: int | None = None     # None = unlimited
+    MAX_PARALLEL_CRAWLERS: int = 8   # hard cap on concurrent worker processes
 
     USER_AGENT_POOL: ClassVar[list[str]] = [
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",

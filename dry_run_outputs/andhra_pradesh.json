@@ -1,25 +1,626 @@
 {
-  "key": "2126034910368788893",
-  "project_registration_no": "P03280080001",
-  "url": "https://rera.ap.gov.in/RERA/Views/Project.aspx?enc=mUX5JvffTObOCE+6xFBEFV0cjC7dMA+Aj97bP/C/P6+33PjZfsBOc+S8Ba4s7fOlNqf0H/QtWopd9Zla0fZfM2kto5vdCKag/i5VkRiAecajtObXBza4tAQhFm0nmzDj",
+  "key": "3913990472152623802",
+  "project_registration_no": "P03290013808",
+  "url": "https://rera.ap.gov.in/RERA/Views/Project.aspx?%3fenc=mUX5JvffTObOCE+6xFBEFYNlOY9rZAIWYtui8DImy1jxjUXIYJ6TFwVt5NjWR+bmiwu48T+Q9THxFMQzzEaYeFnq3C9GWR9UoJQ34220U+vLzKA+IKsbohg+kkm%2fq2SH",
   "state": "andhra pradesh",
   "domain": "rera.ap.gov.in",
-  "project_name": "PANORAMA HILLS, Block-2",
-  "project_type": "Residential",
-  "status_of_the_project": "Under Development",
+  "project_name": "VENKATA SAI NILAYAM",
+  "project_type": "Mixed Development",
+  "promoter_name": "SREE VENKATA SAI CONSTRUCTIONS",
+  "status_of_the_project": "New Project",
+  "acknowledgement_no": "010323164112",
+  "project_pin_code": "530048",
   "project_state": "Andhra Pradesh",
   "crawl_machine_ip": "127.0.0.1",
   "machine_name": "Anirveshs-MacBook-Air.local",
+  "project_location_raw": {
+    "taluk": "Visakhapatnam(U)",
+    "village": "Visakhapatnam",
+    "district": "Visakhapatnam",
+    "latitude": "17.825991N",
+    "locality": "Visakhapatnam",
+    "pin_code": "530048",
+    "longitude": "83.354983E",
+    "raw_address": "M/S. SREE VENKATA SAI CONSTRUCTIONS MADHURAWADA VILLAGE, Visakhapatnam, Visakhapatnam, Visakhapatnam, 530048",
+    "exact_location": "M/S. SREE VENKATA SAI CONSTRUCTIONS MADHURAWADA VILLAGE",
+    "processed_latitude": 17.825991,
+    "processed_longitude": 83.354983
+  },
+  "promoter_address_raw": {
+    "state": "Andhra Pradesh",
+    "village": "Visakhapatnam",
+    "district": "Visakhapatnam",
+    "locality": "Visakhapatnam"
+  },
+  "promoter_contact_details": {
+    "email": "dilipkumarbijjala94@gmail.com",
+    "phone": "XXXXXX1165"
+  },
+  "project_cost_detail": {
+    "cost_of_land": "33287900.00",
+    "estimated_construction_cost": "34000000.00",
+    "total_project_cost": "67287900.00"
+  },
+  "building_details": [
+    {
+      "block_name": "MAIN BLOCK",
+      "flat_name": "201",
+      "flat_type": "2BHK",
+      "carpet_area": "70.18",
+      "balcony_area": "2.62",
+      "open_area": "0.00",
+      "total_area": "97.55",
+      "no_of_units": "1"
+    },
+    {
+      "block_name": "MAIN BLOCK",
+      "flat_name": "202",
+      "flat_type": "2BHK",
+      "carpet_area": "64.69",
+      "balcony_area": "2.52",
+      "open_area": "0.00",
+      "total_area": "97.55",
+      "no_of_units": "1"
+    },
+    {
+      "block_name": "MAIN BLOCK",
+      "flat_name": "203",
+      "flat_type": "2BHK",
+      "carpet_area": "72.55",
+      "balcony_area": "3.36",
+      "open_area": "0.00",
+      "total_area": "106.84",
+      "no_of_units": "1"
+    },
+    {
+      "block_name": "MAIN BLOCK",
+      "flat_name": "204",
+      "flat_type": "2BHK",
+      "carpet_area": "70.94",
+      "balcony_area": "3.25",
+      "open_area": "0.00",
+      "total_area": "97.55",
+      "no_of_units": "1"
+    },
+    {
+      "block_name": "MAIN BLOCK",
+      "flat_name": "501",
+      "flat_type": "2BHK",
+      "carpet_area": "70.18",
+      "balcony_area": "2.62",
+      "open_area": "0.00",
+      "total_area": "97.55",
+      "no_of_units": "1"
+    },
+    {
+      "block_name": "MAIN BLOCK",
+      "flat_name": "502",
+      "flat_type": "2BHK",
+      "carpet_area": "64.69",
+      "balcony_area": "2.52",
+      "open_area": "0.00",
+      "total_area": "97.55",
+      "no_of_units": "1"
+    },
+    {
+      "block_name": "MAIN BLOCK",
+      "flat_name": "503",
+      "flat_type": "2BHK",
+      "carpet_area": "72.55",
+      "balcony_area": "3.36",
+      "open_area": "0.00",
+      "total_area": "106.84",
+      "no_of_units": "1"
+    },
+    {
+      "block_name": "MAIN BLOCK",
+      "flat_name": "504",
+      "flat_type": "2BHK",
+      "carpet_area": "70.94",
+      "balcony_area": "3.25",
+      "open_area": "0.00",
+      "total_area": "97.55",
+      "no_of_units": "1"
+    },
+    {
+      "block_name": "MAIN BLOCK",
+      "flat_name": "301",
+      "flat_type": "2BHK",
+      "carpet_area": "70.18",
+      "balcony_area": "2.62",
+      "open_area": "0.00",
+      "total_area": "97.55",
+      "no_of_units": "1"
+    },
+    {
+      "block_name": "MAIN BLOCK",
+      "flat_name": "302",
+      "flat_type": "2BHK",
+      "carpet_area": "64.69",
+      "balcony_area": "2.52",
+      "open_area": "0.00",
+      "total_area": "97.55",
+      "no_of_units": "1"
+    },
+    {
+      "block_name": "MAIN BLOCK",
+      "flat_name": "303",
+      "flat_type": "2BHK",
+      "carpet_area": "72.55",
+      "balcony_area": "3.36",
+      "open_area": "0.00",
+      "total_area": "106.84",
+      "no_of_units": "1"
+    },
+    {
+      "block_name": "MAIN BLOCK",
+      "flat_name": "304",
+      "flat_type": "2BHK",
+      "carpet_area": "70.94",
+      "balcony_area": "3.25",
+      "open_area": "0.00",
+      "total_area": "97.55",
+      "no_of_units": "1"
+    },
+    {
+      "block_name": "MAIN BLOCK",
+      "flat_name": "401",
+      "flat_type": "2BHK",
+      "carpet_area": "70.18",
+      "balcony_area": "2.62",
+      "open_area": "0.00",
+      "total_area": "97.55",
+      "no_of_units": "1"
+    },
+    {
+      "block_name": "MAIN BLOCK",
+      "flat_name": "402",
+      "flat_type": "2BHK",
+      "carpet_area": "64.69",
+      "balcony_area": "2.52",
+      "open_area": "0.00",
+      "total_area": "97.55",
+      "no_of_units": "1"
+    },
+    {
+      "block_name": "MAIN BLOCK",
+      "flat_name": "403",
+      "flat_type": "2BHK",
+      "carpet_area": "72.55",
+      "balcony_area": "3.36",
+      "open_area": "0.00",
+      "total_area": "106.84",
+      "no_of_units": "1"
+    },
+    {
+      "block_name": "MAIN BLOCK",
+      "flat_name": "404",
+      "flat_type": "2BHK",
+      "carpet_area": "70.94",
+      "balcony_area": "3.25",
+      "open_area": "0.00",
+      "total_area": "97.55",
+      "no_of_units": "1"
+    }
+  ],
+  "uploaded_documents": [
+    {
+      "type": "1.Income Tax Return Acknowledgement of Preceding Year 1"
+    },
+    {
+      "type": "2. Income Tax Return Acknowledgement of Preceding Year 2"
+    },
+    {
+      "type": "3.Income Tax Return Acknowledgement of Preceding Year 3"
+    },
+    {
+      "type": "4.Balance Sheet"
+    },
+    {
+      "type": "5. Architect Certificate (Form 1)"
+    },
+    {
+      "type": "6. Engineer Certificate (Form 2)"
+    },
+    {
+      "type": "7. CA Certificate (Form 3)"
+    },
+    {
+      "type": "8. Copies of the registered ownership documents / Copies of the pattadar pass books issued by the Revenue department"
+    },
+    {
+      "type": "9. Copies of the field sketches duly marking the proposed site with measurements along with combined field sketch"
+    },
+    {
+      "type": "10. Detailed site plan showing the measurements as on ground including diagonals, Latitude and Longitude at end points of the project site"
+    },
+    {
+      "type": "11. Commencement Certificate for previous completed projects"
+    },
+    {
+      "type": "12. Copy of the registered development agreement between the Owner of the land and the Promoter along with the link documents / Authorisation letter given by the Land owner to undertake the construction of the building by the promoter"
+    },
+    {
+      "type": "13. Land Title search Report from an Advocate(include Advocate Enrolment Number) having experience of at least ten years in land related matters"
+    },
+    {
+      "type": "14.Latest (by 30 days) Encumbrance certificate (for entire period of document) issued by the Registration and Stamps department"
+    },
+    {
+      "type": "15. Details of the cases pending before the Authorities or in Courts of Law and their current status along with the copies of the orders issued"
+    },
+    {
+      "type": "16. Copy of the plan and proceedings issued by the competent Authority for approval of plans"
+    },
+    {
+      "type": "17. Approved plan / list of amenities proposed in the site"
+    },
+    {
+      "type": "18. NOC's issued by Authority"
+    },
+    {
+      "type": "19. Detailed technical specifications of the construction if the buildings and facilities proposed in the project including brand specifications details of fixtures and fittings"
+    },
+    {
+      "type": "20. Full address of the proposed development project along with the land mark nearby and a location plan/ Topo plan drawn to a scale"
+    },
+    {
+      "type": "21. Licenses/Enrolment form of Civil Contractors, or turnkey contractor, or EPC Contractors."
+    },
+    {
+      "type": "22. Licenses/Enrolment form of Structural Engineer of the project"
+    },
+    {
+      "type": "23. Licenses/Enrolment form of Architect or firm or company"
+    },
+    {
+      "type": "24.Licenses/Enrolment form of Engineer or firm or company"
+    },
+    {
+      "type": "25.Licenses/Enrolment form of Chartered Accountant or firm or company"
+    },
+    {
+      "type": "26.Detailed estimate of the expenditure for construction of the building"
+    },
+    {
+      "type": "27. Statement of source of funds for construction of project"
+    },
+    {
+      "type": "28. Details of financial agreement made with any bank or other financial institution recognised by the Reserve Bank of India and of legal safeguards taken, if any, for the construction of building, or transfer of building by sale, gift or mortgage or otherwise"
+    },
+    {
+      "type": "29.Proforma of the Allotment Letter proposed to be signed with the Allottee"
+    },
+    {
+      "type": "30.Proforma of the Agreement for Sale proposed to be signed with the Allottee"
+    },
+    {
+      "type": "31.Proforma of the Conveyance Deed proposed to be signed with the Allottee"
+    },
+    {
+      "type": "32.Structural Stability Certificate duly issued by Certified Structural Consultant/Engineer along with the details of parameters followed for verification of structural stability *"
+    },
+    {
+      "type": "34. FORM - B, Declaration, supported by an affidavit, which shall be signed by the promoter or any person authorized by the promoter under Rule 3-B(2) (a) to 0f AP Real Estate Rules-2017*"
+    },
+    {
+      "type": "35. Brochure of Current Project"
+    },
+    {
+      "type": "36. Existing Layout Plan"
+    },
+    {
+      "type": "37.Change of Land Use"
+    },
+    {
+      "type": "38. Latest Project/ Site/ Building Photo"
+    },
+    {
+      "type": "APRERA CERTIFICATE"
+    }
+  ],
+  "authorised_signatory_details": {
+    "name": "BIJJALA SUBRAHMANYAM",
+    "email": "dilipkumarbijjala94@gmail.com",
+    "phone": "XXXXXX1165"
+  },
+  "professional_information": [
+    {
+      "name": "NAZIYA SAWOOD",
+      "role": "Project Architects",
+      "address": "D. NO. 37-11-166, FLAT NO. 202, KRISHNA RESIDENCY, P R GRADENS BEHIND GOVT POLYTECHIC COLLEGE,VISAKHAPATNAM"
+    },
+    {
+      "name": "K. KAMARAJU",
+      "role": "Structural Engineers",
+      "address": "D. NO. 47-7-15,4TH LANE, DWARKANAGAR,VISAKHAPATNAM"
+    },
+    {
+      "name": "KODURI NANDINI",
+      "role": "Chartered Accountant",
+      "address": "VAMSHI CHANDRA,PLOT NO.291,MADINAGUDA,DEEPTHISRI NAGAR,BESIDE DELHI PUBLIC SCHOOL"
+    }
+  ],
+  "members_details": [
+    {
+      "name": "BIJJALA SUBRAHMANYAM",
+      "email": "dilipkumarbijjala94@gmail.com",
+      "phone": "XXXXXX3051",
+      "position": "Partner"
+    },
+    {
+      "name": "BATCHU BRAHMANANDAM",
+      "email": "brahmandam91@gmail.com",
+      "phone": "XXXXXX6761",
+      "position": "Partner"
+    }
+  ],
   "data": {
+    "unbuilt_area": "238.04",
+    "end_date": "20/12/2025",
+    "land_area_unit": "Sq.m",
+    "construction_area_unit": "Sq.m",
+    "project_district": "Visakhapatnam",
     "govt_type": "state"
   },
-  "estimated_finish_date": "2023-09-06 00:00:00+00:00",
-  "approved_on_date": "2018-02-06 00:00:00+00:00",
+  "promoters_details": {
+    "pan_no": "XXXXXX401E",
+    "type_of_firm": "Partnership/LLP Firm",
+    "registration_no": "853 OF 2022"
+  },
+  "status_update": [
+    {
+      "amenity_detail": [
+        {
+          "name": "Road System",
+          "percent_completed": "0.00"
+        },
+        {
+          "name": "Water Supply",
+          "percent_completed": "0.00"
+        },
+        {
+          "name": "Sewage and Drainage System",
+          "percent_completed": "0.00"
+        },
+        {
+          "name": "Electricity Supply Transformer And Sub Station",
+          "percent_completed": "0.00"
+        },
+        {
+          "name": "Solid Waste Management And Disposal",
+          "percent_completed": "0.00"
+        },
+        {
+          "name": "Fire Fighting Facility",
+          "percent_completed": "0.00"
+        },
+        {
+          "name": "Drinking Water Facility",
+          "percent_completed": "0.00"
+        },
+        {
+          "name": "Eemrgency Evacuation Service",
+          "percent_completed": "0.00"
+        },
+        {
+          "name": "Use of Renewable Energy",
+          "percent_completed": "0.00"
+        }
+      ],
+      "building_details": [
+        {
+          "block_name": "MAIN BLOCK",
+          "flat_name": "201",
+          "flat_type": "2BHK",
+          "carpet_area": "70.18",
+          "balcony_area": "2.62",
+          "open_area": "0.00",
+          "total_area": "97.55",
+          "no_of_units": "1"
+        },
+        {
+          "block_name": "MAIN BLOCK",
+          "flat_name": "202",
+          "flat_type": "2BHK",
+          "carpet_area": "64.69",
+          "balcony_area": "2.52",
+          "open_area": "0.00",
+          "total_area": "97.55",
+          "no_of_units": "1"
+        },
+        {
+          "block_name": "MAIN BLOCK",
+          "flat_name": "203",
+          "flat_type": "2BHK",
+          "carpet_area": "72.55",
+          "balcony_area": "3.36",
+          "open_area": "0.00",
+          "total_area": "106.84",
+          "no_of_units": "1"
+        },
+        {
+          "block_name": "MAIN BLOCK",
+          "flat_name": "204",
+          "flat_type": "2BHK",
+          "carpet_area": "70.94",
+          "balcony_area": "3.25",
+          "open_area": "0.00",
+          "total_area": "97.55",
+          "no_of_units": "1"
+        },
+        {
+          "block_name": "MAIN BLOCK",
+          "flat_name": "501",
+          "flat_type": "2BHK",
+          "carpet_area": "70.18",
+          "balcony_area": "2.62",
+          "open_area": "0.00",
+          "total_area": "97.55",
+          "no_of_units": "1"
+        },
+        {
+          "block_name": "MAIN BLOCK",
+          "flat_name": "502",
+          "flat_type": "2BHK",
+          "carpet_area": "64.69",
+          "balcony_area": "2.52",
+          "open_area": "0.00",
+          "total_area": "97.55",
+          "no_of_units": "1"
+        },
+        {
+          "block_name": "MAIN BLOCK",
+          "flat_name": "503",
+          "flat_type": "2BHK",
+          "carpet_area": "72.55",
+          "balcony_area": "3.36",
+          "open_area": "0.00",
+          "total_area": "106.84",
+          "no_of_units": "1"
+        },
+        {
+          "block_name": "MAIN BLOCK",
+          "flat_name": "504",
+          "flat_type": "2BHK",
+          "carpet_area": "70.94",
+          "balcony_area": "3.25",
+          "open_area": "0.00",
+          "total_area": "97.55",
+          "no_of_units": "1"
+        },
+        {
+          "block_name": "MAIN BLOCK",
+          "flat_name": "301",
+          "flat_type": "2BHK",
+          "carpet_area": "70.18",
+          "balcony_area": "2.62",
+          "open_area": "0.00",
+          "total_area": "97.55",
+          "no_of_units": "1"
+        },
+        {
+          "block_name": "MAIN BLOCK",
+          "flat_name": "302",
+          "flat_type": "2BHK",
+          "carpet_area": "64.69",
+          "balcony_area": "2.52",
+          "open_area": "0.00",
+          "total_area": "97.55",
+          "no_of_units": "1"
+        },
+        {
+          "block_name": "MAIN BLOCK",
+          "flat_name": "303",
+          "flat_type": "2BHK",
+          "carpet_area": "72.55",
+          "balcony_area": "3.36",
+          "open_area": "0.00",
+          "total_area": "106.84",
+          "no_of_units": "1"
+        },
+        {
+          "block_name": "MAIN BLOCK",
+          "flat_name": "304",
+          "flat_type": "2BHK",
+          "carpet_area": "70.94",
+          "balcony_area": "3.25",
+          "open_area": "0.00",
+          "total_area": "97.55",
+          "no_of_units": "1"
+        },
+        {
+          "block_name": "MAIN BLOCK",
+          "flat_name": "401",
+          "flat_type": "2BHK",
+          "carpet_area": "70.18",
+          "balcony_area": "2.62",
+          "open_area": "0.00",
+          "total_area": "97.55",
+          "no_of_units": "1"
+        },
+        {
+          "block_name": "MAIN BLOCK",
+          "flat_name": "402",
+          "flat_type": "2BHK",
+          "carpet_area": "64.69",
+          "balcony_area": "2.52",
+          "open_area": "0.00",
+          "total_area": "97.55",
+          "no_of_units": "1"
+        },
+        {
+          "block_name": "MAIN BLOCK",
+          "flat_name": "403",
+          "flat_type": "2BHK",
+          "carpet_area": "72.55",
+          "balcony_area": "3.36",
+          "open_area": "0.00",
+          "total_area": "106.84",
+          "no_of_units": "1"
+        },
+        {
+          "block_name": "MAIN BLOCK",
+          "flat_name": "404",
+          "flat_type": "2BHK",
+          "carpet_area": "70.94",
+          "balcony_area": "3.25",
+          "open_area": "0.00",
+          "total_area": "97.55",
+          "no_of_units": "1"
+        }
+      ]
+    }
+  ],
+  "land_area_details": {
+    "land_area": "575.26",
+    "land_area_unit": "Sq.m",
+    "construction_area": "2036.70",
+    "construction_area_unit": "Sq.m"
+  },
+  "actual_commencement_date": "2022-12-20 00:00:00+00:00",
+  "estimated_finish_date": "2025-12-20 00:00:00+00:00",
+  "actual_finish_date": "2025-12-20 00:00:00+00:00",
+  "approved_on_date": "2023-07-27 00:00:00+00:00",
+  "number_of_residential_units": 16,
+  "number_of_commercial_units": 1,
   "config_id": 11793,
+  "land_area": 575.26,
+  "construction_area": 2036.7,
+  "total_floor_area_under_residential": 2036.7,
   "is_updated": false,
   "is_duplicate": false,
   "iw_processed": false,
   "checked_updates": false,
   "rera_housing_found": false,
-  "is_live": false
+  "is_live": false,
+  "project_city": null,
+  "submitted_date": null,
+  "last_modified": null,
+  "estimated_commencement_date": null,
+  "past_experience_of_promoter": null,
+  "bank_details": null,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "complaints_litigation_details": null,
+  "co_promoter_details": null,
+  "project_description": null,
+  "provided_faciltiy": null,
+  "development_agreement_detail": null,
+  "construction_progress": null,
+  "land_detail": null,
+  "document_urls": null,
+  "retrieved_on": null,
+  "last_updated": null,
+  "updated_fields": null,
+  "project_images": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": null,
+  "iw_part_processed": null,
+  "last_crawled_date": null,
+  "doc_ocr_url": null,
+  "proposed_timeline": null,
+  "checked_updates_date": null,
+  "alternative_rera_ids": null
 }

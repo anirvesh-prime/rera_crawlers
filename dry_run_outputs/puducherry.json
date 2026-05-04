@@ -7,17 +7,17 @@
   "project_name": "PROPOSED RESIDENTIAL LAYOUT",
   "project_type": "Plotted Development",
   "promoter_name": "KANCHARLA SRI RAMA KRISHNAYYA",
-  "status_of_the_project": "Ongoing",
-  "project_city": "YANAM",
+  "status_of_the_project": "APPROVED",
   "project_state": "puducherry",
   "project_description": "TS NO A/3/41/2 METTACUR YANAM",
   "crawl_machine_ip": "127.0.0.1",
   "machine_name": "Anirveshs-MacBook-Air.local",
   "project_location_raw": {
-    "raw_address": "TS NO A/3/41/2 METTACUR YANAM",
+    "raw_address": "TS NO A/3/41/2, METTACUR YANAM, YANAM, Puducherry",
     "district": "YANAM",
     "taluk": "YANAM",
-    "village": "Mettakur"
+    "village": "Mettakur",
+    "state": "Puducherry"
   },
   "promoter_contact_details": {
     "email": "mmbuilderspdy@gmail.com",
@@ -26,11 +26,21 @@
   "project_cost_detail": {
     "total_project_cost": "10000000"
   },
+  "professional_information": [
+    {
+      "role": "Architects",
+      "address": ",,Pondicherry,Puducherry"
+    },
+    {
+      "role": "Structural Engineers",
+      "address": ",,Pondicherry,Puducherry"
+    }
+  ],
   "data": {
     "govt_type": "state",
     "is_processed": false,
     "promoter_type": "Individual",
-    "raw_address": "TS NO A/3/41/2 METTACUR YANAM"
+    "raw_address": "TS NO A/3/41/2, METTACUR YANAM, YANAM, Puducherry"
   },
   "promoters_details": {
     "type_of_firm": "Individual",
@@ -39,10 +49,9 @@
   "land_area_details": {
     "construction_area_unit": "Sq Mtr"
   },
-  "submitted_date": "2026-04-21 00:00:00+00:00",
+  "submitted_date": "2026-04-21 14:21:14+00:00",
   "estimated_commencement_date": "2026-03-19 00:00:00+00:00",
   "estimated_finish_date": "2031-03-18 00:00:00+00:00",
-  "approved_on_date": "2026-04-21 00:00:00+00:00",
   "config_id": 4,
   "is_updated": false,
   "is_duplicate": false,
@@ -53,11 +62,11 @@
   "uploaded_documents": [
     {
       "link": "https://prera.py.gov.in/reraAppOffice/getdocument?DOC_ID=12329",
-      "type": "FROM B.pdf"
+      "type": "Declaration (Form B)"
     },
     {
       "link": "https://prera.py.gov.in/reraAppOffice/getdocument?DOC_ID=12383",
-      "type": "Registration Certificate File No. 507-221-PRERA(P) -YANAM-2026.pdf"
+      "type": "Project Registration Certificate"
     }
   ],
   "document_urls": null

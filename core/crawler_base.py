@@ -69,6 +69,7 @@ def safe_get(
 ) -> httpx.Response | None:
     """GET with retry/backoff.  Pass `client` to reuse an existing connection pool."""
     _headers = {"User-Agent": get_random_ua(), **(headers or {})}
+    last_exc: Exception | None = None
     for attempt in range(1, retries + 1):
         try:
             if client is not None:
@@ -79,10 +80,13 @@ def safe_get(
             resp.raise_for_status()
             return resp
         except Exception as e:
+            last_exc = e
             if logger:
                 logger.warning(f"GET attempt {attempt}/{retries} failed: {e}", url=url)
             if attempt < retries:
                 time.sleep(delay * attempt)
+    if logger and last_exc is not None:
+        logger.error(f"GET failed after {retries} attempts: {last_exc}", url=url)
     return None
 
 
@@ -100,6 +104,7 @@ def safe_post(
 ) -> httpx.Response | None:
     """POST with retry/backoff.  Pass `client` to reuse an existing connection pool."""
     _headers = {"User-Agent": get_random_ua(), **(headers or {})}
+    last_exc: Exception | None = None
     for attempt in range(1, retries + 1):
         try:
             if client is not None:
@@ -110,10 +115,13 @@ def safe_post(
             resp.raise_for_status()
             return resp
         except Exception as e:
+            last_exc = e
             if logger:
                 logger.warning(f"POST attempt {attempt}/{retries} failed: {e}", url=url)
             if attempt < retries:
                 time.sleep(delay * attempt)
+    if logger and last_exc is not None:
+        logger.error(f"POST failed after {retries} attempts: {last_exc}", url=url)
     return None
 
 
@@ -141,11 +149,15 @@ class PlaywrightSession:
             self._playwright.stop()
 
     def new_page(self, ua: str | None = None) -> Page:
-        if ua and self._context:
-            page = self._context.new_page()
+        if self._context is None:
+            raise RuntimeError(
+                "PlaywrightSession.new_page() called outside of a 'with' block "
+                "(context is None — use 'with PlaywrightSession() as session:')"
+            )
+        page = self._context.new_page()
+        if ua:
             page.set_extra_http_headers({"User-Agent": ua})
-            return page
-        return self._context.new_page()
+        return page
 
     def fetch_page(self, url: str, wait_selector: str | None = None, timeout: int = 30000) -> Page:
         page = self.new_page()

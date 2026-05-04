@@ -326,6 +326,64 @@ _LABEL_MAP: dict[str, str] = {
     "registration no":             "_firm_reg_no",
 }
 
+# ── ID-based field map (ASP.NET label id → internal field name) ───────────────
+# The AP RERA detail page renders all values inside <label id="lbl..."> tags.
+# _LABEL_MAP covers plain label/td pairs; _ID_MAP covers these ID-keyed labels.
+_ID_MAP: dict[str, str] = {
+    # Project metadata
+    "lblprojectname":    "project_name",
+    "lblPromoterName":   "promoter_name",
+    "lblRegId":          "project_registration_no",
+    "lblAppNo":          "acknowledgement_no",
+    # Promoter firm details
+    "lbltypepromoter":   "_type_of_firm",
+    "lblotherregno":     "_firm_reg_no",
+    "lblotherpan":       "_pan_no",
+    "lblotheremail":     "_promoter_email",
+    "lblothermobile":    "_promoter_phone",
+    # Project type / status
+    "lblprjtype":        "project_type",
+    "lblprjstatus":      "status_of_the_project",
+    # Dates  (DD/MM/YYYY format on page — normalizer parses them)
+    "lblstartDate":      "actual_commencement_date",
+    "lblendDate":        "_end_date_raw",      # mapped to both finish date fields below
+    # Project location
+    "lblprjdist":        "_district",
+    "lblPrjMandal":      "_taluk",
+    "lblPrjVillage":     "_village",
+    "lblPrjPincode":     "project_pin_code",
+    "lblprjlat":         "_latitude",
+    "lblprjlong":        "_longitude",
+    "lblprjadd1":        "_addr1",
+    "lblprjadd2":        "_addr2",
+    "lblulbname":        "_locality",
+    # Land & construction areas (numeric, unit always Sq.m for AP)
+    "lblareaofland":     "_land_area_raw",
+    "lbltotbuilduparea": "_construction_area_raw",
+    "lblopnarea":        "_unbuilt_area",
+    # Project costs (INR)
+    "lblestconcost":     "_estimated_construction_cost",
+    "lbllndcost":        "_cost_of_land",
+    "lbltotprjcost":     "_total_project_cost",
+    # Authorised Signatory
+    "lblASName":         "_as_name",
+    "lblASMobile":       "_as_mobile",
+    "lblASEmail":        "_as_email",
+}
+
+# Amenity progress label IDs → display name (matches sample status_update structure)
+_AMENITY_ID_MAP: list[tuple[str, str]] = [
+    ("lblroad",      "Road System"),
+    ("lblwater",     "Water Supply"),
+    ("lblsewage",    "Sewage and Drainage System"),
+    ("lblelectric",  "Electricity Supply Transformer And Sub Station"),
+    ("lblsolidwate", "Solid Waste Management And Disposal"),
+    ("lblfire",      "Fire Fighting Facility"),
+    ("lbldrinkwat",  "Drinking Water Facility"),
+    ("lblemergency", "Eemrgency Evacuation Service"),
+    ("lbluserenew",  "Use of Renewable Energy"),
+]
+
 
 # ── Normalisation helpers ─────────────────────────────────────────────────────
 
@@ -342,13 +400,119 @@ def _extract_unit(text: Any) -> str | None:
     return _clean(m.group(1)) if m else None
 
 
+def _lbl(soup: BeautifulSoup, lbl_id: str) -> str | None:
+    """Return cleaned text of <label id=lbl_id>, or None if absent/NA."""
+    tag = soup.find("label", id=lbl_id)
+    if tag:
+        val = _clean(tag.get_text(separator=" "))
+        if val and val.upper() not in ("NA", "N/A", "-"):
+            return val
+    return None
+
+
+def _extract_by_id(soup: BeautifulSoup) -> dict[str, str]:
+    """
+    Primary field extractor for AP RERA detail pages.
+    Reads every <label id="lbl..."> value element and maps it via _ID_MAP.
+    This is the main extraction path; _extract_label_values is a fallback.
+    """
+    result: dict[str, str] = {}
+    for lbl_id, field in _ID_MAP.items():
+        val = _lbl(soup, lbl_id)
+        if val:
+            result[field] = val
+    return result
+
+
+def _parse_authorised_signatory(soup: BeautifulSoup) -> dict | None:
+    """Extract Authorised Signatory block using its dedicated label IDs."""
+    name  = _lbl(soup, "lblASName")
+    phone = _lbl(soup, "lblASMobile")
+    email = _lbl(soup, "lblASEmail")
+    entry = {k: v for k, v in {"name": name, "email": email, "phone": phone}.items() if v}
+    return entry or None
+
+
+def _parse_amenity_status(soup: BeautifulSoup) -> list[dict] | None:
+    """
+    Extract amenity completion percentages from their label IDs.
+    Returns a list of {name, percent_completed} dicts, or None if not found.
+    """
+    amenities: list[dict] = []
+    for lbl_id, name in _AMENITY_ID_MAP:
+        val = _lbl(soup, lbl_id)
+        if val is not None:
+            amenities.append({"name": name, "percent_completed": val})
+    return amenities or None
+
+
 # ── Sub-table parsers ─────────────────────────────────────────────────────────
 
-def _parse_building_details(soup: BeautifulSoup) -> list[dict] | None:
-    """Parse the flat/unit GridView table; returns list of unit dicts or None."""
-    building_keywords = {"block", "flat", "carpet", "balcony"}
-    candidates: list[dict] = []
+def _parse_ap_building_table(table) -> list[dict]:
+    """
+    Parse a single AP RERA building table which uses rowspan columns.
 
+    The AP portal merges the Block Name and Built-up Area cells across all
+    rows (rowspan = total rows), and the Floor Number cell across the flats
+    on each floor (rowspan = flats per floor).  BeautifulSoup only sees the
+    TD in the row it was written, so cell counts vary:
+
+      12 cells → first row of table (has block + buildup + floor + flat-level cols)
+      10 cells → first flat on a new floor (has floor + flat-level cols)
+       9 cells → subsequent flats on the same floor (flat-level cols only)
+
+    Flat-level column order (0-indexed within each variant):
+      variant-12:  [block, buildup, floor, flat_no, flat_type, carpet,
+                    ow, balcony, open_terrace, common, parking, total]
+      variant-10:  [floor, flat_no, flat_type, carpet,
+                    ow, balcony, open_terrace, common, parking, total]
+      variant-9:   [flat_no, flat_type, carpet,
+                    ow, balcony, open_terrace, common, parking, total]
+    """
+    results: list[dict] = []
+    current_block: str | None = None
+
+    for tr in table.find_all("tr")[1:]:        # skip header row
+        cells = [_clean(td.get_text()) for td in tr.find_all("td")]
+        n = len(cells)
+        if n < 9:
+            continue
+
+        if n >= 12:
+            current_block   = cells[0]
+            flat_no, flat_type = cells[3], cells[4]
+            carpet, ow, balcony, ot, total = cells[5], cells[6], cells[7], cells[8], cells[11]
+        elif n >= 10:
+            flat_no, flat_type = cells[1], cells[2]
+            carpet, ow, balcony, ot, total = cells[3], cells[4], cells[5], cells[6], cells[9]
+        else:   # 9 cells
+            flat_no, flat_type = cells[0], cells[1]
+            carpet, ow, balcony, ot, total = cells[2], cells[3], cells[4], cells[5], cells[8]
+
+        if not flat_no:
+            continue
+
+        row: dict = {}
+        if current_block:  row["block_name"]   = current_block
+        if flat_no:        row["flat_name"]     = flat_no
+        if flat_type:      row["flat_type"]     = flat_type
+        if carpet:         row["carpet_area"]   = carpet
+        if balcony:        row["balcony_area"]  = balcony
+        if ot:             row["open_area"]     = ot
+        if total:          row["total_area"]    = total
+        row["no_of_units"] = "1"
+        results.append(row)
+
+    return results
+
+
+def _parse_building_details(soup: BeautifulSoup) -> list[dict] | None:
+    """
+    Parse the flat/unit GridView tables from the AP RERA detail page.
+
+    Returns the residential building units list (commercial units, if any,
+    are returned separately via _parse_commercial_units).
+    """
     for table in soup.find_all("table"):
         headers = [_clean(th.get_text()) for th in table.find_all("th")]
         if not headers:
@@ -359,130 +523,123 @@ def _parse_building_details(soup: BeautifulSoup) -> list[dict] | None:
             continue
 
         hset = {h.lower() for h in headers if h}
-        if not (building_keywords & hset):
+        # AP residential table always has "Flat Number" and "Type of Flat"
+        if "flat number" not in hset and "flat name" not in hset:
             continue
 
-        idx_map: dict[str, int] = {}
-        for i, h in enumerate(headers):
-            if not h:
-                continue
-            hl = h.lower()
-            if "block" in hl:
-                idx_map["block_name"] = i
-            elif "flat name" in hl or "unit name" in hl:
-                idx_map["flat_name"] = i
-            elif "flat type" in hl or "unit type" in hl:
-                idx_map["flat_type"] = i
-            elif "carpet" in hl:
-                idx_map["carpet_area"] = i
-            elif "balcony" in hl:
-                idx_map["balcony_area"] = i
-            elif "open" in hl and "area" in hl:
-                idx_map["open_area"] = i
-            elif "total" in hl and "area" in hl:
-                idx_map["total_area"] = i
-            elif "no" in hl and "unit" in hl:
-                idx_map["no_of_units"] = i
+        rows = _parse_ap_building_table(table)
+        if rows:
+            return rows
 
-        if len(idx_map) < 3:
+    return None
+
+
+def _parse_commercial_units(soup: BeautifulSoup) -> list[dict] | None:
+    """Parse commercial unit rows from the AP RERA commercial building table."""
+    for table in soup.find_all("table"):
+        headers = [_clean(th.get_text()) for th in table.find_all("th")]
+        if not headers:
+            first_tr = table.find("tr")
+            if first_tr:
+                headers = [_clean(td.get_text()) for td in first_tr.find_all("td")]
+        if not headers:
+            continue
+
+        hset = {h.lower() for h in headers if h}
+        # AP commercial table uses "Unit Number" (not "Flat Number")
+        if "unit number" not in hset:
+            continue
+
+        rows = _parse_ap_building_table(table)
+        if rows:
+            return rows
+
+    return None
+
+
+def _parse_documents(soup: BeautifulSoup, base_url: str) -> list[dict]:
+    """
+    Parse the uploaded-documents section from the AP RERA detail page.
+
+    Strategy 1: locate the table whose header contains 'Document Type' and
+    'Uploaded Document', then extract each row's document type name.  Any
+    real PDF href is captured; __doPostBack / # links are ignored for the
+    type-name entry (they are followed during the live S3 upload step).
+
+    Strategy 2: fallback scan for numbered/APRERA-prefixed rows in any table.
+    """
+    docs: list[dict] = []
+    seen: set[str] = set()
+
+    # ── Strategy 1: targeted Document Type table ─────────────────────────────
+    for table in soup.find_all("table"):
+        headers = [_clean(th.get_text()) for th in table.find_all("th")]
+        if not headers:
+            first_tr = table.find("tr")
+            if first_tr:
+                headers = [_clean(td.get_text()) for td in first_tr.find_all("td")]
+        if not headers:
+            continue
+
+        hset_lower = {h.lower() for h in headers if h}
+        if "document type" not in hset_lower:
             continue
 
         for tr in table.find_all("tr")[1:]:
             cells = tr.find_all("td")
-            if len(cells) < 3:
+            if not cells:
                 continue
-            row: dict = {}
-            for field, idx in idx_map.items():
-                if idx < len(cells):
-                    val = _clean(cells[idx].get_text())
-                    if val:
-                        row[field] = val
-            if row:
-                candidates.append(row)
+            doc_type = _clean(cells[0].get_text())
+            if not doc_type or doc_type.lower() == "document type":
+                continue
 
-    return candidates or None
-
-
-def _parse_documents(soup: BeautifulSoup, base_url: str) -> list[dict]:
-    """Parse uploaded-documents section; returns list of {type, link?} dicts."""
-    docs: list[dict] = []
-    seen: set[str] = set()
-    generic_doc_markers = (
-        "/documents/notice/",
-        "/views/downloads.aspx",
-        "appealtobuyer.pdf",
-        "legal_aprera_corporate_presentation.pdf",
-    )
-    generic_label_markers = (
-        "cause list",
-        "proceeding sheets",
-        "special holiday",
-        "regulations",
-        "forms download",
-        "presentation",
-        "appeal to buyer",
-        "quarterly updates",
-        "office order",
-    )
-
-    for a in soup.find_all("a", href=True):
-        href = str(a["href"]).strip()
-        if not href or href == "#":
-            continue
-        if href.startswith("/"):
-            href = BASE_URL + href
-        elif not href.startswith("http"):
-            href = urljoin(base_url, href)
-
-        label = _clean(a.get_text(separator=" ")) or "Document"
-        href_l = href.lower()
-        label_l = label.lower()
-        if any(marker in href_l for marker in generic_doc_markers):
-            continue
-        if any(marker in label_l for marker in generic_label_markers):
-            continue
-
-        # Try to get a better label from sibling cell
-        tr = a.find_parent("tr")
-        if tr:
-            for cell in tr.find_all("td"):
-                cell_text = _clean(cell.get_text())
-                if cell_text and cell_text != label and len(cell_text) > 5:
-                    label = cell_text
-                    break
-
-        doc: dict = {"type": label}
-        if href.lower().endswith(".pdf") or "pdf" in href.lower() or "download" in href.lower():
-            doc["link"] = href
-
-        key = label.lower()
-        if key not in seen:
+            key = doc_type.lower()
+            if key in seen:
+                continue
             seen.add(key)
+
+            doc: dict = {"type": doc_type}
+            # Capture any real PDF href in this row
+            for a in tr.find_all("a", href=True):
+                href = str(a["href"]).strip()
+                if not href or href.startswith("javascript:") or href == "#":
+                    continue
+                if href.startswith("/"):
+                    href = BASE_URL + href
+                elif not href.startswith("http"):
+                    href = urljoin(base_url, href)
+                if href.lower().endswith(".pdf") or "pdf" in href.lower():
+                    doc["link"] = href
+                    break
             docs.append(doc)
 
-    # Strategy 2: numbered doc-type rows with no hyperlink
-    if not docs:
-        for table in soup.find_all("table"):
-            for tr in table.find_all("tr"):
-                for cell in tr.find_all("td"):
-                    text = _clean(cell.get_text())
-                    if text and len(text) > 10 and (text[0].isdigit() or text.startswith("APRERA")):
-                        key = text.lower()
-                        if key in seen:
-                            continue
-                        seen.add(key)
-                        doc = {"type": text}
-                        link_tag = tr.find("a", href=True)
-                        if link_tag:
-                            href = str(link_tag["href"]).strip()
-                            if href and href != "#":
-                                if href.startswith("/"):
-                                    href = BASE_URL + href
-                                elif not href.startswith("http"):
-                                    href = urljoin(base_url, href)
+        if docs:
+            return docs
+
+    # ── Strategy 2: numbered / APRERA-prefixed rows (fallback) ───────────────
+    for table in soup.find_all("table"):
+        for tr in table.find_all("tr"):
+            for cell in tr.find_all("td"):
+                text = _clean(cell.get_text())
+                if text and len(text) > 10 and (text[0].isdigit() or text.startswith("APRERA")):
+                    key = text.lower()
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    doc = {"type": text}
+                    link_tag = tr.find("a", href=True)
+                    if link_tag:
+                        href = str(link_tag["href"]).strip()
+                        if href and not href.startswith("javascript:") and href != "#":
+                            if href.startswith("/"):
+                                href = BASE_URL + href
+                            elif not href.startswith("http"):
+                                href = urljoin(base_url, href)
+                            if href.lower().endswith(".pdf") or "pdf" in href.lower():
                                 doc["link"] = href
-                        docs.append(doc)
-                        break
+                    docs.append(doc)
+                    break
+
     return docs
 
 
@@ -507,28 +664,53 @@ def _parse_professionals(soup: BeautifulSoup) -> list[dict] | None:
             continue
 
         hl = [h.lower() if h else "" for h in headers]
+
+        # Skip building/unit tables (contain carpet area, balcony area, etc.)
+        joined_hl = " ".join(h for h in hl if h)
+        if any(k in joined_hl for k in ["carpet area", "balcony area", "built-up area", "built up area"]):
+            continue
+        # Skip partner/member tables (have 'position' or 'partner' in any column header,
+        # e.g. "Position", "Name of the Partner", "Partner Type")
+        if any("position" in h or "partner" in h for h in hl):
+            continue
+
         has_name = any("name" in h for h in hl)
-        has_role = any(any(k in h for k in ["role", "designation", "type", "profession"]) for h in hl)
+        _ROLE_KEYS = ["role", "designation", "type", "profession", "category", "qualification"]
+        has_role = any(any(k in h for k in _ROLE_KEYS) for h in hl)
         has_addr = any("address" in h for h in hl)
         if not (has_name and (has_role or has_addr)):
             continue
 
         idx_name = next((i for i, h in enumerate(hl) if "name" in h), None)
-        idx_role = next((i for i, h in enumerate(hl) if any(k in h for k in ["role", "designation", "type", "profession"])), None)
+        idx_role = next((i for i, h in enumerate(hl) if any(k in h for k in _ROLE_KEYS)), None)
         idx_addr = next((i for i, h in enumerate(hl) if "address" in h), None)
         if idx_name is None:
             continue
+
+        # AP RERA professional tables embed the role in the name column header
+        # (e.g. "Architect Name", "Engineer Name", "Chartered Accountant Name")
+        # rather than having a separate role column.  Derive a fallback role from
+        # the column header so that role is always populated when no explicit
+        # role column exists.
+        header_derived_role: str | None = None
+        if idx_role is None and idx_name is not None:
+            name_col_header = hl[idx_name] if idx_name < len(hl) else ""
+            for kw, norm in _role_norm.items():
+                if kw in name_col_header:
+                    header_derived_role = norm
+                    break
 
         for tr in table.find_all("tr")[1:]:
             cells = tr.find_all("td")
             if len(cells) < 2:
                 continue
             name = _clean(cells[idx_name].get_text()) if idx_name < len(cells) else None
-            role = _clean(cells[idx_role].get_text()) if idx_role is not None and idx_role < len(cells) else None
+            role = _clean(cells[idx_role].get_text()) if idx_role is not None and idx_role < len(cells) else header_derived_role
             addr = _clean(cells[idx_addr].get_text()) if idx_addr is not None and idx_addr < len(cells) else None
             if not name:
                 continue
-            if role:
+            if role and idx_role is not None:
+                # Normalise role text from an explicit role cell
                 for kw, norm in _role_norm.items():
                     if kw in role.lower():
                         role = norm
@@ -542,6 +724,25 @@ def _parse_professionals(soup: BeautifulSoup) -> list[dict] | None:
                 entry["address"] = addr
             if entry:
                 professionals.append(entry)
+
+    # Post-filter: drop entries whose role is an organisational title
+    # (e.g. "Partner", "Director") rather than a recognised professional role.
+    _KNOWN_PROFESSIONAL_ROLES = set(_role_norm.values())
+    professionals = [
+        p for p in professionals
+        if "role" not in p or p["role"] in _KNOWN_PROFESSIONAL_ROLES
+    ]
+
+    # Deduplicate by (name, address) to remove repeated entries from
+    # multiple table occurrences (e.g. structural engineer listed twice).
+    seen_prof: set[tuple] = set()
+    deduped: list[dict] = []
+    for p in professionals:
+        key = (p.get("name", ""), p.get("address", ""))
+        if key not in seen_prof:
+            seen_prof.add(key)
+            deduped.append(p)
+    professionals = deduped
 
     return professionals or None
 
@@ -561,7 +762,10 @@ def _parse_members(soup: BeautifulSoup) -> list[dict] | None:
 
         hl = [h.lower() if h else "" for h in headers]
         has_name = any("name" in h for h in hl)
-        has_member = any(any(k in h for k in ["email", "phone", "mobile", "position", "designation", "partner"]) for h in hl)
+        # Require an explicit position/partner/designation column to identify
+        # member tables, avoiding accidental capture of professional tables
+        # (which have phone/address but no position column).
+        has_member = any(any(k in h for k in ["position", "designation", "partner"]) for h in hl)
         if not (has_name and has_member):
             continue
 
@@ -602,15 +806,32 @@ def _parse_members(soup: BeautifulSoup) -> list[dict] | None:
 def _scrape_detail_page(soup: BeautifulSoup, detail_url: str) -> dict:
     """
     Extract all structured fields from a project detail page.
+
+    Primary extraction uses _extract_by_id() which reads <label id="lbl...">
+    elements — the main data carrier on AP RERA detail pages.
+    _extract_label_values() is merged in as a secondary fallback for any
+    field not already populated by the ID-based pass.
+
     Returns a raw dict with schema-aligned keys populated where found.
     """
-    lv = _extract_label_values(soup)
-
     raw: dict[str, Any] = {}
+
+    # ── Primary: ID-based extraction ─────────────────────────────────────────
+    id_vals = _extract_by_id(soup)
+    raw.update(id_vals)
+
+    # ── Secondary: label/value fallback (doesn't overwrite ID results) ───────
+    lv = _extract_label_values(soup)
     for label_text, value in lv.items():
         field = _LABEL_MAP.get(_norm_label(label_text))
         if field and field not in raw:
             raw[field] = value
+
+    # ── End-date: both actual and estimated finish dates come from lblendDate ─
+    end_date_raw = raw.pop("_end_date_raw", None)
+    if end_date_raw:
+        raw.setdefault("actual_finish_date",    end_date_raw)
+        raw.setdefault("estimated_finish_date", end_date_raw)
 
     # ── Location ──────────────────────────────────────────────────────────────
     district  = raw.pop("_district", None)
@@ -618,12 +839,23 @@ def _scrape_detail_page(soup: BeautifulSoup, detail_url: str) -> dict:
     village   = raw.pop("_village", None)
     locality  = raw.pop("_locality", None)
     exact_loc = raw.pop("_exact_location", None)
+    addr1     = raw.pop("_addr1", None)
+    addr2     = raw.pop("_addr2", None)
     lat_raw   = raw.pop("_latitude", None)
     lon_raw   = raw.pop("_longitude", None)
-    lat, lon  = _parse_lat_lon(lat_raw)
+    lat, _    = _parse_lat_lon(lat_raw)
+    _, lon    = _parse_lat_lon(lon_raw)
     pin_code  = raw.get("project_pin_code")
 
-    addr_parts = [p for p in [exact_loc, locality, village, district, pin_code] if p]
+    # Build exact_location from addr1 + addr2 when not already captured via label
+    if not exact_loc:
+        primary = " ".join(p for p in [addr1, addr2] if p)
+        exact_loc = primary or None
+
+    # Build raw_address: addr1+addr2 are a single primary address component, then
+    # comma-separated from locality / village / district / pin_code.
+    primary_addr = " ".join(p for p in [addr1, addr2] if p) or None
+    addr_parts = [p for p in [primary_addr, locality, village, district, pin_code] if p]
     raw_address = ", ".join(addr_parts) if addr_parts else None
 
     loc_dict: dict = {}
@@ -640,11 +872,7 @@ def _scrape_detail_page(soup: BeautifulSoup, detail_url: str) -> dict:
         raw["project_location_raw"] = loc_dict
 
     # ── Promoter address ──────────────────────────────────────────────────────
-    promoter_location_bits = {
-        "village": village,
-        "district": district,
-        "locality": locality,
-    }
+    promoter_location_bits = {"village": village, "district": district, "locality": locality}
     addr_dict: dict = {}
     if any(v for v in promoter_location_bits.values()):
         addr_dict["state"] = PROJECT_STATE
@@ -672,6 +900,8 @@ def _scrape_detail_page(soup: BeautifulSoup, detail_url: str) -> dict:
         raw["promoters_details"] = pd
 
     # ── Land & construction ───────────────────────────────────────────────────
+    # AP RERA always uses Sq.m; the page shows bare numbers (no unit suffix).
+    _AP_AREA_UNIT = "Sq.m"
     land_raw  = raw.pop("_land_area_raw", None)
     const_raw = raw.pop("_construction_area_raw", None)
     unbuilt   = raw.pop("_unbuilt_area", None)
@@ -685,10 +915,10 @@ def _scrape_detail_page(soup: BeautifulSoup, detail_url: str) -> dict:
     if land_val is not None or const_val is not None:
         raw["land_area_details"] = {
             k: v for k, v in {
-                "land_area": str(land_val) if land_val is not None else None,
-                "land_area_unit": _extract_unit(land_raw),
-                "construction_area": str(const_val) if const_val is not None else None,
-                "construction_area_unit": _extract_unit(const_raw),
+                "land_area":               f"{land_val:.2f}"  if land_val  is not None else None,
+                "land_area_unit":          _AP_AREA_UNIT      if land_val  is not None else None,
+                "construction_area":       f"{const_val:.2f}" if const_val is not None else None,
+                "construction_area_unit":  _AP_AREA_UNIT      if const_val is not None else None,
             }.items() if v is not None
         }
 
@@ -710,22 +940,36 @@ def _scrape_detail_page(soup: BeautifulSoup, detail_url: str) -> dict:
     # ── Data blob (ancillary fields) ──────────────────────────────────────────
     data_blob: dict = {}
     for k, v in {
-        "unbuilt_area": unbuilt,
-        "land_area_unit": _extract_unit(land_raw),
-        "construction_area_unit": _extract_unit(const_raw),
-        "project_district": district,
-        "govt_type": "state",
+        "unbuilt_area":          unbuilt,
+        "end_date":              end_date_raw,
+        "land_area_unit":        _AP_AREA_UNIT if land_val is not None else None,
+        "construction_area_unit": _AP_AREA_UNIT if const_val is not None else None,
+        "project_district":      district,
+        "govt_type":             "state",
     }.items():
         if v is not None:
             data_blob[k] = v
     if data_blob:
         raw["data"] = data_blob
 
-    # ── Sub-tables ────────────────────────────────────────────────────────────
+    # ── Authorised Signatory ──────────────────────────────────────────────────
+    as_name  = raw.pop("_as_name", None)
+    as_phone = raw.pop("_as_mobile", None)
+    as_email = raw.pop("_as_email", None)
+    as_dict  = {k: v for k, v in {"name": as_name, "email": as_email, "phone": as_phone}.items() if v}
+    if as_dict:
+        raw["authorised_signatory_details"] = as_dict
+
+    # ── Building details ──────────────────────────────────────────────────────
     bd = _parse_building_details(soup)
     if bd:
         raw["building_details"] = bd
+        raw["number_of_residential_units"] = len(bd)
 
+    comm_bd = _parse_commercial_units(soup)
+    raw["number_of_commercial_units"] = len(comm_bd) if comm_bd else 0
+
+    # ── Professionals / Members ───────────────────────────────────────────────
     pi = _parse_professionals(soup)
     if pi:
         raw["professional_information"] = pi
@@ -734,24 +978,23 @@ def _scrape_detail_page(soup: BeautifulSoup, detail_url: str) -> dict:
     if md:
         raw["members_details"] = md
 
+    # ── Status update (amenity progress + building snapshot) ─────────────────
+    amenities = _parse_amenity_status(soup)
+    if amenities or bd:
+        status_entry: dict = {}
+        if amenities:
+            status_entry["amenity_detail"] = amenities
+        if bd:
+            status_entry["building_details"] = bd
+        raw["status_update"] = [status_entry]
+
+    # ── Documents ─────────────────────────────────────────────────────────────
     docs = _parse_documents(soup, detail_url)
-    detail_has_project_fields = any(
-        raw.get(field)
-        for field in (
-            "project_registration_no",
-            "promoter_name",
-            "project_location_raw",
-            "building_details",
-            "professional_information",
-            "members_details",
-            "land_area",
-            "construction_area",
-            "project_cost_detail",
-            "number_of_residential_units",
-            "number_of_commercial_units",
-        )
-    )
-    if docs and detail_has_project_fields:
+    if docs and any(raw.get(f) for f in (
+        "project_registration_no", "promoter_name", "project_location_raw",
+        "building_details", "land_area", "construction_area",
+        "project_cost_detail", "number_of_residential_units",
+    )):
         raw["uploaded_documents"] = docs
 
     raw["url"] = detail_url
@@ -792,6 +1035,65 @@ def _handle_document(
         return None
 
 
+def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
+    """
+    Data-quality sentinel for Andhra Pradesh RERA.
+    Loads state_projects_sample/andhra_pradesh.json as the baseline, re-scrapes
+    the sentinel project's detail page, and verifies ≥ 80% field coverage.
+    """
+    import json as _json
+    import os as _os
+    from core.sentinel_utils import check_field_coverage
+
+    sentinel_reg = config.get("sentinel_registration_no", "")
+    if not sentinel_reg:
+        logger.warning("No sentinel_registration_no configured — skipping", step="sentinel")
+        return True
+
+    sample_path = _os.path.join(
+        _os.path.dirname(_os.path.dirname(__file__)),
+        "state_projects_sample", "andhra_pradesh.json",
+    )
+    try:
+        with open(sample_path) as fh:
+            baseline: dict = _json.load(fh)
+    except FileNotFoundError:
+        logger.warning("Sample baseline not found — skipping coverage check",
+                       path=sample_path, step="sentinel")
+        return True
+
+    detail_url = baseline.get("url", "")
+    if not detail_url:
+        logger.warning("Sentinel: no detail URL in sample — skipping", step="sentinel")
+        return True
+
+    logger.info(f"Sentinel: scraping {sentinel_reg}", url=detail_url, step="sentinel")
+    try:
+        soup = _fetch_detail(detail_url, logger)
+        if not soup:
+            logger.error("Sentinel: failed to fetch detail page", url=detail_url, step="sentinel")
+            return False
+        fresh = _scrape_detail_page(soup, detail_url) or {}
+    except Exception as exc:
+        logger.error(f"Sentinel: scrape error — {exc}", step="sentinel")
+        return False
+
+    if not fresh:
+        logger.error("Sentinel: no data extracted", url=detail_url, step="sentinel")
+        return False
+
+    if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
+        insert_crawl_error(
+            run_id, config.get("id", "andhra_pradesh_rera"),
+            "SENTINEL_FAILED",
+            f"Coverage below 80% for sentinel project {sentinel_reg}",
+        )
+        return False
+
+    logger.info("Sentinel check passed", reg=sentinel_reg, step="sentinel")
+    return True
+
+
 # ── Main entry point ──────────────────────────────────────────────────────────
 
 def run(config: dict, run_id: int, mode: str) -> dict:
@@ -812,6 +1114,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                      projects_skipped=0, documents_uploaded=0, error_count=0)
 
     machine_name, machine_ip = get_machine_context()
+
+    # ── Sentinel health check ────────────────────────────────────────────────
+    if not _sentinel_check(config, run_id, logger):
+        logger.error("Sentinel failed — aborting crawl", step="sentinel")
+        counts["error_count"] += 1
+        return counts
 
     # ── Checkpoint ────────────────────────────────────────────────────────────
     checkpoint  = load_checkpoint(site_id, mode) or {}

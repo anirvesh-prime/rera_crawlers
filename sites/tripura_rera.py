@@ -3,11 +3,20 @@ Tripura RERA Crawler — reraonline.tripura.gov.in
 Type: static (httpx + BeautifulSoup — server-rendered Java MVC)
 
 Strategy:
-- GET /viewApprovedProjects?startFrom=N (paginated table, ~10 rows per page)
-- Each listing row: Registration No., Project Name, Promoter Name,
-  Project Type, Status, and a View (detail) link
+- GET /viewApprovedProjects returns ALL ~214 registered projects in a single HTML
+  response.  The server renders a client-side-only pagination widget whose links
+  are wrapped in an HTML comment (<!-- ... -->), so BeautifulSoup never sees them
+  as active anchors; _has_next_page() returns False after the first page and the
+  loop exits cleanly.
+- Each listing card (div.row.defalter_result_list): project name, address,
+  registration number, promoter, promoter type, property type, land area.
+  Cards contain NO explicit detail-page anchor (<a href="/viewProjectDetailPage">)
+  so the detail URL is always derived from the registration number.
+- Registration number format: PRTR{MM}{YY}{NNNN} (8 digits after PRTR) where
+  NNNN is the 4-digit zero-padded sequential project ID.
+  detail URL = /viewProjectDetailPage?projectID=int(reg_no[-4:])
+  e.g. PRTR03240386 → projectID=386  |  PRTR01200001 → projectID=1
 - Detail pages: /viewProjectDetailPage?projectID=N — full project metadata
-- Pagination: startFrom offset (fallback to page=N param); stop when no rows found
 - Documents: links matching getdocument/download/.pdf patterns on detail page
 """
 from __future__ import annotations
@@ -38,9 +47,9 @@ from core.config import settings
 LISTING_URL = "https://reraonline.tripura.gov.in/viewApprovedProjects"
 BASE_URL    = "https://reraonline.tripura.gov.in"
 DOMAIN      = "reraonline.tripura.gov.in"
-PAGE_SIZE   = 10  # rows per listing page (observed)
+PAGE_SIZE   = 10  # kept for checkpoint arithmetic; server returns all rows in one page
 
-# Registration numbers follow PRTRYYYYnnnnn format; trailing digits = projectID
+# Registration numbers: PRTR{MM}{YY}{NNNN} — last 4 chars are the numeric project ID
 _REG_RE      = re.compile(r"\bPRTR\d+\b", re.I)
 _AREA_UNIT_RE = re.compile(
     r"([\d,]+(?:\.\d+)?)\s*(sq\.?\s*mtr|sq\.?\s*ft|sq\.?\s*m|sqmt|sqmtr|sqft|m2|ft2)?",
@@ -115,16 +124,25 @@ def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
                     else:
                         detail_url = f"{BASE_URL}/{href}"
                     break
-            # Fallback: derive detail URL from registration number digits
-            if not detail_url:
-                m_id = re.search(r"(\d+)$", reg_no)
-                if m_id:
-                    detail_url = f"{BASE_URL}/viewProjectDetailPage?projectID={m_id.group(1)}"
+            # Fallback: derive detail URL from registration number.
+            # Format: PRTR{MM}{YY}{NNNN} — last 4 chars are the zero-padded project ID.
+            # int() strips leading zeros: "0386" → 386, "0001" → 1.
+            if not detail_url and reg_no and len(reg_no) >= 4:
+                try:
+                    project_id = int(reg_no[-4:])
+                    detail_url = f"{BASE_URL}/viewProjectDetailPage?projectID={project_id}"
+                except ValueError:
+                    pass
 
             row = {
                 "project_registration_no": reg_no,
                 "project_name": project_name,
-                "promoter_name": summary_row.get("promoter"),
+                "promoter_name": (
+                    summary_row.get("promoter")
+                    or summary_row.get("promoter name")
+                    or summary_row.get("name of promoter")
+                    or summary_row.get("name of the promoter")
+                ),
                 "project_type": summary_row.get("property type"),
                 "detail_url": detail_url,
             }
@@ -174,10 +192,13 @@ def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
                     else:
                         detail_url = f"{BASE_URL}/{href}"
                     break
-            if not detail_url:
-                m = re.search(r"(\d+)$", reg_no)
-                if m:
-                    detail_url = f"{BASE_URL}/viewProjectDetailPage?projectID={m.group(1)}"
+            # Fallback: PRTR{MM}{YY}{NNNN} — last 4 chars are the zero-padded project ID.
+            if not detail_url and reg_no and len(reg_no) >= 4:
+                try:
+                    project_id = int(reg_no[-4:])
+                    detail_url = f"{BASE_URL}/viewProjectDetailPage?projectID={project_id}"
+                except ValueError:
+                    pass
 
             rows.append({
                 "project_registration_no": reg_no,
@@ -216,6 +237,8 @@ _DETAIL_LABEL_MAP: dict[str, str] = {
     "name of the project":          "project_name",
     "promoter name":                "promoter_name",
     "name of promoter":             "promoter_name",
+    "name of the promoter":         "promoter_name",
+    "name of promoter firm":        "promoter_name",
     "project type":                 "project_type",
     "type of project":              "project_type",
     "status":                       "status_of_the_project",
@@ -233,12 +256,15 @@ _DETAIL_LABEL_MAP: dict[str, str] = {
     "proposed completion date":     "estimated_finish_date",
     "land area":                    "_land_area_raw",
     "total land area":              "_land_area_raw",
+    "total area of project land":   "_land_area_raw",
     "construction area":            "_construction_area_raw",
     "total construction area":      "_construction_area_raw",
     "carpet area":                  "_construction_area_raw",
+    "area of project (all floors together) (sq mtr)": "_construction_area_raw",
     "no. of residential units":     "number_of_residential_units",
     "number of residential units":  "number_of_residential_units",
     "residential units":            "number_of_residential_units",
+    "total number of flats":        "number_of_residential_units",
     "no. of commercial units":      "number_of_commercial_units",
     "number of commercial units":   "number_of_commercial_units",
     "commercial units":             "number_of_commercial_units",
@@ -246,6 +272,8 @@ _DETAIL_LABEL_MAP: dict[str, str] = {
     "description":                  "project_description",
     "district":                     "_district",
     "taluk":                        "_taluk",
+    "tehsil/sub district":          "_taluk",
+    "tehsil/sub  district":         "_taluk",
     "address":                      "_address",
     "project address":              "_address",
     "pin code":                     "project_pin_code",
@@ -274,22 +302,28 @@ def _process_label_value(
     raw[label] = value
     schema_field = _DETAIL_LABEL_MAP.get(label.lower().strip())
     if schema_field == "_land_area_raw":
-        val, unit = _extract_area(value)
-        if val is not None:
-            out["land_area"] = val
-            raw["land_area_unit"] = unit or "sq Mtr"
+        # First-wins: Pattern 1 (<tr>) runs before Pattern 2 (Bootstrap grid).
+        # Don't let a later match for the same field overwrite the first value.
+        if "land_area" not in out:
+            val, unit = _extract_area(value)
+            if val is not None:
+                out["land_area"] = val
+                raw["land_area_unit"] = unit or "sq Mtr"
     elif schema_field == "_construction_area_raw":
-        val, unit = _extract_area(value)
-        if val is not None:
-            out["construction_area"] = val
-            raw["construction_area_unit"] = unit or "Sq Mtr"
+        if "construction_area" not in out:
+            val, unit = _extract_area(value)
+            if val is not None:
+                out["construction_area"] = val
+                raw["construction_area_unit"] = unit or "Sq Mtr"
     elif schema_field == "_district":
         location_parts["district"] = value
     elif schema_field == "_taluk":
         location_parts["taluk"] = value
     elif schema_field == "_address":
-        location_parts["raw_address"] = value
-        raw["raw_address"] = value
+        # First-wins: preserve the first (typically fuller) address encountered.
+        if "raw_address" not in location_parts:
+            location_parts["raw_address"] = value
+            raw["raw_address"] = value
     elif schema_field and schema_field not in out:
         out[schema_field] = value
 
@@ -326,7 +360,7 @@ def _normalize_member(raw: dict) -> dict:
             out.setdefault("email", v)
         elif any(x in kl for x in ("phone", "mobile", "contact")):
             out.setdefault("phone", v)
-        elif any(x in kl for x in ("position", "designation", "role")):
+        elif any(x in kl for x in ("position", "designation", "role", "type")):
             out.setdefault("position", v)
     return {k: v for k, v in out.items() if v}
 
@@ -376,13 +410,20 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
                 _process_label_value(label, value, out, raw, location_parts)
 
     # Pattern 2: Bootstrap grid — text-right <p> label + adjacent value column
+    # Skip any direct child that is itself a div.row — those are sub-rows and
+    # will be visited in their own loop iteration; treating them as label/value
+    # columns would pair entire rows against each other and corrupt field values.
     for row_div in soup.find_all("div", class_="row"):
         cols = row_div.find_all("div", recursive=False)
         i = 0
         while i < len(cols):
-            p_label = cols[i].find("p", class_=re.compile(r"text-right|label", re.I))
+            col = cols[i]
+            if "row" in col.get("class", []):
+                i += 1
+                continue
+            p_label = col.find("p", class_=re.compile(r"text-right|label", re.I))
             if not p_label:
-                p_label = cols[i].find(["b", "strong"])
+                p_label = col.find(["b", "strong"])
             if p_label and i + 1 < len(cols):
                 _process_label_value(
                     p_label.get_text(strip=True).rstrip(":").strip(),
@@ -416,8 +457,21 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
         has_addr = any("address" in h for h in ths_lower)
         return has_name and (has_role or has_addr)
 
+    # Capture project_description from <h1>Project Description</h1> + next <p>
+    if not out.get("project_description"):
+        for h1 in soup.find_all("h1"):
+            if "description" in h1.get_text(strip=True).lower():
+                p_sib = h1.find_next_sibling("p")
+                if p_sib:
+                    desc = p_sib.get_text(separator=" ", strip=True)
+                    if desc:
+                        out["project_description"] = desc
+                break
+
     # Walk headings to classify nearby tables by section name
-    for heading in soup.find_all(["h2", "h3", "h4", "h5"]):
+    # h1 is included because Tripura uses h1 for section headings like
+    # "Project MemberDetails", "ProjectArchitects", "StructuralEngineers"
+    for heading in soup.find_all(["h1", "h2", "h3", "h4", "h5"]):
         htext = heading.get_text(strip=True).lower()
         sibling, table = heading.find_next_sibling(), None
         for _ in range(6):
@@ -434,32 +488,68 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
             sibling = sibling.find_next_sibling()
         if table is None or id(table) in used_tables:
             continue
-        used_tables.add(id(table))
-        if any(kw in htext for kw in ("member", "director", "partner")):
+        # Only mark a table used when a branch actually processes it, so unrecognised
+        # headings (e.g. "Project Description") don't accidentally claim nearby tables.
+        # "promoter" sections: extract promoter name + contact details
+        if "promoter" in htext and not any(kw in htext for kw in ("member", "director")):
+            used_tables.add(id(table))
+            for r in _parse_section_table(table):
+                # Extract promoter/company name from the table row.
+                # Only match columns whose header contains "name" (e.g. "Name of
+                # Promoter") and NOT contact/address-like headers.  Avoid matching
+                # "Promoter Type" or similar by NOT checking for "promoter" here.
+                if not out.get("promoter_name"):
+                    for col_key, col_val in r.items():
+                        kl = col_key.lower()
+                        if (
+                            "name" in kl
+                            and not any(x in kl for x in ("email", "e-mail", "phone", "mobile", "contact", "address"))
+                            and col_val
+                        ):
+                            out["promoter_name"] = col_val
+                            break
+                # Extract contact details
+                if not out.get("promoter_contact_details"):
+                    contact: dict = {}
+                    for col_key, col_val in r.items():
+                        kl = col_key.lower()
+                        if ("email" in kl or "e-mail" in kl) and col_val:
+                            contact["email"] = col_val
+                        elif any(x in kl for x in ("mobile", "phone", "contact")) and col_val:
+                            contact["phone"] = col_val
+                    if contact.get("email") or contact.get("phone"):
+                        out["promoter_contact_details"] = contact
+        # "chairman" / "lead member" sections are organisational headings, not board members
+        elif any(kw in htext for kw in ("member", "director", "partner")) and "chairman" not in htext:
+            used_tables.add(id(table))
             for r in _parse_section_table(table):
                 m = _normalize_member(r)
                 if m.get("name"):
                     m["has_same_data"] = True
                     members.append(m)
         elif "architect" in htext:
+            used_tables.add(id(table))
             for r in _parse_section_table(table):
                 p = _normalize_professional(r, role="Architects")
                 if p.get("name"):
                     p["has_same_data"] = True
                     professionals.append(p)
         elif "structural" in htext and "engineer" in htext:
+            used_tables.add(id(table))
             for r in _parse_section_table(table):
                 p = _normalize_professional(r, role="Structural Engineers")
                 if p.get("name"):
                     p["has_same_data"] = True
                     professionals.append(p)
         elif "engineer" in htext:
+            used_tables.add(id(table))
             for r in _parse_section_table(table):
                 p = _normalize_professional(r, role="Engineers")
                 if p.get("name"):
                     p["has_same_data"] = True
                     professionals.append(p)
         elif any(kw in htext for kw in ("professional", "consultant")):
+            used_tables.add(id(table))
             for r in _parse_section_table(table):
                 p = _normalize_professional(r)
                 if p.get("name"):
@@ -580,32 +670,58 @@ def _handle_document(
         return None
 
 
-# ── Sentinel check ────────────────────────────────────────────────────────────
-
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
+    """
+    Data-quality sentinel for Tripura RERA.
+    Loads state_projects_sample/tripura.json as the baseline, re-scrapes the
+    sentinel project's detail page, and verifies ≥ 80% field coverage.
+    """
+    import json as _json
+    import os as _os
+    from core.sentinel_utils import check_field_coverage
+
     sentinel_reg = config.get("sentinel_registration_no", "")
     if not sentinel_reg:
-        logger.warning("No sentinel configured — skipping")
+        logger.warning("No sentinel_registration_no configured — skipping", step="sentinel")
         return True
-    key = generate_project_key(sentinel_reg)
-    existing = get_project_by_key(key)
-    if not existing:
-        logger.warning("Sentinel not in DB yet — skipping check")
+
+    sample_path = _os.path.join(
+        _os.path.dirname(_os.path.dirname(__file__)),
+        "state_projects_sample", "tripura.json",
+    )
+    try:
+        with open(sample_path) as fh:
+            baseline: dict = _json.load(fh)
+    except FileNotFoundError:
+        logger.warning("Sample baseline not found — skipping coverage check",
+                       path=sample_path, step="sentinel")
         return True
-    # Derive projectID from trailing digits of the registration number
-    m = re.search(r"(\d+)$", sentinel_reg)
-    if not m:
-        logger.warning("Cannot derive projectID from sentinel reg — skipping")
+
+    detail_url = baseline.get("url", "")
+    if not detail_url:
+        logger.warning("Sentinel: no detail URL in sample — skipping", step="sentinel")
         return True
-    detail_url = f"{BASE_URL}/viewProjectDetailPage?projectID={m.group(1)}"
-    resp = _get(detail_url, logger)
-    if not resp:
-        logger.error("Sentinel: could not fetch detail page", url=detail_url)
+
+    logger.info(f"Sentinel: scraping {sentinel_reg}", url=detail_url, step="sentinel")
+    try:
+        fresh = _parse_detail_page(detail_url, logger) or {}
+    except Exception as exc:
+        logger.error(f"Sentinel: scrape error — {exc}", step="sentinel")
         return False
-    if sentinel_reg not in resp.text:
-        logger.error("Sentinel reg not found on detail page", reg=sentinel_reg)
+
+    if not fresh:
+        logger.error("Sentinel: no data extracted", url=detail_url, step="sentinel")
         return False
-    logger.info("Sentinel check passed", reg=sentinel_reg)
+
+    if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
+        insert_crawl_error(
+            run_id, config.get("id", "tripura_rera"),
+            "SENTINEL_FAILED",
+            f"Coverage below 80% for sentinel project {sentinel_reg}",
+        )
+        return False
+
+    logger.info("Sentinel check passed", reg=sentinel_reg, step="sentinel")
     return True
 
 
@@ -633,8 +749,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     max_pages  = settings.MAX_PAGES or 0
     machine_name, machine_ip = get_machine_context()
 
+    # ── Sentinel health check ────────────────────────────────────────────────
     if not _sentinel_check(config, run_id, logger):
-        insert_crawl_error(run_id, site_id, "SENTINEL_FAILED", "Sentinel check failed")
+        logger.error("Sentinel failed — aborting crawl", step="sentinel")
+        counts["error_count"] += 1
         return counts
 
     page = start_page
@@ -739,6 +857,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         # Never overwrite the canonical registration number
                         if v is not None and k != "project_registration_no":
                             data[k] = v
+
+                    # If promoter_name was only found on the detail page,
+                    # backfill promoters_details which was built from the listing row.
+                    if data.get("promoter_name") and not data.get("promoters_details"):
+                        data["promoters_details"] = {"name": data["promoter_name"]}
 
                     la = data.get("land_area")
                     ca = data.get("construction_area")

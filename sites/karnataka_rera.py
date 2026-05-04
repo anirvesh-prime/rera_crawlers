@@ -10,9 +10,17 @@ How the portal works (observed from live HTML):
   A district MUST be selected — blank search returns zero results.
   The crawler POSTs each district name and extracts ack_nos via regex.
 
-- Detail popup: jQuery $.ajax POST to /projectDetails with body action=<ack_no>.
-  The server returns an HTML fragment inserted into a Bootstrap modal.
-  The crawler replicates this POST directly with httpx.
+- Detail fetch (TWO-STEP, as of 2025):
+  Step 1: POST /projectViewDetails with appNo=<ack_no>
+          → Returns search-results table containing the internal numeric DB ID
+            (<a id="<numeric_id>" onclick="return showFileApplicationPreview(this);">)
+            and the APPROVED ON date.
+  Step 2: POST /projectDetails with action=<numeric_id>
+          → Returns full project detail page (HTML ~200–450 KB).
+  The portal no longer accepts the ack_no directly as action parameter (returns 400).
+
+- The detail page uses a Bootstrap grid layout (col-md-3 div pairs) for most fields.
+  Project Name / Ack No / Reg No appear in <span class="user_name"> elements.
 
 - Registration certificate: GET /certificate?CER_NO=<registration_no>
 - Document downloads: GET /download_jc?DOC_ID=<encoded_id>
@@ -76,44 +84,94 @@ _PROJECT_NAME_RE = re.compile(r"""applicationNameList3\s*\.push\('([^']*)'\)""")
 _PROMOTER_NAME_RE = re.compile(r"""applicationNameList4\s*\.push\('([^']*)'\)""")
 
 # Map lowercased Karnataka portal labels (from detail HTML) → schema field names.
+# Covers both the old fragment-style labels and the new Bootstrap-grid labels.
 _LABEL_MAP: dict[str, str] = {
-    "project name":                        "project_name",
-    "type of project":                     "project_type",
-    "registration no":                     "project_registration_no",
-    "application no":                      "acknowledgement_no",
-    "acknowledgement no":                  "acknowledgement_no",
-    "status":                              "status_of_the_project",
-    "project status":                      "status_of_the_project",
-    "promoter / company / firm name":      "promoter_name",
-    "promoter name":                       "promoter_name",
-    "company name":                        "promoter_name",
-    "gst no":                              "_gst_no",
-    "pan no":                              "_pan_no",
-    "trade licence / registration no":     "_trade_reg_no",
-    "objective":                           "_objective",
-    "district":                            "_district",
-    "taluk":                               "_taluk",
-    "village":                             "_village",
-    "pin code":                            "_pin_code",
-    "survey / resurvey number":            "_survey_no",
-    "latitude":                            "_latitude",
-    "longitude":                           "_longitude",
-    "website":                             "_website",
-    "date of commencement":                "actual_commencement_date",
-    "proposed date of completion":         "estimated_finish_date",
-    "completion date":                     "actual_finish_date",
-    "date of approval":                    "approved_on_date",
-    "cost of land":                        "_cost_of_land",
-    "estimated construction cost":         "_est_construction_cost",
-    "total project cost":                  "_total_project_cost",
-    "land area":                           "land_area",
-    "bank name":                           "_bank_name",
-    "account no":                          "_account_no",
-    "account name":                        "_account_name",
-    "ifsc":                                "_ifsc",
-    "branch":                              "_branch",
-    "total completion percentage":         "_total_completion_pct",
-    "project description":                 "project_description",
+    # Project identity
+    "project name":                                                 "project_name",
+    "project type":                                                 "project_type",
+    "type of project":                                              "project_type",
+    "registration no":                                              "project_registration_no",
+    "application no":                                               "acknowledgement_no",
+    "acknowledgement no":                                           "acknowledgement_no",
+    "status":                                                       "status_of_the_project",
+    "project status":                                               "status_of_the_project",
+    # Promoter
+    "promoter / company / firm name":                               "promoter_name",
+    "promoter name":                                                "promoter_name",
+    "company name":                                                 "promoter_name",
+    # GST / PAN / registration
+    "gst no":                                                       "_gst_no",
+    "gstin":                                                        "_gst_no",
+    "pan no":                                                       "_pan_no",
+    "pan":                                                          "_pan_no",
+    "trade licence / registration no":                              "_trade_reg_no",
+    "registration number":                                          "_trade_reg_no",
+    "objective":                                                    "_objective",
+    "main objectives":                                              "_objective",
+    # Location
+    "district":                                                     "_district",
+    "taluk":                                                        "_taluk",
+    "village":                                                      "_village",
+    "pin code":                                                     "_pin_code",
+    "survey / resurvey number":                                     "_survey_no",
+    "latitude":                                                     "_latitude",
+    "longitude":                                                    "_longitude",
+    # Website
+    "website":                                                      "_website",
+    "promoter website":                                             "_website",
+    # Project address (full address string for raw_address)
+    "project address":                                              "_project_address",
+    # Dates
+    "date of commencement":                                         "actual_commencement_date",
+    "project start date":                                           "actual_commencement_date",
+    "estimated date of commencement":                               "estimated_commencement_date",
+    "proposed date of commencement":                                "estimated_commencement_date",
+    "estimated commencement date":                                  "estimated_commencement_date",
+    "proposed start date":                                          "estimated_commencement_date",
+    "proposed date of completion":                                  "estimated_finish_date",
+    "proposed completion date":                                     "estimated_finish_date",
+    "project end date":                                             "estimated_finish_date",
+    "completion date":                                              "actual_finish_date",
+    "date of approval":                                             "approved_on_date",
+    # Costs — new verbose labels + legacy short labels
+    "cost of land":                                                 "_cost_of_land",
+    "cost of land (inr) (c1)( as certified by ca in form 1 )":     "_cost_of_land",
+    "estimated construction cost":                                  "_est_construction_cost",
+    "cost of layout development (inr) (c2)( as certified by ca in form 1 )": "_est_construction_cost",
+    "total construction cost":                                      "_est_construction_cost",
+    "total project cost":                                           "_total_project_cost",
+    "total project cost (inr) (c1+c2)":                            "_total_project_cost",
+    # Land
+    "land area":                                                    "land_area",
+    "extent":                                                       "land_area",
+    "extent of land":                                               "land_area",
+    "total land area":                                              "land_area",
+    # Construction area
+    "construction area":                                            "construction_area",
+    "total construction area":                                      "construction_area",
+    "built up area":                                                "construction_area",
+    # Units / plots
+    "number of plots":                                              "number_of_residential_units",
+    "total number of plots":                                        "number_of_residential_units",
+    "total no. of plots":                                           "number_of_residential_units",
+    "no. of plots":                                                 "number_of_residential_units",
+    "number of residential units":                                  "number_of_residential_units",
+    "total no. of units":                                           "number_of_residential_units",
+    "number of commercial units":                                   "number_of_commercial_units",
+    "no. of commercial units":                                      "number_of_commercial_units",
+    # Bank
+    "bank name":                                                    "_bank_name",
+    "account no":                                                   "_account_no",
+    "account no.(70% account)":                                     "_account_no",
+    "account name":                                                 "_account_name",
+    "ifsc":                                                         "_ifsc",
+    "ifsc code":                                                    "_ifsc",
+    "branch":                                                       "_branch",
+    # Progress
+    "total completion percentage":                                  "_total_completion_pct",
+    "extent of development carried till date":                      "_total_completion_pct",
+    # Description
+    "project description":                                          "project_description",
 }
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -193,21 +251,86 @@ def _extract_listing_rows(html: str, district: str) -> list[dict]:
     return rows
 
 
+# ── Detail page fetching ─────────────────────────────────────────────────────
+
+def _fetch_detail(ack_no: str, logger: CrawlerLogger) -> tuple[str | None, dict]:
+    """
+    Two-step detail fetch (new portal behaviour as of 2025):
+      1. POST /projectViewDetails with appNo=<ack_no>
+         → parse search-results table → extract numeric DB id + approved_on date.
+      2. POST /projectDetails with action=<numeric_id>
+         → full project detail page (~200–450 KB HTML).
+    Returns (html | None, meta_dict).
+    meta_dict keys: approved_on_date, status_of_the_project, project_type_listing
+    """
+    # Step 1: search for project to get its numeric DB id
+    search_resp = safe_post(
+        PROJECT_URL,
+        data={"appNo": ack_no, "regNo": "", "project": "", "firm": "",
+              "district": "0", "subdistrict": "0"},
+        retries=3, logger=logger, timeout=60.0,
+    )
+    if not search_resp:
+        logger.warning(f"Search POST failed for {ack_no!r}", step="detail")
+        return None, {}
+
+    search_soup = BeautifulSoup(search_resp.text, "lxml")
+    tbl = search_soup.find("table")
+    if not tbl:
+        logger.warning(f"No table in search results for {ack_no!r}", step="detail")
+        return None, {}
+
+    rows = tbl.find_all("tr")
+    numeric_id: str | None = None
+    meta: dict = {}
+
+    if rows:
+        hdr_cells = rows[0].find_all(["th", "td"])
+        headers = [_clean(c.get_text()).lower() for c in hdr_cells]
+        approved_idx   = next((i for i, h in enumerate(headers) if "approved on" in h), -1)
+        status_idx     = next((i for i, h in enumerate(headers) if h.strip() == "status"), -1)
+        proj_type_idx  = next((i for i, h in enumerate(headers) if "project type" in h), -1)
+
+        for row in rows[1:]:
+            a = row.find("a", onclick=lambda s: s and "showFileApplicationPreview" in s)
+            if not a:
+                continue
+            numeric_id = a.get("id", "")
+            cells = row.find_all("td")
+            if approved_idx >= 0 and approved_idx < len(cells):
+                raw_date = _clean(cells[approved_idx].get_text())
+                parsed = parse_datetime(raw_date)
+                meta["approved_on_date"] = (
+                    parsed.strftime("%Y-%m-%d %H:%M:%S+00:00") if parsed else None
+                )
+            if status_idx >= 0 and status_idx < len(cells):
+                meta["status_of_the_project"] = _clean(cells[status_idx].get_text())
+            if proj_type_idx >= 0 and proj_type_idx < len(cells):
+                meta["project_type_listing"] = _clean(cells[proj_type_idx].get_text())
+            break
+
+    if not numeric_id:
+        logger.warning(f"Numeric DB id not found for {ack_no!r}", step="detail")
+        return None, meta
+
+    # Step 2: fetch full detail page
+    detail_resp = safe_post(
+        DETAIL_URL, data={"action": numeric_id},
+        retries=3, logger=logger, timeout=60.0,
+    )
+    if not detail_resp:
+        logger.warning(f"Detail POST failed for numeric_id={numeric_id!r}", step="detail")
+        return None, meta
+
+    return detail_resp.text, meta
+
+
 # ── Detail page parsing ───────────────────────────────────────────────────────
-
-def _post_detail(ack_no: str, logger: CrawlerLogger) -> str | None:
-    """POST to /projectDetails with action=<ack_no>. Returns raw HTML fragment."""
-    resp = safe_post(DETAIL_URL, data={"action": ack_no}, retries=3,
-                     logger=logger, timeout=60.0)
-    return resp.text if resp else None
-
 
 def _extract_kv_pairs(soup: BeautifulSoup) -> dict[str, str]:
     """
-    Extract label→value pairs from the detail HTML fragment.
-    Handles two common JSP table patterns:
-      1. <tr><td>Label</td><td>Value</td></tr>
-      2. <tr><td>Label :</td><td>Value</td></tr>
+    Extract label→value pairs from tr/td rows (still used for address fields
+    like 'present address', 'permanent address', 'official address').
     """
     result: dict[str, str] = {}
     for row in soup.find_all("tr"):
@@ -221,12 +344,63 @@ def _extract_kv_pairs(soup: BeautifulSoup) -> dict[str, str]:
     return result
 
 
+def _extract_grid_kv(soup: BeautifulSoup) -> dict[str, str]:
+    """
+    Extract label→value pairs from Bootstrap grid div pairs.
+    Handles col-md-3/col-md-3, col-md-3/col-md-9, and col-md-6/col-md-6 layouts.
+    The new portal renders fields as adjacent div pairs where the first div
+    contains a <p class="text-right"> label and the second contains the value.
+    Iterates ALL direct child divs (not just col-md-3) to support all column widths.
+    """
+    result: dict[str, str] = {}
+    for row_div in soup.find_all("div", class_="row"):
+        cols = row_div.find_all("div", recursive=False)
+        for i in range(0, len(cols) - 1, 2):
+            label_div = cols[i]
+            value_div = cols[i + 1]
+            label_p = label_div.find("p")
+            value_tag = value_div.find(["p", "pre"])
+            if not label_p or not value_tag:
+                continue
+            # Strip the decorative colon-span from the label
+            for span in label_p.find_all("span", class_="space_LR"):
+                span.decompose()
+            label = _clean(label_p.get_text()).rstrip(":").lower().strip()
+            value = _clean(value_tag.get_text())
+            if label and value and len(label) < 200 and label not in result:
+                result[label] = value
+    return result
+
+
+def _extract_header_fields(soup: BeautifulSoup) -> dict[str, str]:
+    """
+    Extract Project Name / Acknowledgement Number / Registration Number from
+    <span class="user_name"> elements in the detail page header.
+    """
+    result: dict[str, str] = {}
+    for span in soup.find_all("span", class_="user_name"):
+        text = _clean(span.get_text())
+        m = re.match(r"^([^:]+)\s*:\s*(.+)$", text)
+        if not m:
+            continue
+        label = m.group(1).strip().lower()
+        value = m.group(2).strip()
+        if "project name" in label:
+            result["project_name"] = value
+        elif "acknowledgement" in label:
+            result["acknowledgement_no"] = value
+        elif "registration" in label:
+            result["project_registration_no"] = value
+    return result
+
+
 def _parse_section_table(soup: BeautifulSoup, heading_keywords: list[str]) -> list[dict]:
     """
     Find the first <table> whose nearest preceding heading text contains any
     of the given keywords. Returns list of header-keyed row dicts.
+    Searches h1 (new portal) as well as h2/h3/h4/b/strong/th (legacy).
     """
-    for el in soup.find_all(["h2", "h3", "h4", "b", "strong", "th"]):
+    for el in soup.find_all(["h1", "h2", "h3", "h4", "b", "strong", "th"]):
         if not any(kw in _clean(el.get_text()).lower() for kw in heading_keywords):
             continue
         tbl = el.find_next("table")
@@ -256,14 +430,29 @@ def _parse_section_table(soup: BeautifulSoup, heading_keywords: list[str]) -> li
 
 
 def _parse_detail(html: str, ack_no: str, search_district: str,
-                  start_page: int) -> dict:
+                  start_page: int, meta: dict | None = None) -> dict:
     """
-    Parse the HTML fragment returned by POST /projectDetails.
+    Parse the full detail page returned by POST /projectDetails.
+    Uses Bootstrap grid (col-md-3) KV pairs for most fields plus
+    tr/td KV pairs for address fields.
+    meta may contain approved_on_date and status_of_the_project from listing.
     Returns a dict of normalized schema fields ready for merging.
     """
+    if meta is None:
+        meta = {}
     soup = BeautifulSoup(html, "lxml")
-    kv   = _extract_kv_pairs(soup)
+
+    # Merge both KV extraction strategies: grid (primary) + tr/td (for addresses)
+    grid_kv = _extract_grid_kv(soup)
+    td_kv   = _extract_kv_pairs(soup)
+    # grid_kv takes priority; td_kv fills in what grid misses
+    kv: dict[str, str] = {**td_kv, **grid_kv}
+
     out: dict = {}
+
+    # ── 0. Header fields (project name / ack_no / reg_no) ───────────────────
+    hdr = _extract_header_fields(soup)
+    out.update(hdr)
 
     # ── 1. Map label→schema field ────────────────────────────────────────────
     for raw_key, val in kv.items():
@@ -281,28 +470,64 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
                 return fallback
         return ""
 
-    # ── 2. Parse date fields ─────────────────────────────────────────────────
-    for f in ("actual_commencement_date", "estimated_finish_date",
-              "actual_finish_date", "approved_on_date"):
+    # ── 2. Apply listing metadata (approved_on, status) ─────────────────────
+    if meta.get("approved_on_date") and not out.get("approved_on_date"):
+        out["approved_on_date"] = meta["approved_on_date"]
+    if meta.get("status_of_the_project") and not out.get("status_of_the_project"):
+        out["status_of_the_project"] = meta["status_of_the_project"]
+    if meta.get("project_type_listing") and not out.get("project_type"):
+        out["project_type"] = meta["project_type_listing"]
+
+    # ── 3. Parse date fields ─────────────────────────────────────────────────
+    for f in ("actual_commencement_date", "estimated_commencement_date",
+              "estimated_finish_date", "actual_finish_date", "approved_on_date"):
         raw = out.get(f)
         if raw:
             parsed = parse_datetime(raw)
             out[f] = parsed.strftime("%Y-%m-%d %H:%M:%S+00:00") if parsed else None
+    # When promoter has applied for completion, set actual_finish_date from
+    # estimated_finish_date (portal shows the same project end date for both).
+    # Detect via the "Promoter has Applied for Completion" h1 heading on the page.
+    if not out.get("actual_finish_date") and out.get("estimated_finish_date"):
+        completion_applied = any(
+            "applied for completion" in _clean(h1.get_text()).lower()
+            for h1 in soup.find_all("h1")
+        )
+        if completion_applied:
+            out["actual_finish_date"] = out["estimated_finish_date"]
 
-    # ── 3. Land area as float ────────────────────────────────────────────────
-    if out.get("land_area"):
-        out["land_area"] = _safe_float(str(out["land_area"]))
+    # ── 4. Land area — find "X Acres, Y Gunta/ Z Sq Mtr" pattern in table cells
+    land_area_m2: float | None = None
+    for td in soup.find_all("td"):
+        td_text = _clean(td.get_text())
+        m = re.search(r"\d+\s*(?:Acres?|Gunta)[^/]*/\s*(\d+(?:\.\d+)?)\s*Sq\s*Mtr",
+                      td_text, re.I)
+        if m:
+            land_area_m2 = float(m.group(1))
+            break
+    if land_area_m2 is None and out.get("land_area"):
+        land_area_m2 = _safe_float(str(out.get("land_area")))
+    if land_area_m2 is not None:
+        out["land_area"] = land_area_m2
+        out["land_area_details"] = {
+            "land_area": str(round(land_area_m2)),
+            "land_area_unit": None,
+            "construction_area": None,
+            "construction_area_unit": None,
+        }
 
-    # ── 4. Project location ──────────────────────────────────────────────────
+    # ── 5. Project location ──────────────────────────────────────────────────
     district = _pop_mapped("_district", "district")
+    # Prefer the full project address string; fall back to village name
+    project_address = _pop_mapped("_project_address", "project address")
     loc: dict = {k: v for k, v in {
-        "district":              district,
-        "taluk":                 _pop_mapped("_taluk", "taluk"),
-        "pin_code":              _pop_mapped("_pin_code", "pin code"),
-        "latitude":              _pop_mapped("_latitude", "latitude"),
-        "longitude":             _pop_mapped("_longitude", "longitude"),
+        "district":               district,
+        "taluk":                  _pop_mapped("_taluk", "taluk"),
+        "pin_code":               _pop_mapped("_pin_code", "pin code"),
+        "latitude":               _pop_mapped("_latitude", "latitude"),
+        "longitude":              _pop_mapped("_longitude", "longitude"),
         "survey_resurvey_number": _pop_mapped("_survey_no", "survey / resurvey number"),
-        "raw_address":           _pop_mapped("_village", "village"),
+        "raw_address":            project_address or _pop_mapped("_village", "village"),
     }.items() if v}
     for coord_key, store_key in (("latitude", "processed_latitude"),
                                  ("longitude", "processed_longitude")):
@@ -314,77 +539,170 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
         out["project_location_raw"] = loc
     if district:
         out["project_city"] = district.upper()
+    if loc.get("pin_code"):
+        out["project_pin_code"] = loc["pin_code"]
 
-    # ── 5. Promoter address ──────────────────────────────────────────────────
+    # ── 6. Promoter address ──────────────────────────────────────────────────
     prom_addr: dict = {}
-    for key in kv:
-        if "promoter" in key and "address" in key:
+    # Primary: Bootstrap grid "promoter address" field
+    for key in ("promoter address",):
+        if kv.get(key):
             prom_addr["raw_address"] = kv[key]
             break
-    for sub, label in [("state", "state"), ("taluk", "taluk"),
-                       ("district", "district"), ("pin_code", "pin code")]:
-        val = kv.get(f"promoter {label}") or kv.get(f"promoter's {label}")
-        if val:
-            prom_addr[sub] = val
+    if not prom_addr.get("raw_address"):
+        for key in grid_kv:
+            if "promoter" in key and "address" in key:
+                prom_addr["raw_address"] = grid_kv[key]
+                break
+    # Location sub-fields (may come from promoter section of the grid)
+    for sub, labels in [
+        ("state",    ["promoter state", "promoter's state"]),
+        ("taluk",    ["promoter taluk", "promoter's taluk", "taluk"]),
+        ("district", ["promoter district", "promoter's district", "district"]),
+        ("pin_code", ["promoter pin code", "pin code"]),
+    ]:
+        for label in labels:
+            val = kv.get(label, "")
+            if val:
+                prom_addr[sub] = val
+                break
+    # Karnataka is always the state for this portal
+    if not prom_addr.get("state"):
+        prom_addr["state"] = "Karnataka"
     if prom_addr:
         out["promoter_address_raw"] = prom_addr
 
-    # ── 6. Promoter contact (website) ────────────────────────────────────────
-    website = _pop_mapped("_website", "website")
+    # ── 7. Promoter contact (website) ────────────────────────────────────────
+    website = _pop_mapped("_website", "website", "promoter website")
     if website:
         out["promoter_contact_details"] = {"website": website}
 
-    # ── 7. Promoters details (GST, PAN, trade reg, objective) ────────────────
-    pd: dict = {
-        "gst_no":          _pop_mapped("_gst_no", "gst no"),
-        "pan_no":          _pop_mapped("_pan_no", "pan no"),
-        "registration_no": _pop_mapped("_trade_reg_no", "trade licence / registration no"),
+    # ── 8. Promoters details (GST, PAN, trade reg, objective) ────────────────
+    pd_dict: dict = {
+        "gst_no":          _pop_mapped("_gst_no", "gst no", "gstin"),
+        "pan_no":          _pop_mapped("_pan_no", "pan no", "pan"),
+        "registration_no": _pop_mapped("_trade_reg_no", "trade licence / registration no",
+                                       "registration number"),
         "objective":       _pop_mapped("_objective", "objective"),
     }
-    pd = {k: v for k, v in pd.items() if v}
-    if pd:
-        out["promoters_details"] = pd
+    pd_dict = {k: v for k, v in pd_dict.items() if v}
+    if pd_dict:
+        out["promoters_details"] = pd_dict
 
-    # ── 8. Bank details ──────────────────────────────────────────────────────
+    # ── 9. Bank details ──────────────────────────────────────────────────────
+    # Bank section uses "state" which can conflict; grab it from grid before popping
+    bank_state = grid_kv.get("state", "")
+    bank_district = grid_kv.get("district", district)
+    bank_pin = grid_kv.get("pin code", "")
     bank: dict = {
         "bank_name":    _pop_mapped("_bank_name", "bank name"),
-        "account_no":   _pop_mapped("_account_no", "account no"),
+        "account_no":   _pop_mapped("_account_no", "account no", "account no.(70% account)"),
         "account_name": _pop_mapped("_account_name", "account name"),
-        "IFSC":         _pop_mapped("_ifsc", "ifsc"),
+        "IFSC":         _pop_mapped("_ifsc", "ifsc", "ifsc code"),
         "branch":       _pop_mapped("_branch", "branch"),
     }
+    if bank_state:
+        bank["state"] = bank_state
+    if bank_district:
+        bank["district"] = bank_district
+    if bank_pin:
+        bank["pin_code"] = bank_pin
     bank = {k: v for k, v in bank.items() if v}
     if bank:
         out["bank_details"] = bank
 
-    # ── 9. Project cost ──────────────────────────────────────────────────────
+    # ── 10. Project cost ─────────────────────────────────────────────────────
     cost: dict = {
-        "cost_of_land":                _pop_mapped("_cost_of_land", "cost of land"),
-        "estimated_construction_cost": _pop_mapped("_est_construction_cost", "estimated construction cost"),
-        "total_project_cost":          _pop_mapped("_total_project_cost", "total project cost"),
+        "cost_of_land": _pop_mapped(
+            "_cost_of_land", "cost of land",
+            "cost of land (inr) (c1)( as certified by ca in form 1 )"),
+        "estimated_construction_cost": _pop_mapped(
+            "_est_construction_cost", "estimated construction cost",
+            "cost of layout development (inr) (c2)( as certified by ca in form 1 )",
+            "total construction cost"),
+        "total_project_cost": _pop_mapped(
+            "_total_project_cost", "total project cost",
+            "total project cost (inr) (c1+c2)"),
     }
     cost = {k: v for k, v in cost.items() if v}
     if cost:
         out["project_cost_detail"] = cost
 
-    # ── 10. Building / plot details ──────────────────────────────────────────
+    # ── 11. Building / plot details ──────────────────────────────────────────
+    # New page: "Development Details ( Plot Dimension wise break up )" h1
+    # Columns: Sl No. | Plot Type | Number of Sites | Total Area (in Sq.Mtr)
     brows = _parse_section_table(
-        soup, ["plot detail", "plot type", "unit detail", "building detail"])
+        soup,
+        ["plot dimension", "plot detail", "plot type", "unit detail",
+         "building detail", "development detail"])
     if brows:
         bd = []
+        skip_keys = {"s.no", "sl.no", "sl no.", "#", "no.", "total"}
         for r in brows:
-            vals = list(r.values())
-            ft   = _clean(vals[0]) if vals else ""
-            area = _clean(vals[1]) if len(vals) > 1 else ""
-            if ft and ft.lower() not in ("s.no", "sl.no", "#", "no."):
-                bd.append({"flat_type": ft, "total_area": area})
+            # Use header-keyed values; fall back to positional
+            flat_type = (r.get("Plot Type (Site Dimension in Mtr)")
+                         or r.get("Type of Inventory") or r.get("Flat Type")
+                         or list(r.values())[1] if len(r) > 1 else "")
+            total_area = (r.get("Total Area (in Sq.Mtr)")
+                          or r.get("Carpet Area (Sq Mtr)") or r.get("Total Area")
+                          or list(r.values())[3] if len(r) > 3 else "")
+            flat_type = _clean(str(flat_type))
+            total_area = _clean(str(total_area))
+            if flat_type and flat_type.lower() not in skip_keys:
+                bd.append({"flat_type": flat_type, "total_area": total_area})
         if bd:
             out["building_details"] = bd
 
-    # ── 11. Professional information ─────────────────────────────────────────
-    prows = _parse_section_table(soup, ["professional", "engineer", "architect"])
-    if prows:
-        profs = []
+    # ── 11b. Proposed timeline — parse "Project Schedule" table ──────────────
+    sched_rows = _parse_section_table(soup, ["project schedule"])
+    if sched_rows:
+        timeline = []
+        for r in sched_rows:
+            title = _clean(r.get("Project Work") or r.get("col_1") or "")
+            status = _clean(r.get("Is Applicable ?") or r.get("col_2") or "")
+            end_date_raw = _clean(r.get("Estimated To Date") or r.get("col_4") or "")
+            if not title:
+                continue
+            parsed_end = parse_datetime(end_date_raw) if end_date_raw else None
+            timeline.append({
+                "title": title,
+                "status": status or None,
+                "proposed_end_date": (
+                    parsed_end.strftime("%Y-%m-%d %H:%M:%S+00:00") if parsed_end else None
+                ),
+            })
+        if timeline:
+            out["proposed_timeline"] = timeline
+
+    # ── 12. Professional information ─────────────────────────────────────────
+    # New page uses separate h1 sections per role; collect them all
+    profs: list[dict] = []
+    role_keywords = [
+        ("project chartered accountant", "Accountant"),
+        ("project engineer", "Engineers"),
+        ("project architect", "Architect"),
+        ("project contractor", "Contractor"),
+    ]
+    for kw, role_label in role_keywords:
+        prows = _parse_section_table(soup, [kw])
+        for r in prows:
+            vals = list(r.values())
+            # Columns: Sl No. | Name | Address | Year | Licence No.
+            name = _clean(vals[1]) if len(vals) > 1 else ""
+            if not name:
+                name = _clean(vals[0]) if vals else ""
+            addr = _clean(vals[2]) if len(vals) > 2 else ""
+            yr   = _clean(vals[3]) if len(vals) > 3 else ""
+            lic  = _clean(vals[4]) if len(vals) > 4 else ""
+            if name and name.lower() not in ("sl no.", "s.no", "#"):
+                e = {k: v for k, v in {
+                    "name": name, "role": role_label, "address": addr,
+                    "effective_date": yr, "key_real_estate_projects": lic,
+                }.items() if v}
+                profs.append(e)
+    # Fall back to legacy search
+    if not profs:
+        prows = _parse_section_table(soup, ["professional", "engineer", "architect"])
         for r in prows:
             vals = list(r.values())
             e = {
@@ -397,50 +715,58 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
             e = {k: v for k, v in e.items() if v}
             if e.get("name"):
                 profs.append(e)
-        if profs:
-            out["professional_information"] = profs
+    if profs:
+        out["professional_information"] = profs
 
-    # ── 12. Co-promoter / land-owner details ─────────────────────────────────
+    # ── 13. Co-promoter / land-owner details ─────────────────────────────────
     crows = _parse_section_table(soup, ["co-promoter", "co promoter", "land owner"])
     if crows:
         colist = []
         for r in crows:
-            vals = list(r.values())
-            e = {
-                "name":            _clean(vals[0]) if vals else "",
-                "survey_no":       _clean(vals[1]) if len(vals) > 1 else "",
-                "land_share":      _clean(vals[2]) if len(vals) > 2 else "",
-                "present_address": _clean(vals[3]) if len(vals) > 3 else "",
-                "comm_address":    _clean(vals[4]) if len(vals) > 4 else "",
-            }
-            e = {k: v for k, v in e.items() if v}
-            if e.get("name"):
+            # New columns: Sl No., Land Owner Name, Land Owner Share, Survey Number,
+            #              Present Address, Communication Address
+            name         = (r.get("Land Owner Name") or r.get("Name", ""))
+            survey_no    = (r.get("Survey Number") or r.get("Survey No", ""))
+            land_share   = (r.get("Land Owner Share") or r.get("Land Share", ""))
+            present_addr = r.get("Present Address", "")
+            comm_addr    = r.get("Communication Address") or r.get("Comm Address", "")
+            name = _clean(name)
+            if name and name.lower() not in ("s.no", "sl.no", "#", "sl no."):
+                e = {k: v for k, v in {
+                    "name": name,
+                    "survey_no": _clean(survey_no),
+                    "land_share": _clean(land_share),
+                    "present_address": _clean(present_addr),
+                    "comm_address": _clean(comm_addr),
+                }.items() if v}
                 colist.append(e)
         if colist:
             out["co_promoter_details"] = colist
 
-    # ── 13. Authorised signatory ─────────────────────────────────────────────
-    srows = _parse_section_table(soup, ["authorised signatory", "authorized signatory"])
-    if srows:
-        vals = list(srows[0].values())
+    # ── 14. Authorised signatory ─────────────────────────────────────────────
+    # New page: name from grid KV; addresses from tr/td KV
+    sg_name = grid_kv.get("name of authorized signatory", "")
+    if sg_name:
         sg = {
-            "name":             _clean(vals[0]) if vals else "",
-            "pan_no":           _clean(vals[1]) if len(vals) > 1 else "",
-            "present_address":  _clean(vals[2]) if len(vals) > 2 else "",
-            "official_address": _clean(vals[3]) if len(vals) > 3 else "",
-            "permanent_address": _clean(vals[4]) if len(vals) > 4 else "",
+            "name":              sg_name,
+            "pan_no":            grid_kv.get("pan", ""),
+            "present_address":   td_kv.get("present address", ""),
+            "official_address":  td_kv.get("official address", ""),
+            "permanent_address": td_kv.get("permanent address", ""),
         }
-        sg["raw_address"] = sg.get("present_address") or sg.get("official_address", "")
+        sg["raw_address"] = (sg.get("present_address") or sg.get("official_address") or "")
         sg = {k: v for k, v in sg.items() if v}
         if sg.get("name"):
             out["authorised_signatory_details"] = sg
 
-    # ── 14. Construction progress (total completion %) ───────────────────────
-    total_pct = _pop_mapped("_total_completion_pct", "total completion percentage")
+    # ── 15. Construction progress (total completion %) ───────────────────────
+    total_pct = _pop_mapped("_total_completion_pct", "total completion percentage",
+                            "extent of development carried till date")
     if not total_pct:
-        m = re.search(r"total\s+completion\s+percentage\s*[:\s]+(\d+\s*%?)", html, re.I)
-        if m:
-            total_pct = m.group(1).strip()
+        m2 = re.search(r"extent\s+of\s+development\s+carried\s+till\s+date\s*[:\s]+([^\n<]+)",
+                       html, re.I)
+        if m2:
+            total_pct = m2.group(1).strip()
     if total_pct:
         if "%" not in total_pct:
             total_pct = f"{total_pct} %"
@@ -448,12 +774,30 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
             {"title": "total_completion_percentage", "progress_percentage": total_pct}
         ]
 
-    # ── 15. Raw data snapshot ────────────────────────────────────────────────
+    # ── 16. Project images — img tags with alt containing "photo" ───────────
+    images: list[str] = []
+    seen_img_urls: set[str] = set()
+    for img in soup.find_all("img"):
+        alt = (img.get("alt") or "").lower()
+        if "photo" not in alt:
+            continue
+        src = img.get("src") or ""
+        if not src:
+            continue
+        full_url = src if src.startswith("http") else f"{BASE_URL}{src}"
+        if "download_jc" in full_url.lower() and full_url not in seen_img_urls:
+            seen_img_urls.add(full_url)
+            images.append(full_url)
+    if images:
+        out["project_images"] = images
+
+    # ── 17. Raw data snapshot ────────────────────────────────────────────────
     out["data"] = {
-        "district":                  search_district,
-        "START_PAGE":                str(start_page),
-        "project_district":          district.upper() if district else "",
+        "district":                    search_district,
+        "START_PAGE":                  str(start_page),
+        "project_district":            district.upper() if district else "",
         "total_completion_percentage": total_pct or "",
+        "status":                      meta.get("status_of_the_project", ""),
     }
 
     return out
@@ -570,33 +914,59 @@ def _process_documents(
 
 # ── Sentinel ──────────────────────────────────────────────────────────────────
 
-def _sentinel_check(logger: CrawlerLogger) -> bool:
-    """Verify the Karnataka RERA portal is reachable and returns project rows."""
-    test_district = DISTRICTS[0]
+def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
+    """
+    Data-quality sentinel for Karnataka RERA.
+    Loads state_projects_sample/karnataka.json as the baseline, fetches the
+    sentinel project detail via _fetch_detail + _parse_detail, and verifies
+    ≥ 80% field coverage.
+    """
+    import json as _json
+    import os as _os
+    from core.sentinel_utils import check_field_coverage
 
-    html = _post_listing(test_district, 0, logger)
-    if html is None:
-        logger.error("Sentinel: listing POST failed — portal unreachable", step="sentinel")
+    sentinel_reg = config.get("sentinel_registration_no", "")
+    if not sentinel_reg:
+        logger.warning("No sentinel_registration_no configured — skipping", step="sentinel")
+        return True
+
+    sample_path = _os.path.join(
+        _os.path.dirname(_os.path.dirname(__file__)),
+        "state_projects_sample", "karnataka.json",
+    )
+    try:
+        with open(sample_path) as fh:
+            baseline: dict = _json.load(fh)
+    except FileNotFoundError:
+        logger.warning("Sample baseline not found — skipping coverage check",
+                       path=sample_path, step="sentinel")
+        return True
+
+    logger.info(f"Sentinel: fetching detail for {sentinel_reg}", step="sentinel")
+    try:
+        html, meta = _fetch_detail(sentinel_reg, logger)
+        if not html:
+            logger.error("Sentinel: detail fetch returned no HTML", step="sentinel")
+            return False
+        fresh = _parse_detail(html, sentinel_reg, DISTRICTS[0], start_page=0, meta=meta) or {}
+    except Exception as exc:
+        logger.error(f"Sentinel: fetch/parse error — {exc}", step="sentinel")
         return False
 
-    ack_nos = _extract_ack_nos(html)
-    soup = BeautifulSoup(html, "lxml")
-    text = soup.get_text().lower()
+    if not fresh:
+        logger.error("Sentinel: no data extracted", step="sentinel")
+        return False
 
-    if not ack_nos:
-        logger.warning(
-            "Sentinel: no ack_nos found for test district; portal may be blocking",
-            district=test_district,
-            step="sentinel",
+    if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
+        from core.db import insert_crawl_error as _ice
+        _ice(
+            run_id, config.get("id", "karnataka_rera"),
+            "SENTINEL_FAILED",
+            f"Coverage below 80% for sentinel project {sentinel_reg}",
         )
-        if "error" in text or "not found" in text or len(soup.get_text()) < 200:
-            logger.error("Sentinel: portal returned error page", step="sentinel")
-            return False
+        return False
 
-    logger.info(
-        f"Sentinel passed: {len(ack_nos)} project(s) found for district={test_district!r}",
-        step="sentinel",
-    )
+    logger.info("Sentinel check passed", reg=sentinel_reg, step="sentinel")
     return True
 
 
@@ -626,11 +996,14 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     items_processed = 0
     stop_all = False
 
-    if not _sentinel_check(logger):
+    # ── Sentinel health check ────────────────────────────────────────────────
+    if not _sentinel_check(config, run_id, logger):
+        logger.error("Sentinel failed — aborting crawl", step="sentinel")
+        counters["error_count"] += 1
         return counters
 
     checkpoint = load_checkpoint(config["id"], mode) or {}
-    start_district_idx = checkpoint.get("district_idx", 0)
+    start_district_idx = int(checkpoint.get("last_page", 0))
 
     for district_idx, district in enumerate(districts):
         if stop_all:
@@ -694,10 +1067,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 )
                 try:
 
-                    # ── Fetch and parse detail page ─────────────────────────────
-                    detail_html = _post_detail(ack_no, logger)
+                    # ── Fetch and parse detail page (two-step) ──────────────────
+                    detail_html, fetch_meta = _fetch_detail(ack_no, logger)
                     if detail_html:
-                        detail = _parse_detail(detail_html, ack_no, district, start_page)
+                        detail = _parse_detail(
+                            detail_html, ack_no, district, start_page, meta=fetch_meta
+                        )
                         reg_no = detail.get("project_registration_no", "")
                         if reg_no:
                             project_key = generate_project_key(reg_no)
@@ -802,7 +1177,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             random_delay(*delay_range)
 
         # Save checkpoint after each district
-        save_checkpoint(config["id"], mode, {"district_idx": district_idx + 1})
+        save_checkpoint(config["id"], mode, district_idx + 1, None, run_id)
         logger.info(
             f"District complete: {district!r} — counters so far: {counters}",
             step="district_done",

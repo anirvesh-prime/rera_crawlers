@@ -1,0 +1,1967 @@
+{
+  "key": "13750258762429136751",
+  "project_registration_no": "PCGRERA200618000247",
+  "url": "https://rera.cgstate.gov.in/Promoter_Reg_Only_View_Application_new.aspx?MyID=MzM2",
+  "state": "chhattisgarh",
+  "domain": "rera.cgstate.gov.in",
+  "project_name": "AANYA ENCLAVE",
+  "project_type": "Plotted Development",
+  "promoter_name": "M/S SWASTIK DEVELOPERS",
+  "status_of_the_project": "Completed",
+  "project_state": "Chhattisgarh",
+  "crawl_machine_ip": "127.0.0.1",
+  "machine_name": "Anirveshs-MacBook-Air.local",
+  "project_location_raw": {
+    "state": "Chhattisgarh",
+    "district": "Bastar",
+    "taluk": "Jagdalpur",
+    "raw_address": "DHARAMPURA, EDUCATION HUB, JAGDALPUR BASTAR (C.G.)"
+  },
+  "promoter_address_raw": {
+    "registered_address": "PRATAPGANJ, BESIDE SAI TRADERS, JAGDALPUR 494001"
+  },
+  "promoter_contact_details": {
+    "email": "swastik.developersjdp@gmail.com",
+    "phone": "7000539966"
+  },
+  "bank_details": {
+    "account_no": "1012020007754",
+    "account_name": "RERA DESIGNATED ACCOUNT AANYA ENCLAVE",
+    "bank_name": "Bank of Baroda",
+    "branch": "JAGDALPUR",
+    "IFSC": "BARB0JAGDAL"
+  },
+  "project_cost_detail": {
+    "estimated_construction_cost": "57037000",
+    "cost_of_land": "29922000"
+  },
+  "building_details": [
+    {
+      "flat_name": "Plots",
+      "flat_type": "Residential",
+      "carpet_area": "14316",
+      "no_of_units": "1",
+      "booking_status": "94"
+    },
+    {
+      "updated": true,
+      "flat_name": "Plot Group",
+      "flat_type": "Plots Type",
+      "carpet_area": "Plot Area(Sq.Metre)",
+      "no_of_units": "1",
+      "booking_status": "Total Plot Sold/Booked"
+    },
+    {
+      "flat_name": "AANYA ENCLAVE",
+      "flat_type": "Residential",
+      "carpet_area": "14316",
+      "no_of_units": "1",
+      "booking_status": "0",
+      "updated": true
+    },
+    {
+      "flat_name": "PLOTS",
+      "flat_type": "Residential",
+      "carpet_area": "154040",
+      "no_of_units": "1",
+      "booking_status": "4",
+      "updated": true
+    },
+    {
+      "flat_name": "AANYA ENCLAVE",
+      "flat_type": "Residential",
+      "carpet_area": "14316",
+      "no_of_units": "1",
+      "booking_status": "19",
+      "updated": true
+    },
+    {
+      "flat_name": "0",
+      "flat_type": "Residential",
+      "carpet_area": "0",
+      "no_of_units": "1",
+      "booking_status": "0",
+      "updated": true
+    },
+    {
+      "flat_name": "AANYA ENCLAVE",
+      "flat_type": "Residential",
+      "carpet_area": "14316",
+      "no_of_units": "1",
+      "booking_status": "25",
+      "updated": true
+    },
+    {
+      "flat_name": "0",
+      "flat_type": "Residential",
+      "carpet_area": "0",
+      "no_of_units": "1",
+      "booking_status": "0",
+      "updated": true
+    },
+    {
+      "flat_name": "Aanya Enclave",
+      "flat_type": "Residential",
+      "carpet_area": "14080",
+      "no_of_units": "1",
+      "booking_status": "25",
+      "updated": true
+    },
+    {
+      "flat_name": "Aanya Enclave",
+      "flat_type": "Residential",
+      "carpet_area": "14316",
+      "no_of_units": "1",
+      "booking_status": "34",
+      "updated": true
+    },
+    {
+      "flat_name": "0",
+      "flat_type": "Residential",
+      "carpet_area": "0",
+      "no_of_units": "1",
+      "booking_status": "0",
+      "updated": true
+    },
+    {
+      "flat_name": "AANYA ENCLAVE",
+      "flat_type": "Residential",
+      "carpet_area": "14316",
+      "no_of_units": "1",
+      "booking_status": "39",
+      "updated": true
+    },
+    {
+      "flat_name": "AANYA ENCLAVE",
+      "flat_type": "Residential",
+      "carpet_area": "14316",
+      "no_of_units": "1",
+      "booking_status": "43",
+      "updated": true
+    },
+    {
+      "flat_name": "AANYA ENCLAVE",
+      "flat_type": "Residential",
+      "carpet_area": "14316",
+      "no_of_units": "1",
+      "booking_status": "46",
+      "updated": true
+    },
+    {
+      "flat_name": "AANYA ENCLAVE",
+      "flat_type": "Residential",
+      "carpet_area": "14316",
+      "no_of_units": "1",
+      "booking_status": "70",
+      "updated": true
+    },
+    {
+      "flat_name": "PLOTS",
+      "flat_type": "Residential",
+      "carpet_area": "14316",
+      "no_of_units": "1",
+      "booking_status": "69",
+      "updated": true
+    },
+    {
+      "flat_name": "PLOTS",
+      "flat_type": "Residential",
+      "carpet_area": "14316",
+      "no_of_units": "1",
+      "booking_status": "78",
+      "updated": true
+    },
+    {
+      "flat_name": "Plots",
+      "flat_type": "Residential",
+      "carpet_area": "14316",
+      "no_of_units": "1",
+      "booking_status": "94",
+      "updated": true
+    }
+  ],
+  "provided_faciltiy": {
+    "facility": "INTERNAL ROADS AND FOOTPATHS WATER SUPPLY SEWERAGE STORM WATER DRAINS LANDSCAPING AND TREE PLANTING STREET LIGHTING COMMUNITY BUILDINGS TREATMENT AND DISPOSAL OF SEWERAGE AND SULLAGE WAT WATER CONSERVATION RAIN WATER HARVESTING ENERGY MAANAGEMENT BOUNDARY WALL SECURITY SERVICE GYM PLACE OF WORSHIP"
+  },
+  "professional_information": [
+    {
+      "name": "Moti Shankar Dahiya",
+      "role": "Chartered Accountant",
+      "registration_no": "439364"
+    },
+    {
+      "name": "PAWAN KUMAR TIRTHANI",
+      "role": "Chartered Accountant",
+      "registration_no": "524358"
+    },
+    {
+      "name": "JITENDRA PRADHAN",
+      "role": "Engineer",
+      "registration_no": "1321228004"
+    },
+    {
+      "name": "BHASKAR GAJENDRA",
+      "role": "Architect",
+      "registration_no": "CA/2007/39836"
+    }
+  ],
+  "construction_progress": [
+    {
+      "title": "total_completion_percentage",
+      "date_of_reporting": "2021-09-30 00:00:00+00:00",
+      "progress_percentage": "100"
+    }
+  ],
+  "land_detail": {
+    "no_of_plots": "126",
+    "encumbrance_certificate": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENUM_7f5e041d-85b8-476b-be1f-898a10dc5415.pdf"
+  },
+  "data": {
+    "govt_type": "state",
+    "total_unit": "126",
+    "construction_area_unit": "sq.metre",
+    "end_date": "2022-04-30 00:00:00+00:00"
+  },
+  "promoters_details": {
+    "name": "M/S SWASTIK DEVELOPERS",
+    "type_of_firm": "Partnership Firm"
+  },
+  "status_update": {
+    "plot_detail": [
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "0",
+        "completion_date": "30 Sep 2018",
+        "total_available": "126",
+        "date_of_reporting": "20 Jun 2018"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "154040",
+        "booked_flats": "4",
+        "completion_date": "31 Dec 2018",
+        "total_available": "126",
+        "date_of_reporting": "01 Oct 2018"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "19",
+        "completion_date": "31 Mar 2019",
+        "total_available": "126",
+        "date_of_reporting": "01 Jan 2019"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "0",
+        "booked_flats": "0",
+        "completion_date": "31 Mar 2019",
+        "total_available": "0",
+        "date_of_reporting": "01 Jan 2019"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "25",
+        "completion_date": "30 Jun 2019",
+        "total_available": "126",
+        "date_of_reporting": "01 Apr 2019"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "0",
+        "booked_flats": "0",
+        "completion_date": "30 Jun 2019",
+        "total_available": "0",
+        "date_of_reporting": "01 Apr 2019"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14080",
+        "booked_flats": "25",
+        "completion_date": "30 Sep 2019",
+        "total_available": "126",
+        "date_of_reporting": "01 Jul 2019"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "34",
+        "completion_date": "31 Dec 2019",
+        "total_available": "126",
+        "date_of_reporting": "01 Oct 2019"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "0",
+        "booked_flats": "0",
+        "completion_date": "31 Dec 2019",
+        "total_available": "0",
+        "date_of_reporting": "01 Oct 2019"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "39",
+        "completion_date": "31 Mar 2020",
+        "total_available": "126",
+        "date_of_reporting": "01 Jan 2020"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "43",
+        "completion_date": "30 Jun 2020",
+        "total_available": "126",
+        "date_of_reporting": "01 Apr 2020"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "46",
+        "completion_date": "30 Sep 2020",
+        "total_available": "126",
+        "date_of_reporting": "01 Jul 2020"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "70",
+        "completion_date": "31 Dec 2020",
+        "total_available": "126",
+        "date_of_reporting": "01 Oct 2020"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "69",
+        "completion_date": "31 Mar 2021",
+        "total_available": "126",
+        "date_of_reporting": "01 Jan 2021"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "78",
+        "completion_date": "30 Jun 2021",
+        "total_available": "126",
+        "date_of_reporting": "01 Apr 2021"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "94",
+        "completion_date": "30 Sep 2021",
+        "total_available": "126",
+        "date_of_reporting": "01 Jul 2021"
+      }
+    ],
+    "building_details": [
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "0",
+        "completion_date": "30 Sep 2018",
+        "total_available": "126",
+        "date_of_reporting": "20 Jun 2018"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "154040",
+        "booked_flats": "4",
+        "completion_date": "31 Dec 2018",
+        "total_available": "126",
+        "date_of_reporting": "01 Oct 2018"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "19",
+        "completion_date": "31 Mar 2019",
+        "total_available": "126",
+        "date_of_reporting": "01 Jan 2019"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "0",
+        "booked_flats": "0",
+        "completion_date": "31 Mar 2019",
+        "total_available": "0",
+        "date_of_reporting": "01 Jan 2019"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "25",
+        "completion_date": "30 Jun 2019",
+        "total_available": "126",
+        "date_of_reporting": "01 Apr 2019"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "0",
+        "booked_flats": "0",
+        "completion_date": "30 Jun 2019",
+        "total_available": "0",
+        "date_of_reporting": "01 Apr 2019"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14080",
+        "booked_flats": "25",
+        "completion_date": "30 Sep 2019",
+        "total_available": "126",
+        "date_of_reporting": "01 Jul 2019"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "34",
+        "completion_date": "31 Dec 2019",
+        "total_available": "126",
+        "date_of_reporting": "01 Oct 2019"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "0",
+        "booked_flats": "0",
+        "completion_date": "31 Dec 2019",
+        "total_available": "0",
+        "date_of_reporting": "01 Oct 2019"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "39",
+        "completion_date": "31 Mar 2020",
+        "total_available": "126",
+        "date_of_reporting": "01 Jan 2020"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "43",
+        "completion_date": "30 Jun 2020",
+        "total_available": "126",
+        "date_of_reporting": "01 Apr 2020"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "46",
+        "completion_date": "30 Sep 2020",
+        "total_available": "126",
+        "date_of_reporting": "01 Jul 2020"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "70",
+        "completion_date": "31 Dec 2020",
+        "total_available": "126",
+        "date_of_reporting": "01 Oct 2020"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "69",
+        "completion_date": "31 Mar 2021",
+        "total_available": "126",
+        "date_of_reporting": "01 Jan 2021"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "78",
+        "completion_date": "30 Jun 2021",
+        "total_available": "126",
+        "date_of_reporting": "01 Apr 2021"
+      },
+      {
+        "flat_type": "Residential",
+        "carpet_area": "14316",
+        "booked_flats": "94",
+        "completion_date": "30 Sep 2021",
+        "total_available": "126",
+        "date_of_reporting": "01 Jul 2021"
+      }
+    ],
+    "construction_progress": [
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_1_7dc56576-399f-495b-98c2-9c5f1d6945db.jpg",
+        "title": "INTERNAL ROADS AND FOOTPATHS",
+        "date_of_reporting": "01 Oct 2019",
+        "date_of_completion": "31 Dec 2019",
+        "progress_percentage": "20%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_3_ae84c9d3-848f-4db9-8f58-f698ee6d8d2f.jpg",
+        "title": "SEWERAGE",
+        "date_of_reporting": "01 Oct 2019",
+        "date_of_completion": "31 Dec 2019",
+        "progress_percentage": "42%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_4_ed4498e4-ee2a-48d4-9df6-0e6d383f802b.jpg",
+        "title": "STORM WATER DRAINS",
+        "date_of_reporting": "01 Oct 2019",
+        "date_of_completion": "31 Dec 2019",
+        "progress_percentage": "42%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_5_92506788-41ae-4913-8640-cf2f25bcc188.jpg",
+        "title": "LANDSCAPING AND TREE PLANTING",
+        "date_of_reporting": "01 Oct 2019",
+        "date_of_completion": "31 Dec 2019",
+        "progress_percentage": "1%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_15_b59f78eb-1783-42cf-ba6d-2d371f378023.jpg",
+        "title": "COMMUNITY BUILDINGS/ CLUB HOUSE",
+        "date_of_reporting": "01 Oct 2019",
+        "date_of_completion": "31 Dec 2019",
+        "progress_percentage": "35%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_16_2e7db862-cb04-42c4-a929-9c943f379529.jpg",
+        "title": "BOUNDARY WALL",
+        "date_of_reporting": "01 Oct 2019",
+        "date_of_completion": "31 Dec 2019",
+        "progress_percentage": "70%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_Others_f202669f-33d3-4455-bafb-fa4bb93124ff.jpg",
+        "title": "central gate",
+        "date_of_reporting": "01 Oct 2019",
+        "date_of_completion": "31 Dec 2019",
+        "progress_percentage": "64%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_1_f6edb754-8ec0-40cc-a7e8-9b6a6db2bbce.jpg",
+        "title": "INTERNAL ROADS AND FOOTPATHS",
+        "date_of_reporting": "01 Jan 2020",
+        "date_of_completion": "31 Mar 2020",
+        "progress_percentage": "20%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_3_e81080e2-f3bb-478e-b228-b51d78c7654c.jpg",
+        "title": "SEWERAGE",
+        "date_of_reporting": "01 Jan 2020",
+        "date_of_completion": "31 Mar 2020",
+        "progress_percentage": "62%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_4_412be8de-edb8-4631-8aea-fc9e38e93063.jpg",
+        "title": "STORM WATER DRAINS",
+        "date_of_reporting": "01 Jan 2020",
+        "date_of_completion": "31 Mar 2020",
+        "progress_percentage": "62%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_5_3f30200b-b01d-4037-ac85-170f6e6ad7a5.jpg",
+        "title": "LANDSCAPING AND TREE PLANTING",
+        "date_of_reporting": "01 Jan 2020",
+        "date_of_completion": "31 Mar 2020",
+        "progress_percentage": "7%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_15_b01d137a-acf3-4974-84a8-456a723eee89.jpg",
+        "title": "COMMUNITY BUILDINGS/ CLUB HOUSE",
+        "date_of_reporting": "01 Jan 2020",
+        "date_of_completion": "31 Mar 2020",
+        "progress_percentage": "80%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_16_bfc1f368-fec6-4d11-951c-6c821a695f5f.jpg",
+        "title": "BOUNDARY WALL",
+        "date_of_reporting": "01 Jan 2020",
+        "date_of_completion": "31 Mar 2020",
+        "progress_percentage": "70%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_17_b5d2e378-151e-4a1f-aad5-1029570caf09.jpg",
+        "title": "SECURITY SERVICE",
+        "date_of_reporting": "01 Jan 2020",
+        "date_of_completion": "31 Mar 2020",
+        "progress_percentage": "89%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_1_049aefb1-893d-4907-af08-745c0d579a06.jpg",
+        "title": "INTERNAL ROADS AND FOOTPATHS",
+        "date_of_reporting": "01 Apr 2020",
+        "date_of_completion": "30 Jun 2020",
+        "progress_percentage": "23%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_3_91a5c780-4e0a-4ead-989a-0bc3c20822c9.jpg",
+        "title": "SEWERAGE",
+        "date_of_reporting": "01 Apr 2020",
+        "date_of_completion": "30 Jun 2020",
+        "progress_percentage": "67%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_4_318bd90e-091f-4208-97cc-2f9ed31df1d9.jpg",
+        "title": "STORM WATER DRAINS",
+        "date_of_reporting": "01 Apr 2020",
+        "date_of_completion": "30 Jun 2020",
+        "progress_percentage": "67%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_5_4cb53f2a-163a-42ec-aa68-84ef42f63bc7.jpg",
+        "title": "LANDSCAPING AND TREE PLANTING",
+        "date_of_reporting": "01 Apr 2020",
+        "date_of_completion": "30 Jun 2020",
+        "progress_percentage": "9%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_9_2cd68e71-db38-48b7-a545-f54b3d63efc0.jpg",
+        "title": "COMMUNITY BUILDINGS",
+        "date_of_reporting": "01 Apr 2020",
+        "date_of_completion": "30 Jun 2020",
+        "progress_percentage": "88%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_16_bf586bfe-e390-4178-a408-3d34689f78ce.jpg",
+        "title": "BOUNDARY WALL",
+        "date_of_reporting": "01 Apr 2020",
+        "date_of_completion": "30 Jun 2020",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_1_3a03c294-91c7-4854-b875-0cc7f4c187cf.jpg",
+        "title": "INTERNAL ROADS AND FOOTPATHS",
+        "date_of_reporting": "01 Jul 2020",
+        "date_of_completion": "30 Sep 2020",
+        "progress_percentage": "23%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_3_711f110d-fbca-4d4e-91e3-bf9c69ab0d83.jpg",
+        "title": "SEWERAGE",
+        "date_of_reporting": "01 Jul 2020",
+        "date_of_completion": "30 Sep 2020",
+        "progress_percentage": "74%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_4_a69ca892-33b6-4e62-be35-3f57301841f9.jpg",
+        "title": "STORM WATER DRAINS",
+        "date_of_reporting": "01 Jul 2020",
+        "date_of_completion": "30 Sep 2020",
+        "progress_percentage": "67%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_5_b331b801-815d-4554-8200-b4be87769c47.jpg",
+        "title": "LANDSCAPING AND TREE PLANTING",
+        "date_of_reporting": "01 Jul 2020",
+        "date_of_completion": "30 Sep 2020",
+        "progress_percentage": "9%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_9_8de4e08b-7c2e-48a2-9389-fa9f1a00ef65.jpg",
+        "title": "COMMUNITY BUILDINGS",
+        "date_of_reporting": "01 Jul 2020",
+        "date_of_completion": "30 Sep 2020",
+        "progress_percentage": "97%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_16_5accdb76-438e-4b46-93cd-00e8423b7049.jpg",
+        "title": "BOUNDARY WALL",
+        "date_of_reporting": "01 Jul 2020",
+        "date_of_completion": "30 Sep 2020",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_1_7b19d503-cfa3-44dc-ac6e-03a8e1641970.jpg",
+        "title": "INTERNAL ROADS AND FOOTPATHS",
+        "date_of_reporting": "01 Jul 2020",
+        "date_of_completion": "30 Sep 2020",
+        "progress_percentage": "23%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_3_d5b570a2-bbe3-4bad-b0ca-afbea19f5123.jpg",
+        "title": "SEWERAGE",
+        "date_of_reporting": "01 Jul 2020",
+        "date_of_completion": "30 Sep 2020",
+        "progress_percentage": "74%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_4_f8ce85c1-a956-4f97-aa2b-a4cec56b0165.jpg",
+        "title": "STORM WATER DRAINS",
+        "date_of_reporting": "01 Jul 2020",
+        "date_of_completion": "30 Sep 2020",
+        "progress_percentage": "67%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_5_39c13ca1-5aaa-40a4-805c-0796107d5d7b.jpg",
+        "title": "LANDSCAPING AND TREE PLANTING",
+        "date_of_reporting": "01 Jul 2020",
+        "date_of_completion": "30 Sep 2020",
+        "progress_percentage": "9%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_9_2cabc04b-9261-4b1c-9b42-99cd8a43bd9e.jpg",
+        "title": "COMMUNITY BUILDINGS",
+        "date_of_reporting": "01 Jul 2020",
+        "date_of_completion": "30 Sep 2020",
+        "progress_percentage": "97%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_16_34ce00a7-2114-45c5-80b1-e5cdeaf4f7f8.jpg",
+        "title": "BOUNDARY WALL",
+        "date_of_reporting": "01 Jul 2020",
+        "date_of_completion": "30 Sep 2020",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_1_da468a2d-e22f-4a6d-8f0e-1f9ea6e73718.jpg",
+        "title": "INTERNAL ROADS AND FOOTPATHS",
+        "date_of_reporting": "01 Oct 2020",
+        "date_of_completion": "31 Dec 2020",
+        "progress_percentage": "61%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_2_067baaca-bbb2-4bd2-9c7c-75f6c4144f0f.jpg",
+        "title": "WATER SUPPLY",
+        "date_of_reporting": "01 Oct 2020",
+        "date_of_completion": "31 Dec 2020",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_3_77bdf7b2-26e6-42fd-a9db-fc303c418f1e.jpg",
+        "title": "SEWERAGE",
+        "date_of_reporting": "01 Oct 2020",
+        "date_of_completion": "31 Dec 2020",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_4_bab7720e-31bf-4de8-a9f6-e04687625811.jpg",
+        "title": "STORM WATER DRAINS",
+        "date_of_reporting": "01 Oct 2020",
+        "date_of_completion": "31 Dec 2020",
+        "progress_percentage": "95%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_5_a0945e13-8b4c-403a-b1d1-6f2bcd7ba51d.jpg",
+        "title": "LANDSCAPING AND TREE PLANTING",
+        "date_of_reporting": "01 Oct 2020",
+        "date_of_completion": "31 Dec 2020",
+        "progress_percentage": "45%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_6_5eb2ed8b-4e32-45d3-8fd6-435462c84e23.jpg",
+        "title": "STREET LIGHTING",
+        "date_of_reporting": "01 Oct 2020",
+        "date_of_completion": "31 Dec 2020",
+        "progress_percentage": "58%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_7_eeb37565-1ca9-4f91-bc9f-eec76fe04408.jpg",
+        "title": "ELECTRIC METER ROOM,SUB STATION,RECIEVING STATIOM",
+        "date_of_reporting": "01 Oct 2020",
+        "date_of_completion": "31 Dec 2020",
+        "progress_percentage": "58%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_12_849afff4-15be-4e89-849a-3a733f590a47.jpg",
+        "title": "WATER CONSERVATION RAIN WATER HARVESTING",
+        "date_of_reporting": "01 Oct 2020",
+        "date_of_completion": "31 Dec 2020",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_13_c8780020-db4e-4486-b10f-e78732846bf6.jpg",
+        "title": "ENERGY MAANAGEMENT",
+        "date_of_reporting": "01 Oct 2020",
+        "date_of_completion": "31 Dec 2020",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_15_282551c1-99b1-42bc-a1bc-4515c12fe36b.jpg",
+        "title": "COMMUNITY BUILDINGS/ CLUB HOUSE",
+        "date_of_reporting": "01 Oct 2020",
+        "date_of_completion": "31 Dec 2020",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_16_4e1f3451-0603-4396-8b2e-5e642e19be88.jpg",
+        "title": "BOUNDARY WALL",
+        "date_of_reporting": "01 Oct 2020",
+        "date_of_completion": "31 Dec 2020",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_1_d2be40dc-84a5-4dab-b462-c2d579642478.jpg",
+        "title": "INTERNAL ROADS AND FOOTPATHS",
+        "date_of_reporting": "01 Jan 2021",
+        "date_of_completion": "31 Mar 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_2_2068431b-f025-4f61-a0d2-b727a5589623.jpg",
+        "title": "WATER SUPPLY",
+        "date_of_reporting": "01 Jan 2021",
+        "date_of_completion": "31 Mar 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_3_6d3485c8-2143-469c-9a39-dcece9debf1c.jpg",
+        "title": "SEWERAGE",
+        "date_of_reporting": "01 Jan 2021",
+        "date_of_completion": "31 Mar 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_4_b20722ab-17f6-4917-aa1f-c86ee1e3a80d.jpg",
+        "title": "STORM WATER DRAINS",
+        "date_of_reporting": "01 Jan 2021",
+        "date_of_completion": "31 Mar 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_5_27992c74-2d52-4b6c-b00b-cd498c723e9e.jpg",
+        "title": "LANDSCAPING AND TREE PLANTING",
+        "date_of_reporting": "01 Jan 2021",
+        "date_of_completion": "31 Mar 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_6_37c19780-c377-41d0-96c9-0e8d6c78d5b4.jpg",
+        "title": "STREET LIGHTING",
+        "date_of_reporting": "01 Jan 2021",
+        "date_of_completion": "31 Mar 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_7_c5911b85-368f-4f6c-ba9c-7707fc65512c.jpg",
+        "title": "ELECTRIC METER ROOM,SUB STATION,RECIEVING STATIOM",
+        "date_of_reporting": "01 Jan 2021",
+        "date_of_completion": "31 Mar 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_10_cc53b0f4-7ca5-433c-beef-bd7e48bc89b7.jpg",
+        "title": "TREATMENT AND DISPOSAL OF SEWERAGE AND SULLAGE WAT",
+        "date_of_reporting": "01 Jan 2021",
+        "date_of_completion": "31 Mar 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_12_0d4e9827-f094-4493-a7e4-38d1b0a2f2b7.jpg",
+        "title": "WATER CONSERVATION RAIN WATER HARVESTING",
+        "date_of_reporting": "01 Jan 2021",
+        "date_of_completion": "31 Mar 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_15_1a7c5ed5-68da-4be1-8121-bc475a7f44c0.jpg",
+        "title": "COMMUNITY BUILDINGS/ CLUB HOUSE",
+        "date_of_reporting": "01 Jan 2021",
+        "date_of_completion": "31 Mar 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_16_e70ea59b-f6d6-44d8-9476-dc544a2e398c.jpg",
+        "title": "BOUNDARY WALL",
+        "date_of_reporting": "01 Jan 2021",
+        "date_of_completion": "31 Mar 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_17_b73e6551-f0b5-44f2-8030-642d1c65269d.jpg",
+        "title": "SECURITY SERVICE",
+        "date_of_reporting": "01 Jan 2021",
+        "date_of_completion": "31 Mar 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_1_0f989c17-64a6-48b3-a8a7-291fb9b5aab4.jpg",
+        "title": "INTERNAL ROADS AND FOOTPATHS",
+        "date_of_reporting": "01 Apr 2021",
+        "date_of_completion": "30 Jun 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_2_ef105e86-a429-4854-baa7-44b0a83ddb40.jpg",
+        "title": "WATER SUPPLY",
+        "date_of_reporting": "01 Apr 2021",
+        "date_of_completion": "30 Jun 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_3_261a3d4c-5403-4221-937e-6800c670ba7e.jpg",
+        "title": "SEWERAGE",
+        "date_of_reporting": "01 Apr 2021",
+        "date_of_completion": "30 Jun 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_4_03eb344c-e710-4bec-a63e-d4af1b9e5150.jpg",
+        "title": "STORM WATER DRAINS",
+        "date_of_reporting": "01 Apr 2021",
+        "date_of_completion": "30 Jun 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_5_a544c909-8c99-4460-80c3-8648b49cb1a7.jpg",
+        "title": "LANDSCAPING AND TREE PLANTING",
+        "date_of_reporting": "01 Apr 2021",
+        "date_of_completion": "30 Jun 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_6_7826cb8e-72d0-4805-bc69-bee0d8c7ce9d.jpg",
+        "title": "STREET LIGHTING",
+        "date_of_reporting": "01 Apr 2021",
+        "date_of_completion": "30 Jun 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_7_77b1dd69-b042-4157-b7a8-0d9aad6dfcf2.jpg",
+        "title": "ELECTRIC METER ROOM,SUB STATION,RECIEVING STATIOM",
+        "date_of_reporting": "01 Apr 2021",
+        "date_of_completion": "30 Jun 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_9_db8bcf80-d35b-4cc7-8788-da21cf5d7dbf.jpg",
+        "title": "COMMUNITY BUILDINGS",
+        "date_of_reporting": "01 Apr 2021",
+        "date_of_completion": "30 Jun 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_10_f4af2bac-20ec-4037-b0c6-487d76147451.jpg",
+        "title": "TREATMENT AND DISPOSAL OF SEWERAGE AND SULLAGE WAT",
+        "date_of_reporting": "01 Apr 2021",
+        "date_of_completion": "30 Jun 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_1_0f989c17-64a6-48b3-a8a7-291fb9b5aab4.jpg",
+        "title": "INTERNAL ROADS AND FOOTPATHS",
+        "date_of_reporting": "01 Jul 2021",
+        "date_of_completion": "30 Sep 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_2_ef105e86-a429-4854-baa7-44b0a83ddb40.jpg",
+        "title": "WATER SUPPLY",
+        "date_of_reporting": "01 Jul 2021",
+        "date_of_completion": "30 Sep 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_3_261a3d4c-5403-4221-937e-6800c670ba7e.jpg",
+        "title": "SEWERAGE",
+        "date_of_reporting": "01 Jul 2021",
+        "date_of_completion": "30 Sep 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_4_03eb344c-e710-4bec-a63e-d4af1b9e5150.jpg",
+        "title": "STORM WATER DRAINS",
+        "date_of_reporting": "01 Jul 2021",
+        "date_of_completion": "30 Sep 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_5_a544c909-8c99-4460-80c3-8648b49cb1a7.jpg",
+        "title": "LANDSCAPING AND TREE PLANTING",
+        "date_of_reporting": "01 Jul 2021",
+        "date_of_completion": "30 Sep 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_6_7826cb8e-72d0-4805-bc69-bee0d8c7ce9d.jpg",
+        "title": "STREET LIGHTING",
+        "date_of_reporting": "01 Jul 2021",
+        "date_of_completion": "30 Sep 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_9_db8bcf80-d35b-4cc7-8788-da21cf5d7dbf.jpg",
+        "title": "COMMUNITY BUILDINGS",
+        "date_of_reporting": "01 Jul 2021",
+        "date_of_completion": "30 Sep 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_10_f4af2bac-20ec-4037-b0c6-487d76147451.jpg",
+        "title": "TREATMENT AND DISPOSAL OF SEWERAGE AND SULLAGE WAT",
+        "date_of_reporting": "01 Jul 2021",
+        "date_of_completion": "30 Sep 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_12_1ca19db4-3749-4c18-905d-fdd4d27fd5da.jpg",
+        "title": "WATER CONSERVATION RAIN WATER HARVESTING",
+        "date_of_reporting": "01 Jul 2021",
+        "date_of_completion": "30 Sep 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_13_02ccafb1-f1ae-4179-9769-3432114e2e8e.jpg",
+        "title": "ENERGY MAANAGEMENT",
+        "date_of_reporting": "01 Jul 2021",
+        "date_of_completion": "30 Sep 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_16_4936d4cc-88a7-43fb-828a-aa4bc25a8285.jpg",
+        "title": "BOUNDARY WALL",
+        "date_of_reporting": "01 Jul 2021",
+        "date_of_completion": "30 Sep 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_17_13d232eb-79e3-46e1-a0bd-9fc50fb1fc52.jpg",
+        "title": "SECURITY SERVICE",
+        "date_of_reporting": "01 Jul 2021",
+        "date_of_completion": "30 Sep 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/Aminities_Gym_PHOTO_1_d9c75ba9-c3b8-4635-b9ed-fe7da9b922de.jpg",
+        "title": "GYM",
+        "date_of_reporting": "01 Jul 2021",
+        "date_of_completion": "30 Sep 2021",
+        "progress_percentage": "100%"
+      },
+      {
+        "image": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/Aminities_Worship_PHOTO_2_b93f459e-f206-476b-ae3e-000a2968d9a4.jpg",
+        "title": "PLACE OF WORSHIP",
+        "date_of_reporting": "01 Jul 2021",
+        "date_of_completion": "30 Sep 2021",
+        "progress_percentage": "100%"
+      }
+    ]
+  },
+  "estimated_finish_date": "2022-04-30 00:00:00+00:00",
+  "approved_on_date": "2018-06-20 00:00:00+00:00",
+  "number_of_residential_units": 126,
+  "config_id": 11805,
+  "is_updated": false,
+  "is_duplicate": false,
+  "iw_processed": false,
+  "checked_updates": false,
+  "rera_housing_found": false,
+  "is_live": true,
+  "project_images": [
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_1_0f989c17-64a6-48b3-a8a7-291fb9b5aab4.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_2_ef105e86-a429-4854-baa7-44b0a83ddb40.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_3_261a3d4c-5403-4221-937e-6800c670ba7e.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_4_03eb344c-e710-4bec-a63e-d4af1b9e5150.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_5_a544c909-8c99-4460-80c3-8648b49cb1a7.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_6_7826cb8e-72d0-4805-bc69-bee0d8c7ce9d.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_9_db8bcf80-d35b-4cc7-8788-da21cf5d7dbf.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_10_f4af2bac-20ec-4037-b0c6-487d76147451.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_12_1ca19db4-3749-4c18-905d-fdd4d27fd5da.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_13_02ccafb1-f1ae-4179-9769-3432114e2e8e.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_16_4936d4cc-88a7-43fb-828a-aa4bc25a8285.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_17_13d232eb-79e3-46e1-a0bd-9fc50fb1fc52.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/Aminities_Gym_PHOTO_1_d9c75ba9-c3b8-4635-b9ed-fe7da9b922de.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/Aminities_Worship_PHOTO_2_b93f459e-f206-476b-ae3e-000a2968d9a4.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_1_7dc56576-399f-495b-98c2-9c5f1d6945db.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_3_ae84c9d3-848f-4db9-8f58-f698ee6d8d2f.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_4_ed4498e4-ee2a-48d4-9df6-0e6d383f802b.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_5_92506788-41ae-4913-8640-cf2f25bcc188.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_15_b59f78eb-1783-42cf-ba6d-2d371f378023.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_16_2e7db862-cb04-42c4-a929-9c943f379529.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_Others_f202669f-33d3-4455-bafb-fa4bb93124ff.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_1_f6edb754-8ec0-40cc-a7e8-9b6a6db2bbce.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_3_e81080e2-f3bb-478e-b228-b51d78c7654c.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_4_412be8de-edb8-4631-8aea-fc9e38e93063.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_5_3f30200b-b01d-4037-ac85-170f6e6ad7a5.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_15_b01d137a-acf3-4974-84a8-456a723eee89.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_16_bfc1f368-fec6-4d11-951c-6c821a695f5f.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_17_b5d2e378-151e-4a1f-aad5-1029570caf09.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_1_049aefb1-893d-4907-af08-745c0d579a06.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_3_91a5c780-4e0a-4ead-989a-0bc3c20822c9.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_4_318bd90e-091f-4208-97cc-2f9ed31df1d9.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_5_4cb53f2a-163a-42ec-aa68-84ef42f63bc7.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_9_2cd68e71-db38-48b7-a545-f54b3d63efc0.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_16_bf586bfe-e390-4178-a408-3d34689f78ce.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_1_3a03c294-91c7-4854-b875-0cc7f4c187cf.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_3_711f110d-fbca-4d4e-91e3-bf9c69ab0d83.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_4_a69ca892-33b6-4e62-be35-3f57301841f9.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_5_b331b801-815d-4554-8200-b4be87769c47.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_9_8de4e08b-7c2e-48a2-9389-fa9f1a00ef65.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_16_5accdb76-438e-4b46-93cd-00e8423b7049.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_1_7b19d503-cfa3-44dc-ac6e-03a8e1641970.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_3_d5b570a2-bbe3-4bad-b0ca-afbea19f5123.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_4_f8ce85c1-a956-4f97-aa2b-a4cec56b0165.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_5_39c13ca1-5aaa-40a4-805c-0796107d5d7b.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_9_2cabc04b-9261-4b1c-9b42-99cd8a43bd9e.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_16_34ce00a7-2114-45c5-80b1-e5cdeaf4f7f8.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_1_da468a2d-e22f-4a6d-8f0e-1f9ea6e73718.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_2_067baaca-bbb2-4bd2-9c7c-75f6c4144f0f.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_3_77bdf7b2-26e6-42fd-a9db-fc303c418f1e.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_4_bab7720e-31bf-4de8-a9f6-e04687625811.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_5_a0945e13-8b4c-403a-b1d1-6f2bcd7ba51d.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_6_5eb2ed8b-4e32-45d3-8fd6-435462c84e23.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_7_eeb37565-1ca9-4f91-bc9f-eec76fe04408.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_12_849afff4-15be-4e89-849a-3a733f590a47.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_13_c8780020-db4e-4486-b10f-e78732846bf6.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_15_282551c1-99b1-42bc-a1bc-4515c12fe36b.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_16_4e1f3451-0603-4396-8b2e-5e642e19be88.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_1_d2be40dc-84a5-4dab-b462-c2d579642478.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_2_2068431b-f025-4f61-a0d2-b727a5589623.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_3_6d3485c8-2143-469c-9a39-dcece9debf1c.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_4_b20722ab-17f6-4917-aa1f-c86ee1e3a80d.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_5_27992c74-2d52-4b6c-b00b-cd498c723e9e.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_6_37c19780-c377-41d0-96c9-0e8d6c78d5b4.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_7_c5911b85-368f-4f6c-ba9c-7707fc65512c.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_10_cc53b0f4-7ca5-433c-beef-bd7e48bc89b7.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_12_0d4e9827-f094-4493-a7e4-38d1b0a2f2b7.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_15_1a7c5ed5-68da-4be1-8121-bc475a7f44c0.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_16_e70ea59b-f6d6-44d8-9476-dc544a2e398c.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_17_b73e6551-f0b5-44f2-8030-642d1c65269d.jpg",
+    "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_7_77b1dd69-b042-4157-b7a8-0d9aad6dfcf2.jpg"
+  ],
+  "uploaded_documents": [
+    {
+      "type": "Completion Certificate 1",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/COM_CER_ARCHI_e7e983e6-cdcf-4033-92d5-730691d01928.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Completion Certificate 2",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/COM_CER_CA_52290767-7087-43bc-903b-c20ce8f29621.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Registration Certificate 1",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/Reg_Certi_05b39f7a-9fb4-4721-a032-d76526b60bee.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/PASSBOOK_0280c288-c690-4cdb-a6ec-3e08c5733d18.pdf",
+      "type": "Bank Account PassBook Front Page"
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/FEESHEET_8f998976-15d4-4701-a1e7-04c85c4cc567.pdf",
+      "type": "Fee Calculation Sheet"
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENUM_7f5e041d-85b8-476b-be1f-898a10dc5415.pdf",
+      "type": "Encumbrances on Land/Non-Encumbrances Certificate"
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/SEARCH_REPORT_3d0d905c-03d6-4af6-8f1e-900b4c982312.pdf",
+      "type": "Search Report"
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/TAC_a32c35ce-5619-4f94-b7ef-d57b921c49dc.pdf",
+      "type": "Approval Letter of Town And Country Planning"
+    },
+    {
+      "type": "Layout Plan 1",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/LAYOUT_6fa23332-795e-477b-938b-876128df2e4e.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/DEVE_PER_COM_AUTH_3955975c-a145-4c08-91b7-c9e9cb8bbab8.pdf",
+      "type": "Layout Plan 2"
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/DEVE_PER_COM_AUTH_3955975c-a145-4c08-91b7-c9e9cb8bbab8.pdf",
+      "type": "Development Permission from competent authorities"
+    },
+    {
+      "type": "Project Specifications 1",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/PSPEC_8ab41b37-e6bc-4fd9-b48c-056fd2c3e912.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Development team details 1",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/DEVTEAMc92d7e5c-8f89-4e08-be34-1004857a5e99.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Development work plan 1",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/WORKPLAN2a75288f-1003-4291-8243-39f6ead6ff0a.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AFFIDAVIT4f44fd19-2b11-42e6-b01d-be91c8993e13.pdf",
+      "type": "Affidavit Cum Declaration"
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/UNDERTAKING76999508-acc7-4aa0-bc24-53480a4e5a34.pdf",
+      "type": "Undertaking by the Promoter for pending documents (ANNEX-08)"
+    },
+    {
+      "type": "Engineer Certificate 1",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGGCERTI2a8807b6-5715-49a6-89e5-a90f77f8b5c6.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CACERTI12294ab4-ff0d-42da-ab4f-e27417765e7a.pdf",
+      "type": "CA Certificate"
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/SELF_DECLARATION_a5ec0d43-65e9-47cd-8e0d-b066e0e6aa99.pdf",
+      "type": "Self Declaration by the Promoter for those documents which are not applicable (ANNEX-07)"
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/BRIEF_DETAILS_8c3899e2-fde0-4e96-a37b-54870e180272.pdf",
+      "type": "Brief Details of Current Project along with Stilt and Cover Parking Details (ANNEX-11)"
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_NEW_ONGOING4f77af29-111a-4526-9be7-3539a9f4f2ab.pdf",
+      "type": "CA Certificate(For New Project (ANNEXURE-01) and FOR Ongoing Project (ANNEXURE-02))"
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_f2db8f7f-5dc2-4e36-a3cf-c217b6249e6c.pdf",
+      "type": "CA Certificate",
+      "dated_on": "20 Jun 2018"
+    },
+    {
+      "type": "Engg Certificate 1",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_69519ed0-24d9-4ef7-bb5c-9e1de9ec241f.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 1",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_72ac34cb-b5ae-41ae-992f-cd573eb6ca05.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_6e099afe-fcc8-4c7d-8e98-d396fc7ba9b9.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Oct 2018"
+    },
+    {
+      "type": "Engg Certificate 2",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_11ea9c73-ea13-46ca-ab29-e1484ea900a1.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 2",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_3f51e89d-6206-4504-b221-f03ebd5208be.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_27b71ae7-2f7e-4f6b-a5de-289ba489a799.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Jan 2019"
+    },
+    {
+      "type": "Engg Certificate 3",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_9124a599-c41f-42f8-acc0-ac71bc813c05.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 3",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_51a5ea9c-1243-4772-907e-9708f75fd09a.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_c918c37b-f3ed-4c4f-8233-1cfffdfa7bc0.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Apr 2019"
+    },
+    {
+      "type": "Engg Certificate 4",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_a153f55c-058b-407d-b63d-ab96cbe17f12.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 4",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_6fab3c4d-3a1d-497c-aafc-838930193fe3.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_fb02c273-ec8a-4702-b127-0b126015ba68.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Jul 2019"
+    },
+    {
+      "type": "Engg Certificate 5",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_9a65e037-e34e-4621-bf71-e3085c14c867.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 5",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_e636793f-0b75-4b3f-a488-36574aebc2ca.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_35be8510-2914-4e33-901b-a66c0cabae20.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Oct 2019"
+    },
+    {
+      "type": "Engg Certificate 6",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_3d309b63-2e7c-40f3-9862-ef5657341e0e.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 6",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_e736061b-58d5-488c-83eb-bd76c5072212.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_74d4c6bc-a703-47b9-b09a-4df024e9a0b4.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Jan 2020"
+    },
+    {
+      "type": "Engg Certificate 7",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_9a367a42-58a6-4ec8-a9f2-5ee0c3090ef3.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 7",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_9d5df3b8-db15-4948-a9eb-f3c978b52535.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_6041d2b0-3900-4156-aef7-2bc1110b47c6.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Apr 2020"
+    },
+    {
+      "type": "Engg Certificate 8",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_8bc4c50f-35cf-45a0-9de2-03f6fc1f9d2c.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 8",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_fff9b872-691e-4e9c-9e88-18ed13dfd55d.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_2e897410-f16d-4967-baee-885f062f2861.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Jul 2020"
+    },
+    {
+      "type": "Engg Certificate 9",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_81687f46-e286-4ccc-9048-ca2104055211.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 9",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_52df5772-78dc-49cc-afbf-4a57725b22d9.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_8feef3f6-5ecf-49fc-bd7f-3ed13b214db0.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Oct 2020"
+    },
+    {
+      "type": "Engg Certificate 10",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_86e18fd4-a8c5-47cc-a81d-c7267f1759dd.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 10",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_94cf0605-0155-46a7-8a3f-fd0e5303453f.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_efdfdf3c-2744-423c-85d8-b9311d56c947.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Jan 2021"
+    },
+    {
+      "type": "Engg Certificate 11",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_30ccd6ed-c8d9-4e70-a58c-41ae475e3ba6.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 11",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_a10c5eee-beba-452d-8522-0f65888d236c.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_464d964d-5850-404b-afa4-d457efef5665.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Apr 2021"
+    },
+    {
+      "type": "Engg Certificate 12",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_9ed55a50-6aad-4b3e-a805-272f085d8b24.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 12",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_65f766b9-6521-4a7c-b5b2-574ca40ce9a7.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_6a944f50-d16f-4a78-9009-0843f8e950c3.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Jul 2021"
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_41fde2ce-7a29-4238-8647-e46dcee909ff.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Oct 2018"
+    },
+    {
+      "type": "Engg Certificate 14",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_bf0a8a99-9c83-4af0-8050-4dfa5b1d374f.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 14",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_6cd69e37-8833-4d6e-a609-1dc1a2546b0b.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_a7eb4488-2169-442e-96f2-82bf9f307601.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Jan 2019"
+    },
+    {
+      "type": "Engg Certificate 15",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_9dbdc0c5-ec03-4804-9a86-2b621ac6bd22.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 15",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_2d8819a5-5c9e-4d4a-8b9f-c1b910eb8413.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_087b747b-d9dc-43df-b86a-589a77cc6d4e.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Jan 2019"
+    },
+    {
+      "type": "Engg Certificate 16",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_5ce78c41-2b81-4fa9-8d68-30e9c3c99c08.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 16",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_0bfd2872-6446-4eee-b68e-2ddb10b7ba3c.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_b096c403-6dab-4667-95d7-c1217692cc69.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Apr 2019"
+    },
+    {
+      "type": "Engg Certificate 17",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_affbda8a-3a04-4379-9f27-7556cda7ba74.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 17",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_f0ac3f5e-a2de-4316-9583-df9ce6475b2e.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_64a7d346-a2e1-4801-8e4f-17f19b030da3.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Jul 2019"
+    },
+    {
+      "type": "Engg Certificate 18",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_08db643c-6e01-4e13-ba4a-f73e27ec32de.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 18",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_7a8c5a19-0da1-40b0-99b1-7f61488fd11b.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_4450b095-47c0-4ac4-b322-b803866fa5f1.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Oct 2019"
+    },
+    {
+      "type": "Engg Certificate 19",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_07c12b9e-e243-4532-82d6-b4f4970d923d.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 19",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_7d265304-49bc-445c-a0ba-fdf512c1720c.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_7cf7bbc9-b8df-4bdb-b853-d7f19be6809a.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Jan 2020"
+    },
+    {
+      "type": "Engg Certificate 20",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_8d690a9f-c901-49a3-a0ff-3f9b956ccf49.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 20",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_31498428-f931-404b-9450-8f85099efa30.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_e1b96bb2-125d-4ed3-a50c-61064fb56cdc.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Apr 2020"
+    },
+    {
+      "type": "Engg Certificate 21",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_ecae7b19-245d-48fb-a8aa-abbcfaa18da1.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 21",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_37c647b4-df7e-4156-ad83-218aa345e953.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_3ce19df8-c3da-467c-9f95-c65e54e6c097.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Jul 2020"
+    },
+    {
+      "type": "Engg Certificate 22",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_d8fcb1c4-d227-43ca-8f19-894bc5776390.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 22",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_2b2bb403-47b1-45e7-a777-ccaea0d75a8f.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_147a5321-fe34-48e9-8a14-c3fa8ac69e16.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Oct 2020"
+    },
+    {
+      "type": "Engg Certificate 23",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_6e69c9e8-16d2-4ff7-8963-099fbf8e4dbf.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 23",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_159b4f1d-b989-4da5-8dc6-81657861b3c5.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_045c01db-cf85-4927-bb59-17cf1a48aa30.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Jan 2021"
+    },
+    {
+      "type": "Engg Certificate 24",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_17b8170d-da4a-4145-963b-9854fc7fd46c.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 24",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_b59684aa-fd8e-48bb-8d3d-6dee08ce9903.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_338509c0-4834-4133-b542-1a6316066792.pdf",
+      "type": "CA Certificate",
+      "dated_on": "01 Apr 2021"
+    },
+    {
+      "type": "Engg Certificate 25",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_6aa82494-652c-4868-a43b-5eca83f7bee6.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Architect certificate 25",
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_172a7e79-3c56-4f47-b3cc-83b084c88f25.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/",
+      "type": "CA Certificate",
+      "dated_on": "01 Jul 2021"
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/",
+      "type": "Engg Certificate 26",
+      "dated_on": "01 Jul 2021"
+    },
+    {
+      "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/",
+      "type": "Architect certificate 26",
+      "dated_on": "01 Jul 2021"
+    }
+  ],
+  "document_urls": [
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Completion Certificate 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Completion Certificate 2"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Registration Certificate 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Layout Plan 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Project Specifications 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Development team details 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Development work plan 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engineer Certificate 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 2"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 2"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 3"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 3"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 4"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 4"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 5"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 5"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 6"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 6"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 7"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 7"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 8"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 8"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 9"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 9"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 10"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 10"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 11"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 11"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 12"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 12"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 14"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 14"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 15"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 15"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 16"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 16"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 17"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 17"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 18"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 18"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 19"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 19"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 20"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 20"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 21"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 21"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 22"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 22"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 23"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 23"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 24"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 24"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engg Certificate 25"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Architect certificate 25"
+    }
+  ],
+  "acknowledgement_no": null,
+  "project_pin_code": null,
+  "project_city": null,
+  "submitted_date": null,
+  "last_modified": null,
+  "estimated_commencement_date": null,
+  "actual_commencement_date": null,
+  "actual_finish_date": null,
+  "past_experience_of_promoter": null,
+  "land_area": null,
+  "construction_area": null,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "number_of_commercial_units": null,
+  "complaints_litigation_details": null,
+  "authorised_signatory_details": null,
+  "co_promoter_details": null,
+  "project_description": null,
+  "development_agreement_detail": null,
+  "members_details": null,
+  "retrieved_on": null,
+  "last_updated": null,
+  "updated_fields": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": null,
+  "iw_part_processed": null,
+  "last_crawled_date": null,
+  "land_area_details": null,
+  "doc_ocr_url": null,
+  "proposed_timeline": null,
+  "checked_updates_date": null,
+  "alternative_rera_ids": null
+}

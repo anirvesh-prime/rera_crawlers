@@ -1,34 +1,131 @@
 {
-  "key": "11033758616623610456",
-  "project_registration_no": "TN/20/Building/Offline/0001/2025",
-  "url": "https://rera.tn.gov.in/registered-building/tn",
-  "state": "tamil_nadu",
+  "key": "12586206054163957170",
+  "project_registration_no": "TNRERA/29/LO/4544/2025",
+  "url": "https://rera.tn.gov.in/public-view2/layout/pfirm/060e6e00-cab8-11f0-a493-1dc986406559",
+  "state": "Tamil Nadu",
   "domain": "rera.tn.gov.in",
-  "project_name": "Garden Villas",
-  "project_type": "residential",
-  "promoter_name": "1) M/s. St.Angelo's VNCT Ventures LLP and 2) Thiru. Malayalingam",
-  "status_of_the_project": "Completed",
-  "project_state": "TAMIL NADU",
-  "project_description": "Construction of Registration of Residential Building’s with 64 Individual Units in the land comprised in S.Nos.220/2A1, 220/6, 220/5A, 221/1A of Kodikulam IInd Bit Village, Madurai North Taluk, Madurai District.",
+  "project_name": "RESIDENZA LILIUM By Urban Tree Ph1",
+  "promoter_name": "M/s.Shri Rishabdev Infrastructures LLP",
+  "status_of_the_project": "Under Construction",
+  "project_pin_code": "603103",
+  "project_city": "Thaiyur",
+  "project_state": "Tamil Nadu",
   "crawl_machine_ip": "127.0.0.1",
   "machine_name": "Anirveshs-MacBook-Air.local",
+  "project_location_raw": {
+    "survey_resurvey_number": "778/2, 781/1B, 1C, 1D, 1E, 1F, 781/1G, 1H, 1I1, 1I2, 1J, 1K, 1L, 1M, 1N, 2A, 2B, 2C, 782/1, 2 and 784/1B",
+    "taluk": "Thiruporur",
+    "village": "Thaiyur A Village",
+    "city": "Thaiyur",
+    "district": "Chennai",
+    "pin_code": "603103",
+    "state": "Tamil Nadu",
+    "latitude": "12.770558",
+    "longitude": "80.186468"
+  },
+  "promoter_address_raw": {
+    "raw_address": "Door No : 8 Floor Street Name : Rutland Gate, 5th Street Village : Nungambakkam City : Chennai State : Tamil Nadu District : Chennai Pincode : 600006",
+    "village": "Nungambakkam",
+    "city": "Chennai",
+    "state": "Tamil Nadu",
+    "district": "Chennai",
+    "pin_code": "600006"
+  },
+  "promoter_contact_details": {
+    "email": "liaison.dept@urbantree.in",
+    "phone": "9176906161"
+  },
+  "bank_details": {
+    "branch": "Kotak Mahindra Bank",
+    "email": "kotakmahindrabank@customercare.in",
+    "account_no": "XXXXXX7549",
+    "bank_name": "Kotak Mahindra Bank",
+    "state": "Tamil Nadu"
+  },
+  "project_cost_detail": {
+    "cost_of_land": "30196010",
+    "total_project_cost": "41696010",
+    "estimated_construction_cost": "11500000"
+  },
+  "uploaded_documents": [
+    {
+      "link": "https://rera.tn.gov.in/formcqr/3c2c3140-ca91-11f0-be7a-49ff3448b535",
+      "type": "Form C"
+    },
+    {
+      "link": "https://rera.tn.gov.in/public/storage/upload/DsSykbCLv6aXefqY45RpljYqNVkbVqbus3HF0oRT.pdf",
+      "type": "Site Photos With all four Sides"
+    },
+    {
+      "link": "https://rera.tn.gov.in/public/storage/upload/OCTHuNOcComVfar1Ha5UFSOChAG7vSIbbimqdK6y.pdf",
+      "type": "Planning Permission Approval Letter"
+    },
+    {
+      "link": "https://rera.tn.gov.in/public/storage/upload/ctXCKYmJYyLdKLF1dB36b2AqNXvaFh4mDhHjh4VD.pdf",
+      "type": "Approval Plan with Local Body Seal"
+    },
+    {
+      "link": "https://rera.tn.gov.in/public/storage/upload/QmGv52o52tXGn35qR82OT0TyYw8hbfrVcTHnKu48.pdf",
+      "type": "Local Body Approval Letter"
+    },
+    {
+      "link": "https://rera.tn.gov.in/public/storage/upload/cCoXxXRNLH2DaOXdtLNJrc5tWYbPpkvypoSSvmuV.pdf",
+      "type": "GLV value should be mentioned for all the survey numbers covered in the project"
+    },
+    {
+      "link": "https://rera.tn.gov.in/public/storage/upload/kB8kKKwj20zPPbXGdBex7VuvKP8KY1ltsQzmKXPx.pdf",
+      "type": "Encumbrance Certificate from the date of approval of planning permission to RERA submission date"
+    },
+    {
+      "link": "https://rera.tn.gov.in/public/storage/upload/5CUGUQFHlnrUOo2bL8VFSQQsnxabdzAh5G768v3O.pdf",
+      "type": "Land Title Deed/Document, GPA with Sale Power, JVDA/JDA"
+    },
+    {
+      "link": "https://rera.tn.gov.in/public/storage/upload/iAlFta0OJ8rR4fclazzB70ixsuXujlX5ATa900Ft.pdf",
+      "type": "Declaration(Form B)"
+    }
+  ],
+  "professional_information": [
+    {
+      "name": "Vijayakumar R Thiruvallur Municipalit",
+      "role": "License Surveyor",
+      "email": "vijayakumar.r1985@gmail.com",
+      "phone": "9443240897",
+      "address": "No 18, Ganthi Street, Manavalan Nagar, Thiruvallur",
+      "registration_no": "TVLR/RE/Gr/-III/2019/05/001"
+    }
+  ],
+  "members_details": [
+    {
+      "name": "Abhinay Mehta",
+      "position": "Director",
+      "email": "abhinay@urbantree.in",
+      "phone": "9841299994",
+      "raw_address": "No 8, Rutland Gate, 5th Street, Nungambakkam State : Tamil Nadu District : Chennai Pincode : 600006"
+    }
+  ],
   "data": {
     "govt_type": "state",
-    "is_processed": false
+    "is_processed": false,
+    "promoter_url": "https://rera.tn.gov.in/public-view1/layout/pfirm/3c289c20-ca91-11f0-bd54-ef6224abb025",
+    "form_c": "https://rera.tn.gov.in/formcqr/3c2c3140-ca91-11f0-be7a-49ff3448b535"
   },
-  "approved_on_date": "2025-05-14 00:00:00+00:00",
+  "promoters_details": {
+    "name": "Shri Rishabdev Infrastructures LLP",
+    "type_of_firm": "Limited Liability Partnership",
+    "registration_no": "AAP-0265",
+    "registration_certificate": "https://rera.tn.gov.in/public/storage/upload/F0ChKVtrrx8cXUznIYCMOAMpFKltjp5kGqpNn0lk.pdf"
+  },
+  "estimated_finish_date": "2026-09-30 00:00:00+00:00",
+  "approved_on_date": "2025-09-12 00:00:00+00:00",
+  "number_of_residential_units": 60,
   "config_id": 14374,
+  "land_area": 9396.0,
   "is_updated": false,
   "is_duplicate": false,
   "iw_processed": false,
   "checked_updates": false,
   "rera_housing_found": false,
   "is_live": false,
-  "uploaded_documents": [
-    {
-      "link": "https://rera.tn.gov.in/cms/reg_projects_tamilnadu/Approval_Details/2025/1-2025.pdf",
-      "type": "Approval Details"
-    }
-  ],
   "document_urls": null
 }

@@ -1,14 +1,14 @@
 {
-  "key": "11491289799215002251",
-  "project_registration_no": "K-RERA/PRJ/PKD/062/2026",
-  "url": "https://rera.kerala.gov.in/projects/12118",
+  "key": "6087120247077897222",
+  "project_registration_no": "K-RERA/PRJ/TSR/167/2022",
+  "url": "https://rera.kerala.gov.in/projects/10826",
   "state": "kerala",
   "domain": "reraonline.kerala.gov.in",
-  "project_name": "Aadhi Sholayoor Resort",
-  "project_type": "Plots",
-  "promoter_name": "AADHI DREAM SPACES PRIVATE LIMITED",
-  "status_of_the_project": "In Progress",
-  "project_pin_code": "678581",
+  "project_name": "Ambalath Ayesha Homes",
+  "project_type": "Residential (Apartment)",
+  "promoter_name": "Abdul Rasheed",
+  "status_of_the_project": "Completed Project:Form 6 filed",
+  "project_pin_code": "680101",
   "project_city": null,
   "project_state": "KERALA",
   "crawl_machine_ip": "127.0.0.1",
@@ -16,247 +16,234 @@
   "project_location_raw": [
     {
       "state": "KERALA",
-      "taluk": "Attappadi Tribal",
-      "plot_no": "5645",
-      "village": "SHOLAYUR",
-      "district": "Palakkad",
-      "pin_code": "678581",
-      "survey_resurvey_number": "1061/3-1"
+      "taluk": "Chavakkad",
+      "village": "GURUVAYUR",
+      "district": "Thrissur",
+      "pin_code": "680101",
+      "survey_resurvey_number": "139/17-5,3,6"
     }
   ],
   "promoter_address_raw": [
     {
-      "state": "TAMIL NADU",
-      "taluk": "Attappadi Tribal",
-      "district": "Palakkad",
-      "locality": "SHOLAYUR JUNCTION",
-      "pin_code": "678581",
-      "house_no_building_name": "97A, VELAVAN COMPLEX"
+      "state": "KERALA",
+      "taluk": "Chavakkad",
+      "district": "Thrissur",
+      "locality": "Guruvayur",
+      "pin_code": "680101",
+      "house_no_building_name": "Pulicharam Veettil House"
     }
   ],
-  "uploaded_documents": [
+  "promoter_contact_details": [
     {
-      "link": "https://rera.kerala.gov.in/signed-certificate/2846",
-      "type": "Rera Registration Certificate",
-      "s3_link": "https://s3.example.com/dry-run"
+      "phone": "8129667766",
+      "email": "ambalathbuilders16@gmail.com"
+    }
+  ],
+  "building_details": [
+    {
+      "flat_type": "2BHK",
+      "carpet_area": "0",
+      "open_area": "0",
+      "total_area": "0",
+      "no_of_units": "8",
+      "balcony_area": "0"
     },
     {
-      "link": "https://rera.kerala.gov.in/view-file/192263",
-      "type": "Copy of Sanctioned Plans (Provide a clear remark for each drawing such as ground floor ,1st floor, elevation ,section etc)",
-      "dated_on": "2026-03-22 10:55:42+00:00",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.kerala.gov.in/view-file/192475",
-      "type": "Copy of Valid Building Permit",
-      "dated_on": "2026-03-24 23:48:11+00:00"
-    },
-    {
-      "link": "https://rera.kerala.gov.in/view-file/192262",
-      "type": "Copy of Valid Development Permit (For villa projects & plot development pojects)",
-      "dated_on": "2026-03-22 10:44:43+00:00"
-    },
-    {
-      "link": "https://rera.kerala.gov.in/view-file/192477",
-      "type": "Detailed technical specifications to be adopted in the project",
-      "dated_on": "2026-03-25 00:04:06+00:00",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.kerala.gov.in/view-file/192265",
-      "type": "Layout approval plan",
-      "dated_on": "2026-03-22 11:04:00+00:00",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.kerala.gov.in/view-file/192476",
-      "type": "Location details of the project with clear demarcation of land with boundaries including Latitude   and Longitude of end points",
-      "dated_on": "2026-03-25 00:03:02+00:00",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.kerala.gov.in/view-file/192266",
-      "type": "Site Plan / Site Map",
-      "dated_on": "2026-03-22 11:06:36+00:00",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.kerala.gov.in/view-file/192267",
-      "type": "Copy of latest Land Tax Receipt",
-      "dated_on": "2026-03-22 11:23:11+00:00"
-    },
-    {
-      "link": "https://rera.kerala.gov.in/view-file/192268",
-      "type": "Copy of Title Deed",
-      "dated_on": "2026-03-22 11:25:47+00:00"
-    },
-    {
-      "link": "https://rera.kerala.gov.in/view-file/192387",
-      "type": "Land title search report (From an advocate as specified in Rule 17)",
-      "dated_on": "2026-03-23 21:58:44+00:00"
-    },
-    {
-      "link": "https://rera.kerala.gov.in/view-file/192385",
-      "type": "Latest Encumbrance certificate",
-      "dated_on": "2026-03-23 20:03:09+00:00"
-    },
-    {
-      "link": "https://rera.kerala.gov.in/view-file/192478",
-      "type": "Proforma of Conveyance Deed / Sales Deed",
-      "dated_on": "2026-03-25 00:05:59+00:00"
-    },
-    {
-      "link": "https://rera.kerala.gov.in/view-file/192275",
-      "type": "Proforma of Agreement for Sale (As per Annexure A) Note - Promoter is directed to stick on original clauses of Annexure A. No alterations/additions/omissions are allowed in words/sentences/clauses.",
-      "dated_on": "2026-03-22 12:05:48+00:00"
-    },
-    {
-      "link": "https://rera.kerala.gov.in/view-file/192384",
-      "type": "Proforma of Allotment Letter (As per the Authority order No. K-RERA/T1/1657/2024 dated 26/11/2024)",
-      "dated_on": "2026-03-23 19:59:34+00:00"
-    },
-    {
-      "link": "https://rera.kerala.gov.in/view-file/192479",
-      "type": "Concurrence / Layout Approval of LSG planning department",
-      "dated_on": "2026-03-25 00:09:36+00:00"
-    },
-    {
-      "link": "https://rera.kerala.gov.in/view-file/7022",
-      "type": "Registered Joint Development Agreement",
-      "dated_on": "2026-03-22 12:52:30+00:00"
-    },
-    {
-      "type": "Sanctioned Plan 1",
-      "s3_link": "https://s3.example.com/dry-run",
-      "link": "https://rera.kerala.gov.in/view-file/192263",
-      "dated_on": "2026-03-22 10:55:42+00:00"
-    },
-    {
-      "type": "Detailed Technical specifications 1",
-      "s3_link": "https://s3.example.com/dry-run",
-      "link": "https://rera.kerala.gov.in/view-file/192477",
-      "dated_on": "2026-03-25 00:04:06+00:00"
-    },
-    {
-      "type": "Layout approval plan 1",
-      "s3_link": "https://s3.example.com/dry-run",
-      "link": "https://rera.kerala.gov.in/view-file/192265",
-      "dated_on": "2026-03-22 11:04:00+00:00"
-    },
-    {
-      "type": "Location details 1",
-      "s3_link": "https://s3.example.com/dry-run",
-      "link": "https://rera.kerala.gov.in/view-file/192476",
-      "dated_on": "2026-03-25 00:03:02+00:00"
-    },
-    {
-      "type": "Site Plan 1",
-      "s3_link": "https://s3.example.com/dry-run",
-      "link": "https://rera.kerala.gov.in/view-file/192266",
-      "dated_on": "2026-03-22 11:06:36+00:00"
+      "flat_type": "Service Apartments",
+      "carpet_area": "0",
+      "open_area": "0",
+      "total_area": "0",
+      "no_of_units": "16",
+      "balcony_area": "0"
     }
   ],
   "professional_information": [
     {
-      "name": "KORMATH",
+      "name": "A",
       "role": "Architect",
-      "address": "KORMATH HOUSE, MALAPPURAM",
-      "registration_no": "E2050/08/2215/KKD/2/2022/TPA",
-      "key_real_estate_projects": "OXYVALLEY PROJECTS"
+      "address": "ABC",
+      "registration_no": "COA",
+      "key_real_estate_projects": "ABC"
     },
     {
-      "name": "HAKKEEMSHA ASSOCIATES",
+      "name": "A",
       "role": "Engineer",
-      "address": "MANNARKKAD",
-      "registration_no": "E/2050/08/26219/KKD/91/2023/SA",
-      "key_real_estate_projects": "OXYVALLEY"
+      "address": "A",
+      "registration_no": "COA",
+      "key_real_estate_projects": "A"
     },
     {
-      "name": "p chandrasekar and co",
+      "name": "A",
       "role": "Chartered Accountant",
-      "address": "SECOND FLOOR SP PUDUR BUS STOP PARAMATHI ROAD NAMAKKAL",
-      "registration_no": "260301/FNA248538",
-      "key_real_estate_projects": "AADHI DREAM PROJECTS"
+      "address": "A",
+      "registration_no": "COA",
+      "key_real_estate_projects": "A"
     }
   ],
-  "last_modified": "2026-03-25 00:00:00+00:00",
+  "construction_progress": [
+    {
+      "title": "Water conservation, Rain water harvesting",
+      "progress_percentage": " 0",
+      "has_same_data": true
+    },
+    {
+      "title": "Open parking",
+      "progress_percentage": " 0",
+      "has_same_data": true
+    },
+    {
+      "title": "Water supply",
+      "progress_percentage": " 0",
+      "has_same_data": true
+    },
+    {
+      "title": "Electrical meter room, Sub-station, Receiving station",
+      "progress_percentage": " 0",
+      "has_same_data": true
+    },
+    {
+      "title": "Sewerage (Chamber, Lines, Septic tank, STP)",
+      "progress_percentage": " 0",
+      "has_same_data": true
+    },
+    {
+      "title": "Visitors Parking",
+      "progress_percentage": " 0",
+      "has_same_data": true
+    },
+    {
+      "title": "Number of Garages/ Covered Parking (In Numbers) (Common Area)",
+      "progress_percentage": " 0",
+      "has_same_data": true
+    },
+    {
+      "title": "Landscaping & Tree planting",
+      "progress_percentage": " 0",
+      "has_same_data": true
+    },
+    {
+      "title": "total_completion_percentage",
+      "progress_percentage": " 0",
+      "has_same_data": true
+    }
+  ],
+  "data": {
+    "govt_type": "state",
+    "land_area_unit": "Sqmts",
+    "construction_area_unit": "in Sqmts"
+  },
+  "last_modified": "2023-09-27 00:00:00+00:00",
   "estimated_commencement_date": null,
   "estimated_finish_date": null,
-  "number_of_residential_units": 0,
+  "number_of_residential_units": 24,
   "number_of_commercial_units": 0,
   "config_id": 14521,
-  "land_area": 12146.0,
-  "construction_area": 0.0,
+  "land_area": 612.0,
+  "construction_area": 1178.3,
   "total_floor_area_under_commercial_or_other_uses": 0.0,
-  "total_floor_area_under_residential": 0.0,
+  "total_floor_area_under_residential": 1178.3,
   "is_updated": false,
   "is_duplicate": false,
   "iw_processed": false,
   "checked_updates": false,
   "rera_housing_found": false,
   "is_live": false,
-  "actual_commencement_date": "2026-04-02 00:00:00+00:00",
-  "actual_finish_date": "2030-11-13 00:00:00+00:00",
+  "actual_commencement_date": "2019-04-26 00:00:00+00:00",
+  "actual_finish_date": "2020-12-04 00:00:00+00:00",
   "land_area_details": {
-    "land_area": "12146.0",
+    "land_area": "612.00",
     "land_area_unit": "Sqmts",
-    "construction_area": "0.0",
+    "construction_area": "1178.30",
     "construction_area_unit": "in Sqmts"
   },
+  "status_update": [
+    {
+      "booked_detail": [
+        {
+          "block": "Ambalath Ayesha Homes",
+          "type": "2BHK",
+          "area": "0",
+          "total": "8",
+          "sold": "0"
+        },
+        {
+          "block": "Ambalath Ayesha Homes",
+          "type": "Service Apartments",
+          "area": "0",
+          "total": "16",
+          "sold": "0"
+        }
+      ]
+    },
+    {
+      "amenity_detail": [
+        {
+          "name": "Number of Garages/ Covered Parking (In Numbers) (Common Area) :",
+          "percent_completed": "0"
+        },
+        {
+          "name": "Landscaping & Tree planting :",
+          "percent_completed": "0"
+        },
+        {
+          "name": "Open parking :",
+          "percent_completed": "0"
+        },
+        {
+          "name": "Water supply :",
+          "percent_completed": "0"
+        },
+        {
+          "name": "Water conservation, Rain water harvesting :",
+          "percent_completed": "0"
+        },
+        {
+          "name": "Electrical meter room, Sub-station, Receiving station :",
+          "percent_completed": "0"
+        },
+        {
+          "name": "Sewerage (Chamber, Lines, Septic tank, STP) :",
+          "percent_completed": "0"
+        },
+        {
+          "name": "Visitors Parking :",
+          "percent_completed": "0"
+        }
+      ]
+    },
+    {
+      "building_detail": [
+        {
+          "name": "Ambalath Ayesha Homes",
+          "completion_date": "04/12/2020"
+        }
+      ]
+    },
+    {
+      "progress_detail": [
+        {
+          "block": "Ambalath Ayesha Homes"
+        },
+        {
+          "block": "Ambalath Ayesha Homes"
+        }
+      ]
+    }
+  ],
   "authorised_signatory_details": null,
   "provided_faciltiy": null,
-  "building_details": null,
   "land_detail": null,
-  "data": {
-    "govt_type": "state",
-    "is_processed": false,
-    "land_area_unit": "Sqmts",
-    "construction_area_unit": "in Sqmts"
-  },
+  "uploaded_documents": [
+    {
+      "link": "https://rera.kerala.gov.in/signed-certificate/1191",
+      "type": "Rera Registration Certificate",
+      "s3_link": "https://s3.example.com/dry-run"
+    }
+  ],
   "document_urls": [
     {
       "link": "https://s3.example.com/dry-run",
       "type": "Rera Registration Certificate"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Copy of Sanctioned Plans (Provide a clear remark for each drawing such as ground floor ,1st floor, elevation ,section etc)"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Detailed technical specifications to be adopted in the project"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Layout approval plan"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Location details of the project with clear demarcation of land with boundaries including Latitude and Longitude of end points"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Site Plan / Site Map"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Sanctioned Plan 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Detailed Technical specifications 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Layout approval plan 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Location details 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Site Plan 1"
     }
   ]
 }

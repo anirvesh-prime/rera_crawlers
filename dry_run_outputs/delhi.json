@@ -1,53 +1,296 @@
 {
-  "key": "11457700923222560908",
-  "project_registration_no": "DLRERA2026P0005",
+  "key": "4058947893324490743",
+  "project_registration_no": "DLRERA2023P0017",
   "url": "https://rera.delhi.gov.in/registered_promoters_list?page=0",
   "state": "delhi",
   "domain": "rera.delhi.gov.in",
-  "project_name": "Commercial-D, Packages 'A' & 'B' Part of Re-Development of GPRA Colony, Ring Road- The Bharat Business Park",
-  "promoter_name": "NBCC (INDIA) LIMITED AND LAND & DEVELOPMENT OFFICER, MINISTRY OF HOUSING AND URBAN AFFAIRS",
+  "project_name": "TARC KAILASA",
+  "project_type": "Mixed",
+  "promoter_name": "TARC PROJECTS LIMITED",
   "status_of_the_project": "On going",
   "project_state": "delhi",
+  "project_description": "TARC PROJECTS LIMITED, a wholly owned subsidiary of TARC Limited, is in process of developing group housing project by the name “TARC Kailasa” (“Project”) comprising 417 Residential Units, 175 EWS Units and 175 CSP Units along with amenities, facilities, services etc. and such other developments as may be permitted. The Project is on a contiguous land parcel being Plot No. 67, situated at Najafgarh Road, Kirti Nagar, New Delhi, West Delhi, Delhi - 110015. The said Project is being developed in single phase.",
   "crawl_machine_ip": "127.0.0.1",
   "machine_name": "Anirveshs-MacBook-Air.local",
   "project_location_raw": {
-    "raw_address": "Ring Rod, Sarojini Nagar, New Delhi , Sarojini Nagar, Delhi, South West Delhi , 110023",
-    "pin_code": "110023"
+    "latitude": "28\"39'28.82\"N",
+    "locality": "West Delhi",
+    "pin_code": "110015",
+    "longitude": "77\"08'48.29\"E",
+    "raw_address": "67, Najafgarh Road, Kirti Nagar, New Delhi, West Delhi, Delhi - 110015 , West Delhi, Delhi, West Delhi , 110015"
   },
   "promoter_address_raw": {
-    "registered_address": "H5GP+4Q6 Grah Kalyan Kendra, Community Centre, Public Library, E1506, Shaheed Sudhir Sabharwal Marg, Netaji Nagar Market, Netaji Nagar,New Delhi,,,"
+    "registered_address": "67, Najafgarh Road, Kirti Nagar, New Delhi - 110015,Delhi,delhi,Delhi,110015"
   },
   "promoter_contact_details": {
-    "email": "mudit.bhatnagar@nbccindia.com",
-    "phone": "9999295375"
+    "email": "rajendra.negi@tarc.in",
+    "phone": "9911824242"
+  },
+  "project_cost_detail": {
+    "total_project_cost": "182614 Lakhs",
+    "estimated_construction_cost": "80000 Lakhs"
   },
   "uploaded_documents": [
     {
-      "link": "https://rera.delhi.gov.in/sites/default/files/certification_document/DLRERA2026P0005_0.pdf",
-      "type": "Registration Certificate",
+      "type": "Land Documents"
+    },
+    {
+      "link": "https://rera.delhi.gov.in/sites/default/files/project/024%20Transfer%20Deed.pdf",
+      "type": "Legal Title Deed of the land on which project is proposed along with chain deeds",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
-      "link": "https://rera.delhi.gov.in/online_view_periodic_progress_reports_history/DLRERA2026P0005",
-      "type": "QPR History"
+      "link": "https://rera.delhi.gov.in/sites/default/files/project/024%20Transfer%20Deed_0.pdf",
+      "type": "Agreement between promoter and owner of the land",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.delhi.gov.in/sites/default/files/project/026a%20%28Colly%29%2014%20May%202022%20Modification_of_Charge.pdf",
+      "type": "Non encumbrance certificate through an experienced advocate from revenue authority",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "type": "Project Approvals Documents"
+    },
+    {
+      "link": "https://rera.delhi.gov.in/sites/default/files/project/062%20Sanction%20Letter-%20Kirti%20Nagar_0.pdf",
+      "type": "Project approval and commencement certificate from the competent authority",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.delhi.gov.in/sites/default/files/project/060%20Zoning%20Zone_G_Plot%20Marked_0.pdf",
+      "type": "Approved project lay out plan from competent authority",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.delhi.gov.in/sites/default/files/project/062b%20%28Colly%29%20Layouts%20and%20Drawings_compressed%20%281%29.pdf",
+      "type": "Approved Building/Plotting plan from competent authority",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.delhi.gov.in/sites/default/files/project/Affidavit-%20REP-II_0.pdf",
+      "type": "Declaration Affidavit for proposed project with Photograph from promoter company as per RERA Act",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.delhi.gov.in/sites/default/files/project/064%20Fire%20%20Approval%20NOC_compressed_1.pdf",
+      "type": "All NOCs from the Competent Authority",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "type": "Promotional Documents"
+    },
+    {
+      "link": "https://rera.delhi.gov.in/sites/default/files/project/Promotion%20of%20project_1_0.pdf",
+      "type": "Prospectus of the Project",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.delhi.gov.in/sites/default/files/project/Promotion%20of%20project_1_0_0.pdf",
+      "type": "Brochure of project",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.delhi.gov.in/sites/default/files/project/Promotion%20of%20project_1_0_1.pdf",
+      "type": "Advertisement Document",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "type": "Performa & Other Documents"
+    },
+    {
+      "link": "https://rera.delhi.gov.in/sites/default/files/project/Allotment%20Letter_12.pdf",
+      "type": "Performa of the allotment letter",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.delhi.gov.in/sites/default/files/project/070%20Agreement%20for%20Sales_compressed.pdf",
+      "type": "Agreement for sale",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.delhi.gov.in/sites/default/files/project/071%20Conveyance%20Deed_compressed.pdf",
+      "type": "Conveyance deed proposed To be signed with allottees",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.delhi.gov.in/sites/default/files/certification_document/DLRERA2023P0017-AMENDED.pdf",
+      "type": "Registration Certificate",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.delhi.gov.in/sites/default/files/project/062%20Sanction%20Letter-%20Kirti%20Nagar.pdf",
+      "type": "Sanction Plan",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.delhi.gov.in/sites/default/files/project/Affidavit%20for%20encumbrance.pdf",
+      "type": "Encumbrance",
+      "updated": true,
+      "s3_link": "https://s3.example.com/dry-run"
     }
   ],
-  "data": {
-    "email": "mudit.bhatnagar@nbccindia.com",
-    "link": "https://rera.delhi.gov.in/sites/default/files/certification_document/DLRERA2026P0005_0.pdf"
-  },
-  "estimated_finish_date": "2031-02-18 00:00:00+05:30",
+  "professional_information": [
+    {
+      "name": "GIAN P MATHUR & ASSOCIATES PRIVATE LIMITED",
+      "role": "Architech",
+      "email": "info@gpmindia.com",
+      "phone": "+91-+91 9810066499",
+      "registration_no": "CA/80/05769"
+    },
+    {
+      "name": "Rakesh Jain",
+      "role": "CA",
+      "email": "rakesh.jain.kr@gmail.com",
+      "phone": "+91-9958521791",
+      "updated": true,
+      "registration_no": "CA/80/05769"
+    }
+  ],
+  "document_urls": [
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Legal Title Deed of the land on which project is proposed along with chain deeds"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Agreement between promoter and owner of the land"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Non encumbrance certificate through an experienced advocate from revenue authority"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Project approval and commencement certificate from the competent authority"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Approved project lay out plan from competent authority"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Approved Building/Plotting plan from competent authority"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Declaration Affidavit for proposed project with Photograph from promoter company as per RERA Act"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "All NOCs from the Competent Authority"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Prospectus of the Project"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Brochure of project"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Advertisement Document"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Performa of the allotment letter"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Agreement for sale"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Conveyance deed proposed To be signed with allottees"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Registration Certificate"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Sanction Plan"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Encumbrance"
+    }
+  ],
+  "estimated_commencement_date": "2023-12-01 00:00:00+00:00",
+  "estimated_finish_date": "2028-12-01 00:00:00+00:00",
   "config_id": 10,
+  "land_area": 24793.58,
+  "construction_area": 149522.181,
   "is_updated": false,
   "is_duplicate": false,
   "iw_processed": false,
   "checked_updates": false,
   "rera_housing_found": false,
   "is_live": false,
-  "document_urls": [
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Registration Certificate"
-    }
-  ]
+  "acknowledgement_no": null,
+  "project_pin_code": null,
+  "project_city": null,
+  "submitted_date": null,
+  "last_modified": null,
+  "actual_commencement_date": null,
+  "actual_finish_date": null,
+  "approved_on_date": null,
+  "past_experience_of_promoter": null,
+  "bank_details": null,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "number_of_residential_units": null,
+  "number_of_commercial_units": null,
+  "building_details": null,
+  "complaints_litigation_details": null,
+  "authorised_signatory_details": null,
+  "co_promoter_details": null,
+  "provided_faciltiy": null,
+  "development_agreement_detail": null,
+  "construction_progress": null,
+  "land_detail": null,
+  "members_details": null,
+  "retrieved_on": null,
+  "data": null,
+  "promoters_details": null,
+  "last_updated": null,
+  "updated_fields": null,
+  "project_images": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": null,
+  "status_update": null,
+  "iw_part_processed": null,
+  "last_crawled_date": null,
+  "land_area_details": null,
+  "doc_ocr_url": null,
+  "proposed_timeline": null,
+  "checked_updates_date": null,
+  "alternative_rera_ids": null
 }

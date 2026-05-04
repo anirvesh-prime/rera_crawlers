@@ -256,6 +256,12 @@ _SCHEMA_DDL = [
         last_verified TIMESTAMPTZ
     )
     """,
+    # Enforce uniqueness at DB level — prevents duplicate rows even when two
+    # processes race inside upsert_document.
+    """
+    CREATE UNIQUE INDEX IF NOT EXISTS project_documents_project_key_original_url_idx
+        ON project_documents (project_key, original_url)
+    """,
     """
     CREATE TABLE IF NOT EXISTS crawl_logs (
         id SERIAL PRIMARY KEY,
@@ -281,11 +287,38 @@ def get_connection() -> psycopg.Connection:
     the single biggest overhead when crawlers log frequently.  Reusing one
     connection per process eliminates that cost entirely while staying safe
     because ProcessPoolExecutor gives each crawler its own address space.
+
+    Safety checks applied on every call:
+    - ``closed != 0``: psycopg sets closed=1 on explicit close, closed=2 when
+      the server drops the connection — both trigger a fresh connect.
+    - ``INERROR`` transaction status: a previous uncaught exception may have
+      left the connection inside a failed transaction.  Rolling back restores
+      it to a clean IDLE state so the next query does not see
+      "current transaction is aborted" errors.
     """
     global _conn, _schema_ensured
+
+    # ── (re)connect if the socket is gone ────────────────────────────────────
     if _conn is None or _conn.closed:
         _conn = psycopg.connect(settings.postgres_dsn, row_factory=dict_row)
         _schema_ensured = False
+    else:
+        # Roll back any aborted transaction left by a previous unhandled error.
+        # psycopg.pq.TransactionStatus.INERROR == 3
+        try:
+            if _conn.info.transaction_status == psycopg.pq.TransactionStatus.INERROR:
+                log.warning("db: rolling back aborted transaction before reuse")
+                _conn.rollback()
+        except Exception:
+            # If even the rollback fails the connection is truly broken —
+            # drop it and reconnect.
+            try:
+                _conn.close()
+            except Exception:
+                pass
+            _conn = psycopg.connect(settings.postgres_dsn, row_factory=dict_row)
+            _schema_ensured = False
+
     if not _schema_ensured:
         ensure_schema(_conn)
         _schema_ensured = True
@@ -683,27 +716,41 @@ def upsert_document(
     md5_checksum: str,
     file_size_bytes: int,
 ) -> str:
-    existing = get_document(project_key, original_url)
-    with get_connection() as conn:
+    """Insert or update a document record atomically.
+
+    Previously the SELECT and the INSERT/UPDATE lived in two separate
+    transactions, creating a TOCTOU window where two processes crawling
+    different states but referencing the same shared document could both
+    see ``existing is None`` and both attempt an INSERT — causing a unique-
+    key violation (or a silent duplicate row without the unique index).
+
+    Fix: the SELECT … FOR UPDATE and the write are now inside a single
+    ``conn.transaction()`` block.  The row-level lock acquired by FOR UPDATE
+    serialises concurrent writers on the same ``(project_key, original_url)``
+    pair, and the UNIQUE INDEX in the schema is the DB-level safety net.
+    """
+    conn = get_connection()
+    with conn.transaction():
+        existing = conn.execute(
+            """
+            SELECT * FROM project_documents
+            WHERE project_key = %s AND original_url = %s
+            FOR UPDATE
+            """,
+            (project_key, original_url),
+        ).fetchone()
+
         if existing is None:
             conn.execute(
                 """
                 INSERT INTO project_documents
-                    (project_key, document_type, original_url, s3_key, s3_bucket, file_name, md5_checksum, file_size_bytes)
+                    (project_key, document_type, original_url, s3_key, s3_bucket,
+                     file_name, md5_checksum, file_size_bytes)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """,
-                (
-                    project_key,
-                    document_type,
-                    original_url,
-                    s3_key,
-                    s3_bucket,
-                    file_name,
-                    md5_checksum,
-                    file_size_bytes,
-                ),
+                (project_key, document_type, original_url, s3_key, s3_bucket,
+                 file_name, md5_checksum, file_size_bytes),
             )
-            conn.commit()
             return "uploaded"
 
         if existing["md5_checksum"] != md5_checksum:
@@ -715,9 +762,10 @@ def upsert_document(
                 """,
                 (s3_key, md5_checksum, file_size_bytes, existing["id"]),
             )
-            conn.commit()
             return "updated"
 
-        conn.execute("UPDATE project_documents SET last_verified = now() WHERE id = %s", (existing["id"],))
-        conn.commit()
+        conn.execute(
+            "UPDATE project_documents SET last_verified = now() WHERE id = %s",
+            (existing["id"],),
+        )
         return "skipped"

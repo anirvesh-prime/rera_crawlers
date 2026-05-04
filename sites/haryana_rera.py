@@ -54,6 +54,13 @@ LISTING_URLS: list[str] = [
 
 # ── Date helpers ─────────────────────────────────────────────────────────────
 
+_MONTH_ABBR: dict[str, str] = {
+    "jan": "01", "feb": "02", "mar": "03", "apr": "04",
+    "may": "05", "jun": "06", "jul": "07", "aug": "08",
+    "sep": "09", "oct": "10", "nov": "11", "dec": "12",
+}
+
+
 def _normalize_date_str(val: Any) -> str | None:
     """Normalize Haryana RERA date strings to canonical ISO timestamptz format."""
     if not val:
@@ -61,6 +68,13 @@ def _normalize_date_str(val: Any) -> str | None:
     v = str(val).strip()
     if not v or v in ("-", "--", "NA", "N/A", "null", "None"):
         return None
+    # dd-Mon-yyyy  (e.g. 31-Dec-2018)
+    m = re.match(r"^(\d{1,2})-([A-Za-z]{3})-(\d{4})$", v)
+    if m:
+        mon_str = m.group(2).lower()
+        mon = _MONTH_ABBR.get(mon_str)
+        if mon:
+            return f"{m.group(3)}-{mon}-{int(m.group(1)):02d} 00:00:00+00:00"
     # dd-mm-yyyy [HH:MM:SS [AM/PM]]
     m = re.match(r"^(\d{2})-(\d{2})-(\d{4})(?:\s+(\d{2}):(\d{2}):(\d{2})(?:\s*(AM|PM))?)?", v, re.I)
     if m:
@@ -123,6 +137,40 @@ def _build_qpr_url(project_registration_no: str) -> str | None:
         f"/{b64(authority)}/{b64(num)}/{b64(year)}"
     )
 
+
+def _extract_status_update(qpr_url: str) -> list[dict]:
+    """
+    Fetch the QPR schedule page and return a list of quarterly reporting entries.
+
+    Each entry: {"date_of_reporting": "<ISO timestamptz>", "updated": True (if QPR was filed)}.
+    The end date (col 2) of each quarter is used as date_of_reporting.
+    If the 4th column has a form/link (View button), the QPR was submitted → updated=True.
+    """
+    resp = safe_get(qpr_url, timeout=30.0)
+    if not resp:
+        return []
+    soup = BeautifulSoup(resp.text, "lxml")
+    tables = soup.find_all("table")
+    if len(tables) < 2:
+        return []
+    # Second table is the quarterly schedule table
+    table = tables[1]
+    rows = table.find_all("tr")
+    status_updates: list[dict] = []
+    for row in rows[1:]:  # skip header/empty first row
+        cells = row.find_all("td")
+        if len(cells) < 3:
+            continue
+        end_date_str = cells[2].get_text(strip=True)
+        normalized = _normalize_date_str(end_date_str)
+        if not normalized:
+            continue
+        entry: dict = {"date_of_reporting": normalized}
+        # If 4th column contains a form (View button), the promoter filed a QPR
+        if len(cells) > 3 and cells[3].find("form"):
+            entry["updated"] = True
+        status_updates.append(entry)
+    return status_updates
 
 
 # ── Listing page parsing ──────────────────────────────────────────────────────
@@ -254,10 +302,14 @@ def _extract_kv_from_tables(soup: BeautifulSoup) -> dict[str, str]:
         if n == 2:
             label_cell, value_cell = cells[0], cells[1]
         elif n == 3:
-            # 3-col: first cell is serial number, skip if it's just a number
-            first = cells[0].get_text(strip=True)
-            if re.match(r"^\d+\.?$", first):
+            first  = cells[0].get_text(strip=True)
+            middle = cells[1].get_text(strip=True)
+            if re.match(r"^\d+\.?$", first) or not first:
+                # Serial number or empty first cell → label=col1, value=col2
                 label_cell, value_cell = cells[1], cells[2]
+            elif not middle:
+                # Empty middle cell → label=col0, value=col2
+                label_cell, value_cell = cells[0], cells[2]
             else:
                 continue
         else:
@@ -274,11 +326,22 @@ def _extract_kv_from_tables(soup: BeautifulSoup) -> dict[str, str]:
     return result
 
 
+_UNIT_HEADER_ALIASES: dict[str, str] = {
+    "plot/ apartment type":                              "flat_type",
+    "apartment type":                                    "flat_type",
+    "plot type":                                         "flat_type",
+    "size of the plot/carpet area of the apartments":   "carpet_area",
+    "carpet area":                                       "carpet_area",
+    "total number of plots/apartments in the project":  "no_of_units",
+    "number of units":                                   "no_of_units",
+}
+
+
 def _extract_units_table(soup: BeautifulSoup) -> list[dict]:
     """
     Parse the apartment/plot units table from Form REP-I Part C.
     Looks for a table whose header row contains 'apartment' or 'plot' + 'type'.
-    Returns list of {flat_type, carpet_area, no_of_units, total_units_booked}.
+    Returns list of {flat_type, carpet_area, no_of_units}.
     """
     for table in soup.find_all("table"):
         rows = table.find_all("tr")
@@ -287,21 +350,25 @@ def _extract_units_table(soup: BeautifulSoup) -> list[dict]:
         header = rows[0].get_text(" ", strip=True).lower()
         if ("apartment" not in header and "plot" not in header) or "type" not in header:
             continue
-        headers = [c.get_text(" ", strip=True) for c in rows[0].find_all(["th", "td"])]
+        raw_headers = [c.get_text(" ", strip=True) for c in rows[0].find_all(["th", "td"])]
         units: list[dict] = []
         for row in rows[1:]:
             cells = row.find_all("td")
             if len(cells) < 3:
                 continue
-            row_dict = {
-                headers[i] if i < len(headers) else f"col_{i}": c.get_text(" ", strip=True)
-                for i, c in enumerate(cells)
-            }
             # Skip serial-number-only rows and summary/total rows
             first_non_serial = cells[1].get_text(strip=True) if len(cells) > 1 else ""
             if not first_non_serial or first_non_serial.lower() == "total":
                 continue
-            units.append(row_dict)
+            # Map raw column headers to schema keys; keep only recognised keys
+            mapped: dict[str, str] = {}
+            for i, cell in enumerate(cells):
+                raw_key = raw_headers[i] if i < len(raw_headers) else f"col_{i}"
+                std_key = _UNIT_HEADER_ALIASES.get(raw_key.lower())
+                if std_key and std_key not in mapped:
+                    mapped[std_key] = cell.get_text(" ", strip=True)
+            if mapped:
+                units.append(mapped)
         if units:
             return units
     return []
@@ -310,8 +377,14 @@ def _extract_units_table(soup: BeautifulSoup) -> list[dict]:
 def _extract_facilities_table(soup: BeautifulSoup) -> list[dict]:
     """
     Parse the facilities/services table from Form REP-I Part C.
-    Looks for tables with 'facility' or 'service' in the header.
+
+    Prefers the table whose header contains 'name of the facility' (the Haryana
+    internal-services cost table with columns: Sr.No., Name, Estimated cost, Remarks).
+    Falls back to any table with 'facility' or 'service' in the header.
+
+    Output rows: {facility, description, status}  (allowed keys in project schema).
     """
+    candidates = []
     for table in soup.find_all("table"):
         rows = table.find_all("tr")
         if len(rows) < 2:
@@ -319,20 +392,38 @@ def _extract_facilities_table(soup: BeautifulSoup) -> list[dict]:
         header = rows[0].get_text(" ", strip=True).lower()
         if "facility" not in header and "service" not in header:
             continue
-        headers = [c.get_text(" ", strip=True) for c in rows[0].find_all(["th", "td"])]
+        priority = 1 if "name of the facility" in header else 0
+        candidates.append((priority, table, rows))
+
+    # Prefer the higher-priority table (name of the facility table)
+    candidates.sort(key=lambda x: x[0], reverse=True)
+
+    for _priority, _table, rows in candidates:
+        header_cells = [c.get_text(" ", strip=True) for c in rows[0].find_all(["th", "td"])]
         facilities: list[dict] = []
         for row in rows[1:]:
             cells = row.find_all("td")
             if len(cells) < 2:
                 continue
-            row_dict = {
-                headers[i] if i < len(headers) else f"col_{i}": c.get_text(" ", strip=True)
-                for i, c in enumerate(cells)
-            }
-            first_val = cells[1].get_text(strip=True) if len(cells) > 1 else ""
             if not cells[0].get_text(strip=True):
                 continue
-            facilities.append(row_dict)
+            # Build a schema-friendly entry by scanning header-to-cell mapping
+            entry: dict[str, str] = {}
+            for i, cell in enumerate(cells):
+                col_hdr = header_cells[i].lower() if i < len(header_cells) else ""
+                val = cell.get_text(" ", strip=True)
+                if "name of the facility" in col_hdr:
+                    entry["facility"] = val
+                elif "estimated cost" in col_hdr:
+                    # Preserve full header label as part of description value
+                    cost_lbl = header_cells[i] if i < len(header_cells) else "Estimated cost"
+                    entry["description"] = f"{cost_lbl}: {val}"
+                elif "remark" in col_hdr or "yet to" in col_hdr or "status" in col_hdr:
+                    entry["status"] = val
+                elif "facility" in col_hdr and "facility" not in entry:
+                    entry["facility"] = val
+            if entry:
+                facilities.append(entry)
         if facilities:
             return facilities
     return []
@@ -443,16 +534,25 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:
     _CIN_RE = re.compile(r"^[A-Z]\d{5}[A-Z]{2}\d{4}[A-Z]{3}\d{6}$")
     for row in soup.find_all("tr"):
         cells = row.find_all("td")
-        if len(cells) in (2, 3):
+        n_cells = len(cells)
+        if n_cells < 2:
+            continue
+        # Handle 3-cell rows with empty middle: [label, "", value]
+        if n_cells == 3 and not cells[1].get_text(strip=True):
+            lbl = cells[0].get_text(separator=" ", strip=True)
+            val = cells[2].get_text(separator=" ", strip=True)
+        elif n_cells in (2, 3):
             lbl = cells[-2].get_text(separator=" ", strip=True)
             val = cells[-1].get_text(separator=" ", strip=True)
-            if "(Annex" in lbl and val and not val.startswith("XXXX") and len(val) > 10:
-                # Skip CIN numbers (format: L/U + 5 digits + 2 letters + 4 digits + 3 letters + 6 digits)
-                if _CIN_RE.match(val.strip()):
-                    continue
-                if not company_address and val:
-                    company_address = val
-                    break
+        else:
+            continue
+        if "(Annex" in lbl and val and not val.startswith("XXXX") and len(val) > 10:
+            # Skip CIN numbers (format: L/U + 5 digits + 2 letters + 4 digits + 3 letters + 6 digits)
+            if _CIN_RE.match(val.strip()):
+                continue
+            if not company_address and val:
+                company_address = val
+                break
 
     # Regex fallback for company name if KV extraction failed
     if not company_name:
@@ -475,12 +575,30 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:
     # Contact details
     # Build a lowercase-key lookup for flexible matching
     kv_lower = {k.lower(): v for k, v in kv.items()}
+
+    def _clean_phone_val(val: str | None) -> str | None:
+        """Strip HTML entities and parenthetical annotations from phone strings."""
+        if not val:
+            return None
+        # Replace literal &nbsp; (and without semicolon) and non-breaking spaces
+        val = re.sub(r"&nbsp;?", " ", val, flags=re.I)
+        val = val.replace("\xa0", " ")
+        # Strip parenthetical annotations like "(Number Shared by Promoter in Public)"
+        val = re.sub(r"\s*\(.*$", "", val)
+        # Strip any remaining non-digit/space trailing content after the number
+        val = re.sub(r"[^\d]+$", "", val).strip()
+        return val or None
+
     contact: dict[str, str] = {}
-    landline = (kv.get("Phone(Landline)") or kv.get("Phone (landline)")
-                or kv.get("Phone (Landline)") or kv_lower.get("phone(landline)"))
-    mobile   = (kv.get("Phone(Mobile)") or kv.get("Phone (Mobile)")
-                or kv.get("Phone(mobile)") or kv_lower.get("phone(mobile)")
-                or kv_lower.get("mobile no") or kv_lower.get("mobile number"))
+    landline = _clean_phone_val(
+        kv.get("Phone(Landline)") or kv.get("Phone (landline)")
+        or kv.get("Phone (Landline)") or kv_lower.get("phone(landline)")
+    )
+    mobile = _clean_phone_val(
+        kv.get("Phone(Mobile)") or kv.get("Phone (Mobile)")
+        or kv.get("Phone(mobile)") or kv_lower.get("phone(mobile)")
+        or kv_lower.get("mobile no") or kv_lower.get("mobile number")
+    )
     email    = (kv.get("Email ID") or kv.get("Email Id") or kv.get("Email")
                 or kv_lower.get("email id") or kv_lower.get("email"))
     website  = kv.get("Website") or kv_lower.get("website")
@@ -507,6 +625,13 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:
         if fb_contact:
             out["promoter_contact_details"] = fb_contact
 
+    # ── Part B: Construction area (extract before land_area_details is built) ──
+    construction_area_key = next(
+        (k for k in kv if "land area to be used for construction" in k.lower()), None
+    )
+    if construction_area_key:
+        out["construction_area"] = _float_val(kv[construction_area_key])
+
     # ── Part B: Land area ─────────────────────────────────────────────────────
     land_area_raw = kv.get("1. Land area of the project") or kv.get("Land area of the project")
     if land_area_raw:
@@ -516,10 +641,14 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:
         if m:
             out["land_area"] = _float_val(m.group(1))
     if out.get("land_area") is not None:
-        out["land_area_details"] = {
+        land_area_details: dict[str, Any] = {
             "land_area": str(out["land_area"]),
             "land_area_unit": "Sqr/mtrs",
         }
+        if out.get("construction_area") is not None:
+            land_area_details["construction_area"] = out["construction_area"]
+            land_area_details["construction_area_unit"] = "Square Meters"
+        out["land_area_details"] = land_area_details
 
     # License number (various label formats)
     lic_key = next((k for k in kv if any(
@@ -542,23 +671,57 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:
     cost_detail: dict[str, Any] = {}
     if cost_key:
         total_cost_str = kv[cost_key]
-        cost_detail["total_project_cost"] = total_cost_str
+        # Normalise to lowercase-lakhs format: "17436.9 lakhs"
+        cost_detail["total_project_cost"] = re.sub(r"Lakhs", "lakhs", total_cost_str, flags=re.I)
         total_rupees = _lakhs_to_rupees(total_cost_str)
         if total_rupees:
-            cost_detail["total_project_cost_in_inr"] = total_rupees
+            cost_detail["estimated_project_cost"] = total_rupees
 
     land_cost_key = next((k for k in kv if "Cost of the land" in k), None)
     if land_cost_key:
         cost_detail["cost_of_land"] = _lakhs_to_rupees(kv[land_cost_key])
 
     construction_cost_key = next((k for k in kv if "cost of construction" in k.lower()), None)
-    if construction_cost_key:
-        cost_detail["construction_cost"] = _lakhs_to_rupees(kv[construction_cost_key])
+    infra_cost_key = next((k for k in kv if "cost of infrastructure" in k.lower()), None)
+    const_rupees = _lakhs_to_rupees(kv[construction_cost_key]) if construction_cost_key else None
+    infra_rupees = _lakhs_to_rupees(kv[infra_cost_key]) if infra_cost_key else None
+    if const_rupees is not None or infra_rupees is not None:
+        total_construction = (const_rupees or 0) + (infra_rupees or 0)
+        total_lakhs = total_construction / 100_000
+        cost_detail["construction_cost"] = f"{total_lakhs:.1f} lakhs"
+    elif construction_cost_key:
+        cost_detail["construction_cost"] = kv[construction_cost_key]
 
     if cost_detail:
         if "construction_cost" in cost_detail:
-            cost_detail["estimated_construction_cost"] = cost_detail.pop("construction_cost")
+            cost_detail["estimated_construction_cost"] = re.sub(
+                r"Lakhs", "lakhs", cost_detail.pop("construction_cost"), flags=re.I
+            )
         out["project_cost_detail"] = cost_detail
+
+    # ── Part B-X: Date fields from KV ─────────────────────────────────────────
+    # Start Date (commencement)
+    start_key = next((k for k in kv if k.strip().lower() == "start date"), None)
+    if start_key:
+        out["estimated_commencement_date"] = _normalize_date_str(kv[start_key])
+
+    # Revised date of completion → actual_finish_date
+    revised_key = next((k for k in kv if "revised date of completion" in k.lower()), None)
+    if revised_key:
+        out["actual_finish_date"] = _normalize_date_str(kv[revised_key])
+
+    # Construction completion percentage
+    pct_key = next(
+        (k for k in kv if "percentage completion" in k.lower()), None
+    )
+    if pct_key:
+        try:
+            pct = int(float(kv[pct_key]))
+            out["construction_progress"] = [
+                {"title": "total_completion_percentage", "progress_percentage": pct}
+            ]
+        except (ValueError, TypeError):
+            pass
 
     # ── Part C: Units table → building_details ────────────────────────────────
     units = _extract_units_table(soup)
@@ -578,11 +741,12 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:
         except ValueError:
             pass
 
-    m = re.search(r"No\.\s+of\s+Flats[^0-9]*booked\s+([\d,]+)", text, re.I)
+    # Use "constructed" as the authoritative total unit count (includes all built units,
+    # not just booked ones — previously used "booked" which undercounts).
+    m = re.search(r"No\.\s+of\s+Flats[^0-9]*constructed\s+([\d,]+)", text, re.I)
     if m:
         try:
-            total_units = int(m.group(1).replace(",", ""))
-            out["number_of_residential_units"] = total_units
+            out["number_of_residential_units"] = int(m.group(1).replace(",", ""))
         except ValueError:
             pass
 
@@ -637,10 +801,13 @@ def _parse_persons_section(text: str) -> dict:
     authorized_rep: dict | None = None
     contact_person: dict | None = None
 
-    # Split on numbered person headers
+    # Split on numbered person headers.
+    # Use [^:\n]* (not [^\n]*) so the match stops before the trailing colon,
+    # allowing \s*:\s*\n to consume it.  This handles roles like
+    # "Managing Director/HOD/CEO:" and "Authorised reprsentative for correspondance…:"
     person_blocks = re.split(
-        r"\n\s*(\d+)\.\s+(Managing Director|Director \d+|Authorised\s+rep[re]+sentative[^\n]*|"
-        r"Contact person[^\n]*)\s*:\s*\n",
+        r"\n\s*(\d+)\.\s+(Managing Director[^:\n]*|Director \d+|"
+        r"Authorised\s+rep[re]+sentative[^:\n]*|Contact person[^:\n]*)\s*:\s*\n",
         text,
         flags=re.I,
     )
@@ -660,23 +827,24 @@ def _parse_persons_section(text: str) -> dict:
         name    = _extract(r"Name\s*:?\s*(.+?)(?:\n|$)")
         address = _extract(r"Residential Address\s*:?\s*(.+?)(?:\n|$)")
         mobile  = _extract(r"Phone\s*\(Mobile\)\s*([\d\s]+?)(?:\(|&|\n|$)")
-        email   = _extract(r"Email ID\s*([\w@\.\-]+@[\w\.\-]+)")
-        pan     = _extract(r"PAN No\.?\s*([A-Z]{5}\d{4}[A-Z])")
+        email   = _extract(r"E-?mail(?:\s+ID)?\s*:?\s*([\w@\.\-]+@[\w\.\-]+)")
+        # Match both full PANs (ABCDE1234F) and masked PANs (XXXX087L)
+        pan     = _extract(r"PAN No\.?\s*([A-Z]{3,5}[X0-9]{3,5}[A-Z])")
 
         entry: dict = {}
-        if name:     entry["name"]    = name
-        if role:     entry["role"]    = role
-        if address:  entry["address"] = address
-        if mobile:   entry["phone"]   = mobile.strip()
-        if email:    entry["email"]   = email
-        if pan:      entry["pan_no"]  = pan
+        if name:     entry["name"]         = name
+        if role:     entry["role"]         = role
+        if address:  entry["present_address"] = address
+        if mobile:   entry["phone"]        = mobile.strip()
+        if email:    entry["email"]        = email
+        if pan:      entry["pan_no"]       = pan
 
         if not entry:
             continue
 
         role_lower = role.lower()
         if "contact person" in role_lower:
-            contact_person = {**entry, "position": "Contact person at site office"}
+            contact_person = {**entry, "position": "Contact person"}
         elif "authoris" in role_lower or "authoriz" in role_lower:
             authorized_rep = entry
         else:
@@ -734,15 +902,17 @@ def _merge_stub_and_detail(stub: dict, detail: dict, config_id: int) -> dict:
     project_registration_no = stub["project_registration_no"]
 
     # Base payload from stub
+    city = stub.get("project_city") or None
     payload: dict[str, Any] = {
         "project_registration_no": project_registration_no,
         "acknowledgement_no": stub.get("acknowledgement_no") or None,
         "project_name": stub.get("project_name") or detail.get("project_name"),
         "promoter_name": stub.get("promoter_name") or None,
-        "project_city": stub.get("project_city") or None,
+        "project_city": city,
         "project_location_raw": {
+            "taluk":       city,
+            "district":    city,
             "raw_address": stub.get("project_location_raw_address"),
-            "district": stub.get("project_city"),
         },
         "state": "haryana",
         "domain": DOMAIN,
@@ -757,12 +927,13 @@ def _merge_stub_and_detail(stub: dict, detail: dict, config_id: int) -> dict:
     detail_fields = [
         "status_of_the_project", "submitted_date",
         "land_area", "construction_area", "number_of_residential_units",
-        "land_area_details",  # land_area_details was extracted but missing from this list
+        "land_area_details",
         "project_cost_detail", "building_details", "provided_faciltiy",
         "bank_details", "promoters_details", "promoter_address_raw",
         "promoter_contact_details", "co_promoter_details",
         "authorised_signatory_details", "members_details",
-        "alternative_rera_ids",  # set from _license_no but was missing from transfer list
+        "alternative_rera_ids",
+        "estimated_commencement_date", "actual_finish_date", "construction_progress",
         "uploaded_documents", "data", "_license_no",
         "_flats_constructed", "_promoter_pan",
     ]
@@ -775,6 +946,12 @@ def _merge_stub_and_detail(stub: dict, detail: dict, config_id: int) -> dict:
     cert_url = stub.get("cert_url")
     qpr_url  = stub.get("qpr_url") or _build_qpr_url(project_registration_no)
 
+    # status_update from QPR schedule page
+    if qpr_url:
+        status_updates = _extract_status_update(qpr_url)
+        if status_updates:
+            payload["status_update"] = status_updates
+
     listing_docs: list[dict] = []
     if cert_url:
         listing_docs.append({"type": "Rera Registration Certificate 1", "link": cert_url})
@@ -784,18 +961,86 @@ def _merge_stub_and_detail(stub: dict, detail: dict, config_id: int) -> dict:
     if listing_docs:
         existing_docs = payload.get("uploaded_documents") or []
         existing_links = {d.get("link") for d in existing_docs}
-        for doc in listing_docs:
-            if doc.get("link") not in existing_links:
-                existing_docs.insert(0, doc)
-        payload["uploaded_documents"] = existing_docs
+        # Prepend as a block so the listing order (cert first, QPR second) is preserved
+        to_prepend = [doc for doc in listing_docs if doc.get("link") not in existing_links]
+        payload["uploaded_documents"] = to_prepend + existing_docs
 
-    # Authority metadata inside data blob
+    # Authority metadata + listing-level references inside data blob
     data_blob: dict = payload.get("data") or {}
     data_blob["authority_type"] = stub.get("authority_type")
     data_blob["listing_url"]    = stub.get("_listing_url")
+    # Registration certificate and QPR URLs surfaced in the data blob
+    if cert_url:
+        data_blob["rc"] = cert_url
+    if qpr_url:
+        data_blob["qp_url"] = qpr_url
+    # Land/construction area units (mirrors land_area_details for convenience)
+    if payload.get("land_area") is not None:
+        data_blob["land_area_unit"] = "Sqr/mtrs"
+    if payload.get("construction_area") is not None:
+        data_blob["construction_area_unit"] = "Square Meters"
     payload["data"] = data_blob
 
     return payload
+
+
+def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
+    """
+    Data-quality sentinel for Haryana RERA.
+    Loads state_projects_sample/haryana.json as the baseline, re-scrapes the
+    sentinel project's detail page, and verifies ≥ 80% field coverage.
+    """
+    import json as _json
+    import os as _os
+    from core.sentinel_utils import check_field_coverage
+
+    sentinel_reg = config.get("sentinel_registration_no", "")
+    if not sentinel_reg:
+        logger.warning("No sentinel_registration_no configured — skipping", step="sentinel")
+        return True
+
+    sample_path = _os.path.join(
+        _os.path.dirname(_os.path.dirname(__file__)),
+        "state_projects_sample", "haryana.json",
+    )
+    try:
+        with open(sample_path) as fh:
+            baseline: dict = _json.load(fh)
+    except FileNotFoundError:
+        logger.warning("Sample baseline not found — skipping coverage check",
+                       path=sample_path, step="sentinel")
+        return True
+
+    detail_url = baseline.get("url", "")
+    if not detail_url:
+        logger.warning("Sentinel: no detail URL in sample — skipping", step="sentinel")
+        return True
+
+    logger.info(f"Sentinel: scraping {sentinel_reg}", url=detail_url, step="sentinel")
+    try:
+        resp = safe_get(detail_url, retries=2, logger=logger)
+        if not resp:
+            logger.error("Sentinel: failed to fetch detail page", url=detail_url, step="sentinel")
+            return False
+        fresh = _parse_detail_page(resp.text, detail_url) or {}
+    except Exception as exc:
+        logger.error(f"Sentinel: scrape error — {exc}", step="sentinel")
+        return False
+
+    if not fresh:
+        logger.error("Sentinel: no data extracted", url=detail_url, step="sentinel")
+        return False
+
+    if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
+        insert_crawl_error(
+            run_id, config.get("id", "haryana_rera"),
+            "SENTINEL_FAILED",
+            f"Coverage below 80% for sentinel project {sentinel_reg}",
+        )
+        return False
+
+    logger.info("Sentinel check passed", reg=sentinel_reg, step="sentinel")
+    return True
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────
@@ -824,6 +1069,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         projects_skipped=0, documents_uploaded=0, error_count=0,
     )
     item_limit = settings.CRAWL_ITEM_LIMIT or 0
+
+    # ── Sentinel health check ────────────────────────────────────────────────
+    if not _sentinel_check(config, run_id, logger):
+        logger.error("Sentinel failed — aborting crawl", step="sentinel")
+        counts["error_count"] += 1
+        return counts
 
     # ── Step 1: Collect stubs from both listing pages ─────────────────────────
     listing_urls = LISTING_URLS

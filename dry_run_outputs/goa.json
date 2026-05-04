@@ -1,0 +1,294 @@
+{
+  "key": "2346677455073180104",
+  "project_registration_no": "PRGO02231914",
+  "url": "https://rera.goa.gov.in/reraApp/viewProjectDetailPage?projectID=Ospqf/NrToXvyoNgHCYymA==",
+  "state": "goa",
+  "domain": "rera.goa.gov.in",
+  "project_name": "GHD THE HAVEN",
+  "project_type": "Residential/Group Housing",
+  "promoter_name": "Bharat Thakran",
+  "status_of_the_project": "Ongoing",
+  "project_state": "Goa",
+  "project_description": "Residential Project with 16 studio, located at Village Nerul, North Goa",
+  "crawl_machine_ip": "127.0.0.1",
+  "machine_name": "Anirveshs-MacBook-Air.local",
+  "project_location_raw": {
+    "state": "Goa",
+    "district": "North Goa",
+    "village": "Nerul (ct)",
+    "raw_address": "GHD THE HAVEN , Village-Nerul, North Goa , Goa"
+  },
+  "promoter_contact_details": {
+    "email": "ghdinfra[at]gmail[dot]com",
+    "phone": "8800590867"
+  },
+  "project_cost_detail": {
+    "total_project_cost": "37225000",
+    "estimated_project_cost": "37225000"
+  },
+  "professional_information": [
+    {
+      "name": "SHRINIVAS ASTHEKAR",
+      "role": "Architects",
+      "email": "shriashtekar[at]gmail[dot]com",
+      "address": "goa,panaji,North Goa,Goa"
+    },
+    {
+      "name": "Rajesh Mahambrey",
+      "role": "Structural Engineers",
+      "email": "rajeshmahambrey1[at]gmail[dot]com",
+      "address": "MAPUSA,GOA,North Goa,Goa"
+    }
+  ],
+  "data": {
+    "promoter_type": "Individual",
+    "raw_address": "GHD THE HAVEN , Village-Nerul, North Goa , Goa",
+    "land_area_unit": "sq Mtr",
+    "govt_type": "state"
+  },
+  "promoters_details": {
+    "type_of_firm": "Individual",
+    "name": "Bharat Thakran"
+  },
+  "status_update": {
+    "construction_progress": [
+      {
+        "title": "Excavation",
+        "progress_percentage": "100"
+      },
+      {
+        "title": "Basement(s) And Plinth",
+        "progress_percentage": "100"
+      },
+      {
+        "title": "Podiums",
+        "progress_percentage": "100"
+      },
+      {
+        "title": "Stilt Floor",
+        "progress_percentage": "100"
+      },
+      {
+        "title": "Slab of Super Structure",
+        "progress_percentage": "100"
+      },
+      {
+        "title": "Internal Fittings",
+        "progress_percentage": "25"
+      },
+      {
+        "title": "Sanitary Fittings/Electrical fittings",
+        "progress_percentage": "25"
+      },
+      {
+        "title": "Staircase/Lifts/Lobbies/Underground and Overground water tanks",
+        "progress_percentage": "25"
+      },
+      {
+        "title": "External Work/Waterproofing",
+        "progress_percentage": "10"
+      },
+      {
+        "title": "Completion/Occupancy Certificate Requirements",
+        "progress_percentage": "0"
+      }
+    ]
+  },
+  "land_area_details": {
+    "land_area": "560.0",
+    "land_area_unit": "sq Mtr",
+    "construction_area": "201.0",
+    "construction_area_unit": "Sq Mtr"
+  },
+  "submitted_date": "2023-02-22 13:47:27+00:00",
+  "estimated_commencement_date": "2023-02-10 00:00:00+00:00",
+  "estimated_finish_date": "2025-12-31 00:00:00+00:00",
+  "number_of_residential_units": 16,
+  "config_id": 11806,
+  "land_area": 560.0,
+  "construction_area": 201.0,
+  "is_updated": false,
+  "is_duplicate": false,
+  "iw_processed": false,
+  "checked_updates": false,
+  "rera_housing_found": false,
+  "is_live": false,
+  "project_images": [
+    "https://rera.goa.gov.in/reraimage?IMG_ID=VZz8e23Gxqr5zt9NhKY7hQ=="
+  ],
+  "uploaded_documents": [
+    {
+      "type": "Registration Certificate 1",
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=HCNs56tJ8J1riI1I6oUEyw==",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=lfrvO1vPdum0n7wVABaj3Q==",
+      "type": "Construction License"
+    },
+    {
+      "type": "Sanctioned Building Plan 1",
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=S29cz3eKzSj4/0/CTSoXcw==",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=w3v640a7yHNbY2ClQ1e9IQ==",
+      "type": "Draft Agreement for Sale"
+    },
+    {
+      "type": "Land documents 1",
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=iOYlQDfRjnR51Pz/Goy3Kw==",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Area Development Plan 1",
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=cNINHSlrUSxhusRevGGrCQ==",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=3pvJFysz60c8/ffi7kWjNQ==",
+      "type": "Draft of Allotment Letter"
+    },
+    {
+      "type": "Brochure of Current Project 1",
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=fuD+2Mcq4BKcPwwoHps/GQ==",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Project Related Documents 1",
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=Xt821d8n7DEnhbQlpJ0iFg==",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=gCJIdKQexcNQb/q8T8wokQ==",
+      "type": "Land Deed/Agreement"
+    },
+    {
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=b4oca57pDSUwWmg/6onGzQ==",
+      "type": "Sanad"
+    },
+    {
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=APGSU/9GrAGzFo884QFpCw==",
+      "type": "Litigations"
+    },
+    {
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=OooSU5koAjP48l5vW6ck6A==",
+      "type": "Separate Plan of partly proposed development/Phase development"
+    },
+    {
+      "type": "ARCHITECT Certificate 1",
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=pJr1LDXLz6zl7unhb29n3A==",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Engineer Certificate 1",
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=yMgGGY7U+ja8Sc4vcGAvuA==",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=4ixAkRkTMj5lOjCnAXwimA==",
+      "type": "Technical Clearance / Development Permission"
+    },
+    {
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=bJNtKum/d47I0rwN8EGGlQ==",
+      "type": "Legal Title Report"
+    },
+    {
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=XLiMA24C1i+WCXPAopCMgQ==",
+      "type": "SCAN-DT-06-03-2023_compressed.pdf"
+    },
+    {
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=dGHxH6yn2DhUeCuIDbswiw==",
+      "type": "Document.pdf"
+    },
+    {
+      "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=qKcfnE/y/QKRFV/mTQ/SPw==",
+      "type": "Form II (as per RERA Rules)"
+    }
+  ],
+  "document_urls": [
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Registration Certificate 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Sanctioned Building Plan 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Land documents 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Area Development Plan 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Brochure of Current Project 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Project Related Documents 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "ARCHITECT Certificate 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "updated": true,
+      "type": "Engineer Certificate 1"
+    }
+  ],
+  "acknowledgement_no": null,
+  "project_pin_code": null,
+  "project_city": null,
+  "promoter_address_raw": null,
+  "last_modified": null,
+  "actual_commencement_date": null,
+  "actual_finish_date": null,
+  "approved_on_date": null,
+  "past_experience_of_promoter": null,
+  "bank_details": null,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "number_of_commercial_units": null,
+  "building_details": null,
+  "complaints_litigation_details": null,
+  "authorised_signatory_details": null,
+  "co_promoter_details": null,
+  "provided_faciltiy": null,
+  "development_agreement_detail": null,
+  "construction_progress": null,
+  "land_detail": null,
+  "members_details": null,
+  "retrieved_on": null,
+  "last_updated": null,
+  "updated_fields": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": null,
+  "iw_part_processed": null,
+  "last_crawled_date": null,
+  "doc_ocr_url": null,
+  "proposed_timeline": null,
+  "checked_updates_date": null,
+  "alternative_rera_ids": null
+}

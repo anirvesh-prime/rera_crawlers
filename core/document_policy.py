@@ -196,7 +196,7 @@ def rename_document_category(
     if "engineer" in renamed.lower() and "certificate" not in renamed.lower():
         renamed += " Certificate"
 
-    if renamed in original:
+    if original.startswith(renamed):
         parts = original.split()
         if parts:
             try:

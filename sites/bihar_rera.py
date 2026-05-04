@@ -155,16 +155,31 @@ def _parse_detail_page(html: str) -> dict:
     if len(tables) > 3:
         contact_kv = _kv_table(tables[3])
 
-    # ── Org members (Table 4: header + data rows) ─────────────────────────────
+    # ── Org members (GV_Member table: header + data rows) ────────────────────
     members: list[dict] = []
-    if len(tables) > 4:
-        rows = tables[4].find_all("tr")
+    members_table = soup.find("table", id="GV_Member")
+    if members_table:
+        rows = members_table.find_all("tr")
         if len(rows) > 1:
             headers = [c.get_text(strip=True).lower() for c in rows[0].find_all(["td", "th"])]
             for row in rows[1:]:
                 cells = [c.get_text(separator=" ", strip=True) for c in row.find_all(["td", "th"])]
                 if len(cells) >= len(headers):
-                    members.append(dict(zip(headers, cells)))
+                    raw = dict(zip(headers, cells))
+                    member: dict = {
+                        "name":        raw.get("name", ""),
+                        "position":    raw.get("designation", ""),
+                        "phone":       raw.get("mobile no.", ""),
+                        "raw_address": raw.get("address", ""),
+                    }
+                    # Photo: try to extract img src from the Image cell
+                    img_cell_idx = headers.index("image") if "image" in headers else -1
+                    if img_cell_idx >= 0 and img_cell_idx < len(row.find_all(["td", "th"])):
+                        img_tag = row.find_all(["td", "th"])[img_cell_idx].find("img")
+                        if img_tag and img_tag.get("src"):
+                            src = img_tag["src"].lstrip("/")
+                            member["photo"] = f"https://{DOMAIN}/{src}"
+                    members.append({k: v for k, v in member.items() if v})
 
     # ── Project info (Table 7) ────────────────────────────────────────────────
     proj_kv: dict[str, str] = {}
@@ -181,27 +196,62 @@ def _parse_detail_page(html: str) -> dict:
     if len(tables) > 14:
         bank_kv = _kv_table(tables[14])
 
-    # ── Vendors / professionals (Table 16 header + data rows) ────────────────
+    # ── Vendors / professionals (GV_Vendor table: header + data rows) ────────
     vendors: list[dict] = []
-    if len(tables) > 16:
-        rows = tables[16].find_all("tr")
+    vendors_table = soup.find("table", id="GV_Vendor")
+    if vendors_table:
+        rows = vendors_table.find_all("tr")
         if len(rows) > 1:
             headers = [c.get_text(strip=True).lower() for c in rows[0].find_all(["td", "th"])]
             for row in rows[1:]:
                 cells = [c.get_text(separator=" ", strip=True) for c in row.find_all(["td", "th"])]
                 if len(cells) >= 2:
-                    vendors.append(dict(zip(headers, cells)))
+                    raw = dict(zip(headers, cells))
+                    vendor = {
+                        "name":                    raw.get("name", ""),
+                        "role":                    raw.get("vendor type", ""),
+                        "address":                 raw.get("address", ""),
+                        "effective_date":          raw.get("year of establishment", ""),
+                        "key_real_estate_projects": raw.get("key project", ""),
+                    }
+                    vendors.append({k: v for k, v in vendor.items() if v})
 
-    # ── Building details (Table 11 header + data rows) ────────────────────────
+    # ── Building details (GV_Building table: header + data rows) ─────────────
     buildings: list[dict] = []
-    if len(tables) > 11:
-        rows = tables[11].find_all("tr")
+    buildings_table = soup.find("table", id="GV_Building")
+    if buildings_table:
+        rows = buildings_table.find_all("tr")
         if len(rows) > 1:
             headers = [c.get_text(strip=True).lower() for c in rows[0].find_all(["td", "th"])]
             for row in rows[1:]:
                 cells = [c.get_text(separator=" ", strip=True) for c in row.find_all(["td", "th"])]
                 if any(cells):
-                    buildings.append(dict(zip(headers, cells)))
+                    raw = dict(zip(headers, cells))
+                    block = raw.get("name of building", "")
+                    # The site renders floors as "G+17" in "Sanctioned No of Floor";
+                    # older pages may have a plain numeric "no of floors" column.
+                    floors = (
+                        raw.get("sanctioned no of floor", "")
+                        or raw.get("no of floors", "")
+                    ).strip()
+                    if block and floors and floors not in ("0", ""):
+                        if re.match(r"^G\+\d+$", floors, re.IGNORECASE):
+                            # Already "G+17" format — append directly
+                            block = f"{block} {floors.upper()}"
+                        else:
+                            try:
+                                block = f"{block} G+{int(float(floors))}"
+                            except (ValueError, TypeError):
+                                pass
+                    building = {
+                        "block_name":   block,
+                        "flat_type":    raw.get("type of apartment", ""),
+                        "no_of_units":  raw.get("no of apartment", ""),
+                        "carpet_area":  raw.get("carpet area", ""),
+                        "balcony_area": raw.get("area of exclusive balcony", ""),
+                        "open_area":    raw.get("area of exclusive open terrace", ""),
+                    }
+                    buildings.append({k: v for k, v in building.items() if v})
 
     # ── Assemble output ───────────────────────────────────────────────────────
     def _f(kv: dict, *keys: str) -> str:
@@ -212,46 +262,69 @@ def _parse_detail_page(html: str) -> dict:
                 return v
         return ""
 
-    pin_code = _f(loc_kv, "pin code", "pincode", "pin", "zip")
+    # Pin code is in the location table; fall back to the contact/address table
+    pin_code = (
+        _f(loc_kv, "pin code", "pincode", "pin", "zip")
+        or _f(contact_kv, "pin code", "pincode", "pin code")
+    )
     loc_raw: dict = {
         "address":  _f(loc_kv, "project address"),
         "district": _f(loc_kv, "district"),
         "plot_no":  _f(loc_kv, "khesra no./plot no."),
-        "anchal":   _f(loc_kv, "anchal"),
-        "mauja":    _f(loc_kv, "mauja"),
+        "taluk":    _f(loc_kv, "mauja") or _f(loc_kv, "anchal"),  # Mauja = revenue hamlet used as taluk in Bihar
+        "village":  _f(loc_kv, "village"),
         "city":     _f(loc_kv, "city/town"),
         "pin_code": pin_code,
     }
     try:
-        lat = float(_f(loc_kv, "latitude of end point of the plot"))
-        lng = float(_f(loc_kv, "longitude of end point of the plot"))
+        lat_raw = _f(loc_kv, "latitude of end point of the plot")
+        lng_raw = _f(loc_kv, "longitude of end point of the plot")
+        lat = float(lat_raw)
+        lng = float(lng_raw)
         if lat and lng:
-            loc_raw["latitude"]  = lat
-            loc_raw["longitude"] = lng
+            loc_raw["latitude"]           = str(lat)
+            loc_raw["longitude"]          = str(lng)
+            loc_raw["processed_latitude"]  = lat
+            loc_raw["processed_longitude"] = lng
     except ValueError:
         pass
+
+    # ── Passbook URL for scan_copy_of_cheque ──────────────────────────────────
+    passbook_url: str | None = None
+    for a in soup.find_all("a", href=True):
+        href_pb: str = a["href"]
+        # href may be "PassBook/..." or "/PassBook/..." (no leading slash on older pages)
+        if "PassBook/" in href_pb and ".pdf" in href_pb.lower():
+            passbook_url = (
+                href_pb if href_pb.startswith("http")
+                else f"https://{DOMAIN}/{href_pb.lstrip('/')}"
+            )
+            break
 
     bank: dict = {}
     if any(bank_kv.values()):
         bank = {
-            "bank_name":    _f(bank_kv, "bank name"),
-            "branch_name":  _f(bank_kv, "branch name"),
-            "account_no":   _f(bank_kv, "account no."),
-            "ifsc_code":    _f(bank_kv, "ifsc code"),
-            "bank_address": _f(bank_kv, "bank address"),
+            "bank_name":  _f(bank_kv, "bank name"),
+            "branch":     _f(bank_kv, "branch name"),
+            "account_no": _f(bank_kv, "account no."),
+            "IFSC":       _f(bank_kv, "ifsc code"),
         }
+        if passbook_url:
+            bank["scan_copy_of_cheque"] = passbook_url
 
     contact: dict = {}
-    mobile = _f(prom_kv, "mobile number")
-    email  = _f(prom_kv, "e-mail")
+    mobile    = _f(prom_kv, "mobile number")
+    email     = _f(prom_kv, "e-mail")
+    telephone = _f(contact_kv, "telephone no.")
     if mobile or email:
-        contact = {"mobile": mobile, "email": email}
+        contact = {"phone": mobile, "email": email}
+        if telephone and telephone not in ("0", "0000", "N/A"):
+            contact["telephone_no"] = telephone
 
     addr: dict = {}
     reg_addr = _f(contact_kv, "register address")
     if reg_addr:
-        addr = {"address": reg_addr, "district": _f(contact_kv, "district"),
-                "state": _f(contact_kv, "state"), "pincode": _f(contact_kv, "pin code")}
+        addr = {"address": reg_addr}
 
     def _safe_float(val: str) -> float | None:
         try:
@@ -268,42 +341,66 @@ def _parse_detail_page(html: str) -> dict:
     }
     prom_details = {k: v for k, v in prom_details.items() if v}
 
-    # ── Document links — all .pdf hrefs on the Filanprint.aspx page ──────────
-    # Bihar RERA stores documents at well-known URL path patterns:
-    #   /Registration_Certificate/RERAP...pdf  → Registration Certificate
-    #   /All_Document/RERAP...pdf              → project documents (label from link text)
-    #   /PassBook/RERAP...pdf                  → bank passbook
+    # ── Document links ────────────────────────────────────────────────────────
+    # Strategy:
+    #   1. Always add the Registration Certificate from its anchor href.
+    #   2. Use the GV_Doc table (new format) for proper Document Type labels on
+    #      All_Document PDFs — the link text is a raw Windows path, not a label.
+    #   3. Fall back to anchor-href scan when GV_Doc is absent (old page format).
     docs: list[dict] = []
+
+    # Registration Certificate — detected by URL path pattern
     for a in soup.find_all("a", href=True):
         href: str = a["href"]
-        if ".pdf" not in href.lower():
-            continue
-        # Ensure a single "/" separator between domain and path (href may lack
-        # a leading "/" when it's a relative path like "All_Document/RERAP…pdf")
-        if href.startswith("http"):
-            full_url = href
-        else:
-            full_url = f"https://{DOMAIN}/{href.lstrip('/')}"
-        raw_label = a.get_text(separator=" ", strip=True)
-        if "/Registration_Certificate/" in href:
-            doc_type = "Registration Certificate"
-        elif "/PassBook/" in href:
-            doc_type = raw_label or "Bank Passbook"
-        elif "/All_Document/" in href:
-            doc_type = raw_label or "Project Document"
-        else:
-            doc_type = raw_label or "Document"
-        docs.append({"link": full_url, "type": doc_type})
+        if "Registration_Certificate/" in href and ".pdf" in href.lower():
+            full_url = href if href.startswith("http") else f"https://{DOMAIN}/{href.lstrip('/')}"
+            docs.append({"link": full_url, "type": "Registration Certificate"})
+            break  # only one reg cert
 
-    land_area_val  = _safe_float(_f(proj_kv, "total area of land (sq mt)"))
-    const_area_val = _safe_float(_f(proj_kv, "total covered area (sq mtr)"))
+    # GV_Doc table: proper document type → file path mapping
+    doc_table = soup.find("table", id="GV_Doc")
+    if doc_table:
+        for row in doc_table.find_all("tr")[1:]:   # skip header
+            cells = row.find_all(["td", "th"])
+            if len(cells) < 3:
+                continue
+            doc_type = cells[0].get_text(strip=True)
+            # The "Link for file" cell may contain an <a> or just the raw Windows path text
+            a_tag = cells[2].find("a", href=True)
+            raw_path = a_tag["href"] if a_tag else cells[2].get_text(strip=True)
+            # Convert Windows path  ~\All_Document\...pdf  →  All_Document/...pdf
+            raw_path = raw_path.replace("~\\", "").replace("\\", "/").lstrip("/")
+            if not raw_path or not doc_type:
+                continue
+            full_url = raw_path if raw_path.startswith("http") else f"https://{DOMAIN}/{raw_path}"
+            docs.append({"link": full_url, "type": doc_type})
+    else:
+        # Fallback for older page format — scan all PDF anchors
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            if ".pdf" not in href.lower():
+                continue
+            if "/Registration_Certificate/" in href or "/PassBook/" in href:
+                continue  # already handled above
+            full_url = href if href.startswith("http") else f"https://{DOMAIN}/{href.lstrip('/')}"
+            raw_label = a.get_text(separator=" ", strip=True)
+            doc_type = raw_label or "Project Document"
+            docs.append({"link": full_url, "type": doc_type})
+
+    # Keep raw strings so trailing zeros (e.g. "8102.60") are preserved
+    land_area_raw    = _f(proj_kv, "total area of land (sq mt)")
+    land_area_val    = _safe_float(land_area_raw)
+    # "Total Builtup Area" is the correct total; "Total Covered Area" is a per-unit figure
+    const_area_raw   = _f(proj_kv, "total builtup area (sq. mtr.)")
+    const_area_val   = _safe_float(const_area_raw)
+    covered_area_val = _safe_float(_f(proj_kv, "total covered area (sq mtr)"))
     land_area_details: dict | None = None
     if land_area_val or const_area_val:
         land_area_details = {
-            "land_area": str(land_area_val) if land_area_val else None,
-            "land_area_unit": "Sq mt",
-            "construction_area": str(const_area_val) if const_area_val else None,
-            "construction_area_unit": "Sq mtr",
+            "land_area": land_area_raw if land_area_raw else None,
+            "land_area_unit": "Total Area of Land (Sq mt)",
+            "construction_area": const_area_raw if const_area_raw else None,
+            "construction_area_unit": "Total Builtup Area (Sq. Mtr.)",
         }
 
     out: dict = {
@@ -316,7 +413,7 @@ def _parse_detail_page(html: str) -> dict:
         "land_area":                 land_area_val,
         "construction_area":         const_area_val,
         "land_area_details":         land_area_details,
-        "total_floor_area_under_residential": _safe_float(_f(proj_kv, "total builtup area (sq. mtr.)")),
+        "total_floor_area_under_residential": covered_area_val if covered_area_val and not const_area_val else None,
         # location
         "project_location_raw": {k: v for k, v in loc_raw.items() if v},
         "project_city":          _f(loc_kv, "city/town"),
@@ -333,16 +430,18 @@ def _parse_detail_page(html: str) -> dict:
         "building_details":      buildings or None,
         # documents
         "uploaded_documents": docs or None,
-        # project cost — use schema-allowed key names
+        # project cost — values must be strings per schema
         "project_cost_detail": {
-            "estimated_construction_cost": _safe_float(_f(proj_kv, "estimated cost of development (in lakh)")),
-            "cost_of_land":               _safe_float(_f(proj_kv, "estimated cost of land (in lakh)")),
+            k: str(v) for k, v in {
+                "estimated_construction_cost": _safe_float(_f(proj_kv, "estimated cost of development (in lakh)")),
+                "cost_of_land":               _safe_float(_f(proj_kv, "estimated cost of land (in lakh)")),
+            }.items() if v is not None
         },
         # data JSONB — only Bihar-allowed keys: link, type, govt_type, land_area_unit, construction_area_unit
         "data": {
             "govt_type":              "state",
-            "land_area_unit":         "Sq mt" if land_area_val else None,
-            "construction_area_unit": "Sq mtr" if const_area_val else None,
+            "land_area_unit":         "Total Area of Land (Sq mt)" if land_area_val else None,
+            "construction_area_unit": "Total Builtup Area (Sq. Mtr.)" if const_area_val else None,
         },
     }
     # Inject registration certificate link+type into data if available
@@ -361,32 +460,70 @@ def _parse_detail_page(html: str) -> dict:
 # ── Sentinel ──────────────────────────────────────────────────────────────────
 
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
-    """Verify the site is reachable and its project GridView table returns rows.
-
-    Bihar's detail pages require Playwright popup capture, so the sentinel does
-    a lightweight listing-page check rather than a full detail-page fetch.
-    The config's sentinel_registration_no is logged for observability.
     """
+    Data-quality sentinel for Bihar RERA.
+    Loads state_projects_sample/bihar.json as the baseline, fetches the listing
+    page, parses rows (using the first row for structural check), and verifies
+    ≥ 80% field coverage. (Detail pages require Playwright, so listing-based check is used.)
+    """
+    import json as _json
+    import os as _os
+    from core.sentinel_utils import check_field_coverage
+
     sentinel_reg = config.get("sentinel_registration_no", "")
+
+    sample_path = _os.path.join(
+        _os.path.dirname(_os.path.dirname(__file__)),
+        "state_projects_sample", "bihar.json",
+    )
+    try:
+        with open(sample_path) as fh:
+            baseline: dict = _json.load(fh)
+    except FileNotFoundError:
+        logger.warning("Sample baseline not found — skipping coverage check",
+                       path=sample_path, step="sentinel")
+        return True
+
     resp = safe_get(LISTING_URL, retries=2, logger=logger)
     if not resp:
         logger.error("Sentinel: listing page unreachable", step="sentinel")
+        insert_crawl_error(run_id, config["id"], "SENTINEL_FAILED",
+                           "Listing page unreachable", url=LISTING_URL)
         return False
+
     soup = BeautifulSoup(resp.text, "lxml")
     table = soup.find("table", id=_GRID_ID)
     if not table or not table.find("tr"):
         logger.error("Sentinel: project table not found in response", step="sentinel")
+        insert_crawl_error(run_id, config["id"], "SENTINEL_FAILED",
+                           "Project table not found", url=LISTING_URL)
         return False
+
     data_rows = _parse_page_rows(soup)
     if not data_rows:
         logger.error("Sentinel: GridView table has no data rows — site structure may have changed",
                      step="sentinel")
+        insert_crawl_error(run_id, config["id"], "SENTINEL_FAILED",
+                           "No data rows on listing page", url=LISTING_URL)
         return False
-    logger.info(
-        f"Sentinel passed: {len(data_rows)} projects visible on page 1"
-        + (f" (sentinel_reg={sentinel_reg!r})" if sentinel_reg else ""),
-        step="sentinel",
+
+    # Prefer the sentinel row; fall back to first row for structural check
+    fresh = next(
+        (r for r in data_rows
+         if r.get("project_registration_no", "").upper() == sentinel_reg.upper()),
+        data_rows[0],
     )
+    logger.info(f"Sentinel: checking coverage for {sentinel_reg}", step="sentinel")
+
+    if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
+        insert_crawl_error(
+            run_id, config.get("id", "bihar_rera"),
+            "SENTINEL_FAILED",
+            f"Coverage below 80% for sentinel project {sentinel_reg}",
+        )
+        return False
+
+    logger.info("Sentinel check passed", reg=sentinel_reg, step="sentinel")
     return True
 
 
@@ -544,7 +681,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     item_limit    = settings.CRAWL_ITEM_LIMIT or 0  # 0 = unlimited
     items_processed = 0
 
+    # ── Sentinel health check ────────────────────────────────────────────────
     if not _sentinel_check(config, run_id, logger):
+        logger.error("Sentinel failed — aborting crawl", step="sentinel")
+        counters["error_count"] += 1
         return counters
 
     # ── Step 1: Collect Filanprint popup URLs via Playwright ─────────────────
@@ -629,7 +769,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         "project_location_raw": {
                             **raw.get("project_location_raw", {}),
                             **detail_extra.get("project_location_raw", {}),
+                            "state": config.get("state", "bihar").title(),
                         },
+                        "project_state": config.get("state", "bihar").title(),
                         "domain": DOMAIN,
                         "url":    detail_url or LISTING_URL,
                         "state":  config.get("state", "Bihar"),

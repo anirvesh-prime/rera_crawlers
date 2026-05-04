@@ -133,12 +133,21 @@ _JSON_FIELD_KEY_ALIASES: dict[str, dict[str, str]] = {
 
 _STATE_JSON_FIELD_ALLOWED_KEYS: dict[str, dict[str, set[str]]] = {
     "bihar": {
-        "project_location_raw": {"plot_no", "district", "latitude", "longitude", "raw_address"},
+        "project_location_raw": {
+            "plot_no", "district", "latitude", "longitude", "raw_address",
+            "taluk", "village", "city", "pin_code",
+            "state", "processed_latitude", "processed_longitude",
+        },
         "promoter_address_raw": {"raw_address"},
         "data": {"link", "type", "govt_type", "land_area_unit", "construction_area_unit"},
     },
     "kerala": {
-        "data": {"govt_type", "land_area_unit", "construction_area_unit"},
+        "data": {
+            "govt_type", "land_area_unit", "construction_area_unit", "source_url",
+            # Interim fields used to carry raw structured data through normalization
+            # for post-normalization legacy shaping. Removed from final output.
+            "_raw_building", "_raw_facilities",
+        },
     },
     "maharashtra": {
         "project_location_raw": {"state", "taluk", "plot_no", "village", "district", "locality", "pin_code"},
@@ -386,6 +395,8 @@ def normalize_document_records(documents: Any) -> list[dict[str, Any]] | None:
         link = clean_string(item.get("link") or item.get("source_url") or item.get("url"))
         s3_link = clean_string(item.get("s3_link"))
 
+        updated = item.get("updated")
+
         cleaned_item: dict[str, Any] = {}
         if doc_type:
             cleaned_item["type"] = doc_type
@@ -393,8 +404,14 @@ def normalize_document_records(documents: Any) -> list[dict[str, Any]] | None:
             cleaned_item["link"] = link
         if s3_link:
             cleaned_item["s3_link"] = s3_link
+        if updated is not None:
+            cleaned_item["updated"] = bool(updated)
 
-        if doc_type and (link or s3_link):
+        # Keep entries that have at least a document type — links are added
+        # in a later step (document-upload enrichment via data_extractors.py).
+        # Requiring a link here would discard valid records for crawlers (e.g.
+        # AP RERA) whose document links are JavaScript callbacks resolved later.
+        if doc_type:
             normalized.append(cleaned_item)
     return normalized or None
 
@@ -477,7 +494,7 @@ def build_document_urls(documents: Any) -> list[dict[str, Any]] | None:
         if marker in seen:
             continue
         seen.add(marker)
-        entry: dict[str, Any] = {"link": s3_link}
+        entry: dict[str, Any] = {"link": s3_link, "updated": True}
         if doc_type:
             entry["type"] = doc_type
         result.append(entry)
@@ -525,6 +542,7 @@ def document_result_entry(
         "type": doc.get("type") or doc.get("label") or "document",
         "link": doc.get("source_url") or doc.get("url"),
         "s3_link": s3_url,
+        "updated": True,
     }
     return clean_json(entry) or entry
 

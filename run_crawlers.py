@@ -27,6 +27,7 @@ import importlib
 import socket
 import subprocess
 import time
+import traceback as tb_module
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
@@ -119,8 +120,10 @@ def run_site(site_cfg: dict, mode: str) -> dict:
         logger.info("Crawl completed", **counts)
     except Exception as exc:
         counts["error_count"] += 1
+        trace = tb_module.format_exc()
         update_crawl_run(run_id, "failed", counts)
-        insert_crawl_error(run_id, site_id, "CRAWLER_EXCEPTION", str(exc))
+        insert_crawl_error(run_id, site_id, "CRAWLER_EXCEPTION", str(exc),
+                           raw_data={"traceback": trace})
         logger.error(f"Crawl failed: {exc}")
     finally:
         logger.log_run_key_summary(limit=10)
@@ -211,8 +214,13 @@ def main():
     summary = []
 
     if parallel:
-        print(f"→ Launching {len(sites)} crawlers in parallel...\n")
-        with ProcessPoolExecutor(max_workers=len(sites), initializer=_worker_init) as executor:
+        # Cap concurrent processes: spawning one OS process per site with no
+        # ceiling can exhaust file descriptors, RAM, and DB connections when
+        # many states are selected.  MAX_PARALLEL_CRAWLERS (default 8) limits
+        # the pool; ProcessPoolExecutor queues the remainder automatically.
+        max_workers = min(len(sites), settings.MAX_PARALLEL_CRAWLERS)
+        print(f"→ Launching {len(sites)} crawlers in parallel (max {max_workers} at a time)...\n")
+        with ProcessPoolExecutor(max_workers=max_workers, initializer=_worker_init) as executor:
             futures = {
                 executor.submit(run_site, site_cfg, args.mode): site_cfg["id"]
                 for site_cfg in sites
@@ -225,6 +233,22 @@ def main():
                     print(f"✓ [{site_id}] finished")
                     print(f"{_fmt_row(result)}\n")
                 except Exception as exc:
+                    # Worker process itself crashed (e.g. OOM, segfault in C
+                    # extension).  Record a sentinel entry so the summary file
+                    # and totals stay consistent — errors are counted.
+                    crashed_result = {
+                        "site_id": site_id,
+                        "run_id": None,
+                        "elapsed_s": 0.0,
+                        "projects_found": 0,
+                        "projects_new": 0,
+                        "projects_updated": 0,
+                        "projects_skipped": 0,
+                        "documents_uploaded": 0,
+                        "error_count": 1,
+                        "crash_reason": str(exc),
+                    }
+                    summary.append(crashed_result)
                     print(f"✗ [{site_id}] worker process crashed: {exc}\n")
     else:
         for site_cfg in sites:
