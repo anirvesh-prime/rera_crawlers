@@ -11,7 +11,7 @@
   "project_pin_code": "680101",
   "project_city": null,
   "project_state": "KERALA",
-  "crawl_machine_ip": "127.0.0.1",
+  "crawl_machine_ip": "10.20.81.103",
   "machine_name": "Anirveshs-MacBook-Air.local",
   "project_location_raw": [
     {
@@ -173,6 +173,25 @@
     {
       "amenity_detail": [
         {
+          "name": "Water conservation, Rain water harvesting :",
+          "percent_completed": "0",
+          "remarks": "Only rain water harvesting"
+        },
+        {
+          "name": "Sewerage (Chamber, Lines, Septic tank, STP) :",
+          "percent_completed": "0",
+          "remarks": "Only STP"
+        },
+        {
+          "name": "Visitors Parking :",
+          "percent_completed": "0"
+        },
+        {
+          "name": "Electrical meter room, Sub-station, Receiving station :",
+          "percent_completed": "0",
+          "remarks": "Only electric meter box"
+        },
+        {
           "name": "Landscaping & Tree planting :",
           "percent_completed": "0",
           "remarks": "TOT LOT"
@@ -185,25 +204,6 @@
           "name": "Water supply :",
           "percent_completed": "0",
           "remarks": "Borewell"
-        },
-        {
-          "name": "Sewerage (Chamber, Lines, Septic tank, STP) :",
-          "percent_completed": "0",
-          "remarks": "Only STP"
-        },
-        {
-          "name": "Visitors Parking :",
-          "percent_completed": "0"
-        },
-        {
-          "name": "Water conservation, Rain water harvesting :",
-          "percent_completed": "0",
-          "remarks": "Only rain water harvesting"
-        },
-        {
-          "name": "Electrical meter room, Sub-station, Receiving station :",
-          "percent_completed": "0",
-          "remarks": "Only electric meter box"
         }
       ]
     },

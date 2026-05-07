@@ -263,15 +263,53 @@ def _scrape_project_list_playwright(logger: CrawlerLogger) -> list[dict]:
                 return projects
             page.wait_for_load_state("networkidle", timeout=30_000)
 
-            # Try to set DataTables page size to maximum
-            try:
-                page.select_option(
-                    "select[name*='DataTables_Table'], select[name*='_length'], select.dt-length-select",
-                    value="1000",
-                )
-                page.wait_for_timeout(3_000)
-                page.wait_for_load_state("networkidle", timeout=15_000)
-            except Exception:
+            # Try to set DataTables page size to maximum (show all rows at once).
+            # Attempt multiple strategies: value attribute, visible label, and
+            # last-index fallback (the "All" option is often the last entry).
+            _length_selector = (
+                "select[name*='DataTables_Table'], select[name*='_length'], "
+                "select.dt-length-select"
+            )
+            _set_page_size = False
+            _size_attempts: list[dict] = [
+                {"value": "-1"},    # DataTables standard "All" value
+                {"label": "All"},   # visible label fallback
+                {"value": "100"},
+                {"value": "50"},
+            ]
+            for _kwargs in _size_attempts:
+                try:
+                    page.select_option(_length_selector, **_kwargs, timeout=5_000)
+                    page.wait_for_timeout(3_000)
+                    page.wait_for_load_state("networkidle", timeout=15_000)
+                    _set_page_size = True
+                    logger.info(f"DataTables page size set ({_kwargs})")
+                    break
+                except Exception:
+                    pass
+            if not _set_page_size:
+                # Last resort: pick the last option (often "All" or the highest N)
+                try:
+                    page.evaluate(
+                        """(sel) => {
+                            const el = document.querySelector(sel);
+                            if (el && el.options.length) {
+                                el.selectedIndex = el.options.length - 1;
+                                el.dispatchEvent(new Event('change', {bubbles: true}));
+                            }
+                        }""",
+                        (
+                            "select[name*='DataTables_Table'], select[name*='_length'], "
+                            "select.dt-length-select"
+                        ),
+                    )
+                    page.wait_for_timeout(3_000)
+                    page.wait_for_load_state("networkidle", timeout=15_000)
+                    _set_page_size = True
+                    logger.info("DataTables page size set via JS last-option fallback")
+                except Exception:
+                    pass
+            if not _set_page_size:
                 logger.warning("Could not change DataTables page size — will paginate")
 
             # Extract rows from current view and paginate
@@ -857,6 +895,11 @@ def _navigate_to_project_detail(page, reg_no: str, logger: CrawlerLogger) -> str
 
     Returns the detail page URL on success, or empty string on failure.
     """
+    # The reg_no extracted from the listing table may carry a date suffix such as
+    # " (28/04/2026)".  The site's search input expects only the bare number, e.g.
+    # "RAJ/P/2025/4508".  Strip any trailing parenthesised group before searching.
+    search_reg_no = re.sub(r"\s*\([^)]*\)\s*$", "", reg_no).strip()
+
     try:
         page.goto(LISTING_PAGE_URL, timeout=60_000)
         page.wait_for_selector("table tbody tr", timeout=30_000)
@@ -865,7 +908,7 @@ def _navigate_to_project_detail(page, reg_no: str, logger: CrawlerLogger) -> str
         # Fill the registration-number search field and click Search
         try:
             reg_input = page.locator("input[name='registrationNo']").first
-            reg_input.fill(reg_no)
+            reg_input.fill(search_reg_no)
             search_btn = page.locator(
                 "button.btn-primary.w-100, button:has-text('Search')"
             ).first
@@ -875,8 +918,25 @@ def _navigate_to_project_detail(page, reg_no: str, logger: CrawlerLogger) -> str
         except Exception as se:
             logger.warning(f"Registration search failed for {reg_no}: {se}")
 
-        # Click the View button on the first visible matching row
-        page.locator("tbody tr").first.locator("button").click()
+        # Guard: confirm the table has real data rows before attempting to click.
+        # An empty search returns a single "No data available" / "No records" row.
+        try:
+            first_row_text = page.locator("tbody tr").first.inner_text(timeout=5_000)
+            if not first_row_text or any(
+                phrase in first_row_text.lower()
+                for phrase in ("no data", "no records", "no matching")
+            ):
+                logger.warning(f"No matching rows in listing for {reg_no!r} (searched: {search_reg_no!r})")
+                return ""
+        except Exception:
+            pass  # can't confirm — proceed optimistically
+
+        # Click the View button/link on the first visible matching row.
+        # The element may be a <button> or an <a> tag depending on site version.
+        view_locator = page.locator("tbody tr").first.locator(
+            "button, a[href*='ProjectDetail'], a:has-text('View'), a:has-text('Details')"
+        ).first
+        view_locator.click(timeout=15_000)
         page.wait_for_load_state("networkidle", timeout=30_000)
         page.wait_for_timeout(1_500)
 
