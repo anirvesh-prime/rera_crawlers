@@ -40,17 +40,17 @@
   ],
   "members_details": [
     {
-      "name": "Sanjay Chhabra",
-      "position": "Board Member",
-      "phone": "9435012011",
-      "email": "chhbrasanjay2000@gmail.com",
-      "has_same_data": true
-    },
-    {
       "name": "Rajeev Sanchet",
       "position": "Board Member",
       "phone": "9401411111",
       "email": "rajeev@prozone.in",
+      "has_same_data": true
+    },
+    {
+      "name": "Sanjay Chhabra",
+      "position": "Board Member",
+      "phone": "9435012011",
+      "email": "chhbrasanjay2000@gmail.com",
       "has_same_data": true
     }
   ],
@@ -88,12 +88,12 @@
   ],
   "uploaded_documents": [
     {
-      "link": "https://reraonline.tripura.gov.in/download?DOC_ID=11490",
-      "type": "Sanjay K. Chhabra.jpeg"
-    },
-    {
       "link": "https://reraonline.tripura.gov.in/download?DOC_ID=11489",
       "type": "Rajeev San..jpeg"
+    },
+    {
+      "link": "https://reraonline.tripura.gov.in/download?DOC_ID=11490",
+      "type": "Sanjay K. Chhabra.jpeg"
     }
   ],
   "document_urls": null,

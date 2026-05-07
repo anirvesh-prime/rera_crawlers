@@ -532,6 +532,17 @@ def _listing_patches_tripura(module, sample_url: str, reg_no: str, sample: dict)
 
 
 def _listing_patches_wb(module, sample_url: str, reg_no: str, sample: dict) -> list:
+    """Limit the live crawl to the sample project only.
+
+    _parse_listing_rows is patched to return a single-element stub so that only
+    the sample project is processed.  _get is patched only for listing URLs
+    (the DataTables endpoint) so that the request doesn't iterate thousands of
+    records; for all other URLs (detail pages, document links) _get falls through
+    to the real implementation and fetches live.
+
+    The sentinel (_sentinel_find_procode uses Playwright → not affected by the
+    _get patch) and _parse_detail_page both run live.
+    """
     stub = {
         "project_registration_no": reg_no,
         "detail_url":              sample_url,
@@ -542,55 +553,24 @@ def _listing_patches_wb(module, sample_url: str, reg_no: str, sample: dict) -> l
         "procode":                 re.search(r"procode=(\d+)", sample_url or "").group(1)
                                    if re.search(r"procode=(\d+)", sample_url or "") else "",
     }
-    # WB tries _get(LISTING_URL) before calling _parse_listing_rows — mock it
+
+    # Intercept listing fetches only — return empty HTML so _parse_listing_rows
+    # (which is separately patched) is called with a throwaway payload.
     fake_listing_resp = MagicMock()
     fake_listing_resp.text = "<html><body></body></html>"
+    _wb_listing_url = "https://rera.wb.gov.in/district_project.php"
+    real_get = module._get
 
-    # Reconstruct _doc_links from the sample's uploaded_documents so the
-    # document-processing loop in run() fires and uploaded_documents is captured.
-    sample_doc_links = [
-        {"url": d["link"], "label": d.get("type", "document")}
-        for d in (sample.get("uploaded_documents") or [])
-        if d.get("link")
-    ]
-
-    # Seed the data blob from the sample (minus complete_html_url which run() adds itself).
-    sample_data_blob = {
-        k: v for k, v in (sample.get("data") or {}).items()
-        if k != "complete_html_url"
-    }
-
-    # Fields that _parse_detail_page would extract from the detail page
-    detail_fields = {k: v for k, v in {
-        "project_type":                       sample.get("project_type"),
-        "acknowledgement_no":                 sample.get("acknowledgement_no"),
-        "project_pin_code":                   sample.get("project_pin_code"),
-        "project_city":                       sample.get("project_city"),
-        "promoter_address_raw":               sample.get("promoter_address_raw"),
-        "promoter_contact_details":           sample.get("promoter_contact_details"),
-        "promoters_details":                  sample.get("promoters_details"),
-        "professional_information":           sample.get("professional_information"),
-        "provided_faciltiy":                  sample.get("provided_faciltiy"),
-        "submitted_date":                     sample.get("submitted_date"),
-        "last_modified":                      sample.get("last_modified"),
-        "estimated_commencement_date":        sample.get("estimated_commencement_date"),
-        "actual_commencement_date":           sample.get("actual_commencement_date"),
-        "estimated_finish_date":              sample.get("estimated_finish_date"),
-        "actual_finish_date":                 sample.get("actual_finish_date"),
-        "approved_on_date":                   sample.get("approved_on_date"),
-        "number_of_residential_units":        sample.get("number_of_residential_units"),
-        "number_of_commercial_units":         sample.get("number_of_commercial_units"),
-        "land_area":                          sample.get("land_area"),
-        "construction_area":                  sample.get("construction_area"),
-        "total_floor_area_under_residential": sample.get("total_floor_area_under_residential"),
-        "data":                               sample_data_blob or {},
-        "_doc_links":                         sample_doc_links,
-    }.items() if v is not None}
+    def _conditional_get(url, logger=None, **kwargs):
+        if _wb_listing_url in str(url):
+            return fake_listing_resp
+        return real_get(url, logger, **kwargs)
 
     return [
-        patch.object(module, "_get",                  return_value=fake_listing_resp),
-        patch.object(module, "_parse_listing_rows",   return_value=[stub]),
-        patch.object(module, "_parse_detail_page",    return_value=detail_fields),
+        patch.object(module, "_get",              side_effect=_conditional_get),
+        patch.object(module, "_parse_listing_rows", return_value=[stub]),
+        # _parse_detail_page fetches a stable, session-independent URL
+        # (project_details.php?procode=N) — let it run live.
     ]
 
 
@@ -616,6 +596,14 @@ def _listing_patches_madhya_pradesh(module, sample_url: str, reg_no: str, sample
 
 
 def _listing_patches_uttarakhand(module, sample_url: str, reg_no: str, sample: dict) -> list:
+    """Limit the live crawl to the sample project only.
+
+    The sentinel and detail-page fetch both run against live URLs — the detail
+    URL (viewProjectDetailPage?projectID=N) is a stable, session-independent
+    endpoint so no bypass is needed.  Only _parse_listing is patched so that the
+    listing response (which may 250+ rows) is filtered down to just the sample
+    card before CRAWL_ITEM_LIMIT is applied.
+    """
     loc = sample.get("project_location_raw") or {}
     card: dict = {
         "project_name":            sample.get("project_name", ""),
@@ -629,66 +617,8 @@ def _listing_patches_uttarakhand(module, sample_url: str, reg_no: str, sample: d
     if sample.get("status_of_the_project"):
         card["status_of_the_project"] = sample["status_of_the_project"]
 
-    # Build land_area_details mirroring what _parse_detail_page produces:
-    # use total_area (or open_area) from land_detail as land_area, construction_area for covered.
-    _land_detail = sample.get("land_detail") or {}
-    _la_val = _land_detail.get("total_area") or _land_detail.get("open_area")
-    _ca_val = sample.get("construction_area")
-    _lad: dict = {}
-    if _la_val is not None:
-        _lad["land_area"] = str(_la_val)
-        _lad["land_area_unit"] = "sq Mt."
-    if _ca_val is not None:
-        _lad["construction_area"] = str(_ca_val)
-        _lad["construction_area_unit"] = "sq Mt."
-
-    # land_area_unit is emitted whenever any land area value is available
-    _land_area_unit = "sq Mt." if (_la_val is not None) else None
-
-    detail_result: dict = {k: v for k, v in {
-        "project_registration_no":  reg_no,
-        "project_name":             sample.get("project_name"),
-        "promoter_name":            sample.get("promoter_name"),
-        "project_type":             sample.get("project_type"),
-        "submitted_date":           sample.get("submitted_date"),
-        "estimated_finish_date":    sample.get("estimated_finish_date"),
-        "status_of_the_project":    sample.get("status_of_the_project"),
-        "project_description":      sample.get("project_description"),
-        "promoter_contact_details": sample.get("promoter_contact_details"),
-        "professional_information": sample.get("professional_information"),
-        "number_of_residential_units": sample.get("number_of_residential_units"),
-        "number_of_commercial_units":  sample.get("number_of_commercial_units"),
-        "land_detail":              sample.get("land_detail"),
-        "land_area_details":        _lad or None,
-        "construction_area":        sample.get("construction_area"),
-        "project_location_raw":     sample.get("project_location_raw"),
-        "data": {k: v for k, v in {
-            "govt_type":              "state",
-            "source_url":             sample_url,
-            "raw_address":            loc.get("raw_address", ""),
-            "land_area_unit":         _land_area_unit,
-            "construction_area_unit": "sq Mt.",
-        }.items() if v is not None},
-        "_doc_links":     [],
-        "_project_images": [],
-        "_canonical_url": sample_url,
-    }.items() if v is not None}
-
-    # Mock httpx client so listing HTTP request doesn't hit the live site
-    fake_resp = MagicMock()
-    fake_resp.text    = "<html><body></body></html>"
-    fake_resp.content = b"<html><body></body></html>"
-    fake_resp.raise_for_status = MagicMock()
-    fake_client = MagicMock()
-    fake_client.__enter__ = MagicMock(return_value=fake_client)
-    fake_client.__exit__  = MagicMock(return_value=False)
-    fake_client.get       = MagicMock(return_value=fake_resp)
-
     return [
-        patch.object(module, "_sentinel_check",   return_value=True),
-        patch.object(module, "_make_client",       return_value=fake_client),
-        patch.object(module, "_parse_listing",     return_value=[card]),
-        patch.object(module, "_parse_detail_page", return_value=detail_result),
+        patch.object(module, "_parse_listing", return_value=[card]),
     ]
 
 
@@ -765,60 +695,28 @@ def _listing_patches_uttar_pradesh(module, sample_url: str, reg_no: str, sample:
         patch.object(module, "_UP_DISTRICTS", [district]),
         # Inject the sample stub directly — bypasses the real HTTP listing fetch
         patch.object(module, "_fetch_district_listing", return_value=[stub]),
-        # Skip the sentinel's Playwright call — sentinel uses the same project;
-        # in dry-run we just confirm the check passes without a second browser launch.
-        patch.object(module, "_sentinel_check", return_value=True),
         # Navigate directly to the sample URL for the detail page instead of
         # clicking through the district listing with __doPostBack.
+        # The sentinel also calls _fetch_detail_html_playwright so it gets the
+        # same live page → sentinel runs for real, same as production.
         patch.object(module, "_fetch_detail_html_playwright", side_effect=_direct_detail_fetch),
     ]
 
 
 def _listing_patches_telangana(module, sample_url: str, reg_no: str, sample: dict) -> list:
-    # Extract row data from the sample's data blob
-    data_field   = sample.get("data") or {}
-    raw_cert     = data_field.get("data_cert", "")
-    doc_decoded  = data_field.get("doc_decoded", "")
+    """Telangana runs its full natural live flow — no listing patches needed.
 
-    # Parse doc_decoded: "ProjectID=…&Division=…&UserID=…&RoleID=…&AppID=…&Action=…"
-    params   = dict(pair.split("=", 1) for pair in doc_decoded.split("&") if "=" in pair)
-    app_id   = params.get("AppID",    "")
-    proj_id  = params.get("ProjectID","")
-    user_id  = params.get("UserID",   "")
-    division = params.get("Division", "")
-    role_id  = params.get("RoleID",   "")
-
-    # Rebuild the cert / preview PDF URLs using the same helpers as the crawler
-    from sites.telangana_rera import (
-        _build_cert_url, _build_preview_url, _CERT_CHAR_D, _PREVIEW_CHAR_D,
-    )
-    base_params = {k: v for k, v in params.items()
-                   if k not in ("CharacterD", "ExtAppID", "Action")}
-    cert_url        = _build_cert_url(base_params,    _CERT_CHAR_D)    if base_params else None
-    preview_pdf_url = _build_preview_url(base_params, _PREVIEW_CHAR_D) if base_params else None
-
-    row = {
-        "print_preview_url": sample_url,
-        "data_cert":         raw_cert,
-        "cert_url":          cert_url,
-        "preview_pdf_url":   preview_pdf_url,
-        "app_id":            app_id,
-        "project_id":        proj_id,
-        "user_id":           user_id,
-        "division":          division,
-        "role_id":           role_id,
-        "listing_texts":     [sample.get("project_name", ""), sample.get("promoter_name", "")],
-    }
-
-    return [
-        # Bypass the CAPTCHA form — pretend search succeeded
-        patch.object(module, "_submit_search",       return_value=True),
-        # Only one listing page; inject our pre-built row
-        patch.object(module, "_get_total_pages",     return_value=1),
-        patch.object(module, "_parse_listing_rows",  return_value=[row]),
-        # Prevent any attempt to click to the next page
-        patch.object(module, "_goto_next_page",      return_value=False),
-    ]
+    PrintPreview URLs are session-scoped (``q`` parameter expires immediately
+    after the Playwright session ends), so injecting a stored sample URL would
+    always hit UnauthorizedPage.  The crawler is left unpatched:
+      - ``_submit_search`` solves the CAPTCHA and submits the search form live.
+      - ``_parse_listing_rows`` parses real results, producing fresh ``pp_url`` values.
+      - ``_fetch_print_preview_html`` navigates to those fresh URLs successfully.
+      - ``CRAWL_ITEM_LIMIT=1`` stops after the first project.
+    The sentinel now checks search-page accessibility rather than fetching a
+    stored URL, so it also needs no patching in dry-run mode.
+    """
+    return []
 
 
 def _listing_patches_karnataka(module, sample_url: str, reg_no: str, sample: dict) -> list:

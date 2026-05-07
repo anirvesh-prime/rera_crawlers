@@ -173,6 +173,35 @@ def _make_client() -> httpx.Client:
     )
 
 
+def _fetch_listing_html_playwright(logger: CrawlerLogger) -> str:
+    """Fetch the listing page HTML via Playwright (Chromium).
+
+    Used as a fallback when httpx connections are reset at the TLS level by the
+    UK RERA portal.  Chromium's TLS fingerprint is accepted where Python's is not.
+    Returns the rendered page HTML, or an empty string on failure.
+    """
+    from playwright.sync_api import sync_playwright
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            ctx  = browser.new_context(ignore_https_errors=True, user_agent=_UA)
+            page = ctx.new_page()
+            # Server-rendered Java Spring page — all 400+ project cards are in the
+            # initial HTML response.  "domcontentloaded" / "networkidle" time out
+            # because the portal is slow and sends continuous keep-alive polling.
+            # "commit" fires as soon as the first byte arrives, then we wait briefly
+            # to ensure the full response body has been transferred before reading.
+            page.goto(LISTING_URL, wait_until="commit", timeout=120_000)
+            page.wait_for_timeout(3_000)
+            html = page.content()
+            browser.close()
+        logger.info("Playwright listing fetch succeeded", url=LISTING_URL, step="listing")
+        return html
+    except Exception as exc:
+        logger.error(f"Playwright listing fetch failed: {exc}", step="listing")
+        return ""
+
+
 # ---------------------------------------------------------------------------
 # Listing parser
 # ---------------------------------------------------------------------------
@@ -862,14 +891,32 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     # ── Fetch listing page ───────────────────────────────────────────────────
     logger.info("Fetching project listing", url=LISTING_URL, step="listing")
+    listing_html = ""
     try:
         with _make_client() as listing_client:
             resp = listing_client.get(LISTING_URL)
             resp.raise_for_status()
             listing_html = resp.text
+    except (httpx.ConnectError, httpx.RemoteProtocolError,
+            httpx.ReadError, OSError) as _net_exc:
+        # Portal actively resets Python TCP connections (TLS fingerprint block).
+        # Fall back to Playwright whose Chromium fingerprint is accepted.
+        logger.warning(
+            f"httpx listing blocked ({_net_exc}); falling back to Playwright",
+            step="listing",
+        )
+        listing_html = _fetch_listing_html_playwright(logger)
     except Exception as exc:
         logger.error(f"Listing fetch failed: {exc}", step="listing")
         insert_crawl_error(run_id, site_id, "LISTING_FAILED", str(exc), url=LISTING_URL)
+        counts["error_count"] += 1
+        return counts
+
+    if not listing_html:
+        logger.error("Listing fetch failed (httpx blocked, Playwright also failed)",
+                     step="listing")
+        insert_crawl_error(run_id, site_id, "LISTING_FAILED",
+                           "All fetch methods failed", url=LISTING_URL)
         counts["error_count"] += 1
         return counts
 

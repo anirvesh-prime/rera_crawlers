@@ -399,6 +399,7 @@ def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> 
 
     all_cards: list[dict] = []
     start_from = 0
+    _server_rejections = 0  # count server-side captcha rejections to avoid infinite loop
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -416,19 +417,23 @@ def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> 
                     logger.error(f"Failed to load home page: {e}")
                     break
 
-                # Get captcha as data URL
+                # Get captcha image via canvas → PNG.
+                # - PNG format required (solver rejects JPEG)
+                # - grayscale+contrast filter improves OCR and reduces PNG size
+                # - 90x28 target gives ~1250 bytes raw (~1750b JSON) — within solver limit
                 captcha_data = page.evaluate("""() => {
                     const img = document.querySelector('img[src*="captcha"]');
-                    if (!img) return null;
+                    if (!img || !img.complete || img.naturalWidth === 0) return null;
                     const c = document.createElement('canvas');
-                    c.width = img.naturalWidth || 120;
-                    c.height = img.naturalHeight || 40;
+                    c.width = 90; c.height = 28;
                     const cx = c.getContext('2d');
-                    cx.drawImage(img, 0, 0);
-                    return c.toDataURL('image/jpeg');
+                    cx.filter = 'grayscale(1) contrast(2)';
+                    cx.drawImage(img, 0, 0, c.width, c.height);
+                    const url = c.toDataURL('image/png');
+                    return (url && url !== 'data:,') ? url : null;
                 }""")
                 if not captcha_data or len(captcha_data) < 100:
-                    logger.warning(f"Could not get captcha image (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES})")
+                    logger.warning(f"Canvas PNG extraction failed (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES})")
                     continue
 
                 try:
@@ -453,11 +458,31 @@ def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> 
                 page.fill('[name=captcha]', solved)
                 page.evaluate("document.querySelector('[name=btn1]') && document.getElementById('searchForm') ? document.getElementById('searchForm').submit() : document.searchForm.submit()")
                 page.wait_for_load_state("networkidle", timeout=30000)
+                page.wait_for_timeout(1500)  # allow any secondary navigation to settle
             except Exception as e:
                 logger.error(f"Form submission failed: {e}")
                 break
 
-            soup = BeautifulSoup(page.content(), "lxml")
+            # page.content() can fail if the page is mid-navigation; retry briefly
+            html_content = None
+            for _retry in range(3):
+                try:
+                    html_content = page.content()
+                    break
+                except Exception:
+                    page.wait_for_timeout(1000)
+            if not html_content:
+                logger.warning(f"Could not get page content at startFrom={start_from}; skipping page")
+                break
+            soup = BeautifulSoup(html_content, "lxml")
+            # Detect captcha rejection: server redirects back to home page (has captcha form again)
+            if soup.find("input", {"name": "captcha"}) and not soup.find("div", class_=lambda c: c and "no_pad_lft" in c):
+                _server_rejections += 1
+                logger.warning(f"Captcha rejected by server (rejection #{_server_rejections}) — retrying")
+                if _server_rejections >= _CAPTCHA_MAX_TRIES:
+                    logger.error("Too many captcha rejections — stopping")
+                    break
+                continue  # restart outer while True loop to re-attempt captcha
             cards = _parse_listing_cards(soup)
             if not cards:
                 logger.info(f"No cards at startFrom={start_from} — listing complete")

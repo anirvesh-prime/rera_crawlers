@@ -173,11 +173,6 @@
     {
       "amenity_detail": [
         {
-          "name": "Water conservation, Rain water harvesting :",
-          "percent_completed": "0",
-          "remarks": "Only rain water harvesting"
-        },
-        {
           "name": "Landscaping & Tree planting :",
           "percent_completed": "0",
           "remarks": "TOT LOT"
@@ -199,6 +194,11 @@
         {
           "name": "Visitors Parking :",
           "percent_completed": "0"
+        },
+        {
+          "name": "Water conservation, Rain water harvesting :",
+          "percent_completed": "0",
+          "remarks": "Only rain water harvesting"
         },
         {
           "name": "Electrical meter room, Sub-station, Receiving station :",
