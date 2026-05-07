@@ -893,17 +893,65 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger, _page: "Pa
     logger.info(f"Sentinel: navigating to detail for {sentinel_reg}",
                 url=detail_url, step="sentinel")
     try:
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
-            ctx     = browser.new_context(ignore_https_errors=True)
-            _page   = ctx.new_page()
-            _page.goto(detail_url, wait_until="networkidle", timeout=60_000)
-            _wait_for_loaders(_page)
-            soup  = BeautifulSoup(_page.content(), "lxml")
-            browser.close()
-        fresh = _parse_overview(soup)
-        fresh.pop("_doc_links", None)
-        fresh.pop("data", None)
+        def _scrape_sentinel_tabs(sp) -> dict:
+            """Navigate through Overview, Promoter Details, and Documents tabs."""
+            sp.goto(detail_url, wait_until="networkidle", timeout=60_000)
+            _wait_for_loaders(sp)
+            result = _parse_overview(BeautifulSoup(sp.content(), "lxml"))
+            result.pop("_doc_links", None)
+            result.pop("data", None)
+
+            # ── Promoter Details tab ──────────────────────────────────────
+            try:
+                _dismiss_modal(sp)
+                sp.click("text=Promoter Details", timeout=8000)
+                sp.wait_for_timeout(3000)
+                try:
+                    sp.wait_for_load_state("networkidle", timeout=8000)
+                except Exception:
+                    pass
+                promoter = _parse_promoter_tab(BeautifulSoup(sp.content(), "lxml"))
+                result.update({k: v for k, v in promoter.items()
+                               if v is not None and not k.startswith("_")})
+            except Exception as e:
+                logger.warning(f"Sentinel: Promoter tab skipped — {e}", step="sentinel")
+
+            # ── Documents tab ─────────────────────────────────────────────
+            try:
+                _dismiss_modal(sp)
+                sp.click("text=Documents", timeout=8000)
+                sp.wait_for_timeout(3000)
+                try:
+                    sp.wait_for_load_state("networkidle", timeout=10000)
+                except Exception:
+                    pass
+                doc_links = _extract_doc_links(BeautifulSoup(sp.content(), "lxml"))
+                if doc_links:
+                    result["uploaded_documents"] = [
+                        {"link": d["url"], "type": d.get("label", "document")}
+                        for d in doc_links
+                    ]
+            except Exception as e:
+                logger.warning(f"Sentinel: Documents tab skipped — {e}", step="sentinel")
+
+            # project_state is a constant, not scraped from a tab
+            result["project_state"] = "odisha"
+            return result
+
+        if _page is not None:
+            # Already inside a sync_playwright() context in run() — reuse the
+            # existing browser by spawning a new context so we don't nest sessions.
+            sentinel_ctx  = _page.context.browser.new_context(ignore_https_errors=True)
+            sentinel_page = sentinel_ctx.new_page()
+            fresh = _scrape_sentinel_tabs(sentinel_page)
+            sentinel_ctx.close()
+        else:
+            with sync_playwright() as pw:
+                browser = pw.chromium.launch(headless=True)
+                ctx     = browser.new_context(ignore_https_errors=True)
+                sentinel_page = ctx.new_page()
+                fresh = _scrape_sentinel_tabs(sentinel_page)
+                browser.close()
     except Exception as exc:
         logger.error(f"Sentinel: navigation/parse error — {exc}", step="sentinel")
         return False

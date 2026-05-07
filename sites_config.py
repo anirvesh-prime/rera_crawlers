@@ -58,7 +58,7 @@ SITES: list[dict] = [
         "enabled": True,
         "rate_limit_delay": (2, 5),
         "max_retries": 3,
-        "sentinel_registration_no": "",
+        "sentinel_registration_no": "RP/11/2026/01471",
         "config_id": 3,
     },
     {
