@@ -1,14 +1,15 @@
 {
   "key": "12777815000802312001",
+  "project_registration_no": "RP/11/2026/01471",
+  "url": "https://rera.odisha.gov.in/projects/project-details/VTJGc2RHVmtYMSsxU29IQm1ySWp6eklwcTdpYkcwbEtkdE8xTjh6d0ltWEt3ZnNRS1dKYm1VR1RNN1NZRnJOWnlhbTZ2WW9mdXRjazhkZFo1N0pGSWx3bnc4Vit0ZTJPRWpJNmdFZ2RGbTQ9?name=Disha%20Ananta%20Villa",
+  "state": "odisha",
+  "domain": "rera.odisha.gov.in",
   "project_name": "Disha Ananta Villa",
   "project_type": "Residential",
   "promoter_name": "DISHA REAL ESTATE",
-  "project_registration_no": "RP/11/2026/01471",
-  "status_of_the_project": null,
-  "acknowledgement_no": null,
-  "project_pin_code": null,
-  "project_city": null,
   "project_state": "odisha",
+  "crawl_machine_ip": "127.0.0.1",
+  "machine_name": "Anirveshs-MacBook-Air.local",
   "project_location_raw": {
     "raw_address": "Mouza-Goilundi, Jyoti Nagar, 4th Lane, Ganjam, Berhampur MC, Berhampur mc"
   },
@@ -21,55 +22,41 @@
     "phone": "9861056977",
     "telephone_no": "--"
   },
-  "submitted_date": null,
-  "last_modified": null,
-  "estimated_commencement_date": null,
-  "actual_commencement_date": null,
-  "estimated_finish_date": null,
-  "actual_finish_date": null,
-  "approved_on_date": null,
-  "past_experience_of_promoter": null,
   "bank_details": [
     {
-      "IFSC": "IDBI000C149",
-      "phone": "8249288298",
-      "branch": "Rajarani Tower, Kamapalli Main Road, Near BN Pur Police Station",
-      "bank_name": "INDIAN BANK",
-      "account_no": "7980874336",
       "account_name": "DISHA REAL ESTATE/Disha Ananta Villa/Account",
-      "telephone_no": "0680-2280430"
+      "IFSC": "IDBI000C149",
+      "account_no": "7980874336",
+      "bank_name": "INDIAN BANK",
+      "branch": "Rajarani Tower, Kamapalli Main Road, Near BN Pur Police Station",
+      "telephone_no": "0680-2280430",
+      "phone": "8249288298"
     },
     {
-      "IFSC": "IDBI000C149",
-      "phone": "8249288298",
-      "branch": "Rajarani Tower, Kamapalli Main Road, Near BN Pur Police Station",
-      "bank_name": "INDIAN BANK",
-      "account_no": "7980887471",
       "account_name": "DISHA REAL ESTATE/Disha Ananta Villa/ORERA",
-      "telephone_no": "0680-2280430"
+      "IFSC": "IDBI000C149",
+      "account_no": "7980887471",
+      "bank_name": "INDIAN BANK",
+      "branch": "Rajarani Tower, Kamapalli Main Road, Near BN Pur Police Station",
+      "telephone_no": "0680-2280430",
+      "phone": "8249288298"
     },
     {
-      "IFSC": "IDBI000C149",
-      "phone": "8249288298",
-      "branch": "Rajarani Tower, Kamapalli Main Road, Near BN Pur Police Station",
-      "bank_name": "INDIAN BANK",
-      "account_no": "7980890256",
       "account_name": "DISHA REAL ESTATE/Disha Ananta Villa/Transaction",
-      "telephone_no": "0680-2280430"
+      "IFSC": "IDBI000C149",
+      "account_no": "7980890256",
+      "bank_name": "INDIAN BANK",
+      "branch": "Rajarani Tower, Kamapalli Main Road, Near BN Pur Police Station",
+      "telephone_no": "0680-2280430",
+      "phone": "8249288298"
     }
   ],
-  "land_area": null,
-  "construction_area": null,
-  "total_floor_area_under_commercial_or_other_uses": null,
-  "total_floor_area_under_residential": null,
   "project_cost_detail": {
-    "fund_from_bank": "0.00",
-    "fund_from_promoter": "1350.14",
     "total_project_cost": "1350.14",
-    "fund_from_allottees": "0.00"
+    "fund_from_promoter": "1350.14",
+    "fund_from_allottees": "0.00",
+    "fund_from_bank": "0.00"
   },
-  "number_of_residential_units": 48,
-  "number_of_commercial_units": null,
   "building_details": [
     {
       "flat_type": "Parking",
@@ -364,168 +351,6 @@
       "balcony_area": "4 Sq.Mtr."
     }
   ],
-  "complaints_litigation_details": null,
-  "uploaded_documents": [
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/projectCertificatePdf_1776840665.pdf",
-      "type": "RERA Registration Certificate 1",
-      "s3_link": "http://docs.primetenders.com/documents/12777815000802312001/RERA_Registration_Certificate_1.pdf"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpfFiBVm_1743081751.pdf",
-      "type": "Approved layout 1",
-      "s3_link": "http://docs.primetenders.com/documents/12777815000802312001/Approved_layout_1.pdf"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpWX9kUl_1754656354.pdf",
-      "type": "Share Allocation Agreement"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php2kaoXH_1743080799.pdf",
-      "type": "Advocate Report"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpj659yu_1775658592.pdf",
-      "type": "Approved layout 2",
-      "s3_link": "http://docs.primetenders.com/documents/12777815000802312001/Approved_layout_2.pdf"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpCwTlUp_1746877744.pdf",
-      "type": "Site Plan 1",
-      "s3_link": "http://docs.primetenders.com/documents/12777815000802312001/Site_Plan_1.pdf"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpMbpCLK_1775659406.pdf",
-      "type": "Nakhsha Location"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpMAkexT_1746877753.pdf",
-      "type": "Approved layout 3",
-      "s3_link": "http://docs.primetenders.com/documents/12777815000802312001/Approved_layout_3.pdf"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpcAMmhb_1762964918.pdf",
-      "type": "Estimated Price of Construction"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpydu3jj_1745423838.pdf",
-      "type": "Annual Report for FY 2021-22"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpTPi7Q0_1745423717.pdf",
-      "type": "Annual Report for FY 2022-23"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpExnNlo_1745423574.pdf",
-      "type": "Annual Report for FY 2023-24"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php4fs8aw_1745423782.pdf",
-      "type": "IT Return for FY 2021-22"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpepmwv0_1745423727.pdf",
-      "type": "IT Return for FY 2022-23"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpksrNxZ_1745423543.pdf",
-      "type": "IT Return for FY 2023-24"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpJvGXtE_1745423851.pdf",
-      "type": "Audit Report for FY 2021-22"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpmtyevI_1745423750.pdf",
-      "type": "Audit Report for FY 2022-23"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php8hUII4_1745423598.pdf",
-      "type": "Audit Report for FY 2023-24"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php0k7iA4_1745423089.pdf",
-      "type": "Fire Safety Certificate"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpKaaImp_1751640576.pdf",
-      "type": "Conveyance Deed"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpHW95Vo_1745423196.pdf",
-      "type": "Allotment letter format"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpfml7BK_1745423214.pdf",
-      "type": "Affidavit in Form-A as per clause-l of sub-section-2 of section-4 of the Act"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpj2EZgQ_1746881231.pdf",
-      "type": "Electricity NOC"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpDZdFQ3_1754659774.pdf",
-      "type": "Disha Real Estate Previous Project details"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php1NaPeu_1754659853.pdf",
-      "type": "Registered Office Address Declaration"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpOSBT95_1755528578.pdf",
-      "type": "Mile Stone Project"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpQiiL7k_1755531583.pdf",
-      "type": "Estimate Report"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpiqaUgv_1762963754.pdf",
-      "type": "Fire NOC"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpNDbkQs_1762963794.pdf",
-      "type": "CGW NOC"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpapSOUD_1762965197.pdf",
-      "type": "Objection Previous Project & Self Declaration"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php3NbIIl_1762965846.pdf",
-      "type": "New Address Cotrection Company Registration Certificate"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpwFNwg0_1769078729.pdf",
-      "type": "approval letter 1",
-      "s3_link": "http://docs.primetenders.com/documents/12777815000802312001/approval_letter_1.pdf"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpyCywTi_1769078841.pdf",
-      "type": "Cadastral Map and BeMC Approch Road Letter"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpOlTFfS_1769078974.pdf",
-      "type": "Disha Real Estate New Partnership Deed"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php14siAB_1769079045.pdf",
-      "type": "Fire Affidavit with Undertaking"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpgWlswd_1746877369.pdf",
-      "type": "SCHEDULE ‘A’"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phptwOxrN_1745422555.pdf",
-      "type": "SCHEDULE ‘B’"
-    },
-    {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpvN27oD_1748247723.pdf",
-      "type": "SCHEDULE ‘C’"
-    }
-  ],
-  "authorised_signatory_details": null,
   "co_promoter_details": [
     {
       "name": "DINESH KUMAR MISHRA",
@@ -556,7 +381,6 @@
       "photo": "https://reraapps.odisha.gov.in/dms/public/Decrypted/PromoterMemberDetail_534421148_1684908919_1735112700.jpg"
     }
   ],
-  "project_description": null,
   "provided_faciltiy": [
     {
       "name": "Elevators"
@@ -612,61 +436,30 @@
       "phone": "9861056977"
     }
   ],
-  "development_agreement_detail": null,
-  "construction_progress": null,
   "land_detail": [
     {
-      "mouza": "Goilundi",
       "plot_no": "602",
-      "ror_doc": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=246544&text=134e3722f50836e83971dac93a521d8c1d7a31a9cded338ed032facb82ae819a",
+      "mouza": "Goilundi",
       "khata_no": "1166/3625",
+      "registration_place": "Homestead (Gharabari)",
       "plot_area": "1449.00",
       "any_encumbrance": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=153100&text=b5f0b40047231904f1182cf524f1c51cf75971152484be954bed98f09f6a4177",
-      "registration_place": "Homestead (Gharabari)"
+      "ror_doc": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=246544&text=134e3722f50836e83971dac93a521d8c1d7a31a9cded338ed032facb82ae819a"
     },
     {
-      "mouza": "Goilundi",
       "plot_no": "598/9851",
-      "ror_doc": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=246543&text=5f8e0f7fe7e1eb6ce3d4d46bd03a716cc611982e77a36e0eb5f9c5bc740448f9",
+      "mouza": "Goilundi",
       "khata_no": "1166/3625",
+      "registration_place": "Homestead (Gharabari)",
       "plot_area": "137.37",
       "any_encumbrance": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=246542&text=a41aa5b9fca09436f245b17d82037f0532d29f0c0a171f921b1d742cea5c1f28",
-      "registration_place": "Homestead (Gharabari)"
+      "ror_doc": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=246543&text=5f8e0f7fe7e1eb6ce3d4d46bd03a716cc611982e77a36e0eb5f9c5bc740448f9"
     }
   ],
-  "document_urls": [
-    {
-      "link": "http://docs.primetenders.com/documents/12777815000802312001/RERA_Registration_Certificate_1.pdf",
-      "type": "RERA Registration Certificate 1"
-    },
-    {
-      "link": "http://docs.primetenders.com/documents/12777815000802312001/Approved_layout_1.pdf",
-      "type": "Approved layout 1"
-    },
-    {
-      "link": "http://docs.primetenders.com/documents/12777815000802312001/Approved_layout_2.pdf",
-      "type": "Approved layout 2"
-    },
-    {
-      "link": "http://docs.primetenders.com/documents/12777815000802312001/Site_Plan_1.pdf",
-      "type": "Site Plan 1"
-    },
-    {
-      "link": "http://docs.primetenders.com/documents/12777815000802312001/Approved_layout_3.pdf",
-      "type": "Approved layout 3"
-    },
-    {
-      "link": "http://docs.primetenders.com/documents/12777815000802312001/approval_letter_1.pdf",
-      "type": "approval letter 1"
-    }
-  ],
-  "members_details": null,
-  "retrieved_on": "2026-04-22 08:02:15.387428+00:00",
-  "config_id": 14587,
   "data": {
     "govt_type": "state",
-    "regis_cert": "https://reraapps.odisha.gov.in/dms/public/Decrypted/projectCertificatePdf_1776840665.pdf",
     "is_processed": false,
+    "regis_cert": "https://reraapps.odisha.gov.in/dms/public/Decrypted/projectCertificatePdf_1776840665.pdf",
     "project_location": "Mouza-Goilundi, Jyoti Nagar, 4th Lane, Ganjam, Berhampur MC, Berhampur mc"
   },
   "promoters_details": {
@@ -676,27 +469,6 @@
     "registration_no": "11202100265 RP/11/2023/00990 RP/11/2023/01049 RP/11/2022/00745 RP/11/2025/01329",
     "registration_certificate": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=248036&text=ccdf170c1c030df7fe8acf7c93eeaacd5602b78e731d4b8384d4f808d77e2fa2"
   },
-  "domain": "rera.odisha.gov.in",
-  "state": "odisha",
-  "crawl_machine_ip": "98.70.112.46",
-  "machine_name": "dashboard-rera-14587-odisha-d4f95d77f-zsd4n",
-  "is_updated": false,
-  "is_duplicate": false,
-  "url": "https://rera.odisha.gov.in/projects/project-details/VTJGc2RHVmtYMSsxU29IQm1ySWp6eklwcTdpYkcwbEtkdE8xTjh6d0ltWEt3ZnNRS1dKYm1VR1RNN1NZRnJOWnlhbTZ2WW9mdXRjazhkZFo1N0pGSWx3bnc4Vit0ZTJPRWpJNmdFZ2RGbTQ9?name=Disha%20Ananta%20Villa",
-  "last_updated": null,
-  "updated_fields": [
-    "status_update"
-  ],
-  "project_images": null,
-  "detail_images": null,
-  "lister_images": null,
-  "images": null,
-  "old_updates": [
-    {
-      "updated_on": "2026-04-22 08:10:27.886928+0000",
-      "status_update": "None"
-    }
-  ],
   "status_update": [
     {
       "building_details": [
@@ -1051,70 +823,342 @@
       ]
     }
   ],
-  "iw_part_processed": null,
-  "iw_processed": true,
-  "last_crawled_date": "2026-04-22 08:02:12.755658+00:00",
-  "land_area_details": null,
-  "doc_ocr_url": null,
   "proposed_timeline": [
     {
       "title": "Site Development",
       "proposed_end_date": "24-Dec-2024",
-      "actual_end_date": "--",
       "status": "Not started"
     },
     {
       "title": "Foundation",
       "proposed_end_date": "31-Jan-2025",
-      "actual_end_date": "--",
       "status": "Not started"
     },
     {
       "title": "Stilt",
       "proposed_end_date": "07-Mar-2025",
-      "actual_end_date": "--",
       "status": "Not started"
     },
     {
       "title": "1st",
       "proposed_end_date": "12-Jun-2025",
-      "actual_end_date": "--",
       "status": "Not started"
     },
     {
       "title": "2nd",
       "proposed_end_date": "31-Jul-2025",
-      "actual_end_date": "--",
       "status": "Not started"
     },
     {
       "title": "3rd",
       "proposed_end_date": "30-Sep-2025",
-      "actual_end_date": "--",
       "status": "Not started"
     },
     {
       "title": "4th",
       "proposed_end_date": "29-Nov-2025",
-      "actual_end_date": "--",
       "status": "Not started"
     },
     {
       "title": "5th",
       "proposed_end_date": "28-May-2026",
-      "actual_end_date": "--",
       "status": "Not started"
     },
     {
       "title": "Power Supply",
       "proposed_end_date": "30-Jun-2027",
-      "actual_end_date": "--",
       "status": "Not started"
     }
   ],
-  "checked_updates": true,
-  "checked_updates_date": "2026-04-22 08:10:30.615372+00:00",
+  "number_of_residential_units": 48,
+  "config_id": 3,
+  "is_updated": false,
+  "is_duplicate": false,
+  "iw_processed": false,
+  "checked_updates": false,
   "rera_housing_found": false,
   "is_live": false,
+  "uploaded_documents": [
+    {
+      "type": "RERA Registration Certificate 1",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/projectCertificatePdf_1776840665.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpvWjrrx_1746882211.pdf",
+      "type": "document"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpjsmoC6_1748250539.pdf",
+      "type": "document"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpVXo27K_1743084574.pdf",
+      "type": "Account Opening Statement"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpmCKEjW_1743084685.pdf",
+      "type": "Bank Statement"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpHOpyu7_1743084747.pdf",
+      "type": "Cancelled Cheque"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpcAMmhb_1762964918.pdf",
+      "type": "Estimate Copy"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php1ZZ5cK_1753863125.pdf",
+      "type": "Encumbrance Certificate"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpsQcTRV_1775662004.pdf",
+      "type": "ROR"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phptyNGNj_1753863847.pdf",
+      "type": "Share Allocation Agreement"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpCsbFQS_1753864294.pdf",
+      "type": "Plot No."
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpBCJdTJ_1753863821.pdf",
+      "type": "Power of Attorney Document"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpLZtFZV_1775661437.pdf",
+      "type": "Encumbrance Certificate"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpka4S9e_1775661936.pdf",
+      "type": "ROR"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpYhMRzT_1755518507.pdf",
+      "type": "Share Allocation Agreement"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpd2WlLm_1755518902.pdf",
+      "type": "Plot No."
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php84tsZ1_1755518439.pdf",
+      "type": "Power of Attorney Document"
+    },
+    {
+      "type": "Approved layout 1",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpfFiBVm_1743081751.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpWX9kUl_1754656354.pdf",
+      "type": "Share Allocation Agreement"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php2kaoXH_1743080799.pdf",
+      "type": "Advocate Report"
+    },
+    {
+      "type": "Approved layout 2",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpj659yu_1775658592.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "type": "Site Plan",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpCwTlUp_1746877744.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpMbpCLK_1775659406.pdf",
+      "type": "Nakhsha Location"
+    },
+    {
+      "type": "Approved layout 3",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpMAkexT_1746877753.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpydu3jj_1745423838.pdf",
+      "type": "Annual Report for FY 2021-22"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpTPi7Q0_1745423717.pdf",
+      "type": "Annual Report for FY 2022-23"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpExnNlo_1745423574.pdf",
+      "type": "Annual Report for FY 2023-24"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php4fs8aw_1745423782.pdf",
+      "type": "IT Return for FY 2021-22"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpepmwv0_1745423727.pdf",
+      "type": "IT Return for FY 2022-23"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpksrNxZ_1745423543.pdf",
+      "type": "IT Return for FY 2023-24"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpJvGXtE_1745423851.pdf",
+      "type": "Audit Report for FY 2021-22"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpmtyevI_1745423750.pdf",
+      "type": "Audit Report for FY 2022-23"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php8hUII4_1745423598.pdf",
+      "type": "Audit Report for FY 2023-24"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php0k7iA4_1745423089.pdf",
+      "type": "Fire Safety Certificate"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpKaaImp_1751640576.pdf",
+      "type": "Conveyance Deed"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpHW95Vo_1745423196.pdf",
+      "type": "Allotment letter format"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpfml7BK_1745423214.pdf",
+      "type": "Affidavit in Form-A as per clause-l of sub-section-2 of section-4 of the Act"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpj2EZgQ_1746881231.pdf",
+      "type": "Electricity NOC"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpDZdFQ3_1754659774.pdf",
+      "type": "Disha Real Estate Previous  Project details"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php1NaPeu_1754659853.pdf",
+      "type": "Registered Office Address Declaration"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpOSBT95_1755528578.pdf",
+      "type": "Mile Stone Project"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpQiiL7k_1755531583.pdf",
+      "type": "Estimate Report"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpiqaUgv_1762963754.pdf",
+      "type": "Fire NOC"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpNDbkQs_1762963794.pdf",
+      "type": "CGW NOC"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpapSOUD_1762965197.pdf",
+      "type": "Objection Previous Project & Self Declaration"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php3NbIIl_1762965846.pdf",
+      "type": "New Address Cotrection Company Registration Certificate"
+    },
+    {
+      "type": "approval letter 1",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpwFNwg0_1769078729.pdf",
+      "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpyCywTi_1769078841.pdf",
+      "type": "Cadastral Map and BeMC Approch Road Letter"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpOlTFfS_1769078974.pdf",
+      "type": "Disha Real Estate New Partnership Deed"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php14siAB_1769079045.pdf",
+      "type": "Fire Affidavit with Undertaking"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpgWlswd_1746877369.pdf",
+      "type": "SCHEDULE ‘A’"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phptwOxrN_1745422555.pdf",
+      "type": "SCHEDULE ‘B’"
+    },
+    {
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpvN27oD_1748247723.pdf",
+      "type": "SCHEDULE ‘C’"
+    }
+  ],
+  "document_urls": [
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "RERA Registration Certificate 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Approved layout 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Approved layout 2"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Site Plan"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Approved layout 3"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "approval letter 1"
+    }
+  ],
+  "status_of_the_project": null,
+  "acknowledgement_no": null,
+  "project_pin_code": null,
+  "project_city": null,
+  "submitted_date": null,
+  "last_modified": null,
+  "estimated_commencement_date": null,
+  "actual_commencement_date": null,
+  "estimated_finish_date": null,
+  "actual_finish_date": null,
+  "approved_on_date": null,
+  "past_experience_of_promoter": null,
+  "land_area": null,
+  "construction_area": null,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "number_of_commercial_units": null,
+  "complaints_litigation_details": null,
+  "authorised_signatory_details": null,
+  "project_description": null,
+  "development_agreement_detail": null,
+  "construction_progress": null,
+  "members_details": null,
+  "retrieved_on": null,
+  "last_updated": null,
+  "updated_fields": null,
+  "project_images": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": null,
+  "iw_part_processed": null,
+  "last_crawled_date": null,
+  "land_area_details": null,
+  "doc_ocr_url": null,
+  "checked_updates_date": null,
   "alternative_rera_ids": null
 }

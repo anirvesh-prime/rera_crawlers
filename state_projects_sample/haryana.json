@@ -8,7 +8,7 @@
   "acknowledgement_no": "124 OF 2017 DATED 28.8.2017",
   "project_pin_code": null,
   "project_city": "FARIDABAD",
-  "project_state": null,
+  "project_state": "haryana",
   "project_location_raw": {
     "taluk": "FARIDABAD",
     "district": "FARIDABAD",
@@ -25,7 +25,7 @@
     "website": "http://omaxe.com",
     "telephone_no": "0114189668"
   },
-  "submitted_date": null,
+  "submitted_date": "2019-06-14 11:25:50+00:00",
   "last_modified": null,
   "estimated_commencement_date": "2018-08-01 00:00:00+00:00",
   "actual_commencement_date": null,
@@ -33,7 +33,11 @@
   "actual_finish_date": "2021-06-30 00:00:00+00:00",
   "approved_on_date": null,
   "past_experience_of_promoter": null,
-  "bank_details": null,
+  "bank_details": {
+    "bank_name": "YES BANK, SOUTH EX. PART -2",
+    "account_no": "1666300000105",
+    "IFSC": "YESB0000016"
+  },
   "land_area": 11302.54,
   "construction_area": 4597.513,
   "total_floor_area_under_commercial_or_other_uses": null,
@@ -41,10 +45,10 @@
   "project_cost_detail": {
     "cost_of_land": 44000000,
     "total_project_cost": "17436.9 lakhs",
-    "estimated_project_cost": 1743600000,
+    "estimated_project_cost": 1743690000,
     "estimated_construction_cost": "14670.0 lakhs"
   },
-  "number_of_residential_units": 966,
+  "number_of_residential_units": 381,
   "number_of_commercial_units": null,
   "building_details": [
     {
@@ -626,12 +630,13 @@
     "email": "haryana_rera@omaxe.com",
     "phone": "9876911201",
     "pan_no": "XXXX510B",
-    "present_address": "Near Post Office Gupta Sotre SCF 33 Sector 16D Chandigarh Sector 15 160015"
+    "present_address": "Near Post Office Gupta Sotre SCF 33 Sector 16D Chandigarh Sector 15 160015",
+    "role": "Authorised reprsentative for correspondance with Authority"
   },
   "co_promoter_details": [
     {
       "name": "PARMOD KUMAR",
-      "role": "2. Managing Director/HOD/CEO:",
+      "role": "Managing Director/HOD/CEO",
       "email": "haryana_rera@omaxe.com",
       "phone": "9876911201",
       "pan_no": "XXXX087L",
@@ -639,7 +644,7 @@
     },
     {
       "name": "PAVAN AGARWAL",
-      "role": "3. Director 1:",
+      "role": "Director 1",
       "email": "haryana_rera@omaxe.com",
       "phone": "9876911201",
       "pan_no": "XXXX908L",
@@ -647,7 +652,7 @@
     },
     {
       "name": "DEEPAK GARG",
-      "role": "4. Director 2:",
+      "role": "Director 2",
       "email": "haryana_rera@omaxe.com",
       "phone": "9876911201",
       "pan_no": "XXXX553M",
@@ -655,7 +660,7 @@
     },
     {
       "name": "RADHA SHAKTI GARG",
-      "role": "5. Director 3:",
+      "role": "Director 3",
       "email": "haryana_rera@omaxe.com",
       "phone": "9876911201",
       "pan_no": "XXXX750B",
@@ -663,7 +668,7 @@
     },
     {
       "name": "MANISH GARG",
-      "role": "6. Director 4:",
+      "role": "Director 4",
       "email": "haryana_rera@omaxe.com",
       "phone": "9876911201",
       "pan_no": "XXXX261Q",
@@ -671,19 +676,11 @@
     },
     {
       "name": "GOPAL SINGH BISHT",
-      "role": "7. Director 5:",
+      "role": "Director 5",
       "email": "haryana_rera@omaxe.com",
       "phone": "9876911201",
       "pan_no": "XXXX831N",
       "present_address": "Flat No. S-1 Bld No. B-10 Ajnara Apartments DLF Dilshad Ext-2 Bhopura Sahibabad Gaziabad 201005"
-    },
-    {
-      "name": "RITU GUPTA",
-      "role": "8. Authorised reprsentative for correspondance with Authority:",
-      "email": "haryana_rera@omaxe.com",
-      "phone": "9876911201",
-      "pan_no": "XXXX510B",
-      "present_address": "Near Post Office Gupta Sotre SCF 33 Sector 16D Chandigarh Sector 15 160015"
     }
   ],
   "project_description": null,
@@ -1259,6 +1256,6 @@
   "rera_housing_found": true,
   "is_live": false,
   "alternative_rera_ids": [
-    "124 OF 2017 DATED 28.8.2017 RERA-PKL-456-2019"
+    "17 of 2012 dated 02.03.2012 AND 62 of 2012 dated 15.06.2012"
   ]
 }

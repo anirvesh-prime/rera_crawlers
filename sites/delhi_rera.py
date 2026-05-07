@@ -27,7 +27,7 @@ from pydantic import ValidationError
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.config import settings
 from core.crawler_base import generate_project_key, random_delay, safe_get
-from core.db import upsert_project, upsert_document, insert_crawl_error
+from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
 from core.project_normalizer import build_document_urls, get_machine_context, normalize_project_payload
@@ -396,10 +396,12 @@ def _parse_project_page(html: str) -> dict:
       scroll1  → general details (description, website, lat/lng, land_type, dates)
       scroll2  → area details (land_area, open_area, covered_area, parking)
       scroll3  → cost estimates (construction_cost_lakhs, project_cost_lakhs, total_cost_lakhs)
+      scroll4  → project approval docs (Encumbrance, Sanction Plan)
       scroll5  → facilities & amenities table
       scroll6  → project entity (CA, architect, engineer)
-      scroll7  → uploaded document URLs
+      scroll7  → uploaded document URLs (with category headers)
       scroll8  → tower/floor inventory
+      jssor_1  → project image slider
 
     Also extracts from the page header:
       promoter_page URL, RERA status, last_updated, registration certificate PDF.
@@ -569,16 +571,58 @@ def _parse_project_page(html: str) -> dict:
         if professionals:
             result["professional_information"] = professionals
 
+    # ── scroll4: Project Approval — Encumbrance + Sanction Plan ─────────────
+    # scroll4 has two tables:
+    #   Table 1 (2 cols): Encumbrance / Non Encumbrance Details section
+    #   Table 2 (4 cols): Sanction Plan section (doc name in category header row)
+    s4 = main.find(id="scroll4")
+    scroll4_docs: list[dict] = []
+    if s4:
+        for tbl in s4.find_all("table"):
+            current_category: str | None = None
+            for tr in tbl.select("tbody tr"):
+                cells = tr.find_all("td")
+                if not cells:
+                    continue
+                # Category/header rows have colspan set on the first cell
+                if cells[0].get("colspan"):
+                    current_category = cells[0].get_text(strip=True)
+                    continue
+                # Find the button (may be in any cell — search all cells)
+                btn = None
+                for cell in cells:
+                    btn = cell.find("button", attrs={"data-pdf_link": True})
+                    if btn:
+                        break
+                if not btn or not btn.get("data-pdf_link"):
+                    continue
+                # doc_name: use cells[0] text if non-empty, else fall back to category
+                doc_name = cells[0].get_text(strip=True) or current_category or "Project Document"
+                scroll4_docs.append({
+                    "link": _abs(btn["data-pdf_link"]),
+                    "type": doc_name,
+                })
+
     # ── scroll7: Uploaded documents ───────────────────────────────────────────
     # The table has 3 columns: Document Name | Status | Uploaded Documents.
+    # Category header rows use colspan=3 on a single <td> — include them as
+    # grouping markers so the output mirrors the on-screen document structure.
     # Each uploaded file is a <button data-pdf_link="..."> (not an <a> tag).
     s7 = main.find(id="scroll7")
     if s7:
         proj_docs: list[dict] = []
         for tr in s7.select("table tbody tr"):
             cells = tr.find_all("td")
+            if not cells:
+                continue
+            # Category header row: single <td colspan="3"> containing an <h4>
+            if cells[0].get("colspan"):
+                category_name = cells[0].get_text(strip=True)
+                if category_name:
+                    proj_docs.append({"type": category_name})
+                continue
             if len(cells) < 3:
-                continue  # category header row (colspan=3)
+                continue
             doc_name = cells[0].get_text(strip=True)
             btn = cells[2].find("button", attrs={"data-pdf_link": True})
             if btn and btn.get("data-pdf_link"):
@@ -586,8 +630,25 @@ def _parse_project_page(html: str) -> dict:
                     "link": _abs(btn["data-pdf_link"]),
                     "type": doc_name or "Project Document",
                 })
+        # Append scroll4 docs (Sanction Plan, Encumbrance) after scroll7 docs
+        proj_docs.extend(scroll4_docs)
         if proj_docs:
             result["uploaded_documents"] = proj_docs
+
+    # ── jssor_1: Project image slider ─────────────────────────────────────────
+    # The jssor_1 div contains <img data-u="image" src="..."> for each project
+    # photo. Collect all distinct image URLs (including the pna.jpg placeholder).
+    jssor = soup.find(id="jssor_1")
+    if jssor:
+        img_urls: list[str] = []
+        seen_imgs: set[str] = set()
+        for img in jssor.find_all("img", attrs={"data-u": "image"}):
+            src = img.get("src", "").strip()
+            if src and src not in seen_imgs:
+                seen_imgs.add(src)
+                img_urls.append(src if src.startswith("http") else urljoin(BASE_URL, src))
+        if img_urls:
+            result["project_images"] = img_urls
 
     # ── scroll8: Tower/Floor inventory ───────────────────────────────────────
     # Each tower is ONE top-level table whose <tbody> has 5 rows:
@@ -828,49 +889,11 @@ def _parse_row(tr: Tag) -> dict | None:
     return {k: v for k, v in out.items() if v not in (None, "", [], {})}
 
 
-def _batch_fetch_project_node_ids(
-    reg_nos: list[str],
-    logger: object | None = None,
-) -> dict[int, str]:
-    """POST to the site's visitor/ajax endpoint to resolve registration numbers
-    to project node IDs in one round trip.
-
-    The JS in delhi.js does the same thing: it collects QPR hrefs from the
-    listing table (which contain the reg number), sends them to this endpoint,
-    and gets back a JSON array of node IDs indexed by row position.
-
-    Returns {row_index: node_id_str} for all rows that resolved successfully.
-    """
-    if not reg_nos:
-        return {}
-    # Build the same dict the JS builds: {index: reg_no}
-    payload_data = {str(i): reg_no for i, reg_no in enumerate(reg_nos)}
-    try:
-        import json as _json
-        with httpx.Client(
-            timeout=15.0, follow_redirects=True, verify=False,
-            headers={"User-Agent": "Mozilla/5.0"},
-        ) as c:
-            resp = c.post(
-                f"{BASE_URL}/visitor/ajax",
-                data={"mod": "get_project_nid", "data": _json.dumps(payload_data)},
-            )
-        if resp.status_code not in (200, 500):
-            return {}
-        raw = resp.text.strip()
-        node_ids: list[str] = _json.loads(raw)
-        return {i: nid for i, nid in enumerate(node_ids) if nid}
-    except Exception as exc:
-        if logger:
-            logger.warning(f"batch node_id lookup failed: {exc}")
-        return {}
-
-
 def _parse_listing_page(html: str) -> list[dict]:
     """Extract all project dicts from a single listing page.
 
-    Also calls the visitor/ajax endpoint to resolve project node IDs in one
-    batch request, injecting _project_page_url into each row.
+    The 'View Project' link (<a class="product_list">) in each row already
+    carries the project_page/{node_id} URL, so no secondary AJAX lookup is needed.
     """
     soup = BeautifulSoup(html, "lxml")
     results: list[dict] = []
@@ -881,21 +904,6 @@ def _parse_listing_page(html: str) -> list[dict]:
         row = _parse_row(tr)
         if row:
             results.append(row)
-
-    if not results:
-        return results
-
-    # Batch-resolve project node IDs using the same AJAX endpoint the site JS uses.
-    # QPR href format: online_view_periodic_progress_reports_history/{reg_no}
-    reg_nos = [
-        r.get("_qpr_url", "").rstrip("/").rsplit("/", 1)[-1]
-        for r in results
-    ]
-    node_id_map = _batch_fetch_project_node_ids(reg_nos)
-    for i, nid in node_id_map.items():
-        if i < len(results) and nid.isdigit():
-            results[i]["_project_page_url"] = f"{BASE_URL}/project_page/{nid}"
-
     return results
 
 
@@ -986,8 +994,23 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
         fresh = page0_rows[0]
 
     proj_page_url = fresh.pop("_project_page_url", None)
+    qpr_url_sentinel = fresh.pop("_qpr_url", None)
     fresh.pop("_directors_url", None)
-    fresh.pop("_qpr_url", None)
+
+    # Derive project_page_url from QPR history if not in listing row
+    # (Delhi's listing no longer carries a product_list anchor)
+    if not proj_page_url and qpr_url_sentinel:
+        qpr_resp = _delhi_get(qpr_url_sentinel, logger=logger)
+        if qpr_resp:
+            submitted_url = _extract_submitted_qprs_url(qpr_resp.text)
+            if submitted_url:
+                m_node = re.search(r"all-submiited-qprs-public-view/(\d+)", submitted_url)
+                if m_node:
+                    proj_page_url = f"{BASE_URL}/project_page/{m_node.group(1)}"
+                    logger.info(
+                        f"Sentinel: derived project_page_url {proj_page_url}",
+                        step="sentinel",
+                    )
 
     logger.info("Sentinel: enriching row for coverage check", reg=sentinel_reg, step="sentinel")
 
@@ -1091,6 +1114,7 @@ def _process_documents(
             enriched.append({**doc, "s3_link": s3_url})
             upload_count += 1
             logger.info(f"Document uploaded: {doc_type!r}", s3_key=s3_key, step="documents")
+            logger.log_document(doc_type, url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
 
         except Exception as exc:
             enriched.append(doc)
@@ -1175,13 +1199,20 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 continue
 
             key = generate_project_key(reg_no)
+
+            # ── daily_light: skip projects already in the DB ──────────────────
+            if mode == "daily_light" and get_project_by_key(key):
+                counters["projects_skipped"] += 1
+                continue
+
             logger.set_project(key=key, reg_no=reg_no, url=page_url, page=page)
             try:
                 # ── Enrich: fetch directors and project details page ──────────
                 fetch_directors  = config.get("fetch_directors", True)
+                fetch_qpr        = config.get("fetch_qpr_history", False)
                 directors_url    = row.pop("_directors_url", None)
                 proj_page_url    = row.pop("_project_page_url", None)
-                row.pop("_qpr_url", None)   # no longer used
+                qpr_url          = row.pop("_qpr_url", None)
 
                 if fetch_directors and directors_url and settings.SCRAPE_DETAILS:
                     dir_resp = _delhi_get(directors_url, logger=logger)
@@ -1198,6 +1229,46 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                                 step="directors",
                             )
                         random_delay(*delay_range)
+
+                # ── Derive project_page_url from QPR history if listing has no link ──
+                # Delhi's listing no longer includes a "View Project" (product_list)
+                # anchor. Fetch the QPR history page — its view-header carries
+                # all-submiited-qprs-public-view/{node_id} which gives us the
+                # project node ID needed to build the project_page URL.
+                if not proj_page_url and qpr_url and settings.SCRAPE_DETAILS:
+                    qpr_resp = _delhi_get(qpr_url, logger=logger)
+                    if qpr_resp:
+                        submitted_url = _extract_submitted_qprs_url(qpr_resp.text)
+                        if submitted_url:
+                            m_node = re.search(r"all-submiited-qprs-public-view/(\d+)",
+                                               submitted_url)
+                            if m_node:
+                                proj_page_url = f"{BASE_URL}/project_page/{m_node.group(1)}"
+                                logger.info(
+                                    f"Derived project_page_url from QPR history: {proj_page_url}",
+                                    step="project_page",
+                                )
+                        # Also capture QPR history if enabled (avoid a second fetch)
+                        if fetch_qpr and not row.get("status_update"):
+                            qpr_history = _parse_qpr_history(qpr_resp.text)
+                            if qpr_history:
+                                row["status_update"] = qpr_history
+                                logger.info(
+                                    f"Fetched {len(qpr_history)} QPR entries for {reg_no}",
+                                    step="qpr_history",
+                                )
+                    random_delay(*delay_range)
+                elif fetch_qpr and qpr_url and settings.SCRAPE_DETAILS:
+                    qpr_resp = _delhi_get(qpr_url, logger=logger)
+                    if qpr_resp:
+                        qpr_history = _parse_qpr_history(qpr_resp.text)
+                        if qpr_history:
+                            row["status_update"] = qpr_history
+                            logger.info(
+                                f"Fetched {len(qpr_history)} QPR entries for {reg_no}",
+                                step="qpr_history",
+                            )
+                    random_delay(*delay_range)
 
                 if proj_page_url and settings.SCRAPE_DETAILS:
                     proj_resp = _delhi_get(proj_page_url, logger=logger)
@@ -1226,6 +1297,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         "url":    proj_page_url or page_url,
                         "domain": DOMAIN,
                         "state":  config.get("state", "delhi"),
+                        "is_live": True,
                     }
                     payload = {k: v for k, v in payload.items() if v not in (None, "", [], {})}
 
@@ -1250,7 +1322,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                     # ── Documents ──────────────────────────────────────────────
                     docs = row.get("uploaded_documents") or []
-                    if docs and (mode == "weekly_deep" or status == "new"):
+                    if docs:
                         enriched, doc_count = _process_documents(
                             key, docs, run_id, config["id"], logger,
                         )

@@ -348,7 +348,16 @@ def _parse_project_details(soup: BeautifulSoup) -> dict:
     loc: dict = {}
     tehsil = norm.get("tehsil") or norm.get("taluk")
     khasra = norm.get("khasra no.") or norm.get("khasra no")
-    locality = norm.get("locality") or norm.get("village/locality") or norm.get("village")
+    # Locality: try explicit field first, then fall back to Mohal/Mauza No.
+    # (HP RERA site uses "Mohal/Mauza No." as the closest equivalent to locality)
+    locality = (
+        norm.get("locality")
+        or norm.get("village/locality")
+        or norm.get("village")
+        or norm.get("mohal/mauza no.")
+        or norm.get("mohal/mauza no")
+        or norm.get("mauza")
+    )
     address = norm.get("address")
     lat = norm.get("latitude")
     lon = norm.get("longitude")
@@ -610,11 +619,12 @@ def _handle_document(
         if s3_key is None:
             return None
         s3_url = get_s3_url(s3_key)
+        logger.info("Document uploaded", label=label, s3_key=s3_key, step="documents")
+        logger.log_document(label, url, "uploaded", s3_key=s3_key, file_size_bytes=len(content))
         return {
             "type": label,
             "link": url,
-            "s3_url": s3_url,
-            "md5": md5,
+            "s3_link": s3_url,
             "updated": True,
         }
     except Exception as exc:
@@ -625,9 +635,9 @@ def _handle_document(
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     """
     Data-quality sentinel for Himachal Pradesh RERA.
-    Loads state_projects_sample/himachal_pradesh.json as the baseline, fetches
-    the listing to find the sentinel project's qs token, then fetches and parses
-    the detail sections and verifies ≥ 80% field coverage.
+    Full-flow check: fetches the listing to find the sentinel project's qs token,
+    then fetches ALL 6 detail sections (same as run()), merges them, and verifies
+    ≥ 80% field coverage against the full baseline.
     """
     import json as _json
     import os as _os
@@ -656,7 +666,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
         with httpx.Client(timeout=_timeout, follow_redirects=True,
                           headers={"User-Agent": _UA}) as client:
             client.get(PUBLIC_DASHBOARD_URL)
-            _, qs_map = _fetch_listing(client, logger)
+            markers, qs_map = _fetch_listing(client, logger)
 
         qs = qs_map.get(sentinel_reg, "")
         if not qs:
@@ -664,15 +674,100 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
                            step="sentinel")
             return True
 
+        # Extract fields from listing marker (project_name, project_type, etc. live here)
+        marker_by_reg: dict[str, dict] = {}
+        for _mk in markers:
+            _r = (
+                _mk.get("reg_no") or _mk.get("RegistrationNo") or _mk.get("reg")
+                or _mk.get("RegNo") or ""
+            ).strip()
+            if _r:
+                marker_by_reg[_r] = _mk
+        _marker = marker_by_reg.get(sentinel_reg, {})
+
+        def _m(*keys: str) -> str:
+            for k in keys:
+                v = _marker.get(k)
+                if v:
+                    return str(v).strip()
+            return ""
+
+        # Fetch ALL 6 sections (same as run())
         with httpx.Client(timeout=_timeout, follow_redirects=True,
                           headers={"User-Agent": _UA}) as client:
             client.get(PUBLIC_DASHBOARD_URL)
-            proj_soup = _fetch_section(client, "ProjectDetails_PreviewPV", qs, logger)
-            p_soup    = _fetch_section(client, "PromotorDetails_PreviewPV", qs, logger)
+            proj_soup = _fetch_section(client, "ProjectDetails_PreviewPV",     qs, logger)
+            p_soup    = _fetch_section(client, "PromotorDetails_PreviewPV",    qs, logger)
+            bank_soup = _fetch_section(client, "BankDetails_PreviewPV",        qs, logger)
+            prof_soup = _fetch_section(client, "AssociatedVendors_PreviewPV",  qs, logger)
+            docs_soup = _fetch_section(client, "Documents_PreviewPV",          qs, logger)
+            inv_soup  = _fetch_section(client, "InventoryDetails_PreviewPV",   qs, logger)
 
-        proj_data = _parse_project_details(proj_soup) if proj_soup else {}
-        promoter  = _parse_promoter_details(p_soup) if p_soup else {}
+        proj_data    = _parse_project_details(proj_soup)  if proj_soup  else {}
+        promoter     = _parse_promoter_details(p_soup)    if p_soup     else {}
+        bank         = _parse_bank_details(bank_soup)     if bank_soup  else None
+        professionals = _parse_professionals(prof_soup)   if prof_soup  else None
+        docs         = _extract_documents(docs_soup)      if docs_soup  else []
+        inventory    = _parse_inventory(inv_soup)         if inv_soup   else {}
+
+        # Merge (same ordering as run())
         fresh = {**promoter, **proj_data}
+        if bank:
+            fresh["bank_details"] = bank
+        if professionals:
+            fresh["professional_information"] = professionals
+        if docs:
+            fresh["uploaded_documents"] = docs
+        if inventory:
+            fresh.update(inventory)
+
+        # Seed listing-marker fields (same as run() lines 849-888)
+        m_name     = _m("ProjectName", "title", "name")
+        m_type     = _m("ProjectTypeNm", "ProjectType", "projectType", "type")
+        m_validity = _m("ValidUpto", "validupto", "valid_upto")
+        if m_name and not fresh.get("project_name"):
+            fresh["project_name"] = m_name
+        if m_type and not fresh.get("project_type"):
+            fresh["project_type"] = m_type
+        if m_validity and not fresh.get("estimated_finish_date"):
+            fresh["estimated_finish_date"] = _normalize_dd_mm_yyyy(m_validity) or m_validity
+        # Derive estimated_commencement_date from finish date minus period of completion
+        comp_year_s = fresh.pop("_completion_year", None)
+        comp_month_s = fresh.pop("_completion_month", None)
+        if (
+            not fresh.get("estimated_commencement_date")
+            and m_validity
+            and (comp_year_s or comp_month_s)
+        ):
+            try:
+                from dateutil.relativedelta import relativedelta
+                finish_str = _normalize_dd_mm_yyyy(m_validity)
+                if finish_str:
+                    finish_dt = datetime(
+                        int(finish_str[:4]),
+                        int(finish_str[5:7]),
+                        int(finish_str[8:10]),
+                        tzinfo=UTC,
+                    )
+                    delta = relativedelta(
+                        years=int(comp_year_s or 0),
+                        months=int(comp_month_s or 0),
+                    )
+                    commence_dt = finish_dt - delta
+                    fresh["estimated_commencement_date"] = (
+                        commence_dt.strftime("%Y-%m-%d 00:00:00+00:00")
+                    )
+            except Exception:
+                pass
+        # number_of_residential_units falls back to inventory
+        if not fresh.get("number_of_residential_units"):
+            flats = inventory.get("total_units") or inventory.get("residential_units")
+            if flats:
+                fresh["number_of_residential_units"] = flats
+
+        # project_state is injected from config in run(), not scraped from the portal
+        fresh["project_state"] = config.get("state", "Himachal Pradesh")
+
     except Exception as exc:
         logger.error(f"Sentinel: fetch/parse error — {exc}", step="sentinel")
         return False
@@ -907,6 +1002,34 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         _normalize_dd_mm_yyyy(m_validity) or m_validity
                     )
 
+                # Derive estimated_commencement_date = estimated_finish_date minus
+                # the Period of Completion (years + months) when not explicitly scraped.
+                if (
+                    not payload.get("estimated_commencement_date")
+                    and m_validity
+                    and (comp_year or comp_month)
+                ):
+                    try:
+                        from dateutil.relativedelta import relativedelta
+                        finish_str = _normalize_dd_mm_yyyy(m_validity)
+                        if finish_str:
+                            finish_dt = datetime(
+                                int(finish_str[:4]),
+                                int(finish_str[5:7]),
+                                int(finish_str[8:10]),
+                                tzinfo=UTC,
+                            )
+                            delta = relativedelta(
+                                years=int(comp_year or 0),
+                                months=int(comp_month or 0),
+                            )
+                            commence_dt = finish_dt - delta
+                            payload["estimated_commencement_date"] = (
+                                commence_dt.strftime("%Y-%m-%d 00:00:00+00:00")
+                            )
+                    except Exception:
+                        pass
+
                 # Normalize and validate
                 logger.info("Normalizing and validating", step="normalize")
                 try:
@@ -941,7 +1064,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 logger.info(f"DB result: {action}", step="db_upsert")
 
                 # Document handling
-                if mode != "daily_light" and docs:
+                if docs:
                     logger.info(f"Processing {len(docs)} documents", step="documents")
                     uploaded_documents: list[dict] = []
                     doc_name_counts: dict[str, int] = {}
@@ -962,9 +1085,14 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                                 uploaded_documents.append(uploaded)
                                 counts["documents_uploaded"] += 1
                                 continue
-                        uploaded_documents.append({
-                            "link": doc.get("link"), "type": doc.get("type", "document"),
-                        })
+                        # Fallback: preserve link (if present) and updated flag;
+                        # omit link key entirely for placeholder docs (no link).
+                        fallback: dict = {"type": doc.get("type", "document")}
+                        if doc.get("link"):
+                            fallback["link"] = doc["link"]
+                        if doc.get("updated"):
+                            fallback["updated"] = doc["updated"]
+                        uploaded_documents.append(fallback)
                     if uploaded_documents:
                         upsert_project({
                             "key": db_dict["key"],

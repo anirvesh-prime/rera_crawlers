@@ -32,8 +32,8 @@ _JSON_FIELD_ALLOWED_KEYS: dict[str, set[str]] = {
     },
     "promoter_address_raw": {
         "building_name", "city", "correspondence_address", "district",
-        "house_no_building_name", "locality", "pin_code", "plot_no", "raw_address",
-        "registered_address", "state", "taluk", "village",
+        "house_no_building_name", "landmark", "locality", "pin_code", "plot_no", "raw_address",
+        "registered_address", "state", "street_name", "taluk", "village",
     },
     "promoter_contact_details": {"email", "mobile no", "phone", "telephone_no", "website"},
     "bank_details": {
@@ -150,7 +150,7 @@ _STATE_JSON_FIELD_ALLOWED_KEYS: dict[str, dict[str, set[str]]] = {
         },
     },
     "maharashtra": {
-        "project_location_raw": {"state", "taluk", "plot_no", "village", "district", "locality", "pin_code"},
+        "project_location_raw": {"state", "taluk", "plot_no", "village", "district", "locality", "pin_code", "latitude", "longitude", "street_name"},
         "data": {
             "START_PAGE", "agent_type", "project_id", "state_promo", "taluk_promo", "village_promo",
             "district_promo", "land_area_unit", "locality_promo", "pin_code_promo",
@@ -394,6 +394,7 @@ def normalize_document_records(documents: Any) -> list[dict[str, Any]] | None:
         )
         link = clean_string(item.get("link") or item.get("source_url") or item.get("url"))
         s3_link = clean_string(item.get("s3_link"))
+        filename = clean_string(item.get("filename"))
 
         updated = item.get("updated")
 
@@ -404,6 +405,8 @@ def normalize_document_records(documents: Any) -> list[dict[str, Any]] | None:
             cleaned_item["link"] = link
         if s3_link:
             cleaned_item["s3_link"] = s3_link
+        if filename:
+            cleaned_item["filename"] = filename
         if updated is not None:
             cleaned_item["updated"] = bool(updated)
 
@@ -494,7 +497,7 @@ def build_document_urls(documents: Any) -> list[dict[str, Any]] | None:
         if marker in seen:
             continue
         seen.add(marker)
-        entry: dict[str, Any] = {"link": s3_link, "updated": True}
+        entry: dict[str, Any] = {"link": s3_link}
         if doc_type:
             entry["type"] = doc_type
         result.append(entry)
@@ -538,12 +541,15 @@ def document_result_entry(
     file_name: str | None = None,
     **_: Any,
 ) -> dict[str, Any]:
-    entry = {
+    entry: dict[str, Any] = {
         "type": doc.get("type") or doc.get("label") or "document",
         "link": doc.get("source_url") or doc.get("url"),
         "s3_link": s3_url,
         "updated": True,
     }
+    dated_on = doc.get("dated_on")
+    if dated_on:
+        entry["dated_on"] = dated_on
     return clean_json(entry) or entry
 
 
@@ -648,6 +654,18 @@ def normalize_project_payload(
         derived_urls = build_document_urls(normalized["uploaded_documents"])
         if derived_urls:
             normalized["document_urls"] = derived_urls
+
+    # Compute is_live from the project's finish date.
+    # A project is live if its end date is still in the future.
+    # If no finish date is available we keep whatever the crawler set
+    # (all crawlers default to True for projects visible on the listing).
+    _finish_date: datetime | None = (
+        normalized.get("estimated_finish_date")
+        or normalized.get("actual_finish_date")
+    )
+    if _finish_date is not None:
+        _now = datetime.now(UTC)
+        normalized["is_live"] = _finish_date > _now
 
     missing = [field for field in REQUIRED_PROJECT_FIELDS if not normalized.get(field)]
     if missing:

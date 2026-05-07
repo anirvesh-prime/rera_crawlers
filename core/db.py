@@ -277,6 +277,71 @@ _SCHEMA_DDL = [
         logged_at TIMESTAMPTZ DEFAULT now()
     )
     """,
+    # ── Stage-level structured event tables ───────────────────────────────────
+    # One row per named stage lifecycle event (start / end) for any crawl stage.
+    """
+    CREATE TABLE IF NOT EXISTS crawl_stage_events (
+        id SERIAL PRIMARY KEY,
+        run_id INTEGER REFERENCES crawl_runs(id),
+        site_id TEXT NOT NULL,
+        stage TEXT NOT NULL,
+        project_key TEXT,
+        registration_no TEXT,
+        status TEXT,
+        message TEXT,
+        duration_ms INTEGER,
+        occurred_at TIMESTAMPTZ DEFAULT now(),
+        extra JSONB
+    )
+    """,
+    # One row per listing page fetched (URL, page number, cards found, timing).
+    """
+    CREATE TABLE IF NOT EXISTS crawl_listing_events (
+        id SERIAL PRIMARY KEY,
+        run_id INTEGER REFERENCES crawl_runs(id),
+        site_id TEXT NOT NULL,
+        page_no INTEGER,
+        url TEXT,
+        cards_found INTEGER,
+        status TEXT,
+        fetch_duration_ms INTEGER,
+        occurred_at TIMESTAMPTZ DEFAULT now(),
+        extra JSONB
+    )
+    """,
+    # One row per project detail page fetch (fields extracted, docs found, timing).
+    """
+    CREATE TABLE IF NOT EXISTS crawl_detail_events (
+        id SERIAL PRIMARY KEY,
+        run_id INTEGER REFERENCES crawl_runs(id),
+        site_id TEXT NOT NULL,
+        project_key TEXT,
+        registration_no TEXT,
+        url TEXT,
+        fields_extracted INTEGER,
+        doc_links_found INTEGER,
+        status TEXT,
+        fetch_duration_ms INTEGER,
+        occurred_at TIMESTAMPTZ DEFAULT now(),
+        extra JSONB
+    )
+    """,
+    # One row per document download / S3 upload attempt.
+    """
+    CREATE TABLE IF NOT EXISTS crawl_document_events (
+        id SERIAL PRIMARY KEY,
+        run_id INTEGER REFERENCES crawl_runs(id),
+        site_id TEXT NOT NULL,
+        project_key TEXT,
+        document_type TEXT,
+        original_url TEXT,
+        s3_key TEXT,
+        file_size_bytes INTEGER,
+        status TEXT,
+        occurred_at TIMESTAMPTZ DEFAULT now(),
+        extra JSONB
+    )
+    """,
 ]
 
 
@@ -692,6 +757,114 @@ def bulk_insert_logs(entries: list[dict]) -> None:
                     for e in entries
                 ],
             )
+    except Exception:
+        pass  # never let logging break the crawler
+
+
+def bulk_insert_stage_events(entries: list[dict]) -> None:
+    """Batch-insert buffered stage-event entries into their specialized tables.
+
+    Each entry must carry a ``"table"`` key naming one of:
+        ``crawl_stage_events``, ``crawl_listing_events``,
+        ``crawl_detail_events``, ``crawl_document_events``.
+
+    Entries are grouped by table and inserted in a single nested transaction so
+    the operation is safe to call from inside an existing transaction (e.g.
+    during upsert_project).  Never raises — a DB hiccup must not kill the crawler.
+    """
+    if not entries:
+        return
+
+    by_table: dict[str, list[dict]] = {}
+    for e in entries:
+        by_table.setdefault(e.get("table", "crawl_stage_events"), []).append(e)
+
+    try:
+        conn = get_connection()
+        with conn.transaction():
+            rows = by_table.get("crawl_stage_events", [])
+            if rows:
+                conn.executemany(
+                    """
+                    INSERT INTO crawl_stage_events
+                        (run_id, site_id, stage, project_key, registration_no,
+                         status, message, duration_ms, extra)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    [
+                        (
+                            e.get("run_id"), e.get("site_id"), e.get("stage"),
+                            e.get("project_key"), e.get("registration_no"),
+                            e.get("status"), e.get("message"), e.get("duration_ms"),
+                            json.dumps(e.get("extra") or {}),
+                        )
+                        for e in rows
+                    ],
+                )
+
+            rows = by_table.get("crawl_listing_events", [])
+            if rows:
+                conn.executemany(
+                    """
+                    INSERT INTO crawl_listing_events
+                        (run_id, site_id, page_no, url, cards_found,
+                         status, fetch_duration_ms, extra)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    [
+                        (
+                            e.get("run_id"), e.get("site_id"), e.get("page_no"),
+                            e.get("url"), e.get("cards_found"),
+                            e.get("status"), e.get("fetch_duration_ms"),
+                            json.dumps(e.get("extra") or {}),
+                        )
+                        for e in rows
+                    ],
+                )
+
+            rows = by_table.get("crawl_detail_events", [])
+            if rows:
+                conn.executemany(
+                    """
+                    INSERT INTO crawl_detail_events
+                        (run_id, site_id, project_key, registration_no, url,
+                         fields_extracted, doc_links_found, status,
+                         fetch_duration_ms, extra)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    [
+                        (
+                            e.get("run_id"), e.get("site_id"),
+                            e.get("project_key"), e.get("registration_no"),
+                            e.get("url"), e.get("fields_extracted"),
+                            e.get("doc_links_found"), e.get("status"),
+                            e.get("fetch_duration_ms"),
+                            json.dumps(e.get("extra") or {}),
+                        )
+                        for e in rows
+                    ],
+                )
+
+            rows = by_table.get("crawl_document_events", [])
+            if rows:
+                conn.executemany(
+                    """
+                    INSERT INTO crawl_document_events
+                        (run_id, site_id, project_key, document_type,
+                         original_url, s3_key, file_size_bytes, status, extra)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    [
+                        (
+                            e.get("run_id"), e.get("site_id"),
+                            e.get("project_key"), e.get("document_type"),
+                            e.get("original_url"), e.get("s3_key"),
+                            e.get("file_size_bytes"), e.get("status"),
+                            json.dumps(e.get("extra") or {}),
+                        )
+                        for e in rows
+                    ],
+                )
     except Exception:
         pass  # never let logging break the crawler
 

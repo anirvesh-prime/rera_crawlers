@@ -105,10 +105,15 @@ def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
                     summary_row = dict(zip(headers, values))
 
             land_area = None
+            land_area_unit_from_listing: str | None = None
             land_text = summary_row.get("total area of land (sq.mtr.)", "")
             if land_text:
                 try:
                     land_area = float(land_text.replace(",", ""))
+                    # The listing column header explicitly says "(Sq.Mtr.)" — use it as
+                    # the authoritative unit instead of trusting the detail-page text,
+                    # which can contain promoter data-entry errors (e.g. "sq ft").
+                    land_area_unit_from_listing = "sq Mtr"
                 except ValueError:
                     land_area = None
 
@@ -150,6 +155,8 @@ def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
                 row["project_location_raw"] = {"raw_address": address}
             if land_area is not None:
                 row["land_area"] = land_area
+            if land_area_unit_from_listing:
+                row["land_area_unit"] = land_area_unit_from_listing
             if summary_row.get("promoter type"):
                 row["data"] = {"promoter_type": summary_row.get("promoter type")}
             rows.append(row)
@@ -587,6 +594,14 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
     for a in soup.find_all("a", href=True):
         href = a["href"]
         if re.search(r"(getdocument|download|filedownload|viewdoc|\.pdf)", href, re.I):
+            # Skip site-wide static documents that appear in the navigation bar
+            # (e.g. /resources/staticpage/FAQ.pdf, /resources/staticpage/Form_B.pdf).
+            # These are not project-specific documents.
+            if "/resources/staticpage/" in href:
+                continue
+            # Skip broken document links where the DOC_ID parameter is empty.
+            if "DOC_ID=" in href and not href.split("DOC_ID=")[-1].strip():
+                continue
             if href.startswith("http"):
                 full_url = href
             elif href.startswith("/"):
@@ -604,7 +619,12 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
         if not src:
             continue
         lower = src.lower()
-        if any(token in lower for token in ("logo", "captcha", "icon", "banner")):
+        if any(token in lower for token in (
+            "logo", "captcha", "icon", "banner",
+            # Social-media sharing buttons that appear in the site navigation bar
+            "face-book", "facebook", "linkedin", "twitter",
+            "youtube", "instagram", "social",
+        )):
             continue
         if src.startswith("http"):
             full_src = src
@@ -661,7 +681,8 @@ def _handle_document(
             md5_checksum=md5,
             file_size_bytes=len(resp.content),
         )
-        logger.info("Document handled", label=label, s3_key=s3_key)
+        logger.info("Document handled", label=label, s3_key=s3_key, step="documents")
+        logger.log_document(label, url, "uploaded", s3_key=s3_key, file_size_bytes=len(resp.content))
         return document_result_entry(doc, s3_url, fname)
     except Exception as e:
         logger.error(f"Doc failed for {project_key}: {e}")
@@ -866,19 +887,33 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     la = data.get("land_area")
                     ca = data.get("construction_area")
                     if la or ca:
+                        # Prefer the listing-level unit (derived from the column header
+                        # "Total Area of Land (Sq.Mtr.)") over the detail-page text,
+                        # which can contain promoter data-entry errors (e.g. "sq ft").
+                        la_unit = (
+                            row.get("land_area_unit")
+                            or detail_data.get("land_area_unit")
+                            or "sq Mtr"
+                        )
                         data["land_area_details"] = {
                             k: v for k, v in {
                                 "land_area":              str(la) if la else None,
-                                "land_area_unit":         detail_data.get("land_area_unit", "sq Mtr"),
+                                "land_area_unit":         la_unit,
                                 "construction_area":      str(ca) if ca else None,
                                 "construction_area_unit": detail_data.get("construction_area_unit", "Sq Mtr"),
                             }.items() if v
                         }
 
-                    data["data"] = merge_data_sections(
+                    merged_data = merge_data_sections(
                         {"listing_row": {k: v for k, v in row.items() if k != "detail_url"}},
                         detail_data,
                     )
+                    # Override land_area_unit in the data blob with the authoritative
+                    # listing-column value (always "sq Mtr") when it was captured, so
+                    # that detail-page data-entry errors (e.g. "sq ft") don't propagate.
+                    if row.get("land_area_unit") and isinstance(merged_data, dict):
+                        merged_data["land_area_unit"] = row["land_area_unit"]
+                    data["data"] = merged_data
                 else:
                     data["data"] = merge_data_sections(
                         row.get("data"),

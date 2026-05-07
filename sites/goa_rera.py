@@ -501,6 +501,8 @@ def _handle_document(project_key: str, doc: dict, run_id: int,
                         s3_bucket=settings.S3_BUCKET_NAME,
                         file_name=fname, md5_checksum=md5,
                         file_size_bytes=len(resp.content))
+        logger.info("Document uploaded", label=label, s3_key=s3_key, step="documents")
+        logger.log_document(label, url, "uploaded", s3_key=s3_key, file_size_bytes=len(resp.content))
         return document_result_entry(doc, s3_url, fname)
     except Exception as e:
         logger.error(f"Doc failed for {project_key}: {e}")
@@ -623,7 +625,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 "domain":                  DOMAIN,
                 "config_id":               config["config_id"],
                 "url":                     card.get("detail_url") or HOME_URL,
-                "is_live":                 False,
+                "is_live":                 True,
                 "machine_name":            machine_name,
                 "crawl_machine_ip":        machine_ip,
             }

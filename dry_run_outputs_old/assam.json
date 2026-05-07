@@ -53,10 +53,8 @@
   ],
   "uploaded_documents": [
     {
-      "type": "RERA REGISTRATION CERTIFICATE 1",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true,
-      "link": "https://rera.assam.gov.in/view_project/view_certificate/MTYxOQ=="
+      "link": "https://rera.assam.gov.in/view_project/view_certificate/MTYxOQ==",
+      "type": "RERA REGISTRATION CERTIFICATE 1"
     },
     {
       "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzQ2Nzc=",
@@ -83,11 +81,8 @@
       "type": "PLANNING PERMIT FROM COMPETENT AUTHORITY"
     },
     {
-      "type": "APPROVED DRAWING FROM COMPETENT AUTHORITY",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true,
-      "dated_on": "2023-10-31 00:00:00+00:00",
-      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMjk="
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMjk=",
+      "type": "APPROVED DRAWING FROM COMPETENT AUTHORITY"
     },
     {
       "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzUzMzA=",
@@ -106,25 +101,16 @@
       "type": "COMMENCEMENT CERTIFICATE OF THE PROJECT"
     },
     {
-      "type": "PLAN OF DEVELOPMENT WORKS",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true,
-      "dated_on": "2023-11-28 00:00:00+00:00",
-      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU5NjQ="
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzU5NjQ=",
+      "type": "PLAN OF DEVELOPMENT WORKS"
     },
     {
-      "type": "CARPET AREA AND PARKING AREA DETAILS",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true,
-      "dated_on": "2023-12-01 00:00:00+00:00",
-      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNDk="
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNDk=",
+      "type": "CARPET AREA AND PARKING AREA DETAILS"
     },
     {
-      "type": "ARCHITECT, STRUCTURAL ENGINEER AND CONTRACTOR DETAILS WITH NAME AND ADDRESS AS THE CASE MAY BE",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true,
-      "dated_on": "2023-12-01 00:00:00+00:00",
-      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNTA="
+      "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/MzYwNTA=",
+      "type": "ARCHITECT, STRUCTURAL ENGINEER AND CONTRACTOR DETAILS WITH NAME AND ADDRESS AS THE CASE MAY BE"
     },
     {
       "link": "https://rera.assam.gov.in/project/view_uploaded_Document_open_public/NDU2NzY=",
@@ -334,28 +320,7 @@
   "checked_updates": false,
   "rera_housing_found": false,
   "is_live": false,
-  "document_urls": [
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "RERA REGISTRATION CERTIFICATE 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "APPROVED DRAWING FROM COMPETENT AUTHORITY"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "PLAN OF DEVELOPMENT WORKS"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "CARPET AREA AND PARKING AREA DETAILS"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "ARCHITECT, STRUCTURAL ENGINEER AND CONTRACTOR DETAILS WITH NAME AND ADDRESS AS THE CASE MAY BE"
-    }
-  ],
+  "document_urls": null,
   "project_type": null,
   "project_city": null,
   "last_modified": null,

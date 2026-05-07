@@ -118,52 +118,40 @@
   ],
   "uploaded_documents": [
     {
-      "type": "Registration Certificate",
       "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=HCNs56tJ8J1riI1I6oUEyw==",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Registration Certificate"
     },
     {
       "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=lfrvO1vPdum0n7wVABaj3Q==",
       "type": "Construction License"
     },
     {
-      "type": "Sanctioned Building Plan",
       "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=S29cz3eKzSj4/0/CTSoXcw==",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Sanctioned Building Plan"
     },
     {
       "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=w3v640a7yHNbY2ClQ1e9IQ==",
       "type": "Draft Agreement for Sale"
     },
     {
-      "type": "Land documents & Location",
       "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=iOYlQDfRjnR51Pz/Goy3Kw==",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Land documents & Location"
     },
     {
-      "type": "Area Development Plan",
       "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=cNINHSlrUSxhusRevGGrCQ==",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Area Development Plan"
     },
     {
       "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=3pvJFysz60c8/ffi7kWjNQ==",
       "type": "Draft of Allotment Letter"
     },
     {
-      "type": "Brochure of Current Project",
       "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=fuD+2Mcq4BKcPwwoHps/GQ==",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Brochure of Current Project"
     },
     {
-      "type": "Project Related Documents",
       "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=Xt821d8n7DEnhbQlpJ0iFg==",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Project Related Documents"
     },
     {
       "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=gCJIdKQexcNQb/q8T8wokQ==",
@@ -182,16 +170,12 @@
       "type": "Separate Plan of partly proposed development/Phase development"
     },
     {
-      "type": "Architect Certificate",
       "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=pJr1LDXLz6zl7unhb29n3A==",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect Certificate"
     },
     {
-      "type": "Engineer Certificate",
       "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=yMgGGY7U+ja8Sc4vcGAvuA==",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engineer Certificate"
     },
     {
       "link": "https://rera.goa.gov.in/reraApp/download?DOC_ID=4ixAkRkTMj5lOjCnAXwimA==",
@@ -214,40 +198,7 @@
       "type": "Form II (as per RERA Rules)"
     }
   ],
-  "document_urls": [
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Registration Certificate"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Sanctioned Building Plan"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Land documents & Location"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Area Development Plan"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Brochure of Current Project"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Project Related Documents"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect Certificate"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engineer Certificate"
-    }
-  ],
+  "document_urls": null,
   "acknowledgement_no": null,
   "project_pin_code": null,
   "project_city": null,

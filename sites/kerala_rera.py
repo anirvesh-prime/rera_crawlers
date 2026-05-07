@@ -467,6 +467,7 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
     _LOCATION_KEY_MAP = {
         "Survey/ Resurvey Number(s)": "survey_resurvey_number",
         "Patta No:/ Thandapper Details": "plot_no",
+        "Patta No": "plot_no",
         "State": "state",
         "District": "district",
         "Taluk": "taluk",
@@ -600,6 +601,11 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
             facility_dict: dict = out.get("provided_faciltiy") or {}
             name_col = tbl["headers"][0] if tbl["headers"] else "col_0"
             val_col  = tbl["headers"][1] if len(tbl["headers"]) > 1 else "col_1"
+            # Skip count tables (headers[1] == "Proposed Number") — these list
+            # numerical totals like "Number of Garages: 11" which are not YES/NO
+            # facility provisions and should not appear in construction_progress.
+            if val_col.lower().strip() == "proposed number":
+                continue
             pct_col  = next((h for h in tbl["headers"]
                              if "percent" in h.lower() or "progress" in h.lower()), "col_2")
             details_col = next((h for h in tbl["headers"] if "detail" in h.lower() or "remark" in h.lower()), None)
@@ -608,6 +614,10 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
                 fval  = r.get(val_col, "")
                 fpct  = r.get(pct_col, "")
                 fdetails = r.get(details_col, "") if details_col else ""
+                # col_4 holds the actual remarks when the named "Details" column is "NA"
+                # (the PrintPreview table has a 5th unlabelled column for remarks text).
+                if (not fdetails or fdetails == "NA"):
+                    fdetails = r.get("col_4", "")
                 if fname:
                     entry = {"proposed": fval, "completion_pct": fpct}
                     if fdetails and fdetails != "NA":
@@ -648,7 +658,10 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
                 if unit_list:
                     out["building_details"] = unit_list
                 building_details["unit_types"] = rows  # keep raw for internal use
-            elif "parking" in hdrs:
+            elif "parking" in hdrs and "building name" not in hdrs:
+                # Only treat as parking if the table doesn't also contain structural
+                # fields (building name, basements, stilts). Building structure tables
+                # may include parking counts in their headers but are not parking tables.
                 building_details["parking_details"] = rows
             else:
                 building_details.setdefault("structure", []).extend(rows)
@@ -818,26 +831,38 @@ def _legacy_promoter_address(record: dict[str, Any], labels: dict[str, Any]) -> 
     return fallback or None
 
 
-def _build_kerala_legacy_facility_progress(facilities: Any) -> list[dict[str, Any]] | None:
+def _build_kerala_legacy_facility_progress(
+    facilities: Any,
+    total_pct: str | None = None,
+) -> list[dict[str, Any]] | None:
     if not isinstance(facilities, dict):
         return None
+    # Order matches the live site's Common Amenities display order on rera.kerala.gov.in
     preferred_order = [
+        "Internal Roads & Footpaths",
+        "Visitors Parking",
         "Water conservation, Rain water harvesting",
-        "Gymnasium",
+        "Energy Management",
+        "Fire protection and Fire safety requirements",
+        "Electrical meter room, Sub-station, Receiving station",
+        "Aggregate area of recreational open space",
         "Open parking",
         "Water supply",
-        "Electrical meter room, Sub-station, Receiving station",
-        "Internal Roads & Footpaths",
+        "Sewerage (Chamber, Lines, Septic tank, STP)",
+        "Storm water drains",
+        "Landscaping & Tree planting",
+        "Street lighting",
+        "Community buildings",
+        "Treatment and disposal of sewage and sullage water",
+        "Solid waste management and disposal",
+        "Public health services",
+        # Additional amenities that may appear on other projects
+        "Gymnasium",
         "Security",
         "Solar systems",
         "Swimming pool",
-        "Fire protection and Fire safety requirements",
         "Party Hall",
         "Security cameras",
-        "Sewerage (Chamber, Lines, Septic tank, STP)",
-        "Storm water drains",
-        "Street lighting",
-        "Visitors Parking",
     ]
     out = []
     for name in preferred_order + [k for k in facilities.keys() if k not in preferred_order]:
@@ -847,9 +872,12 @@ def _build_kerala_legacy_facility_progress(facilities: Any) -> list[dict[str, An
         pct = raw.get("completion_pct")
         if pct in (None, ""):
             continue
-        out.append({"title": str(name).strip(), "progress_percentage": f" {str(pct).strip()}"})
+        out.append({"title": str(name).strip(), "progress_percentage": str(pct).strip()})
     if out:
-        out.append({"title": "total_completion_percentage", "progress_percentage": " 0"})
+        out.append({
+            "title": "total_completion_percentage",
+            "progress_percentage": str(total_pct).strip() if total_pct not in (None, "") else "0",
+        })
     return out or None
 
 
@@ -916,9 +944,16 @@ def _build_kerala_legacy_status_update(
         bname = row.get("Building Name")
         if not bname:
             continue
+        # Spurious rows arise from nested sub-tables (unit types, parking, tasks) that the
+        # HTML table parser picks up as additional rows of the Building Details table.
+        # Valid building rows always have a date in the completion date field (DD/MM/YYYY).
+        # Rows from sub-tables have "0", numeric counts, or long task strings instead.
+        completion_date_raw = str(row.get("Proposed Date of Completion (As committed to allottees)", "") or "")
+        if "/" not in completion_date_raw:
+            continue  # skip malformed row from nested sub-table parsing
         building_detail.append({k: v for k, v in {
             "name":          bname or project_name,
-            "completion_date": row.get("Proposed Date of Completion (As committed to allottees)"),
+            "completion_date": completion_date_raw,
             "no_basement":   row.get("Number of Basements"),
             "no_podium":     row.get("Number of Podiums"),
             "no_super_struct": row.get("Number of Slab of Super Structure"),
@@ -1074,10 +1109,14 @@ def apply_kerala_legacy_shape(record: dict[str, Any]) -> dict[str, Any]:
                 fixed_cp.append(item)
                 continue
             entry = dict(item)
-            entry["has_same_data"] = True
-            pct = entry.get("progress_percentage")
-            if pct is not None and not str(pct).startswith(" "):
-                entry["progress_percentage"] = f" {str(pct).strip()}"
+            is_total = entry.get("title") == "total_completion_percentage"
+            # The total_completion_percentage sentinel row uses the raw percentage
+            # with no leading space and no has_same_data flag (matches legacy sample).
+            if not is_total:
+                entry["has_same_data"] = True
+                pct = entry.get("progress_percentage")
+                if pct is not None and not str(pct).startswith(" "):
+                    entry["progress_percentage"] = f" {str(pct).strip()}"
             fixed_cp.append(entry)
         out["construction_progress"] = fixed_cp
 
@@ -1240,6 +1279,17 @@ def _scrape_detail_page(url: str, logger: CrawlerLogger) -> dict:
     if other_area:
         extracted["total_floor_area_under_commercial_or_other_uses"] = other_area.group(1)
 
+    # Stash HTML for embedded-JSON date extraction (applied after PrintPreview merge)
+    _html_src = resp.text
+
+    # Extract physical progress percentage from the embedded JSON blob.
+    # The page contains HTML-encoded JSON like:
+    # PhysicalProgress&quot;:&quot;100.00&quot;
+    _phys_pct: str | None = None
+    _pm = re.search(r"PhysicalProgress&quot;:&quot;([\d.]+)&quot;", _html_src)
+    if _pm:
+        _phys_pct = _pm.group(1)
+
     # Document links + parse PrintPreview inline
     doc_links = []
     for a in soup.find_all("a", href=True):
@@ -1258,6 +1308,15 @@ def _scrape_detail_page(url: str, logger: CrawlerLogger) -> dict:
             # Parse the PrintPreview HTML to extract all rich fields
             preview_data = _parse_print_preview(full_url, logger)
             extracted.update({k: v for k, v in preview_data.items() if v is not None})
+            # Patch total_completion_percentage in construction_progress using physical
+            # progress extracted from the main page (not available in PrintPreview).
+            if _phys_pct:
+                _cp = extracted.get("construction_progress")
+                if isinstance(_cp, list):
+                    for _item in _cp:
+                        if isinstance(_item, dict) and _item.get("title") == "total_completion_percentage":
+                            _item["progress_percentage"] = _phys_pct
+                            break
         elif "ProjectStatusPublic" in href or "QPR" in label.upper() or "Quarterly" in label:
             doc_links.append({
                 "label": "quarterly_progress_report",
@@ -1268,6 +1327,25 @@ def _scrape_detail_page(url: str, logger: CrawlerLogger) -> dict:
             doc_links.append({"label": label, "url": full_url})
 
     extracted["_doc_links"] = doc_links
+
+    # ── Dates from embedded JSON blob (fallback after PrintPreview merge) ─────
+    # Kerala pages embed project data as HTML-encoded JSON
+    # (e.g. &quot;ProjectEndDate&quot;:&quot;2019-04-26 …&quot;).
+    # _parse_print_preview uses the label-based approach; if those labels are no
+    # longer present on the page the actual dates stay None. We fill them here
+    # from the embedded JSON only if still absent after the PrintPreview merge.
+    _blob_date_map = {
+        r"ProjectEndDate&quot;:&quot;(\d{4}-\d{2}-\d{2})":          "actual_commencement_date",
+        r"ProposedDateOfCompletion&quot;:&quot;(\d{4}-\d{2}-\d{2})": "actual_finish_date",
+    }
+    for _pat, _field in _blob_date_map.items():
+        if not extracted.get(_field):
+            _dm = re.search(_pat, _html_src)
+            if _dm:
+                # Store as bare ISO date; _legacy_utc_timestamp in _parse_print_preview
+                # has already run on the preview page, so apply it here too.
+                extracted[_field] = _legacy_utc_timestamp(_dm.group(1)) or _dm.group(1)
+
     return extracted
 
 
@@ -1353,7 +1431,8 @@ def _handle_document(
         upsert_document(project_key=project_key, document_type=label, original_url=document_identity_url(doc) or url,
                         s3_key=s3_key, s3_bucket=settings.S3_BUCKET_NAME,
                         file_name=filename, md5_checksum=md5, file_size_bytes=len(data))
-        logger.info("Document handled", label=label, s3_key=s3_key)
+        logger.info("Document handled", label=label, s3_key=s3_key, step="documents")
+        logger.log_document(label, url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
         return document_result_entry(doc, s3_url, filename)
     except Exception as e:
         logger.error(f"Document failed: {e}", url=url)
@@ -1548,7 +1627,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     detail_data["config_id"] = config["config_id"]
                     detail_data["crawl_machine_ip"] = machine_ip
                     detail_data["machine_name"] = machine_name
-                    detail_data["is_live"] = False
+                    detail_data["is_live"] = True
                     detail_data["data"] = merge_data_sections(
                         {"listing_card": card, "detail_url": card["detail_url"]},
                         detail_data.get("data"),

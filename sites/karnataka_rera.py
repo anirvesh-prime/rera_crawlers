@@ -496,11 +496,11 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
         if completion_applied:
             out["actual_finish_date"] = out["estimated_finish_date"]
 
-    # ── 4. Land area — find "X Acres, Y Gunta/ Z Sq Mtr" pattern in table cells
+    # ── 4. Land area — find "X Acres, Y Gunta/ Z Sq Mtr(s)" pattern in table cells
     land_area_m2: float | None = None
     for td in soup.find_all("td"):
         td_text = _clean(td.get_text())
-        m = re.search(r"\d+\s*(?:Acres?|Gunta)[^/]*/\s*(\d+(?:\.\d+)?)\s*Sq\s*Mtr",
+        m = re.search(r"\d+\s*(?:Acres?|Gunta)[^/]*/\s*(\d+(?:\.\d+)?)\s*Sq\s*Mtrs?",
                       td_text, re.I)
         if m:
             land_area_m2 = float(m.group(1))
@@ -884,6 +884,8 @@ def _handle_document(
             md5_checksum=md5,
             file_size_bytes=len(data),
         )
+        logger.info("Document uploaded", doc_type=doc_type, s3_key=s3_key, step="documents")
+        logger.log_document(doc_type, url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
         return {**doc, "s3_link": s3_url}
     except Exception as exc:
         logger.error(f"Document processing failed: {exc}", url=url, step="documents")
@@ -920,6 +922,12 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     Loads state_projects_sample/karnataka.json as the baseline, fetches the
     sentinel project detail via _fetch_detail + _parse_detail, and verifies
     ≥ 80% field coverage.
+
+    Karnataka has no per-project URLs — all detail fetches go through a generic
+    POST endpoint.  The sentinel therefore uses the acknowledgement_no stored in
+    the baseline JSON to drive _fetch_detail (which expects an ack_no, not a
+    reg_no), then cross-checks the returned reg_no against
+    sentinel_registration_no from config.
     """
     import json as _json
     import os as _os
@@ -942,13 +950,20 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
                        path=sample_path, step="sentinel")
         return True
 
-    logger.info(f"Sentinel: fetching detail for {sentinel_reg}", step="sentinel")
+    # Karnataka has no per-project URL; use the acknowledgement_no from the
+    # baseline to look up the project via the two-step POST flow.
+    ack_no = baseline.get("acknowledgement_no", "")
+    if not ack_no:
+        logger.warning("Sentinel: no acknowledgement_no in baseline — skipping", step="sentinel")
+        return True
+
+    logger.info(f"Sentinel: fetching detail for {sentinel_reg} (ack={ack_no})", step="sentinel")
     try:
-        html, meta = _fetch_detail(sentinel_reg, logger)
+        html, meta = _fetch_detail(ack_no, logger)
         if not html:
             logger.error("Sentinel: detail fetch returned no HTML", step="sentinel")
             return False
-        fresh = _parse_detail(html, sentinel_reg, DISTRICTS[0], start_page=0, meta=meta) or {}
+        fresh = _parse_detail(html, ack_no, DISTRICTS[0], start_page=0, meta=meta) or {}
     except Exception as exc:
         logger.error(f"Sentinel: fetch/parse error — {exc}", step="sentinel")
         return False
@@ -957,9 +972,21 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
         logger.error("Sentinel: no data extracted", step="sentinel")
         return False
 
+    # Verify the fetched project is actually the sentinel project
+    scraped_reg = fresh.get("project_registration_no", "")
+    if scraped_reg and scraped_reg.upper() != sentinel_reg.upper():
+        logger.error(
+            f"Sentinel: reg_no mismatch — expected {sentinel_reg!r}, got {scraped_reg!r}",
+            step="sentinel",
+        )
+        insert_crawl_error(
+            run_id, config.get("id", "karnataka_rera"),
+            "SENTINEL_FAILED", f"reg_no mismatch: {scraped_reg!r}",
+        )
+        return False
+
     if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
-        from core.db import insert_crawl_error as _ice
-        _ice(
+        insert_crawl_error(
             run_id, config.get("id", "karnataka_rera"),
             "SENTINEL_FAILED",
             f"Coverage below 80% for sentinel project {sentinel_reg}",
@@ -1059,6 +1086,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     break
 
                 project_key = generate_project_key(ack_no)
+
+                # ── daily_light: skip projects already in the DB ──────────────
+                if mode == "daily_light" and get_project_by_key(project_key):
+                    counters["projects_skipped"] += 1
+                    continue
+
                 logger.set_project(
                     key=project_key,
                     reg_no=ack_no,
@@ -1100,6 +1133,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         "domain": DOMAIN,
                         "state":  config.get("state", "karnataka"),
                         "data":   merge_data_sections(detail.get("data"), {}),
+                        "is_live": True,
                     }
                     if uploaded_docs:
                         merged["uploaded_documents"] = uploaded_docs
@@ -1127,7 +1161,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                             counters["projects_skipped"] += 1
 
                         # ── Document upload (new or weekly_deep) ────────────────
-                        if uploaded_docs and (mode == "weekly_deep" or status == "new"):
+                        if uploaded_docs:
                             enriched, doc_count = _process_documents(
                                 project_key, uploaded_docs, run_id, config["id"], logger,
                             )

@@ -1068,22 +1068,16 @@
   },
   "uploaded_documents": [
     {
-      "type": "Completion Certificate 1",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/COM_CER_ARCHI_e7e983e6-cdcf-4033-92d5-730691d01928.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Completion Certificate 1"
     },
     {
-      "type": "Completion Certificate 2",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/COM_CER_CA_52290767-7087-43bc-903b-c20ce8f29621.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Completion Certificate 2"
     },
     {
-      "type": "Registration Certificate 1",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/Reg_Certi_05b39f7a-9fb4-4721-a032-d76526b60bee.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Registration Certificate 1"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/PASSBOOK_0280c288-c690-4cdb-a6ec-3e08c5733d18.pdf",
@@ -1106,36 +1100,28 @@
       "type": "Approval Letter of Town And Country Planning"
     },
     {
-      "type": "Layout Plan 1",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/LAYOUT_6fa23332-795e-477b-938b-876128df2e4e.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Layout Plan 1"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/DEVE_PER_COM_AUTH_3955975c-a145-4c08-91b7-c9e9cb8bbab8.pdf",
       "type": "Development Permission from competent authorities"
     },
     {
-      "type": "Project Specifications 1",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/PSPEC_8ab41b37-e6bc-4fd9-b48c-056fd2c3e912.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Project Specifications 1"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/BRIEF_DETAILS_8c3899e2-fde0-4e96-a37b-54870e180272.pdf",
       "type": "Brief Details of Current Project along with Stilt and Cover Parking Details (ANNEX-11)"
     },
     {
-      "type": "Development team details 1",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/DEVTEAMc92d7e5c-8f89-4e08-be34-1004857a5e99.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Development team details 1"
     },
     {
-      "type": "Development work plan 1",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/WORKPLAN2a75288f-1003-4291-8243-39f6ead6ff0a.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Development work plan 1"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AFFIDAVIT4f44fd19-2b11-42e6-b01d-be91c8993e13.pdf",
@@ -1150,10 +1136,8 @@
       "type": "Undertaking by the Promoter for pending documents (ANNEX-08)"
     },
     {
-      "type": "Engineer Certificate 1",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGGCERTI2a8807b6-5715-49a6-89e5-a90f77f8b5c6.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engineer Certificate 1"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CACERTI12294ab4-ff0d-42da-ab4f-e27417765e7a.pdf",
@@ -1169,16 +1153,14 @@
       "dated_on": "20 Jun 2018"
     },
     {
-      "type": "Engg Certificate 1",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_69519ed0-24d9-4ef7-bb5c-9e1de9ec241f.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 1",
+      "dated_on": "20 Jun 2018"
     },
     {
-      "type": "Architect certificate 1",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_72ac34cb-b5ae-41ae-992f-cd573eb6ca05.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 1",
+      "dated_on": "20 Jun 2018"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_6e099afe-fcc8-4c7d-8e98-d396fc7ba9b9.pdf",
@@ -1186,16 +1168,14 @@
       "dated_on": "01 Oct 2018"
     },
     {
-      "type": "Engg Certificate 2",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_11ea9c73-ea13-46ca-ab29-e1484ea900a1.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 2",
+      "dated_on": "01 Oct 2018"
     },
     {
-      "type": "Architect certificate 2",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_3f51e89d-6206-4504-b221-f03ebd5208be.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 2",
+      "dated_on": "01 Oct 2018"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_27b71ae7-2f7e-4f6b-a5de-289ba489a799.pdf",
@@ -1203,16 +1183,14 @@
       "dated_on": "01 Jan 2019"
     },
     {
-      "type": "Engg Certificate 3",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_9124a599-c41f-42f8-acc0-ac71bc813c05.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 3",
+      "dated_on": "01 Jan 2019"
     },
     {
-      "type": "Architect certificate 3",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_51a5ea9c-1243-4772-907e-9708f75fd09a.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 3",
+      "dated_on": "01 Jan 2019"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_c918c37b-f3ed-4c4f-8233-1cfffdfa7bc0.pdf",
@@ -1220,16 +1198,14 @@
       "dated_on": "01 Apr 2019"
     },
     {
-      "type": "Engg Certificate 4",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_a153f55c-058b-407d-b63d-ab96cbe17f12.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 4",
+      "dated_on": "01 Apr 2019"
     },
     {
-      "type": "Architect certificate 4",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_6fab3c4d-3a1d-497c-aafc-838930193fe3.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 4",
+      "dated_on": "01 Apr 2019"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_fb02c273-ec8a-4702-b127-0b126015ba68.pdf",
@@ -1237,16 +1213,14 @@
       "dated_on": "01 Jul 2019"
     },
     {
-      "type": "Engg Certificate 5",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_9a65e037-e34e-4621-bf71-e3085c14c867.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 5",
+      "dated_on": "01 Jul 2019"
     },
     {
-      "type": "Architect certificate 5",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_e636793f-0b75-4b3f-a488-36574aebc2ca.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 5",
+      "dated_on": "01 Jul 2019"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_35be8510-2914-4e33-901b-a66c0cabae20.pdf",
@@ -1254,16 +1228,14 @@
       "dated_on": "01 Oct 2019"
     },
     {
-      "type": "Engg Certificate 6",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_3d309b63-2e7c-40f3-9862-ef5657341e0e.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 6",
+      "dated_on": "01 Oct 2019"
     },
     {
-      "type": "Architect certificate 6",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_e736061b-58d5-488c-83eb-bd76c5072212.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 6",
+      "dated_on": "01 Oct 2019"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_74d4c6bc-a703-47b9-b09a-4df024e9a0b4.pdf",
@@ -1271,16 +1243,14 @@
       "dated_on": "01 Jan 2020"
     },
     {
-      "type": "Engg Certificate 7",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_9a367a42-58a6-4ec8-a9f2-5ee0c3090ef3.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 7",
+      "dated_on": "01 Jan 2020"
     },
     {
-      "type": "Architect certificate 7",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_9d5df3b8-db15-4948-a9eb-f3c978b52535.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 7",
+      "dated_on": "01 Jan 2020"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_6041d2b0-3900-4156-aef7-2bc1110b47c6.pdf",
@@ -1288,16 +1258,14 @@
       "dated_on": "01 Apr 2020"
     },
     {
-      "type": "Engg Certificate 8",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_8bc4c50f-35cf-45a0-9de2-03f6fc1f9d2c.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 8",
+      "dated_on": "01 Apr 2020"
     },
     {
-      "type": "Architect certificate 8",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_fff9b872-691e-4e9c-9e88-18ed13dfd55d.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 8",
+      "dated_on": "01 Apr 2020"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_2e897410-f16d-4967-baee-885f062f2861.pdf",
@@ -1305,16 +1273,14 @@
       "dated_on": "01 Jul 2020"
     },
     {
-      "type": "Engg Certificate 9",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_81687f46-e286-4ccc-9048-ca2104055211.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 9",
+      "dated_on": "01 Jul 2020"
     },
     {
-      "type": "Architect certificate 9",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_52df5772-78dc-49cc-afbf-4a57725b22d9.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 9",
+      "dated_on": "01 Jul 2020"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_8feef3f6-5ecf-49fc-bd7f-3ed13b214db0.pdf",
@@ -1322,16 +1288,14 @@
       "dated_on": "01 Oct 2020"
     },
     {
-      "type": "Engg Certificate 10",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_86e18fd4-a8c5-47cc-a81d-c7267f1759dd.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 10",
+      "dated_on": "01 Oct 2020"
     },
     {
-      "type": "Architect certificate 10",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_94cf0605-0155-46a7-8a3f-fd0e5303453f.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 10",
+      "dated_on": "01 Oct 2020"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_efdfdf3c-2744-423c-85d8-b9311d56c947.pdf",
@@ -1339,16 +1303,14 @@
       "dated_on": "01 Jan 2021"
     },
     {
-      "type": "Engg Certificate 11",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_30ccd6ed-c8d9-4e70-a58c-41ae475e3ba6.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 11",
+      "dated_on": "01 Jan 2021"
     },
     {
-      "type": "Architect certificate 11",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_a10c5eee-beba-452d-8522-0f65888d236c.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 11",
+      "dated_on": "01 Jan 2021"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_464d964d-5850-404b-afa4-d457efef5665.pdf",
@@ -1356,16 +1318,14 @@
       "dated_on": "01 Apr 2021"
     },
     {
-      "type": "Engg Certificate 12",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ENGG_QUARTER_9ed55a50-6aad-4b3e-a805-272f085d8b24.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 12",
+      "dated_on": "01 Apr 2021"
     },
     {
-      "type": "Architect certificate 12",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/ARCH_QUARTER_65f766b9-6521-4a7c-b5b2-574ca40ce9a7.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 12",
+      "dated_on": "01 Apr 2021"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/CA_QUARTER_6a944f50-d16f-4a78-9009-0843f8e950c3.pdf",
@@ -1378,16 +1338,14 @@
       "dated_on": "01 Oct 2018"
     },
     {
-      "type": "Engg Certificate 14",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_bf0a8a99-9c83-4af0-8050-4dfa5b1d374f.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 14",
+      "dated_on": "01 Oct 2018"
     },
     {
-      "type": "Architect certificate 14",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_6cd69e37-8833-4d6e-a609-1dc1a2546b0b.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 14",
+      "dated_on": "01 Oct 2018"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_a7eb4488-2169-442e-96f2-82bf9f307601.pdf",
@@ -1395,16 +1353,14 @@
       "dated_on": "01 Jan 2019"
     },
     {
-      "type": "Engg Certificate 15",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_9dbdc0c5-ec03-4804-9a86-2b621ac6bd22.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 15",
+      "dated_on": "01 Jan 2019"
     },
     {
-      "type": "Architect certificate 15",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_2d8819a5-5c9e-4d4a-8b9f-c1b910eb8413.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 15",
+      "dated_on": "01 Jan 2019"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_087b747b-d9dc-43df-b86a-589a77cc6d4e.pdf",
@@ -1412,16 +1368,14 @@
       "dated_on": "01 Jan 2019"
     },
     {
-      "type": "Engg Certificate 16",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_5ce78c41-2b81-4fa9-8d68-30e9c3c99c08.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 16",
+      "dated_on": "01 Jan 2019"
     },
     {
-      "type": "Architect certificate 16",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_0bfd2872-6446-4eee-b68e-2ddb10b7ba3c.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 16",
+      "dated_on": "01 Jan 2019"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_b096c403-6dab-4667-95d7-c1217692cc69.pdf",
@@ -1429,16 +1383,14 @@
       "dated_on": "01 Apr 2019"
     },
     {
-      "type": "Engg Certificate 17",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_affbda8a-3a04-4379-9f27-7556cda7ba74.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 17",
+      "dated_on": "01 Apr 2019"
     },
     {
-      "type": "Architect certificate 17",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_f0ac3f5e-a2de-4316-9583-df9ce6475b2e.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 17",
+      "dated_on": "01 Apr 2019"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_64a7d346-a2e1-4801-8e4f-17f19b030da3.pdf",
@@ -1446,16 +1398,14 @@
       "dated_on": "01 Jul 2019"
     },
     {
-      "type": "Engg Certificate 18",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_08db643c-6e01-4e13-ba4a-f73e27ec32de.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 18",
+      "dated_on": "01 Jul 2019"
     },
     {
-      "type": "Architect certificate 18",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_7a8c5a19-0da1-40b0-99b1-7f61488fd11b.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 18",
+      "dated_on": "01 Jul 2019"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_4450b095-47c0-4ac4-b322-b803866fa5f1.pdf",
@@ -1463,16 +1413,14 @@
       "dated_on": "01 Oct 2019"
     },
     {
-      "type": "Engg Certificate 19",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_07c12b9e-e243-4532-82d6-b4f4970d923d.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 19",
+      "dated_on": "01 Oct 2019"
     },
     {
-      "type": "Architect certificate 19",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_7d265304-49bc-445c-a0ba-fdf512c1720c.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 19",
+      "dated_on": "01 Oct 2019"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_7cf7bbc9-b8df-4bdb-b853-d7f19be6809a.pdf",
@@ -1480,16 +1428,14 @@
       "dated_on": "01 Jan 2020"
     },
     {
-      "type": "Engg Certificate 20",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_8d690a9f-c901-49a3-a0ff-3f9b956ccf49.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 20",
+      "dated_on": "01 Jan 2020"
     },
     {
-      "type": "Architect certificate 20",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_31498428-f931-404b-9450-8f85099efa30.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 20",
+      "dated_on": "01 Jan 2020"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_e1b96bb2-125d-4ed3-a50c-61064fb56cdc.pdf",
@@ -1497,16 +1443,14 @@
       "dated_on": "01 Apr 2020"
     },
     {
-      "type": "Engg Certificate 21",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_ecae7b19-245d-48fb-a8aa-abbcfaa18da1.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 21",
+      "dated_on": "01 Apr 2020"
     },
     {
-      "type": "Architect certificate 21",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_37c647b4-df7e-4156-ad83-218aa345e953.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 21",
+      "dated_on": "01 Apr 2020"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_3ce19df8-c3da-467c-9f95-c65e54e6c097.pdf",
@@ -1514,16 +1458,14 @@
       "dated_on": "01 Jul 2020"
     },
     {
-      "type": "Engg Certificate 22",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_d8fcb1c4-d227-43ca-8f19-894bc5776390.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 22",
+      "dated_on": "01 Jul 2020"
     },
     {
-      "type": "Architect certificate 22",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_2b2bb403-47b1-45e7-a777-ccaea0d75a8f.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 22",
+      "dated_on": "01 Jul 2020"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_147a5321-fe34-48e9-8a14-c3fa8ac69e16.pdf",
@@ -1531,16 +1473,14 @@
       "dated_on": "01 Oct 2020"
     },
     {
-      "type": "Engg Certificate 23",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_6e69c9e8-16d2-4ff7-8963-099fbf8e4dbf.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 23",
+      "dated_on": "01 Oct 2020"
     },
     {
-      "type": "Architect certificate 23",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_159b4f1d-b989-4da5-8dc6-81657861b3c5.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 23",
+      "dated_on": "01 Oct 2020"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_045c01db-cf85-4927-bb59-17cf1a48aa30.pdf",
@@ -1548,16 +1488,14 @@
       "dated_on": "01 Jan 2021"
     },
     {
-      "type": "Engg Certificate 24",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_17b8170d-da4a-4145-963b-9854fc7fd46c.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 24",
+      "dated_on": "01 Jan 2021"
     },
     {
-      "type": "Architect certificate 24",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_b59684aa-fd8e-48bb-8d3d-6dee08ce9903.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 24",
+      "dated_on": "01 Jan 2021"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_CA_QUARTER_338509c0-4834-4133-b542-1a6316066792.pdf",
@@ -1565,16 +1503,14 @@
       "dated_on": "01 Apr 2021"
     },
     {
-      "type": "Engg Certificate 25",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ENGG_QUARTER_6aa82494-652c-4868-a43b-5eca83f7bee6.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Engg Certificate 25",
+      "dated_on": "01 Apr 2021"
     },
     {
-      "type": "Architect certificate 25",
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AMOUNT_ARCH_QUARTER_172a7e79-3c56-4f47-b3cc-83b084c88f25.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Architect certificate 25",
+      "dated_on": "01 Apr 2021"
     },
     {
       "link": "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/",
@@ -1592,232 +1528,7 @@
       "dated_on": "01 Jul 2021"
     }
   ],
-  "document_urls": [
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Completion Certificate 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Completion Certificate 2"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Registration Certificate 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Layout Plan 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Project Specifications 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Development team details 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Development work plan 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engineer Certificate 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 2"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 2"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 3"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 3"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 4"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 4"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 5"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 5"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 6"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 6"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 7"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 7"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 8"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 8"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 9"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 9"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 10"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 10"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 11"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 11"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 12"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 12"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 14"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 14"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 15"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 15"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 16"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 16"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 17"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 17"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 18"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 18"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 19"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 19"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 20"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 20"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 21"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 21"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 22"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 22"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 23"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 23"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 24"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 24"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engg Certificate 25"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Architect certificate 25"
-    }
-  ],
+  "document_urls": null,
   "acknowledgement_no": null,
   "project_pin_code": null,
   "project_city": null,

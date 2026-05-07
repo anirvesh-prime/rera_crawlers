@@ -45,12 +45,13 @@ from core.config import settings
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 BASE_URL    = "https://www.up-rera.in"
-DOMAIN      = "www.up-rera.in"
+DOMAIN      = "up-rera.in"
 STATE       = "uttar pradesh"
 STATE_CODE  = "UP"
 PROJECT_STATE = "Uttar Pradesh"
 
 _DISTRICT_LISTING_URL = BASE_URL + "/frm_allprojectdistrictwise.aspx?districtname={district}"
+_FULL_DETAIL_URL      = BASE_URL + "/frm_view_project_details.aspx?id={project_id}"
 _GRID_ID = "ctl00_ContentPlaceHolder1_GridView1"
 
 # All 75 UP districts (names matching the UP RERA portal)
@@ -121,6 +122,24 @@ def _parse_date(text: Any) -> str | None:
         return s if "+" in s else s + "+00:00"
     return None
 
+
+
+def _project_id_from_reg_no(reg_no: str) -> str | None:
+    """Extract numeric project ID from 'UPRERAPRJ6734' → '6734'."""
+    m = re.search(r"\d+$", reg_no)
+    return str(int(m.group())) if m else None
+
+
+def _fetch_full_detail_html(reg_no: str, logger: CrawlerLogger) -> tuple[str, str]:
+    """Fetch the comprehensive project detail page via direct HTTP GET (no Playwright)."""
+    project_id = _project_id_from_reg_no(reg_no)
+    if not project_id:
+        return "", ""
+    url = _FULL_DETAIL_URL.format(project_id=project_id)
+    resp = safe_get(url, headers=_LISTING_HEADERS, retries=3, timeout=60, logger=logger)
+    if resp and resp.status_code == 200 and len(resp.text) > 1000:
+        return resp.text, url
+    return "", ""
 
 
 # ── Listing scraper ────────────────────────────────────────────────────────────
@@ -403,6 +422,208 @@ def _extract_building_details(soup: BeautifulSoup) -> list[dict]:
     return building_details
 
 
+def _parse_full_detail_page(html: str, reg_no: str, district: str) -> dict:  # noqa: C901
+    """
+    Parse frm_view_project_details.aspx — the comprehensive project detail page.
+
+    Extracts bank details, lat/lon, land area, project cost, building/unit details,
+    and dates from hidden input element values and data tables.
+
+    Column mapping for grd_PlanDetails_ForAdmin (0-based):
+      0=Sr.No  1=Block No  2=Floor Number  3=Flat type  4=Num units
+      5=Carpet Area  6=Num Balcony  7=Balcony Area  8-11=Verandah/Garage  12=Open Parking
+    """
+    if not html:
+        return {}
+
+    soup = BeautifulSoup(html, "lxml")
+    out: dict[str, Any] = {}
+
+    def _inp(elem_id: str) -> str | None:
+        """Return the value= attribute of a hidden input element (None if empty/placeholder)."""
+        elem = soup.find("input", id=elem_id)
+        if not elem:
+            return None
+        v = _clean(elem.get("value", ""))
+        return v if v and v not in ("..", "-", "N/A") else None
+
+    def _inp_raw(elem_id: str) -> str | None:
+        """Return the raw value= attribute of a hidden input element (keeps '..' placeholders)."""
+        elem = soup.find("input", id=elem_id)
+        if not elem:
+            return None
+        return _clean(elem.get("value", "")) or None
+
+    # ── Geographic location ───────────────────────────────────────────────────
+    lat_str = _inp("ctl00_ContentPlaceHolder1_lblLat1")
+    lon_str = _inp("ctl00_ContentPlaceHolder1_lblLong1")
+    loc: dict[str, Any] = {"state": PROJECT_STATE, "district": district}
+    if lat_str:
+        try:
+            loc["latitude"] = lat_str
+            loc["processed_latitude"] = float(lat_str)
+        except (ValueError, TypeError):
+            pass
+    if lon_str:
+        try:
+            loc["longitude"] = lon_str
+            loc["processed_longitude"] = float(lon_str)
+        except (ValueError, TypeError):
+            pass
+    if "latitude" in loc:
+        out["project_location_raw"] = loc
+
+    # ── Bank details ──────────────────────────────────────────────────────────
+    bank: dict[str, str] = {}
+    _acc_no   = _inp("ctl00_ContentPlaceHolder1_lblAccNo")
+    _acc_name = _inp("ctl00_ContentPlaceHolder1_lblAccName")
+    _bank_nm  = _inp("ctl00_ContentPlaceHolder1_lblBankName")
+    _branch   = _inp("ctl00_ContentPlaceHolder1_lblBranchName")
+    _ifsc     = _inp("ctl00_ContentPlaceHolder1_lblIFSCCode")
+    if _acc_no:   bank["account_no"]   = _acc_no
+    if _acc_name: bank["account_name"] = _acc_name
+    if _bank_nm:  bank["bank_name"]    = _bank_nm
+    if _branch:   bank["branch"]       = _branch
+    if _ifsc:     bank["ifsc"]         = _ifsc
+    if bank:
+        out["bank_details"] = bank
+
+    # ── Land area (Sq.mt.) ────────────────────────────────────────────────────
+    _area = _inp("ctl00_ContentPlaceHolder1_lblTotalArea")
+    if _area:
+        land_val = _parse_float(_area)
+        if land_val:
+            out["land_area"] = land_val
+
+    # ── Project cost (in Lacs → convert to rupees by × 1,00,000) ─────────────
+    _cost = _inp("ctl00_ContentPlaceHolder1_lblProjectCost")
+    if _cost:
+        cost_val = _parse_float(_cost)
+        if cost_val:
+            out["project_cost_detail"] = {"total_project_cost": cost_val * 100_000.0}
+
+    # ── Commencement / completion dates ───────────────────────────────────────
+    _start = _inp("ctl00_ContentPlaceHolder1_lblStartDate")
+    _end   = _inp("ctl00_ContentPlaceHolder1_lblEndDate")
+    if _start and _start not in ("-", "0"):
+        out["actual_commencement_date"] = _parse_date(_start)
+    if _end and _end not in ("-", "0"):
+        out["actual_finish_date"] = _parse_date(_end)
+
+    # ── Building details & unit counts (grd_PlanDetails_ForAdmin) ────────────
+    plan_table = soup.find("table", id="ctl00_ContentPlaceHolder1_grd_PlanDetails_ForAdmin")
+    if plan_table:
+        building_details: list[dict] = []
+        residential_count = 0
+        commercial_count  = 0
+        rows = plan_table.find_all("tr")
+        for tr in rows[1:]:  # skip header row
+            cells = tr.find_all("td")
+            if len(cells) < 8:
+                continue
+
+            def _cell(idx: int) -> str:
+                return _clean(cells[idx].get_text()) or "" if idx < len(cells) else ""
+
+            block_name   = _cell(1)
+            floor_no     = _cell(2)
+            flat_type    = _cell(3)
+            no_of_units  = _cell(4)
+            carpet_area  = _cell(5)
+            balcony_area = _cell(7)
+            open_area    = _cell(12) if len(cells) > 12 else "0"
+
+            if not (flat_type or carpet_area):
+                continue
+
+            entry: dict[str, str] = {}
+            if block_name:  entry["block_name"]   = block_name
+            if floor_no:    entry["floor_no"]      = floor_no
+            if flat_type:   entry["flat_type"]     = flat_type
+            if no_of_units: entry["no_of_units"]   = no_of_units
+            if carpet_area: entry["carpet_area"]   = carpet_area
+            if balcony_area and balcony_area not in ("-", "N/A"):
+                entry["balcony_area"] = balcony_area
+            entry["open_area"] = open_area or "0"
+            building_details.append(entry)
+
+            # Count units by property type.
+            # SHOP and PENTHOUSE are classified as commercial per UP RERA convention.
+            try:
+                n = int(no_of_units or "0")
+                if (flat_type.upper() in ("SHOP", "PENTHOUSE")
+                        or (block_name or "").upper() == "COMMERCIAL"):
+                    commercial_count += n
+                else:
+                    residential_count += n
+            except (ValueError, TypeError):
+                pass
+
+        if building_details:
+            out["building_details"] = building_details
+        if residential_count > 0:
+            out["number_of_residential_units"] = residential_count
+        if commercial_count > 0:
+            out["number_of_commercial_units"] = commercial_count
+
+    # ── Land detail (grdLadDetail) ────────────────────────────────────────────
+    land_table = soup.find("table", id="ctl00_ContentPlaceHolder1_grdLadDetail")
+    if land_table:
+        rows = land_table.find_all("tr")
+        for tr in rows[1:]:
+            cells = tr.find_all("td")
+            if len(cells) >= 4:
+                plot_no    = _clean(cells[2].get_text()) or ""
+                total_area = _clean(cells[3].get_text()) or ""
+                if plot_no and total_area:
+                    out["land_detail"] = {"plot_no": plot_no, "total_area": total_area}
+                    break
+
+    # ── Professional information ──────────────────────────────────────────────
+    # Each professional's name is in a hidden input; their address is in
+    # cells[3] of the same <tr> that contains the input element.
+    def _prof_addr(inp_id: str) -> str | None:
+        """Get the address from cells[3] of the row containing this input."""
+        elem = soup.find("input", id=inp_id)
+        if not elem:
+            return None
+        tr = elem.find_parent("tr")
+        if not tr:
+            return None
+        cells = tr.find_all("td")
+        return _clean(cells[3].get_text()) if len(cells) >= 4 else None
+
+    professionals: list[dict] = []
+    _cont_name = _inp_raw("ctl00_ContentPlaceHolder1_lblContractorName")
+    _arch_name = _inp_raw("ctl00_ContentPlaceHolder1_lblArchName")
+    _arch_lic  = _inp("ctl00_ContentPlaceHolder1_lblArchLicNo")
+    _eng_name  = _inp_raw("ctl00_ContentPlaceHolder1_lblEnggName")
+
+    _cont_addr = _prof_addr("ctl00_ContentPlaceHolder1_lblContractorName") or ".."
+    _arch_addr = _prof_addr("ctl00_ContentPlaceHolder1_lblArchName")
+    _eng_addr  = _prof_addr("ctl00_ContentPlaceHolder1_lblEnggName")
+
+    if _cont_name:
+        entry: dict = {"name": _cont_name, "role": "contractor", "address": _cont_addr}
+        professionals.append(entry)
+    if _arch_name:
+        entry = {"name": _arch_name, "role": "architect"}
+        if _arch_addr:
+            entry["address"] = _arch_addr
+        if _arch_lic:
+            entry["liscence_no"] = _arch_lic  # preserve typo from original schema
+        professionals.append(entry)
+    if _eng_name:
+        entry = {"name": _eng_name, "role": "structural engineer"}
+        if _eng_addr:
+            entry["address"] = _eng_addr
+        professionals.append(entry)
+    if professionals:
+        out["professional_information"] = professionals
+
+    return out
+
+
 def _parse_detail_page(html: str, reg_no: str, district: str) -> dict:  # noqa: C901
     """
     Parse a UP RERA project detail page HTML and return a structured dict
@@ -669,9 +890,10 @@ def _handle_document(
         if not s3_key:
             return None
         s3_url = get_s3_url(s3_key)
+        doc_type = doc.get("type") or doc.get("label") or "document"
         upsert_document(
             project_key=project_key,
-            document_type=doc.get("type") or doc.get("label") or "document",
+            document_type=doc_type,
             original_url=url,
             s3_key=s3_key,
             s3_bucket=settings.S3_BUCKET_NAME,
@@ -679,6 +901,8 @@ def _handle_document(
             md5_checksum=md5,
             file_size_bytes=len(content),
         )
+        logger.info("Document uploaded", doc_type=doc_type, s3_key=s3_key, step="documents")
+        logger.log_document(doc_type, url, "uploaded", s3_key=s3_key, file_size_bytes=len(content))
         return document_result_entry(doc, s3_url, filename)
     except Exception as exc:
         logger.warning(f"S3 upload failed for {url}: {exc}")
@@ -825,6 +1049,32 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 random_delay(delay_min, delay_max)
                 continue
 
+            # ── Fetch + parse comprehensive full-detail page ───────────────────
+            # frm_view_project_details.aspx has bank details, lat/lon, area,
+            # project cost, and full building unit table — not present on
+            # the Projectsummary page fetched via Playwright above.
+            full_detail_html, _ = _fetch_full_detail_html(reg_no, logger)
+            if full_detail_html:
+                try:
+                    full_detail_data = _parse_full_detail_page(
+                        full_detail_html, reg_no, district
+                    )
+                    # Deep-merge project_location_raw so that taluk from
+                    # the Projectsummary page is preserved alongside the
+                    # lat/lon extracted from the full-detail page.
+                    detail_loc     = detail_data.get("project_location_raw") or {}
+                    full_detail_loc = full_detail_data.pop("project_location_raw", None) or {}
+                    if full_detail_loc:
+                        full_detail_data["project_location_raw"] = {
+                            **detail_loc, **full_detail_loc
+                        }
+                    # Overlay: full_detail_data takes precedence for fields it provides
+                    for k, v in full_detail_data.items():
+                        if v is not None:
+                            detail_data[k] = v
+                except Exception as exc:
+                    logger.warning(f"Full detail parse error for {reg_no}: {exc}")
+
             # ── Merge listing stub fields into detail ─────────────────────────
             merged: dict[str, Any] = {
                 "project_name":           stub.get("project_name"),
@@ -853,6 +1103,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 "state": STATE,
                 "config_id": config.get("config_id"),
                 "data": raw_snapshot,
+                "is_live": True,
             }
             payload = normalize_project_payload(
                 payload, config,
@@ -888,31 +1139,30 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 random_delay(delay_min, delay_max)
                 continue
 
-            # ── Documents (weekly_deep or new projects) ────────────────────────
-            if mode == "weekly_deep" or action == "new":
-                try:
-                    soup = BeautifulSoup(detail_html, "lxml")
-                    docs = _extract_documents(soup, detail_url)
-                    uploaded_docs: list[dict] = []
-                    for doc in docs:
-                        result = _handle_document(
-                            project_key, doc, run_id, site_id, logger
-                        )
-                        if result:
-                            uploaded_docs.append(result)
-                            counts["documents_uploaded"] += 1
-                    if uploaded_docs:
-                        doc_urls = build_document_urls(uploaded_docs)
-                        upsert_project({
-                            "key": project_key,
-                            "url": detail_url,
-                            "domain": DOMAIN,
-                            "state": STATE,
-                            "uploaded_documents": uploaded_docs,
-                            "document_urls": doc_urls,
-                        })
-                except Exception as exc:
-                    logger.warning(f"Document processing failed for {reg_no}: {exc}")
+            # ── Documents ─────────────────────────────────────────────────────
+            try:
+                soup = BeautifulSoup(detail_html, "lxml")
+                docs = _extract_documents(soup, detail_url)
+                uploaded_docs: list[dict] = []
+                for doc in docs:
+                    result = _handle_document(
+                        project_key, doc, run_id, site_id, logger
+                    )
+                    if result:
+                        uploaded_docs.append(result)
+                        counts["documents_uploaded"] += 1
+                if uploaded_docs:
+                    doc_urls = build_document_urls(uploaded_docs)
+                    upsert_project({
+                        "key": project_key,
+                        "url": detail_url,
+                        "domain": DOMAIN,
+                        "state": STATE,
+                        "uploaded_documents": uploaded_docs,
+                        "document_urls": doc_urls,
+                    })
+            except Exception as exc:
+                logger.warning(f"Document processing failed for {reg_no}: {exc}")
 
             save_checkpoint(site_id, mode, district_idx, project_key, run_id)
             random_delay(delay_min, delay_max)

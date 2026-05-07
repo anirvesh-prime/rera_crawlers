@@ -18,7 +18,7 @@
     "latitude": "12.770558",
     "pin_code": "603103",
     "longitude": "80.186468",
-    "survey_resurvey_number": "778/2, 781/1B, 1C, 1D, 1E, 1F, 781/1G,  1H, 1I1, 1I2, 1J, 1K, 1L, 1M, 1N, 2A, 2B, 2C, 782/1, 2 and 784/1B"
+    "survey_resurvey_number": "778/2, 781/1B, 1C, 1D, 1E, 1F, 781/1G, 1H, 1I1, 1I2, 1J, 1K, 1L, 1M, 1N, 2A, 2B, 2C, 782/1, 2 and 784/1B"
   },
   "promoter_address_raw": {
     "city": "Chennai",
@@ -53,48 +53,49 @@
   "total_floor_area_under_residential": null,
   "project_cost_detail": {
     "cost_of_land": "30196010",
-    "total_project_cost": "41696010"
+    "total_project_cost": "41696010",
+    "estimated_construction_cost": "11500000"
   },
-  "number_of_residential_units": null,
+  "number_of_residential_units": 60,
   "number_of_commercial_units": null,
   "building_details": null,
   "complaints_litigation_details": null,
   "uploaded_documents": [
     {
       "link": "https://rera.tn.gov.in/formcqr/3c2c3140-ca91-11f0-be7a-49ff3448b535",
-      "type": "Rera Registration Certificate 1",
-      "s3_link": "http://docs.primetenders.com/documents/12586206054163957170/Rera_Registration_Certificate_1.pdf"
+      "type": "Form C"
     },
     {
       "link": "https://rera.tn.gov.in/public/storage/upload/DsSykbCLv6aXefqY45RpljYqNVkbVqbus3HF0oRT.pdf",
-      "type": "Site Photos With all four Sides "
+      "type": "Site Photos With all four Sides"
     },
     {
       "link": "https://rera.tn.gov.in/public/storage/upload/OCTHuNOcComVfar1Ha5UFSOChAG7vSIbbimqdK6y.pdf",
-      "type": "Approved Plan 1",
-      "s3_link": "http://docs.primetenders.com/documents/12586206054163957170/Approved_Plan_1.pdf"
+      "type": "Planning Permission Approval Letter"
     },
     {
       "link": "https://rera.tn.gov.in/public/storage/upload/ctXCKYmJYyLdKLF1dB36b2AqNXvaFh4mDhHjh4VD.pdf",
-      "type": "Approved Plan 2",
-      "s3_link": "http://docs.primetenders.com/documents/12586206054163957170/Approved_Plan_2.pdf"
+      "type": "Approval Plan with Local Body Seal"
     },
     {
       "link": "https://rera.tn.gov.in/public/storage/upload/QmGv52o52tXGn35qR82OT0TyYw8hbfrVcTHnKu48.pdf",
-      "type": "Local Body Approval Letter "
+      "type": "Local Body Approval Letter"
     },
     {
       "link": "https://rera.tn.gov.in/public/storage/upload/cCoXxXRNLH2DaOXdtLNJrc5tWYbPpkvypoSSvmuV.pdf",
-      "type": "GLV value should be mentioned for all the survey numbers covered in the project*"
+      "type": "GLV value should be mentioned for all the survey numbers covered in the project"
     },
     {
       "link": "https://rera.tn.gov.in/public/storage/upload/kB8kKKwj20zPPbXGdBex7VuvKP8KY1ltsQzmKXPx.pdf",
-      "type": "Approved Plan 3",
-      "s3_link": "http://docs.primetenders.com/documents/12586206054163957170/Approved_Plan_3.pdf"
+      "type": "Encumbrance Certificate from the date of approval of planning permission to RERA submission date"
+    },
+    {
+      "link": "https://rera.tn.gov.in/public/storage/upload/5CUGUQFHlnrUOo2bL8VFSQQsnxabdzAh5G768v3O.pdf",
+      "type": "Land Title Deed/Document, GPA with Sale Power, JVDA/JDA"
     },
     {
       "link": "https://rera.tn.gov.in/public/storage/upload/iAlFta0OJ8rR4fclazzB70ixsuXujlX5ATa900Ft.pdf",
-      "type": "Declaration(Form B) "
+      "type": "Declaration(Form B)"
     }
   ],
   "authorised_signatory_details": null,
@@ -114,24 +115,7 @@
   "development_agreement_detail": null,
   "construction_progress": null,
   "land_detail": null,
-  "document_urls": [
-    {
-      "link": "http://docs.primetenders.com/documents/12586206054163957170/Rera_Registration_Certificate_1.pdf",
-      "type": "Rera Registration Certificate 1"
-    },
-    {
-      "link": "http://docs.primetenders.com/documents/12586206054163957170/Approved_Plan_1.pdf",
-      "type": "Approved Plan 1"
-    },
-    {
-      "link": "http://docs.primetenders.com/documents/12586206054163957170/Approved_Plan_2.pdf",
-      "type": "Approved Plan 2"
-    },
-    {
-      "link": "http://docs.primetenders.com/documents/12586206054163957170/Approved_Plan_3.pdf",
-      "type": "Approved Plan 3"
-    }
-  ],
+  "document_urls": null,
   "members_details": [
     {
       "name": "Abhinay Mehta",
@@ -168,7 +152,7 @@
   "detail_images": null,
   "lister_images": null,
   "images": null,
-  "old_updates": "'[]'::jsonb",
+  "old_updates": null,
   "status_update": null,
   "iw_part_processed": null,
   "iw_processed": true,

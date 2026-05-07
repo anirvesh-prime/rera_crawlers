@@ -167,10 +167,11 @@ def _parse_detail_page(html: str) -> dict:
                 if len(cells) >= len(headers):
                     raw = dict(zip(headers, cells))
                     member: dict = {
-                        "name":        raw.get("name", ""),
-                        "position":    raw.get("designation", ""),
-                        "phone":       raw.get("mobile no.", ""),
-                        "raw_address": raw.get("address", ""),
+                        "name":     raw.get("name", ""),
+                        "position": raw.get("designation", ""),
+                        "phone":    raw.get("mobile no.", ""),
+                        # address column is not included: the schema's members_details
+                        # field does not store raw_address for Bihar directors/members.
                     }
                     # Photo: try to extract img src from the Image cell
                     img_cell_idx = headers.index("image") if "image" in headers else -1
@@ -262,7 +263,10 @@ def _parse_detail_page(html: str) -> dict:
                 return v
         return ""
 
-    # Pin code is in the location table; fall back to the contact/address table
+    # Pin code comes from the contact/address table (promoter's office PIN).
+    # It is stored at the top-level project_pin_code field but NOT inside
+    # project_location_raw, which describes the project site — not the promoter.
+    # The location table itself has no PIN code field on Bihar RERA.
     pin_code = (
         _f(loc_kv, "pin code", "pincode", "pin", "zip")
         or _f(contact_kv, "pin code", "pincode", "pin code")
@@ -273,8 +277,10 @@ def _parse_detail_page(html: str) -> dict:
         "plot_no":  _f(loc_kv, "khesra no./plot no."),
         "taluk":    _f(loc_kv, "mauja") or _f(loc_kv, "anchal"),  # Mauja = revenue hamlet used as taluk in Bihar
         "village":  _f(loc_kv, "village"),
-        "city":     _f(loc_kv, "city/town"),
-        "pin_code": pin_code,
+        # city/town is already captured at the top-level project_city field;
+        # do not duplicate it inside project_location_raw.
+        # pin_code is the promoter's office PIN, not the project location PIN;
+        # it is stored only at the top-level project_pin_code field.
     }
     try:
         lat_raw = _f(loc_kv, "latitude of end point of the plot")
@@ -343,18 +349,21 @@ def _parse_detail_page(html: str) -> dict:
 
     # ── Document links ────────────────────────────────────────────────────────
     # Strategy:
-    #   1. Always add the Registration Certificate from its anchor href.
-    #   2. Use the GV_Doc table (new format) for proper Document Type labels on
+    #   1. Use the GV_Doc table (new format) for proper Document Type labels on
     #      All_Document PDFs — the link text is a raw Windows path, not a label.
+    #      Skip rows with no href (e.g. "Brochure of Current Project").
+    #   2. Append the Registration Certificate at the END from its anchor href.
+    #      This matches the sample order: GV_Doc docs first, Reg Cert last.
     #   3. Fall back to anchor-href scan when GV_Doc is absent (old page format).
     docs: list[dict] = []
 
-    # Registration Certificate — detected by URL path pattern
+    # Registration Certificate — collected here, appended after GV_Doc rows
+    reg_cert_doc: dict | None = None
     for a in soup.find_all("a", href=True):
         href: str = a["href"]
         if "Registration_Certificate/" in href and ".pdf" in href.lower():
             full_url = href if href.startswith("http") else f"https://{DOMAIN}/{href.lstrip('/')}"
-            docs.append({"link": full_url, "type": "Registration Certificate"})
+            reg_cert_doc = {"link": full_url, "type": "Registration Certificate"}
             break  # only one reg cert
 
     # GV_Doc table: proper document type → file path mapping
@@ -381,11 +390,15 @@ def _parse_detail_page(html: str) -> dict:
             if ".pdf" not in href.lower():
                 continue
             if "/Registration_Certificate/" in href or "/PassBook/" in href:
-                continue  # already handled above
+                continue  # handled separately
             full_url = href if href.startswith("http") else f"https://{DOMAIN}/{href.lstrip('/')}"
             raw_label = a.get_text(separator=" ", strip=True)
             doc_type = raw_label or "Project Document"
             docs.append({"link": full_url, "type": doc_type})
+
+    # Append Registration Certificate at the end (matches sample ordering)
+    if reg_cert_doc:
+        docs.append(reg_cert_doc)
 
     # Keep raw strings so trailing zeros (e.g. "8102.60") are preserved
     land_area_raw    = _f(proj_kv, "total area of land (sq mt)")
@@ -462,9 +475,9 @@ def _parse_detail_page(html: str) -> dict:
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     """
     Data-quality sentinel for Bihar RERA.
-    Loads state_projects_sample/bihar.json as the baseline, fetches the listing
-    page, parses rows (using the first row for structural check), and verifies
-    ≥ 80% field coverage. (Detail pages require Playwright, so listing-based check is used.)
+    Full-flow check: fetches the listing page (structural verification + listing-level
+    fields) and the Filanprint detail page from the baseline URL, merges both, and
+    verifies ≥ 80% field coverage against the full baseline.
     """
     import json as _json
     import os as _os
@@ -484,6 +497,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
                        path=sample_path, step="sentinel")
         return True
 
+    # ── Step 1: Verify listing page is reachable and has expected structure ────
     resp = safe_get(LISTING_URL, retries=2, logger=logger)
     if not resp:
         logger.error("Sentinel: listing page unreachable", step="sentinel")
@@ -507,14 +521,62 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
                            "No data rows on listing page", url=LISTING_URL)
         return False
 
-    # Prefer the sentinel row; fall back to first row for structural check
-    fresh = next(
+    # Find sentinel project row; fall back to first row for structural check
+    listing_row = next(
         (r for r in data_rows
          if r.get("project_registration_no", "").upper() == sentinel_reg.upper()),
         data_rows[0],
     )
-    logger.info(f"Sentinel: checking coverage for {sentinel_reg}", step="sentinel")
+    fresh = dict(listing_row)
 
+    # ── Step 2: Discover Filanprint detail URL via Playwright ─────────────────
+    # The Filanprint URL is discovered by clicking the project link (popup).
+    # We use _collect_detail_urls() which uses Playwright to click each listing
+    # link and capture the popup URL; then align with the listing row order.
+    logger.info(f"Sentinel: discovering Filanprint URLs via Playwright", step="sentinel")
+    detail_url: str = ""
+    try:
+        detail_url_list = _collect_detail_urls(logger, max_items=None)
+        # Align URLs with listing rows by index
+        for row_idx, row in enumerate(data_rows):
+            if row.get("project_registration_no", "").upper() == sentinel_reg.upper():
+                if row_idx < len(detail_url_list) and detail_url_list[row_idx]:
+                    detail_url = detail_url_list[row_idx]
+                break
+        if not detail_url:
+            # Fallback: use any valid Filanprint URL collected
+            detail_url = next((u for u in detail_url_list if u and "Filanprint.aspx" in u), "")
+            if detail_url:
+                logger.warning("Sentinel: exact project not found, using first available Filanprint URL",
+                               step="sentinel")
+    except Exception as exc:
+        logger.warning(f"Sentinel: Playwright discovery failed — {exc}", step="sentinel")
+
+    if detail_url and "Filanprint.aspx" in detail_url:
+        logger.info(f"Sentinel: fetching Filanprint detail for {sentinel_reg}",
+                    url=detail_url, step="sentinel")
+        try:
+            detail_resp = safe_get(detail_url, retries=2, logger=logger)
+            if detail_resp:
+                detail_extra = _parse_detail_page(detail_resp.text)
+                if detail_extra:
+                    fresh.update(detail_extra)
+                    logger.info("Sentinel: detail page parsed successfully", step="sentinel")
+                else:
+                    logger.warning("Sentinel: detail page yielded no fields", step="sentinel")
+            else:
+                logger.warning("Sentinel: Filanprint detail page unreachable — "
+                               "using listing fields only", url=detail_url, step="sentinel")
+        except Exception as exc:
+            logger.warning(f"Sentinel: detail fetch error — {exc}", step="sentinel")
+    else:
+        logger.warning("Sentinel: could not discover Filanprint URL — "
+                       "detail page coverage check skipped", step="sentinel")
+
+    # project_state is injected from config in run(), not scraped from the page
+    fresh["project_state"] = config.get("state", "Bihar").title()
+
+    logger.info(f"Sentinel: checking coverage for {sentinel_reg}", step="sentinel")
     if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
         insert_crawl_error(
             run_id, config.get("id", "bihar_rera"),
@@ -591,6 +653,7 @@ def _process_documents(
             enriched.append({**doc, "s3_link": s3_url})
             upload_count += 1
             logger.info(f"Document uploaded: {doc_type!r}", s3_key=s3_key, step="documents")
+            logger.log_document(doc_type, url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
 
         except Exception as exc:
             enriched.append(doc)
@@ -734,6 +797,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             detail_url: str = ""
             if row_idx < len(detail_url_list) and detail_url_list[row_idx]:
                 detail_url = detail_url_list[row_idx]
+
+            # ── daily_light: skip projects already in the DB ──────────────────
+            if mode == "daily_light" and get_project_by_key(key):
+                counters["projects_skipped"] += 1
+                continue
+
             logger.set_project(
                 key=key,
                 reg_no=reg_no,
@@ -773,8 +842,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         },
                         "project_state": config.get("state", "bihar").title(),
                         "domain": DOMAIN,
-                        "url":    detail_url or LISTING_URL,
+                        # Store the canonical base domain as url (matches sample).
+                        # The Filanprint detail URL is a session-specific popup URL
+                        # that is not stable across crawls.
+                        "url":    f"https://{DOMAIN}",
                         "state":  config.get("state", "Bihar"),
+                        "is_live": True,
                         # merge data sub-dicts
                         "data": merge_data_sections(
                             detail_extra.get("data"),
@@ -806,7 +879,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     # ── Step 5: Process documents (weekly_deep or new projects) ──
                     # Spec §13: process_documents() → download → md5 → S3 upload
                     uploaded_docs = detail_extra.get("uploaded_documents") or []
-                    if uploaded_docs and (mode == "weekly_deep" or status == "new"):
+                    if uploaded_docs:
                         enriched_docs, doc_count = _process_documents(
                             key, uploaded_docs, run_id, config["id"], logger,
                         )

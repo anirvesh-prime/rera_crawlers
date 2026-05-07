@@ -193,6 +193,10 @@ def _parse_detail_page(detail_url: str, listing_row: dict, logger: CrawlerLogger
 
     raw_end = _field(soup, "ctl00$ContentPlaceHolder1$txtenddate")
     out["estimated_finish_date"] = _parse_date(raw_end, _DATE_FMT)
+    # Also expose raw string so run() can use it for data["data"]["end_date"]
+    # (storing the parsed datetime in that field loses information and causes
+    # a format mismatch with the expected raw-string representation).
+    out["_raw_end_date"] = raw_end
 
     ecoc = _field(soup, "ctl00$ContentPlaceHolder1$txtecoc")
     ecol = _field(soup, "ctl00$ContentPlaceHolder1$txtecol")
@@ -523,7 +527,11 @@ def _parse_documents(soup: BeautifulSoup, resp_text: str) -> list[dict]:
         # The page uses both "Sanctioned Layout Plan" and "Layout Plan" depending on project
         "Layout Plan": ("Layout Plan", True),
         "Sanctioned Layout Plan": ("Layout Plan", True),
-        "Modified Layout Plan": ("Layout Plan", True),
+        # "Modified Layout Plan" on this site actually links to the Development
+        # Permission file (DEVE_PER_COM_AUTH_…), NOT a separate layout plan.
+        # Map it to the correct type so it de-dupes with the explicit
+        # "Development Permission from competent authorities" label that follows.
+        "Modified Layout Plan": ("Development Permission from competent authorities", False),
         "Project Specifications": ("Project Specifications", True),
         "Engineer Certificate": ("Engineer Certificate", True),
         # The page renders these with Title Case
@@ -548,25 +556,24 @@ def _parse_documents(soup: BeautifulSoup, resp_text: str) -> list[dict]:
         _NUMBERED[base] = _NUMBERED.get(base, 0) + 1
         return f"{base} {_NUMBERED[base]}"
 
+    # Single-pass loop: process every label in HTML document order so that
+    # variable-text labels (Brief Details, CA Certificate(For New Project…))
+    # land in the correct position relative to LABEL_TYPE_MAP entries.
+    # The old two-pass approach ran the variable-text sweep AFTER the map
+    # sweep, placing those docs at the wrong index.
     for label in soup.find_all("label"):
         ltxt = label.get_text(strip=True)
         if ltxt in _LABEL_TYPE_MAP:
             base, numbered = _LABEL_TYPE_MAP[ltxt]
-            # Find nearest anchor
             nxt = label.find_next("a", href=re.compile(r"ProjectDocuments"))
             if nxt:
                 _add(nxt["href"], _type_with_count(base, numbered))
-
-    # Also pick up any labeled doc not caught by label → just do a broad sweep
-    # for "CA Certificate(For New Project..." and "Brief Details..." and similar
-    for lbl in soup.find_all("label"):
-        ltxt = lbl.get_text(strip=True)
-        if "CA Certificate(For New Project" in ltxt:
-            a = lbl.find_next("a", href=re.compile(r"ProjectDocuments"))
+        elif "CA Certificate(For New Project" in ltxt:
+            a = label.find_next("a", href=re.compile(r"ProjectDocuments"))
             if a:
                 _add(a["href"], ltxt)
         elif "Brief Details of Current Project" in ltxt:
-            a = lbl.find_next("a", href=re.compile(r"ProjectDocuments"))
+            a = label.find_next("a", href=re.compile(r"ProjectDocuments"))
             if a:
                 _add(a["href"], ltxt)
 
@@ -636,10 +643,20 @@ def _parse_documents(soup: BeautifulSoup, resp_text: str) -> list[dict]:
 
 
 def _parse_images(soup: BeautifulSoup) -> list[str]:
-    """Collect project images (amenity photos) from the detail page."""
+    """Collect project images (amenity photos) from the detail page.
+
+    Only collects from the Single_gv_ProjectList table (current/latest quarter
+    amenity photos), which matches the 14-image sample exactly.  The full
+    gv_ProjectList table contains images from ALL historical quarters and
+    inflates the count ~5× with duplicates.
+    """
     images: list[str] = []
     seen: set[str] = set()
-    for img in soup.find_all("img", src=True):
+    # Use only the single (latest-quarter) amenity-photo table
+    table = soup.find("table", id=re.compile(r"ContentPlaceHolder1_Single_gv_ProjectList$"))
+    if table is None:
+        return images
+    for img in table.find_all("img", src=True):
         src = img["src"].strip()
         lower = src.lower()
         if "ProjectDocuments" not in src:
@@ -679,7 +696,8 @@ def _handle_document(project_key: str, doc: dict, run_id: int, site_id: str,
             md5_checksum=md5,
             file_size_bytes=len(resp.content),
         )
-        logger.info("Document uploaded", label=label, s3_key=s3_key)
+        logger.info("Document uploaded", label=label, s3_key=s3_key, step="documents")
+        logger.log_document(label, url, "uploaded", s3_key=s3_key, file_size_bytes=len(resp.content))
         return document_result_entry({"url": url, "label": label}, s3_url, fname)
     except Exception as e:
         logger.error(f"Doc failed for {project_key}: {e}")
@@ -691,8 +709,10 @@ def _handle_document(project_key: str, doc: dict, run_id: int, site_id: str,
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     """
     Data-quality sentinel for Chhattisgarh RERA.
-    Loads state_projects_sample/chhattisgarh.json as the baseline, re-scrapes
-    the sentinel project's detail page, and verifies ≥ 80% field coverage.
+    Full-flow check: re-scrapes the sentinel project's detail page (basic project
+    + promoter fields) AND quarterly data (status, approved_on_date, residential
+    units, documents), merges them (same as run()), and verifies ≥ 80% field
+    coverage against the full baseline.
     """
     import json as _json
     import os as _os
@@ -722,13 +742,36 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 
     logger.info(f"Sentinel: scraping {sentinel_reg}", url=detail_url, step="sentinel")
     try:
-        fresh = _parse_detail_page(detail_url, {}, logger) or {}
+        # ── Parse detail page (basic project + promoter fields) ───────────────
+        detail = _parse_detail_page(detail_url, {}, logger) or {}
+
+        # ── Parse quarterly data (status, approved_on_date, units, docs) ──────
+        # Fetches the same URL again to get the quarterly tables (mirrors run())
+        resp2 = _get(detail_url, logger)
+        qdata: dict = {}
+        if resp2:
+            soup2 = BeautifulSoup(resp2.text, "lxml")
+            qdata = _parse_quarterly_data(soup2, resp2.text)
+        else:
+            logger.warning("Sentinel: quarterly data fetch failed — proceeding with detail only",
+                           step="sentinel")
+
+        # Merge detail + quarterly (same as run())
+        fresh = dict(detail)
+        for k, v in qdata.items():
+            if v is not None and not k.startswith("_"):
+                fresh[k] = v
+
     except Exception as exc:
         logger.error(f"Sentinel: scrape error — {exc}", step="sentinel")
         return False
 
     if not fresh:
         logger.error("Sentinel: no data extracted", url=detail_url, step="sentinel")
+        insert_crawl_error(run_id, config.get("id", "chhattisgarh_rera"),
+                           "SENTINEL_FAILED",
+                           "Sentinel page yielded no extractable fields (possible layout change)",
+                           url=detail_url)
         return False
 
     if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
@@ -840,12 +883,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         data["project_images"] = images
 
                     total_unit = qdata.get("_total_unit")
-                    # data dict
+                    # Use the raw end-date string (e.g. "30-04-2022") rather
+                    # than the parsed datetime so the stored value matches the
+                    # site's original representation.
+                    raw_end_date = data.pop("_raw_end_date", "") or data.get("estimated_finish_date", "")
                     data["data"] = merge_data_sections({
                         "govt_type":               "state",
                         "total_unit":              total_unit,
                         "construction_area_unit":  "sq.metre",
-                        "end_date":                data.get("estimated_finish_date", ""),
+                        "end_date":                raw_end_date,
                     })
 
             logger.info("Normalizing and validating", step="normalize")
@@ -862,6 +908,16 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 counts["error_count"] += 1
                 db_dict = normalize_project_payload(data, config,
                                                     machine_name=machine_name, machine_ip=machine_ip)
+
+            # land_area_details must always be stored with its structure even
+            # when both sub-values are null.  normalize_project_payload strips
+            # {"construction_area": None, "construction_area_unit": None} to {}
+            # → None via clean_json, so we inject it post-normalization.
+            if not db_dict.get("land_area_details"):
+                db_dict["land_area_details"] = {
+                    "construction_area": None,
+                    "construction_area_unit": None,
+                }
 
             action = upsert_project(db_dict)
             items_processed += 1

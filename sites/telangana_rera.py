@@ -477,6 +477,95 @@ def _parse_table_rows(table: Any) -> list[dict[str, str]]:
     return records
 
 
+# ── PrintPreview content validation + resilient fetch ────────────────────────
+
+_MIN_PREVIEW_BYTES = 20_000
+"""Real PrintPreview pages are several hundred KB; error/redirect pages are < 200 bytes."""
+
+_PREVIEW_SECTION_RE = re.compile(
+    r"project\s*information|promoter\s*information|land\s*details", re.I
+)
+
+
+def _is_valid_preview_html(html: str) -> bool:
+    """
+    Return True if *html* looks like a genuine Telangana PrintPreview page.
+
+    Filters out the two known failure modes:
+    - ``/Error/UnauthorizedPage``  (109 bytes — session expired / q-param invalid)
+    - ``/Error/ErrorPage``         (~9 KB — generic server-side error)
+
+    A valid page must be at least _MIN_PREVIEW_BYTES long AND contain at
+    least one of the expected Bootstrap x_panel section headings.
+    """
+    if len(html) < _MIN_PREVIEW_BYTES:
+        return False
+    lower = html.lower()
+    if "unauthorized" in lower or "errorpage" in lower:
+        return False
+    return bool(_PREVIEW_SECTION_RE.search(lower))
+
+
+def _fetch_print_preview_html(
+    browser: Any,
+    pp_url: str,
+    logger: CrawlerLogger,
+    max_retries: int = 3,
+) -> str | None:
+    """
+    Navigate to the PrintPreview page and return its HTML.
+
+    Validates that the response is a real project page (not an error/redirect
+    from an expired or invalid session).  Retries up to *max_retries* times
+    with linear back-off (3 s, 6 s, 9 s) so transient network hiccups or
+    brief server-side session issues are recovered automatically.
+
+    Returns None only when every attempt fails, so the caller can decide
+    to skip the project rather than silently upsert an empty record.
+    """
+    for attempt in range(1, max_retries + 1):
+        pp_page = None
+        try:
+            logger.info(
+                f"Fetching PrintPreview (attempt {attempt}/{max_retries})",
+                step="detail_fetch",
+            )
+            pp_page = browser.new_page()
+            pp_page.goto(pp_url, wait_until="domcontentloaded", timeout=_NAV_TIMEOUT_MS)
+            try:
+                pp_page.wait_for_load_state("networkidle", timeout=30_000)
+            except Exception:
+                pass  # networkidle timeout is non-fatal; content may still be complete
+
+            html = pp_page.content()
+            if _is_valid_preview_html(html):
+                return html
+
+            landed = pp_page.url
+            logger.warning(
+                f"PrintPreview returned invalid content "
+                f"(attempt {attempt}/{max_retries}, landed={landed!r}, "
+                f"content_len={len(html)})",
+                step="detail_fetch",
+            )
+        except Exception as exc:
+            logger.warning(
+                f"PrintPreview navigation error (attempt {attempt}/{max_retries}): {exc}",
+                step="detail_fetch",
+            )
+        finally:
+            if pp_page:
+                try:
+                    pp_page.close()
+                except Exception:
+                    pass
+
+        if attempt < max_retries:
+            time.sleep(3 * attempt)   # 3 s, 6 s before the 2nd and 3rd retry
+
+    return None
+
+
 def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
     """
     Extract all project fields from the PrintPreview page HTML.
@@ -741,7 +830,8 @@ def _handle_document(
             md5_checksum=md5,
             file_size_bytes=len(data),
         )
-        logger.info("Document uploaded", label=label, s3_key=s3_key)
+        logger.info("Document uploaded", label=label, s3_key=s3_key, step="documents")
+        logger.log_document(label, url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
         return document_result_entry({**doc, "source_url": url, "type": label}, s3_url, filename)
     except Exception as exc:
         logger.warning("Document handling error", url=url, error=str(exc))
@@ -943,19 +1033,22 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     # ── Navigate to PrintPreview ──────────────────────────────
                     detail_data: dict[str, Any] = {}
                     if pp_url:
-                        try:
-                            logger.info("Navigating to PrintPreview", step="detail_fetch")
-                            pp_page = browser.new_page()
-                            pp_page.goto(pp_url, wait_until="domcontentloaded",
-                                         timeout=_NAV_TIMEOUT_MS)
-                            pp_page.wait_for_load_state("networkidle", timeout=30_000)
-                            pp_html  = pp_page.content()
-                            pp_soup  = BeautifulSoup(pp_html, "lxml")
-                            detail_data = _scrape_print_preview(pp_soup, row)
-                            pp_page.close()
-                        except Exception as exc:
-                            logger.warning(f"PrintPreview fetch failed: {exc}",
-                                           step="detail_fetch")
+                        pp_html = _fetch_print_preview_html(browser, pp_url, logger)
+                        if pp_html is None:
+                            logger.error(
+                                "PrintPreview unavailable after retries — skipping project",
+                                step="detail_fetch",
+                            )
+                            insert_crawl_error(
+                                run_id, site_id, "DETAIL_FETCH_FAILED",
+                                "PrintPreview returned invalid content after max retries",
+                                project_key=key, url=pp_url,
+                            )
+                            counts["error_count"] += 1
+                            logger.clear_project()
+                            continue
+                        pp_soup = BeautifulSoup(pp_html, "lxml")
+                        detail_data = _scrape_print_preview(pp_soup, row)
 
                     # ── Determine registration number ─────────────────────────
                     reg_no = _clean(detail_data.get("project_registration_no")) or stable_id
@@ -1017,7 +1110,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     detail_data["crawl_machine_ip"] = machine_ip
                     detail_data["machine_name"]     = machine_name
                     detail_data["url"]              = pp_url or SEARCH_URL
-                    detail_data["is_live"]          = False
+                    detail_data["is_live"]          = True
                     detail_data["uploaded_documents"] = raw_docs or None
 
                     # ── Normalize + validate ──────────────────────────────────

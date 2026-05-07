@@ -255,6 +255,10 @@ def _parse_listing_row(tds) -> dict | None:
 
         row = {
             "project_registration_no": reg_no,
+            # TNRERA registration date ("dated DD-MM-YYYY") = planned commencement date.
+            # The planning permission approval date (approved_on_date) comes from the
+            # detail page and will override this field during record assembly.
+            "estimated_commencement_date": approved_on,
             "approved_on_date": approved_on,
             "promoter_name": promoter_name,
             "promoter_raw_text": promoter_raw,
@@ -342,20 +346,24 @@ def _parse_listing_row(tds) -> dict | None:
             form_c_url = href if href.startswith("http") else f"{BASE_URL}{href}"
 
     return {
-        "project_registration_no": reg_no,
-        "approved_on_date":        approved_on,
-        "promoter_name":           promoter_name,
-        "promoter_raw_text":       promoter_raw,
-        "project_name":            project_name,
-        "project_description":     description or None,
-        "approval_details":        tds[4].get_text(separator=" ", strip=True) or None,
-        "estimated_finish_date":   expiry_date,
-        "is_completed":            is_completed,
-        "promoter_uuid":           promoter_uuid,
-        "project_uuid":            project_uuid,
-        "latitude":                lat,
-        "longitude":               lng,
-        "form_c_url":              form_c_url,
+        "project_registration_no":  reg_no,
+        # TNRERA registration date ("dated DD-MM-YYYY") = planned commencement date.
+        # The planning permission approval date (approved_on_date) comes from the
+        # detail page and will override approved_on_date during record assembly.
+        "estimated_commencement_date": approved_on,
+        "approved_on_date":         approved_on,
+        "promoter_name":            promoter_name,
+        "promoter_raw_text":        promoter_raw,
+        "project_name":             project_name,
+        "project_description":      description or None,
+        "approval_details":         tds[4].get_text(separator=" ", strip=True) or None,
+        "estimated_finish_date":    expiry_date,
+        "is_completed":             is_completed,
+        "promoter_uuid":            promoter_uuid,
+        "project_uuid":             project_uuid,
+        "latitude":                 lat,
+        "longitude":                lng,
+        "form_c_url":               form_c_url,
         # Preserve the full URL from the listing href (handles building/layout/etc.)
         "promoter_url": promoter_full_url,
         "detail_url":   project_full_url,
@@ -517,6 +525,11 @@ _PROJECT_LABEL_MAP: dict[str, str] = {
     "actual date of commencement":                  "actual_commencement_date",
     "actual date of completion":                    "actual_finish_date",
     "extended date of completion":                  "estimated_finish_date",
+    # Additional commencement date label variants
+    "date of commencement":                         "estimated_commencement_date",
+    "commencement date":                            "estimated_commencement_date",
+    "estimated date of commencement":               "estimated_commencement_date",
+    "project start date":                           "estimated_commencement_date",
     # Layout-page date labels
     "project completion date":                      "estimated_finish_date",
     "project commencement date":                    "estimated_commencement_date",
@@ -1079,8 +1092,6 @@ def _extract_labeled_doc_links(soup: BeautifulSoup) -> list[dict]:
         if not label_tag:
             continue
         raw_label = label_tag.get_text(strip=True).rstrip(":").strip()
-        # Strip common disclaimer suffixes (e.g. "* required")
-        raw_label = raw_label.rstrip("*").strip()
         if not raw_label:
             continue
         label_parent = label_tag.parent
@@ -1100,6 +1111,8 @@ def _extract_labeled_doc_links(soup: BeautifulSoup) -> list[dict]:
             if not p1_tag:
                 continue
             raw_label = p1_tag.get_text(strip=True).rstrip(":").strip()
+            # Strip disclaimer asterisks (e.g. "GLV value...project*") — same as Pattern A
+            raw_label = raw_label.rstrip("*").strip()
             if not raw_label:
                 continue
             # Links may be in the same td or in the immediately adjacent td
@@ -1185,6 +1198,8 @@ def _handle_document(
             md5_checksum=md5,
             file_size_bytes=len(data),
         )
+        logger.info("Document uploaded", label=label, s3_key=s3_key, step="documents")
+        logger.log_document(label, url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
         return result
     except Exception as exc:
         logger.warning("Document handling error", url=url, error=str(exc))
@@ -1219,18 +1234,21 @@ def _build_project_record(
 
     # Base record from listing table
     record: dict[str, Any] = {
-        "key":                      project_key,
-        "project_registration_no":  reg_no,
-        "state":                    "Tamil Nadu",
-        "project_state":            "Tamil Nadu",
-        "domain":                   DOMAIN,
-        "config_id":                config_id,
-        "url":                      row.get("detail_url") or f"{BASE_URL}/registered-building/tn",
-        "promoter_name":            row.get("promoter_name"),
-        "project_name":             row.get("project_name"),
-        "project_description":      row.get("project_description"),
-        "approved_on_date":         row.get("approved_on_date"),
-        "estimated_finish_date":    row.get("estimated_finish_date"),
+        "key":                          project_key,
+        "project_registration_no":      reg_no,
+        "state":                        "Tamil Nadu",
+        "project_state":                "Tamil Nadu",
+        "domain":                       DOMAIN,
+        "config_id":                    config_id,
+        "url":                          row.get("detail_url") or f"{BASE_URL}/registered-building/tn",
+        "promoter_name":                row.get("promoter_name"),
+        "project_name":                 row.get("project_name"),
+        "project_description":          row.get("project_description"),
+        "approved_on_date":             row.get("approved_on_date"),
+        "estimated_finish_date":        row.get("estimated_finish_date"),
+        # TNRERA registration date ("dated" field) serves as estimated commencement date.
+        # If the detail page supplies an explicit commencement date it will override this.
+        "estimated_commencement_date":  row.get("estimated_commencement_date"),
     }
 
     # Default project_type to "residential" only for building projects.
@@ -1401,9 +1419,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     Entry point called by the crawler orchestrator.
 
     Modes:
-        full      – crawl all years from scratch (ignores checkpoint)
-        incremental – resume from last checkpoint; stops when recent projects re-seen
-        single    – crawl only the current/most-recent year
+        daily_light – skip projects already in DB; only process new ones
+        weekly_deep – full refresh with document uploads for all projects
+        full        – crawl all years from scratch (ignores checkpoint)
+        incremental – alias for daily_light; resumes from checkpoint
+        single      – crawl only the current/most-recent year
     """
     site_id   = config.get("id", "tamil_nadu_rera")
     config_id = config.get("config_id", 14374)
@@ -1470,6 +1490,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     last_project_key = None
                 counts["projects_skipped"] += 1
                 continue
+
+            # ── daily_light: skip projects already in the DB ──────────────────
+            if mode == "daily_light" and get_project_by_key(project_key):
+                counts["projects_skipped"] += 1
+                continue
+
             logger.set_project(
                 key=project_key,
                 reg_no=reg_no,
@@ -1494,6 +1520,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     raw_record = _build_project_record(
                         row, promoter_data, project_data, config_id, run_id
                     )
+                    raw_record["is_live"] = True
                     payload = normalize_project_payload(
                         raw_record,
                         config,
@@ -1538,36 +1565,37 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 else:
                     counts["projects_skipped"] += 1
 
-                # ── Document handling ─────────────────────────────────────────────
+                # ── Document handling (weekly_deep or new projects only) ──────────
                 raw_docs: list[dict] = list(row.get("uploaded_documents") or [])
                 if not raw_docs:
                     raw_docs = list(raw_record.get("uploaded_documents") or [])
 
                 doc_name_counts: dict[str, int] = {}
                 enriched_docs: list[dict] = []
-                for doc in raw_docs:
-                    selected = select_document_for_download(
-                        config["state"], doc, doc_name_counts, domain=DOMAIN,
-                    )
-                    if not selected:
-                        enriched_docs.append(
-                            {
-                                "link": doc.get("url") or doc.get("link"),
-                                "type": doc.get("label") or doc.get("type") or "document",
-                            }
+                if raw_docs:
+                    for doc in raw_docs:
+                        selected = select_document_for_download(
+                            config["state"], doc, doc_name_counts, domain=DOMAIN,
                         )
-                        continue
-                    result = _handle_document(project_key, selected, run_id, site_id, logger)
-                    if result:
-                        counts["documents_uploaded"] += 1
-                        enriched_docs.append(result)
-                    else:
-                        enriched_docs.append(
-                            {
-                                "link": selected.get("url") or selected.get("link"),
-                                "type": selected.get("label") or selected.get("type") or "document",
-                            }
-                        )
+                        if not selected:
+                            enriched_docs.append(
+                                {
+                                    "link": doc.get("url") or doc.get("link"),
+                                    "type": doc.get("label") or doc.get("type") or "document",
+                                }
+                            )
+                            continue
+                        result = _handle_document(project_key, selected, run_id, site_id, logger)
+                        if result:
+                            counts["documents_uploaded"] += 1
+                            enriched_docs.append(result)
+                        else:
+                            enriched_docs.append(
+                                {
+                                    "link": selected.get("url") or selected.get("link"),
+                                    "type": selected.get("label") or selected.get("type") or "document",
+                                }
+                            )
 
                 if enriched_docs:
                     upsert_project({
@@ -1585,5 +1613,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             finally:
                 logger.clear_project()
 
+    reset_checkpoint(site_id, mode)
     logger.info("Tamil Nadu RERA crawl complete", **counts)
     return counts

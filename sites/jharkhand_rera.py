@@ -132,7 +132,7 @@ def _parse_address(raw_text: str) -> dict:
     Parse multi-part comma-separated address.
     Pattern (observed): locality, area, town, district, state, pincode .
     """
-    text = re.sub(r"\s+", " ", raw_text).strip().rstrip(".")
+    text = re.sub(r"\s+", " ", raw_text).strip().rstrip(". ").strip()
     parts = [p.strip() for p in text.split(",") if p.strip()]
     result: dict = {"raw_address": text.lower()}
     if len(parts) >= 2:
@@ -423,9 +423,10 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
             if len(cells) >= 5:
                 # 5-col layout: Account Type | Bank Name | Account No | Account Holder Name | IFSC Code
                 rec: dict = {}
-                if cells[1]: rec["account_no"]   = cells[1]
-                if cells[2]: rec["account_name"] = cells[2]
-                if cells[3]: rec["IFSC"]         = cells[3]
+                if cells[1]: rec["bank_name"]    = cells[1]  # Bank Name (e.g. CANARA BANK)
+                if cells[2]: rec["account_no"]   = cells[2]  # Account Number
+                if cells[3]: rec["account_name"] = cells[3]  # Account Holder Name
+                if cells[4]: rec["IFSC"]         = cells[4]  # IFSC Code (e.g. CNRB0004902)
                 if rec:
                     bank_rows.append(rec)
             elif len(cells) >= 3:
@@ -753,6 +754,7 @@ def _process_documents(
             enriched.append({**doc, "s3_link": s3_url})
             upload_count += 1
             logger.info(f"Document uploaded: {doc_type!r}", s3_key=s3_key, step="documents")
+            logger.log_document(doc_type, url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
 
         except Exception as exc:
             enriched.append(doc)
@@ -817,6 +819,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
             key        = generate_project_key(reg_no)
             detail_url = raw.get("detail_url", "") or LISTING_URL
+
+            # ── daily_light: skip projects already in the DB ──────────────────
+            if mode == "daily_light" and get_project_by_key(key):
+                counters["projects_skipped"] += 1
+                continue
+
             logger.set_project(key=key, reg_no=reg_no, url=detail_url, page=current_page)
             try:
                 # ── Fetch & parse detail page ─────────────────────────────────
@@ -850,6 +858,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                         "domain": DOMAIN,
                         "url":    detail_url,
                         "state":  config.get("state", "jharkhand"),
+                        "is_live": True,
                         "data": merge_data_sections(
                             detail_extra.get("data"),
                             {"listing_address": raw.get("address", "")},
@@ -878,7 +887,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
                     # ── Process documents ─────────────────────────────────────
                     uploaded_docs = detail_extra.get("uploaded_documents") or []
-                    if uploaded_docs and (mode == "weekly_deep" or status == "new"):
+                    if uploaded_docs:
                         enriched_docs, doc_count = _process_documents(
                             key, uploaded_docs, run_id, config["id"], logger,
                         )

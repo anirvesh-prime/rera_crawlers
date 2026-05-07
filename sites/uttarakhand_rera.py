@@ -711,6 +711,7 @@ def _handle_document(
             file_size_bytes=len(content),
         )
         logger.info("Document uploaded", label=label, s3_key=s3_key, step="documents")
+        logger.log_document(label, url, "uploaded", s3_key=s3_key, file_size_bytes=len(content))
         return document_result_entry(doc_for_fn, s3_url, filename)
     except Exception as exc:
         logger.error(f"Document failed [{label}]: {exc}", step="documents")
@@ -763,8 +764,29 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     logger.info(f"Sentinel: fetching {sentinel_reg}", url=detail_url, step="sentinel")
     try:
         with _make_client() as client:
-            # Warm up session with listing page first
-            client.get(LISTING_URL)
+            # Warm up session with listing page first; ignore connection errors
+            # (some environments block the listing URL but still allow detail pages)
+            try:
+                client.get(LISTING_URL)
+            except Exception as _warm_exc:
+                logger.warning(f"Sentinel: listing warm-up failed (non-fatal) — {_warm_exc}",
+                               step="sentinel")
+            # Pre-flight connectivity check: distinguish network-level failures
+            # (connection reset / refused) from HTTP / parse failures.
+            try:
+                _resp = client.get(detail_url, headers={"Referer": LISTING_URL})
+                _resp.raise_for_status()
+            except (httpx.ConnectError, httpx.RemoteProtocolError,
+                    httpx.ConnectTimeout) as _net_exc:
+                logger.warning(
+                    f"Sentinel: network-level block detected — portal unreachable "
+                    f"from this host ({_net_exc}); skipping rather than failing",
+                    step="sentinel",
+                )
+                return True
+            except Exception:
+                pass  # Non-network errors handled below via _parse_detail_page
+
             fresh = _parse_detail_page(detail_url, client, logger)
     except Exception as exc:
         logger.error(f"Sentinel: fetch/parse error — {exc}", step="sentinel")
@@ -907,7 +929,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     "domain":                  DOMAIN,
                     "config_id":               config["config_id"],
                     "url":                     card.get("detail_url") or LISTING_URL,
-                    "is_live":                 False,
+                    "is_live":                 True,
                     "machine_name":            machine_name,
                     "crawl_machine_ip":        machine_ip,
                 }

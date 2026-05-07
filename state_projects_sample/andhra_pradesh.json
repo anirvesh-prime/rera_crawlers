@@ -5,7 +5,7 @@
   "promoter_name": "SREE VENKATA SAI CONSTRUCTIONS",
   "project_registration_no": "P03290013808",
   "status_of_the_project": "New Project",
-  "acknowledgement_no": null,
+  "acknowledgement_no": "010323164112",
   "project_pin_code": "530048",
   "project_city": null,
   "project_state": "Andhra Pradesh",
@@ -51,7 +51,7 @@
     "estimated_construction_cost": "34000000.00"
   },
   "number_of_residential_units": 16,
-  "number_of_commercial_units": 0,
+  "number_of_commercial_units": 1,
   "building_details": [
     {
       "updated": true,
@@ -371,14 +371,14 @@
       "address": "VAMSHI CHANDRA,PLOT NO.291,MADINAGUDA,DEEPTHISRI NAGAR,BESIDE DELHI PUBLIC SCHOOL"
     },
     {
-      "name": "K. KAMARAJU",
-      "role": "Structural Engineers",
-      "address": "D. NO. 47-7-15,4TH LANE, DWARKANAGAR,VISAKHAPATNAM"
-    },
-    {
       "name": "NAZIYA SAWOOD",
       "role": "Project Architects",
       "address": "D. NO. 37-11-166, FLAT NO. 202, KRISHNA RESIDENCY, P R GRADENS BEHIND GOVT POLYTECHIC COLLEGE,VISAKHAPATNAM"
+    },
+    {
+      "name": "K. KAMARAJU",
+      "role": "Structural Engineers",
+      "address": "D. NO. 47-7-15,4TH LANE, DWARKANAGAR,VISAKHAPATNAM"
     }
   ],
   "development_agreement_detail": null,

@@ -15,17 +15,27 @@
   "crawl_machine_ip": "127.0.0.1",
   "machine_name": "Anirveshs-MacBook-Air.local",
   "project_location_raw": {
-    "pin_code": "441204"
+    "street_name": "UMRER ROAD",
+    "locality": "MOUZA UMARGAON",
+    "state": "MAHARASHTRA",
+    "district": "Nagpur",
+    "taluk": "Nagpur (Rural)",
+    "village": "Umergaon",
+    "pin_code": "441204",
+    "longitude": 79.17896805402802,
+    "latitude": 21.07312106246724
   },
   "promoter_address_raw": {
+    "house_no_building_name": "SHOP NO F/7",
+    "building_name": "SHIVDARSHAN APARTMENT NO 1",
+    "street_name": "UMRER ROAD",
+    "locality": "DIGHORI",
+    "landmark": "SHIVDARSHAN APARTMENT",
     "state": "MAHARASHTRA",
     "taluk": "Nagpur (Urban)",
     "village": "Nagpur (M Corp.)",
     "district": "Nagpur",
-    "locality": "DIGHORI",
-    "pin_code": "440034",
-    "building_name": "SHIVDARSHAN APARTMENT NO 1",
-    "house_no_building_name": "SHOP NO F/7"
+    "pin_code": "440034"
   },
   "promoter_contact_details": {
     "phone": "9822234954",
@@ -33,7 +43,6 @@
   },
   "bank_details": {
     "bank_name": "ICICI BANK LIMITED",
-    "branch": "68101",
     "IFSC": "ICIC0007398",
     "address": "ICICI Bank Ltd., NMC House 3285, Kirti Nagar, Narsala Road, Nagpur, Narsala.440034, Maharashtra"
   },
@@ -42,100 +51,76 @@
   },
   "uploaded_documents": [
     {
-      "type": "Declaration Form B",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=db3059e3-6b71-44dd-987f-b3b082368d41%3B0.1&fileName=LEGAL_REPORT.pdf"
+      "type": "Withdrawal Update Form 1",
+      "filename": "FORM 1 Architect Cert.pdf"
+    },
+    {
+      "type": "Withdrawal Update Form 2",
+      "filename": "FORM 2.pdf"
+    },
+    {
+      "type": "Legal Title report",
+      "filename": "LEGAL_REPORT.pdf"
+    },
+    {
+      "type": "Land Ownership Document",
+      "filename": "Sale deed_11zon.pdf"
     },
     {
       "type": "Declaration Form B",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=aa8c633f-96cd-4ada-ab70-c9f344ae203c%3B0.1&fileName=Sale%20deed_11zon.pdf"
+      "filename": "Affidavit Form B.pdf"
     },
     {
       "type": "Others",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=58857bd9-f44e-4e28-9dc2-7d9b41060467%3B0.1&fileName=SATBARA.pdf"
-    },
-    {
-      "type": "Document",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=20ffb371-543f-47e5-8871-8c1c2cb87e45%3B0.1&fileName=UMARGAON%20102-5%20FINAL%20CERTIFICATE.pdf"
-    },
-    {
-      "type": "PAN Card",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=4ae8ee2f-75e5-4b8b-b16c-0391af5f0572%3B0.1&fileName=VISIONPAN.pdf"
-    },
-    {
-      "type": "Document",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=1fb99491-3a93-4275-8d80-f59fac922e08%3B0.1&fileName=NA_ORDER.pdf"
-    },
-    {
-      "type": "Declaration Form B",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=46250063-39d7-4c18-9581-a078c40e6907%3B0.1&fileName=Affidavit%20Form%20B.pdf"
+      "filename": "SATBARA.pdf"
     },
     {
       "type": "Others",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=dd553393-4bf7-4459-89d9-8ee2be38d83f%3B0.1&fileName=FORM%201%20Architect%20Cert.pdf"
+      "filename": "DISCLOSURE_INTEREST_PARTNERS.pdf"
     },
     {
       "type": "Others",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=fcc3ed02-1fae-4205-a431-857ef3e75859%3B0.1&fileName=FORM%202%20ENGG.pdf"
-    },
-    {
-      "type": "Document",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=b521f4ec-39ec-4a48-8059-3f443048e9fd%3B0.1&fileName=ANNEXURE%20A%20COMMENCE%20DECLARATION.pdf"
-    },
-    {
-      "type": "Document",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=294f93c3-146e-433d-858c-5a66a546bb44%3B0.1&fileName=BANK_FORMAT_A.pdf"
-    },
-    {
-      "type": "Document",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=f8ba8b23-19c7-4638-8306-ac912a6f8034%3B0.1&fileName=BANK_FORAMAT_B.pdf"
-    },
-    {
-      "type": "Document",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=1e895245-f0d1-40e9-af78-d7dd9c09739b%3B0.1&fileName=FORM%203.pdf"
+      "filename": "Partnershipdeed_11zon.pdf"
     },
     {
       "type": "Others",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=ed3d124c-2111-4fe3-a6aa-e70563716882%3B0.1&fileName=CERSAI_For_Asset_Based.pdf"
+      "filename": "NMRDA_EMAIL_VERIFICATION.pdf"
+    },
+    {
+      "type": "Building Plan Approval",
+      "filename": "UMARGAON 102-5 FINAL CERTIFICATE.pdf"
+    },
+    {
+      "type": "NA Order for Plotted Development",
+      "filename": "NA_ORDER.pdf"
+    },
+    {
+      "type": "Annexure-A as per order 50/2024",
+      "filename": "ANNEXURE A COMMENCE DECLARATION.pdf"
+    },
+    {
+      "type": "Layout Approval",
+      "filename": "MAP.pdf"
     },
     {
       "type": "Others",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=752cbe8b-66ca-413a-a901-56c7de1a975f%3B0.1&fileName=CERSAI_For_Debtor_Based.pdf"
+      "filename": "FORM 2 ENGG.pdf"
     },
     {
       "type": "Others",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=76800563-34b3-4caa-bf7a-83b3a7f2a9fe%3B0.1&fileName=Undertaking%20about%20Cersai%20Report%20.pdf"
+      "filename": "CERSAI_For_Asset_Based.pdf"
     },
     {
       "type": "Others",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=a2d05238-6f11-45c4-b6b8-079513eb9de5%3B0.1&fileName=DISCLOSURE_INTEREST_PARTNERS.pdf"
+      "filename": "CERSAI_For_Debtor_Based.pdf"
     },
     {
       "type": "Others",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=8dfd581a-8ccf-4bc8-947d-83734b07b4e9%3B0.1&fileName=Partnershipdeed_11zon.pdf"
-    },
-    {
-      "type": "Document",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=3cf48982-cfae-4dcb-b839-c2e179c124ee%3B0.1&fileName=MAP.pdf"
+      "filename": "Undertaking about Cersai Report .pdf"
     },
     {
       "type": "Others",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=364fa3fe-d708-431b-a4b6-f21dc0c11faa%3B0.1&fileName=DISCLOSURE_INTEREST_PARTNERS.pdf"
-    },
-    {
-      "type": "Others",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=8f740648-2f02-42fe-a88e-475b5014613f%3B0.1&fileName=NMRDA_EMAIL_VERIFICATION.pdf"
-    },
-    {
-      "type": "Others",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=c2b38523-90cd-4daa-b718-04564962030f%3B0.1&fileName=Clarification_letter_11zon.pdf"
-    },
-    {
-      "type": "Document",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=bda2f887-44e5-4860-b844-6168977ec4f3%3B0.1&fileName=FORM%201%20Architect%20Cert.pdf"
-    },
-    {
-      "type": "Document",
-      "link": "https://maharerait.maharashtra.gov.in/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView?documentId=5c8a4a1c-5de2-4a5f-a1de-ac44d62913ca%3B0.1&fileName=FORM%202.pdf"
+      "filename": "Clarification_letter_11zon.pdf"
     }
   ],
   "authorised_signatory_details": [
@@ -209,7 +194,8 @@
     "pin_code_promo": 440034
   },
   "promoters_details": {
-    "name": "VISION INFRA"
+    "name": "VISION INFRA",
+    "type_of_firm": "Partnership"
   },
   "land_area_details": {
     "land_area": 10864.97,

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 import traceback as tb_module
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,12 +11,23 @@ from core.config import settings
 
 
 _FLUSH_SIZE = 25  # flush to DB after this many buffered entries
+_STAGE_FLUSH_SIZE = 50  # flush stage-event buffer after this many entries
 _CONTEXT_ALIASES = {
     "project_key": ("project_key", "key"),
     "registration_no": ("registration_no", "reg_no"),
     "url": ("url",),
     "page": ("page",),
 }
+
+# Canonical stage names used across all crawlers
+STAGE_SENTINEL     = "sentinel"
+STAGE_LISTING      = "listing"
+STAGE_DETAIL_FETCH = "detail_fetch"
+STAGE_NORMALIZE    = "normalize"
+STAGE_DB_UPSERT    = "db_upsert"
+STAGE_DOCUMENTS    = "documents"
+STAGE_CHECKPOINT   = "checkpoint"
+STAGE_SKIP         = "skip"
 
 
 class DbLogHandler(logging.Handler):
@@ -98,6 +110,13 @@ class JsonLineHandler(logging.Handler):
 
 
 class CrawlerLogger:
+    """Structured logger for RERA crawlers.
+
+    DB logging (``crawl_logs`` + stage-event tables) is always active.
+    Local ``.jsonl`` file logging is written **only** when ``LOG_LOCAL=true``
+    is set in the environment / ``.env`` file.
+    """
+
     def __init__(self, site_id: str, run_id: int | None = None):
         self.site_id = site_id
         self.run_id  = run_id
@@ -110,9 +129,12 @@ class CrawlerLogger:
             ch.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
             self._logger.addHandler(ch)
 
-            ts = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%S")
-            log_path = Path(settings.LOG_DIR) / site_id / f"{ts}.jsonl"
-            self._logger.addHandler(JsonLineHandler(log_path))
+            # Local .jsonl file — opt-in only (LOG_LOCAL=true in env/.env)
+            if settings.LOG_LOCAL:
+                ts = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%S")
+                log_path = Path(settings.LOG_DIR) / site_id / f"{ts}.jsonl"
+                self._logger.addHandler(JsonLineHandler(log_path))
+
             self._logger.addHandler(DbLogHandler(run_id, site_id))
 
         if not hasattr(self._logger, "_crawler_logger_state"):
@@ -123,6 +145,9 @@ class CrawlerLogger:
                 "key_summary_logged": False,
             }
         self._state = self._logger._crawler_logger_state
+
+        # Internal buffer for stage-event specialized tables
+        self._stage_buffer: list[dict] = []
 
     def _register_touched_key(self, project_key: str | None) -> None:
         if not project_key:
@@ -168,11 +193,27 @@ class CrawlerLogger:
         for handler in self._logger.handlers:
             if isinstance(handler, DbLogHandler):
                 handler.flush()
+        self._flush_stage_buffer()
+
+    def _flush_stage_buffer(self) -> None:
+        """Flush the stage-event buffer to the specialized DB tables."""
+        if not self._stage_buffer:
+            return
+        entries, self._stage_buffer = self._stage_buffer, []
+        from core.db import bulk_insert_stage_events  # late import — avoids circular dep
+        bulk_insert_stage_events(entries)
+
+    def _buffer_stage_event(self, entry: dict) -> None:
+        """Add an entry to the stage buffer; auto-flush when it grows large."""
+        self._stage_buffer.append(entry)
+        if len(self._stage_buffer) >= _STAGE_FLUSH_SIZE:
+            self._flush_stage_buffer()
 
     def close(self) -> None:
         """Flush all buffered entries and close file handles.
         Call this explicitly at the end of a crawler run for a clean shutdown.
         The logging atexit hook also calls this on normal process exit."""
+        self._flush_stage_buffer()
         for handler in list(self._logger.handlers):
             handler.flush()
             handler.close()
@@ -260,3 +301,166 @@ class CrawlerLogger:
             traceback=trace,
             extra={"error_type": type(exc).__name__, "error_detail": str(exc), **(kwargs or {})},
         )
+
+    # ── Specialized stage-event methods ──────────────────────────────────────
+    # Each method writes a human-readable entry to crawl_logs (via _log) AND
+    # buffers a structured row for the appropriate specialized table.
+
+    def log_stage(
+        self,
+        stage: str,
+        status: str,
+        message: str | None = None,
+        duration_ms: int | None = None,
+        **kwargs,
+    ) -> None:
+        """Record a stage lifecycle event (started / completed / failed / skipped).
+
+        Args:
+            stage:       One of the STAGE_* constants (e.g. STAGE_SENTINEL).
+            status:      ``"started"`` | ``"completed"`` | ``"failed"`` | ``"skipped"``.
+            message:     Optional human-readable detail.
+            duration_ms: Elapsed time in milliseconds (set on completion).
+        """
+        ctx = dict(self._state["ctx"])
+        project_key     = ctx.get("project_key")
+        registration_no = ctx.get("registration_no")
+
+        log_msg = message or f"Stage {stage}: {status}"
+        if duration_ms is not None:
+            log_msg += f" ({duration_ms} ms)"
+        self._log(logging.INFO, log_msg, step=stage, extra=kwargs or None)
+
+        self._buffer_stage_event({
+            "table":           "crawl_stage_events",
+            "run_id":          self.run_id,
+            "site_id":         self.site_id,
+            "stage":           stage,
+            "project_key":     project_key,
+            "registration_no": registration_no,
+            "status":          status,
+            "message":         message,
+            "duration_ms":     duration_ms,
+            "extra":           kwargs or {},
+        })
+
+    def log_listing_page(
+        self,
+        page_no: int,
+        url: str,
+        cards_found: int,
+        status: str = "ok",
+        fetch_ms: int | None = None,
+        **kwargs,
+    ) -> None:
+        """Record a listing page fetch event → ``crawl_listing_events``.
+
+        Args:
+            page_no:    1-based page number.
+            url:        The listing URL that was fetched.
+            cards_found: Number of project cards parsed from this page.
+            status:     ``"ok"`` | ``"empty"`` | ``"error"``.
+            fetch_ms:   Round-trip time in milliseconds.
+        """
+        self._log(
+            logging.INFO,
+            f"Listing page {page_no}: {cards_found} cards [{status}]",
+            step=STAGE_LISTING,
+            extra={"page_no": page_no, "url": url, "cards_found": cards_found,
+                   "status": status, **(kwargs or {})},
+        )
+        self._buffer_stage_event({
+            "table":            "crawl_listing_events",
+            "run_id":           self.run_id,
+            "site_id":          self.site_id,
+            "page_no":          page_no,
+            "url":              url,
+            "cards_found":      cards_found,
+            "status":           status,
+            "fetch_duration_ms": fetch_ms,
+            "extra":            kwargs or {},
+        })
+
+    def log_detail_fetch(
+        self,
+        url: str,
+        fields_extracted: int,
+        doc_links_found: int,
+        status: str = "ok",
+        fetch_ms: int | None = None,
+        **kwargs,
+    ) -> None:
+        """Record a project detail page fetch event → ``crawl_detail_events``.
+
+        Args:
+            url:              The detail page URL that was fetched.
+            fields_extracted: Number of schema fields successfully parsed.
+            doc_links_found:  Number of document links collected.
+            status:           ``"ok"`` | ``"empty"`` | ``"error"`` | ``"skipped"``.
+            fetch_ms:         Round-trip time in milliseconds.
+        """
+        ctx             = dict(self._state["ctx"])
+        project_key     = ctx.get("project_key")
+        registration_no = ctx.get("registration_no")
+
+        self._log(
+            logging.INFO,
+            f"Detail fetch: {fields_extracted} fields, {doc_links_found} docs [{status}]",
+            step=STAGE_DETAIL_FETCH,
+            extra={"url": url, "fields_extracted": fields_extracted,
+                   "doc_links_found": doc_links_found, "status": status,
+                   **(kwargs or {})},
+        )
+        self._buffer_stage_event({
+            "table":            "crawl_detail_events",
+            "run_id":           self.run_id,
+            "site_id":          self.site_id,
+            "project_key":      project_key,
+            "registration_no":  registration_no,
+            "url":              url,
+            "fields_extracted": fields_extracted,
+            "doc_links_found":  doc_links_found,
+            "status":           status,
+            "fetch_duration_ms": fetch_ms,
+            "extra":            kwargs or {},
+        })
+
+    def log_document(
+        self,
+        doc_type: str,
+        original_url: str,
+        status: str,
+        s3_key: str | None = None,
+        file_size_bytes: int | None = None,
+        **kwargs,
+    ) -> None:
+        """Record a document download / S3-upload event → ``crawl_document_events``.
+
+        Args:
+            doc_type:        Document label / type (e.g. ``"registration_certificate"``).
+            original_url:    Source URL before S3 upload.
+            status:          ``"uploaded"`` | ``"updated"`` | ``"skipped"`` | ``"failed"``.
+            s3_key:          S3 object key (set on success).
+            file_size_bytes: Downloaded file size (set on success).
+        """
+        project_key = self._state["ctx"].get("project_key")
+
+        self._log(
+            logging.INFO,
+            f"Document [{doc_type}]: {status}",
+            step=STAGE_DOCUMENTS,
+            extra={"doc_type": doc_type, "url": original_url, "status": status,
+                   **(kwargs or {})},
+        )
+        self._buffer_stage_event({
+            "table":           "crawl_document_events",
+            "run_id":          self.run_id,
+            "site_id":         self.site_id,
+            "project_key":     project_key,
+            "document_type":   doc_type,
+            "original_url":    original_url,
+            "s3_key":          s3_key,
+            "file_size_bytes": file_size_bytes,
+            "status":          status,
+            "extra":           kwargs or {},
+        })

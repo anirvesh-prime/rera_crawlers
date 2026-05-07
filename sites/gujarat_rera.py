@@ -67,7 +67,9 @@ _LABEL_TO_FIELD: dict[str, str] = {
     "rera registration no":         "project_registration_no",
     "gujrera reg. no.":             "project_registration_no",
     "application no":               "acknowledgement_no",
+    "application number":           "acknowledgement_no",
     "acknowledgement no":           "acknowledgement_no",
+    "acknowledgement number":       "acknowledgement_no",
     "project name":                 "project_name",
     "name of project":              "project_name",
     "project type":                 "project_type",
@@ -277,10 +279,11 @@ def _extract_label_values(soup: BeautifulSoup) -> dict[str, str]:
 def _extract_html_fields(lv: dict[str, str], proj_id: int) -> dict:
     """Map a label-value dict (from the rendered HTML) to project schema fields."""
     out: dict = {}
-    # Normalize keys: lowercase, strip trailing ":-" (first-wins to match Pattern 1 priority)
+    # Normalize keys: lowercase, strip trailing ":-" and trailing periods
+    # (first-wins to match Pattern 1 priority)
     norm: dict[str, str] = {}
     for k, v in lv.items():
-        nk = re.sub(r"\s*:-?\s*$", "", k.lower()).strip()
+        nk = re.sub(r"\s*:-?\s*$", "", k.lower()).strip().rstrip(".")
         norm.setdefault(nk, v)
 
     for label_key, schema_field in _LABEL_TO_FIELD.items():
@@ -335,6 +338,12 @@ def _extract_html_fields(lv: dict[str, str], proj_id: int) -> dict:
     village  = norm.get("village") or norm.get("moje", "")
     pin      = norm.get("pin code") or norm.get("pincode", "")
     address  = norm.get("project address") or norm.get("address", "")
+    # Fallback: extract 6-digit pin from office/project address when not directly available
+    if not pin:
+        _addr_for_pin = norm.get("office address", "") or address
+        _pin_m = re.search(r"\b(\d{6})\b", _addr_for_pin)
+        if _pin_m:
+            pin = _pin_m.group(1)
     plot_no  = norm.get("plot no") or norm.get("final plot no", "")
     tp_no    = norm.get("tp no", "")
     loc: dict = {}
@@ -354,9 +363,14 @@ def _extract_html_fields(lv: dict[str, str], proj_id: int) -> dict:
     if pin:
         loc["pin_code"] = pin
     loc["state"] = STATE
-    # raw_address = just the address string from the page (no synthetic city/state suffix)
+    # raw_address — base address string plus appended location components for full address.
+    # Taluka takes priority over sub-district; state is uppercased to match reference format.
     if address:
-        loc["raw_address"] = address
+        _taluk_part = sub_dist or taluka
+        suffix_parts = [p for p in [_taluk_part, district, STATE.upper(), pin] if p]
+        loc["raw_address"] = (
+            address + ", " + ", ".join(suffix_parts) if suffix_parts else address
+        )
     if loc:
         out["project_location_raw"] = loc
 
@@ -734,11 +748,13 @@ def _parse_professionals(soup: BeautifulSoup) -> dict:
             if not title_tag:
                 continue
             prof_type = _clean(title_tag.get_text())
+            found_any = False
             for avbox in av_col.find_all("div", class_="avBox"):
                 if avbox.find("b"):  # "Data Not Available" marker
                     continue
                 person = _parse_avbox_person(avbox)
                 if person.get("name"):
+                    found_any = True
                     # Order matches sample: name, type, email, phone, registration_no
                     ordered: dict = {}
                     ordered["name"] = person.get("name", "")
@@ -747,6 +763,9 @@ def _parse_professionals(soup: BeautifulSoup) -> dict:
                     if "phone" in person: ordered["phone"] = person["phone"]
                     if "registration_no" in person: ordered["registration_no"] = person["registration_no"]
                     professionals.append(ordered)
+            if not found_any:
+                # Record type-only entry for sections with no data (matches sample format)
+                professionals.append({"type": prof_type})
     if professionals:
         return {"professional_information": professionals}
     return {}
@@ -856,7 +875,8 @@ def _handle_document(
             s3_key=s3_key, s3_bucket=settings.S3_BUCKET_NAME,
             file_name=filename, md5_checksum=md5, file_size_bytes=len(content),
         )
-        logger.info("Document handled", label=label, s3_key=s3_key)
+        logger.info("Document handled", label=label, s3_key=s3_key, step="documents")
+        logger.log_document(label, url, "uploaded", s3_key=s3_key, file_size_bytes=len(content))
         return document_result_entry(doc, s3_url, filename)
     except Exception as e:
         logger.error(f"Document failed: {e}", url=url)
@@ -868,8 +888,11 @@ def _handle_document(
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     """
     Data-quality sentinel for Gujarat RERA.
-    Loads state_projects_sample/gujarat.json as the baseline, navigates to the
-    sentinel project's detail page via Playwright, and verifies ≥ 80% field coverage.
+    Full-flow check: navigates to the sentinel project's detail page via Playwright,
+    runs ALL parsers that run() uses (_extract_html_fields, _parse_overview_card,
+    _parse_promoter_card, _parse_partners, _parse_professionals, _parse_facilities,
+    _parse_flat_table, _extract_doc_links), merges results, and verifies ≥ 80%
+    field coverage against the full baseline.
     """
     import json as _json
     import os as _os
@@ -908,8 +931,24 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
             browser = pw.chromium.launch(headless=True)
             ctx     = browser.new_context(ignore_https_errors=True)
             page    = ctx.new_page()
-            page.goto(detail_url, timeout=30_000, wait_until="networkidle")
+            page.goto(detail_url, timeout=60_000, wait_until="networkidle")
             page.wait_for_timeout(5_000)
+            # Fetch acknowledgement_no from backend API (same as run())
+            _sentinel_ack_no = ""
+            try:
+                _ack_resp = page.evaluate(
+                    f"""async () => {{
+                        const r = await fetch(
+                            '/project_reg/public/alldatabyprojectid/{proj_id}');
+                        if (!r.ok) return null;
+                        return await r.json();
+                    }}"""
+                )
+                _sentinel_ack_no = (
+                    ((_ack_resp or {}).get("data") or {}).get("projectAckNo") or ""
+                )
+            except Exception:
+                _sentinel_ack_no = ""
             html  = page.content()
             ctx.close()
             browser.close()
@@ -920,7 +959,38 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
             logger.error("Sentinel: no label-value pairs found — site structure may have changed",
                          url=detail_url, step="sentinel")
             return False
+
+        # Call ALL parsers that run() uses (same merge logic as run())
         fresh = _extract_html_fields(lv, proj_id)
+        if _sentinel_ack_no and not fresh.get("acknowledgement_no"):
+            fresh["acknowledgement_no"] = _sentinel_ack_no
+        for extra in (
+            _parse_overview_card(soup),
+            _parse_promoter_card(soup),
+            _parse_partners(soup),
+            _parse_professionals(soup),
+            _parse_facilities(soup),
+        ):
+            for k, v in extra.items():
+                fresh[k] = v  # card-section data wins over lv-derived fields
+
+        # building_details + number_of_residential_units from flat table
+        flat_entries = _parse_flat_table(soup)
+        if flat_entries:
+            fresh["building_details"] = flat_entries
+            if not fresh.get("number_of_residential_units"):
+                res_count = sum(
+                    1 for e in flat_entries
+                    if e.get("flat_type", "").lower() not in ("commercial", "office", "shop")
+                )
+                if res_count:
+                    fresh["number_of_residential_units"] = res_count
+
+        # uploaded_documents (doc links; sentinel records metadata, doesn't download)
+        doc_links = _extract_doc_links(soup)
+        if doc_links:
+            fresh["uploaded_documents"] = doc_links
+
     except Exception as exc:
         logger.error(f"Sentinel: error — {exc}", step="sentinel")
         return False
@@ -1009,6 +1079,23 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             try:
                 page.goto(detail_url, timeout=30_000, wait_until="networkidle")
                 page.wait_for_timeout(5_000)
+                # Fetch acknowledgement_no (projectAckNo) from the backend JSON API
+                # The Angular SPA calls this endpoint; it's not rendered in the HTML.
+                proj_ack_no = ""
+                try:
+                    ack_resp = page.evaluate(
+                        f"""async () => {{
+                            const r = await fetch(
+                                '/project_reg/public/alldatabyprojectid/{proj_id}');
+                            if (!r.ok) return null;
+                            return await r.json();
+                        }}"""
+                    )
+                    proj_ack_no = (
+                        ((ack_resp or {}).get("data") or {}).get("projectAckNo") or ""
+                    )
+                except Exception:
+                    proj_ack_no = ""
                 html = page.content()
             except Exception as e:
                 logger.warning(f"Detail page load failed for proj_id={proj_id}: {e}")
@@ -1046,6 +1133,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
             try:
                 data = _extract_html_fields(lv, proj_id)
+
+                # Populate acknowledgement_no from the backend API if not found in HTML
+                if proj_ack_no and not data.get("acknowledgement_no"):
+                    data["acknowledgement_no"] = proj_ack_no
 
                 # Enrich with fields from additional page sections (higher priority — overrides lv)
                 overview   = _parse_overview_card(soup)
@@ -1121,10 +1212,33 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                     "crawl_machine_ip": machine_ip,
                     "project_registration_no": reg_no,
                 })
+                # Build extra fields for the data sub-dict so downstream consumers
+                # can read them without parsing nested schema structures.
+                _loc = data.get("project_location_raw") or {}
+                _lad = data.get("land_area_details") or {}
+                _act_start = (data.get("actual_commencement_date") or "").replace("+00:00", "").strip()
+                _extra_data: dict = {
+                    "govt_type": "state", "is_processed": False,
+                    "proj_reg_id": proj_id, "project_id": encoded_id,
+                    "detail_url": detail_url,
+                }
+                _n_units = (
+                    (data.get("number_of_residential_units") or 0)
+                    + (data.get("number_of_commercial_units") or 0)
+                )
+                if _n_units:
+                    _extra_data["no_of_units"] = str(_n_units)
+                if _loc.get("raw_address"):
+                    _extra_data["raw_address"] = _loc["raw_address"]
+                if data.get("project_type"):
+                    _extra_data["type_of_units"] = data["project_type"]
+                # Use extracted units or fall back to known Gujarat RERA defaults
+                _extra_data["land_area_units"] = _lad.get("land_area_unit") or "Sq Mtrs"
+                if _act_start:
+                    _extra_data["actual_start_date"] = _act_start
+                _extra_data["construction_units"] = _lad.get("construction_area_unit") or "in Sq. Mts."
                 data["data"] = merge_data_sections(
-                    {"govt_type": "state", "is_processed": False,
-                     "proj_reg_id": proj_id, "project_id": encoded_id,
-                     "detail_url": detail_url},
+                    _extra_data,
                     {"source": "html_scrape", "label_values": lv},
                 )
 
@@ -1151,9 +1265,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 else:                     counts["projects_skipped"] += 1
                 logger.info(f"DB: {action}", step="db_upsert")
 
-                if mode != "daily_light":
-                    seen_doc_urls: set[str] = set()
-                    doc_links = _extract_doc_links(soup, seen_doc_urls)
+                seen_doc_urls: set[str] = set()
+                doc_links = _extract_doc_links(soup, seen_doc_urls)
+                if doc_links:
                     logger.info(f"Processing {len(doc_links)} documents", step="documents")
                     uploaded_docs: list[dict] = []
                     doc_name_counts: dict[str, int] = {}

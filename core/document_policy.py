@@ -100,11 +100,17 @@ STATE_DOC_DICT: dict[str, list[str]] = {
         "Occupancy Certificate",
     ],
     "assam": [
-        "RERA REGISTRATION CERTIFICATE", "CARPET AREA", " PARKING AREA DETAILS", "PLAN OF DEVELOPMENT WORKS",
-        "APPROVED DRAWING", "Project Specifications", "CERTIFICATE OF THE REGISTERED ARCHITECT",
+        "RERA REGISTRATION CERTIFICATE",
+        "CARPET AREA AND PARKING AREA DETAILS",
+        "CARPET AREA",
+        "PLAN OF DEVELOPMENT WORKS",
+        "APPROVED DRAWING FROM COMPETENT AUTHORITY",
+        "APPROVED DRAWING",
+        "ARCHITECT, STRUCTURAL ENGINEER AND CONTRACTOR DETAILS WITH NAME AND ADDRESS AS THE CASE MAY BE",
+        "ARCHITECT, STRUCTURAL ENGINEER AND CONTRACTOR DETAILS",
+        "Project Specifications", "CERTIFICATE OF THE REGISTERED ARCHITECT",
         "CERTIFICATE OF THE REGISTERED ENGINEER",
-        "ARCHITECT, STRUCTURAL ENGINEER AND CONTRACTOR DETAILS", "Occupation Certificate",
-        "Occupancy Certificate",
+        "Occupation Certificate", "Occupancy Certificate",
     ],
     "jharkhand": [
         "Brochure", "Gant chart", "RERA Certificate", "Registration Certificate", "RERA Registration",
@@ -191,19 +197,28 @@ def rename_document_category(
     original = clean_string(original_name) or ""
     renamed = clean_string(matched_name) or clean_string(original_name) or "document"
 
-    if "architect" in renamed.lower() and "certificate" not in renamed.lower():
-        renamed += " Certificate"
-    if "engineer" in renamed.lower() and "certificate" not in renamed.lower():
-        renamed += " Certificate"
-
-    if original.startswith(renamed):
+    # When the original document name starts with the matched category name, prefer the
+    # original (more descriptive) name over the shorter matched category name.
+    # e.g. "APPROVED DRAWING FROM COMPETENT AUTHORITY" should NOT be shortened to
+    # "APPROVED DRAWING 1"; it should be kept as-is (or "... 2" if truly duplicated).
+    if original and original.upper().startswith(renamed.upper()):
         parts = original.split()
         if parts:
             try:
                 int(parts[-1])
+                # Already ends with a number (e.g. "RERA REGISTRATION CERTIFICATE 1") — keep as-is
                 return original
             except ValueError:
                 pass
+        # Use the full original name as the deduplication key
+        counters[original] = counters.get(original, 0) + 1
+        n = counters[original]
+        return original if n == 1 else f"{original} {n}"
+
+    if "architect" in renamed.lower() and "certificate" not in renamed.lower():
+        renamed += " Certificate"
+    if "engineer" in renamed.lower() and "certificate" not in renamed.lower():
+        renamed += " Certificate"
 
     counters[renamed] = counters.get(renamed, 0) + 1
     return f"{renamed} {counters[renamed]}"

@@ -73,22 +73,34 @@ def _parse_date(raw: str) -> str | None:
 
 def _row_val(soup: BeautifulSoup, label_text: str) -> str:
     """
-    Find a <b>label_text</b> inside col-md-N and return the sibling column's text.
-    Handles both col-md-4/col-md-8 (project info) and col-md-3/col-md-9 (location).
+    Find a <b>label_text</b> inside col-md-N and return the *immediately following*
+    sibling value column's text.
+
+    MP rows fall into two layouts:
+      • Single label + single value  (e.g. "State :")
+      • Two label+value pairs on one row (e.g. "District :" + "Tehsil :")
+
+    For the two-pair case we must return the value that belongs to *this* label,
+    not the last non-bold cell in the row (which could belong to a different label).
+    We do this by finding the label's own column, then walking forward to the next
+    sibling column that has no <b> child.
     """
     for b_tag in soup.find_all("b"):
         if _clean(b_tag.get_text()) == label_text:
-            row = b_tag.find_parent("div", class_=re.compile(r"col-md-\d"))
-            if row is None:
+            label_col = b_tag.find_parent("div", class_=re.compile(r"col-(?:md|sm)-\d"))
+            if label_col is None:
                 continue
-            parent_row = row.find_parent("div", class_="row")
+            parent_row = label_col.find_parent("div", class_="row")
             if parent_row is None:
                 continue
-            # find the sibling value column
             cols = parent_row.find_all("div", class_=re.compile(r"col-(?:md|sm)-\d"), recursive=False)
-            # value is in the last non-label column
-            for col in reversed(cols):
-                if not col.find("b"):
+            # Walk forward from the label column to find the immediately next value column
+            found_label = False
+            for col in cols:
+                if col is label_col:
+                    found_label = True
+                    continue
+                if found_label and not col.find("b"):
                     return _clean(col.get_text())
             break
     return ""
@@ -221,33 +233,39 @@ def _parse_detail(detail_url: str, stub: dict, logger: CrawlerLogger | None) -> 
 
     # ── Project Location ───────────────────────────────────────────────────────
     state_val    = _row_val(soup, "State :")
-    district_val = stub.get("district") or ""
+    # Prefer value from the detail-page location box; fall back to listing stub
+    district_val = ""
     tehsil_val   = ""
     address_val  = ""
     planning_val = ""
 
-    # Location section uses col-md-3 label / col-md-3 or col-md-9 value
+    # Location section uses col-md-3 label / col-md-3 or col-md-9 value.
+    # District and Tehsil share one row — the fixed _row_val handles that correctly.
     loc_section = soup.find("div", class_="h3", string=re.compile(r"Project Location"))
     if loc_section:
         loc_box = loc_section.find_next("div", class_="box")
         if loc_box:
-            # District and Tehsil are on the same row
             rows_in_box = loc_box.find_all("div", class_="row")
             for row in rows_in_box:
                 labels = [_clean(b.get_text()) for b in row.find_all("b")]
                 cols   = row.find_all("div", recursive=False)
-                # extract text from non-bold columns
+                # extract text from non-bold value columns in row order
                 texts  = [_clean(c.get_text()) for c in cols if not c.find("b")]
                 for i, lbl in enumerate(labels):
                     v = texts[i] if i < len(texts) else ""
                     if "District" in lbl:
-                        district_val = district_val or v
+                        # Location box is authoritative; fall back to stub only if empty
+                        district_val = v or district_val
                     elif "Tehsil" in lbl:
                         tehsil_val = v
                     elif "Project Address" in lbl:
                         address_val = v
                     elif "Planning Area" in lbl:
                         planning_val = v
+
+    # Fall back to listing stub if the location box had no district
+    if not district_val:
+        district_val = stub.get("district") or ""
 
     out["project_state"] = state_val or "Madhya Pradesh"
     loc: dict = {"state": out["project_state"]}
@@ -561,7 +579,8 @@ def _handle_document(
                 md5_checksum=md5,
                 file_size_bytes=len(resp.content),
             )
-            logger.info("Document uploaded", label=label, s3_key=s3_key)
+            logger.info("Document uploaded", label=label, s3_key=s3_key, step="documents")
+            logger.log_document(label, url, "uploaded", s3_key=s3_key, file_size_bytes=len(resp.content))
             result = document_result_entry({"url": url, "label": label}, s3_url, fname)
             break  # one successful upload per doc entry is enough
         except Exception as exc:
@@ -576,8 +595,10 @@ def _handle_document(
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     """
     Data-quality sentinel for Madhya Pradesh RERA.
-    Loads state_projects_sample/madhya_pradesh.json as the baseline, re-scrapes
-    the sentinel project's detail page, and verifies ≥ 80% field coverage.
+    Full-flow check: fetches the detail page once and runs ALL section parsers
+    (_parse_detail, _parse_promoter, _parse_consultants, _parse_unit_counts),
+    merges the results (same as run()), and verifies ≥ 80% field coverage against
+    the full baseline.
     """
     import json as _json
     import os as _os
@@ -603,7 +624,34 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 
     logger.info(f"Sentinel: scraping {sentinel_reg_no}", url=sentinel_url, step="sentinel")
     try:
-        fresh = _parse_detail(sentinel_url, {}, logger) or {}
+        # Fetch the detail page once and reuse the soup for all section parsers
+        resp = _get(sentinel_url, logger)
+        if not resp:
+            logger.error("Sentinel: detail page unreachable", url=sentinel_url, step="sentinel")
+            insert_crawl_error(run_id, config.get("id", "madhya_pradesh_rera"),
+                               "SENTINEL_FAILED", "Detail page unreachable", url=sentinel_url)
+            return False
+
+        soup = BeautifulSoup(resp.text, "lxml")
+
+        # Parse all sections (same as run())
+        detail       = _parse_detail(sentinel_url, {}, logger) or {}
+        promoter     = _parse_promoter(soup)
+        consultants  = _parse_consultants(soup)
+        res_units, com_units = _parse_unit_counts(soup)
+
+        # Merge (matching run() ordering — detail first, then overrides)
+        fresh = dict(detail)
+        for k, v in promoter.items():
+            if v is not None:
+                fresh[k] = v
+        if consultants:
+            fresh["professional_information"] = consultants
+        if res_units:
+            fresh["number_of_residential_units"] = res_units
+        if com_units:
+            fresh["number_of_commercial_units"] = com_units
+
     except Exception as exc:
         logger.error(f"Sentinel: scrape error — {exc}", step="sentinel")
         return False

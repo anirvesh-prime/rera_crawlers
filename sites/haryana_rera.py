@@ -31,6 +31,7 @@ from core.models import ProjectRecord
 from core.project_normalizer import (
     build_document_filename,
     build_document_urls,
+    clean_string,
     document_identity_url,
     document_result_entry,
     get_machine_context,
@@ -775,8 +776,6 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:
     out["data"] = {
         "govt_type": "state",
         "is_processed": False,
-        "all_kv_labels": list(kv.keys()),
-        "source_url": detail_url,
     }
 
     return {k: v for k, v in out.items() if v not in (None, "", {}, [])}
@@ -883,7 +882,9 @@ def _handle_document(
         if s3_key is None:
             return None
         s3_url = get_s3_url(s3_key)
-        return document_result_entry(doc, s3_url=s3_url, md5=md5)
+        logger.info("Document uploaded", label=label, s3_key=s3_key, step="documents")
+        logger.log_document(label, url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
+        return document_result_entry({**doc, "source_url": url}, s3_url=s3_url, md5=md5)
     except Exception as exc:
         logger.warning("Document handling error", url=url, error=str(exc))
         return None
@@ -987,8 +988,10 @@ def _merge_stub_and_detail(stub: dict, detail: dict, config_id: int) -> dict:
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     """
     Data-quality sentinel for Haryana RERA.
-    Loads state_projects_sample/haryana.json as the baseline, re-scrapes the
-    sentinel project's detail page, and verifies ≥ 80% field coverage.
+    Full-flow check: fetches both listing pages to find the sentinel project stub
+    (listing-level fields: ack_no, project_name, promoter_name, city, dates), then
+    fetches and parses its detail page, merges via _merge_stub_and_detail (same as
+    run()), and verifies ≥ 80% field coverage against the full baseline.
     """
     import json as _json
     import os as _os
@@ -1011,26 +1014,57 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
                        path=sample_path, step="sentinel")
         return True
 
-    detail_url = baseline.get("url", "")
+    # ── Step 1: Find the sentinel project stub from listing pages ─────────────
+    logger.info(f"Sentinel: searching listing pages for {sentinel_reg}", step="sentinel")
+    stub: dict | None = None
+    for listing_url in LISTING_URLS:
+        stubs = _fetch_listing(listing_url, logger)
+        stub = next(
+            (s for s in stubs
+             if s.get("project_registration_no", "").upper() == sentinel_reg.upper()),
+            None,
+        )
+        if stub:
+            break
+
+    if not stub:
+        logger.error(
+            f"Sentinel: {sentinel_reg!r} not found in any listing page — "
+            "listing structure may have changed",
+            step="sentinel",
+        )
+        insert_crawl_error(run_id, config.get("id", "haryana_rera"),
+                           "SENTINEL_FAILED",
+                           f"Sentinel project {sentinel_reg} not found in listing")
+        return False
+
+    detail_url = stub.get("detail_url") or baseline.get("url", "")
     if not detail_url:
-        logger.warning("Sentinel: no detail URL in sample — skipping", step="sentinel")
+        logger.warning("Sentinel: no detail URL for sentinel project — skipping", step="sentinel")
         return True
 
-    logger.info(f"Sentinel: scraping {sentinel_reg}", url=detail_url, step="sentinel")
+    # ── Step 2: Fetch and parse detail page ───────────────────────────────────
+    logger.info(f"Sentinel: scraping detail for {sentinel_reg}", url=detail_url, step="sentinel")
     try:
-        resp = safe_get(detail_url, retries=2, logger=logger)
+        resp = safe_get(detail_url, retries=2, logger=logger, timeout=60.0)
         if not resp:
-            logger.error("Sentinel: failed to fetch detail page", url=detail_url, step="sentinel")
+            logger.error("Sentinel: detail page fetch failed", url=detail_url, step="sentinel")
+            insert_crawl_error(run_id, config.get("id", "haryana_rera"),
+                               "SENTINEL_FAILED", "Detail page unreachable", url=detail_url)
             return False
-        fresh = _parse_detail_page(resp.text, detail_url) or {}
+        detail = _parse_detail_page(resp.text, detail_url) or {}
     except Exception as exc:
         logger.error(f"Sentinel: scrape error — {exc}", step="sentinel")
         return False
 
-    if not fresh:
-        logger.error("Sentinel: no data extracted", url=detail_url, step="sentinel")
+    if not detail:
+        logger.error("Sentinel: no data extracted from detail page", url=detail_url, step="sentinel")
         return False
 
+    # ── Step 3: Merge stub + detail (same logic as run()) ─────────────────────
+    fresh = _merge_stub_and_detail(stub, detail, config.get("id", "haryana_rera"))
+
+    logger.info(f"Sentinel: checking coverage for {sentinel_reg}", step="sentinel")
     if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
         insert_crawl_error(
             run_id, config.get("id", "haryana_rera"),
@@ -1056,7 +1090,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     Args:
         config:  Site configuration dict (from sites_config.py).
         run_id:  Integer run identifier for checkpointing.
-        mode:    "full" | "incremental" | "retry_errors"
+        mode:    "daily_light" | "weekly_deep" | "full"
 
     Returns:
         Summary counts dict.
@@ -1123,6 +1157,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             counts["projects_skipped"] += 1
             continue
 
+        # ── daily_light: skip projects already in the DB ──────────────────────
+        if mode == "daily_light" and get_project_by_key(project_key):
+            counts["projects_skipped"] += 1
+            continue
+
         logger.set_project(key=project_key, reg_no=reg_no, url=detail_url or LISTING_URLS[0], page=i)
         try:
             if not detail_url:
@@ -1148,6 +1187,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                 # ── Merge stub + detail → normalized payload ──────────────────────
                 raw_payload = _merge_stub_and_detail(stub, detail, config_id)
+                raw_payload["is_live"] = True
                 payload = normalize_project_payload(
                     raw_payload,
                     config,
@@ -1175,30 +1215,37 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     counts["projects_skipped"] += 1
                 items_processed += 1
 
-                # ── Documents ────────────────────────────────────────────────────
+                # ── Documents (weekly_deep or new projects only) ─────────────────
                 all_docs: list[dict] = raw_payload.get("uploaded_documents") or []
                 doc_name_counts: dict[str, int] = {}
                 persisted_docs: list[dict] = []
 
-                for doc in all_docs:
-                    selected = select_document_for_download(
-                        config["state"], doc, doc_name_counts, domain=DOMAIN,
-                    )
-                    if not selected:
-                        persisted_docs.append({
-                            "link": doc.get("url") or doc.get("link"),
-                            "type": doc.get("label") or doc.get("type") or "document",
-                        })
-                        continue
-                    result = _handle_document(project_key, selected, run_id, site_id, logger)
-                    if result:
-                        counts["documents_uploaded"] += 1
-                        persisted_docs.append(result)
-                    else:
-                        persisted_docs.append({
-                            "link": selected.get("url") or selected.get("link"),
-                            "type": selected.get("label") or selected.get("type") or "document",
-                        })
+                if all_docs:
+                    for doc in all_docs:
+                        selected = select_document_for_download(
+                            config["state"], doc, doc_name_counts, domain=DOMAIN,
+                        )
+                        if not selected:
+                            _entry: dict = {
+                                "link": doc.get("url") or doc.get("link"),
+                                "type": clean_string(doc.get("label") or doc.get("type") or "document") or "document",
+                            }
+                            if doc.get("dated_on"):
+                                _entry["dated_on"] = doc["dated_on"]
+                            persisted_docs.append(_entry)
+                            continue
+                        result = _handle_document(project_key, selected, run_id, site_id, logger)
+                        if result:
+                            counts["documents_uploaded"] += 1
+                            persisted_docs.append(result)
+                        else:
+                            _entry = {
+                                "link": selected.get("url") or selected.get("link"),
+                                "type": clean_string(selected.get("label") or selected.get("type") or "document") or "document",
+                            }
+                            if selected.get("dated_on"):
+                                _entry["dated_on"] = selected["dated_on"]
+                            persisted_docs.append(_entry)
 
                 if persisted_docs:
                     upsert_project({
@@ -1224,7 +1271,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         finally:
             logger.clear_project()
 
-    # ── Final checkpoint ──────────────────────────────────────────────────────
-    save_checkpoint(site_id, mode, len(all_stubs), project_key if all_stubs else None, run_id)
+    reset_checkpoint(site_id, mode)
     logger.info("Crawl complete", **counts)
     return counts

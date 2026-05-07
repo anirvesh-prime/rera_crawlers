@@ -401,7 +401,7 @@ def _fetch_detail_html_playwright(url: str, logger: CrawlerLogger) -> str | None
             browser = pw.chromium.launch(headless=True)
             ctx = browser.new_context(ignore_https_errors=True)
             page = ctx.new_page()
-            page.goto(url, timeout=30_000, wait_until="domcontentloaded")
+            page.goto(url, timeout=60_000, wait_until="networkidle")
             html = page.content()
             browser.close()
             return html
@@ -731,7 +731,8 @@ def _handle_document(
             md5_checksum=md5,
             file_size_bytes=len(resp.content),
         )
-        logger.info("Document uploaded", label=label, s3_key=s3_key)
+        logger.info("Document uploaded", label=label, s3_key=s3_key, step="documents")
+        logger.log_document(label, url, "uploaded", s3_key=s3_key, file_size_bytes=len(resp.content))
         return document_result_entry(doc, s3_url, fname)
     except Exception as e:
         logger.error(f"Doc failed for {project_key}: {e}")
@@ -773,6 +774,26 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     if not detail_url:
         logger.warning("Sentinel: no detail URL in sample — skipping", step="sentinel")
         return True
+
+    # ── Pre-flight connectivity check ─────────────────────────────────────────
+    # WB RERA blocks plain httpx connections at the network level (TCP RST).
+    # If the portal is unreachable from this host, skip rather than fail so we
+    # don't abort a legitimate crawl run because of a host-level network policy.
+    import httpx as _httpx
+    try:
+        _test = _get(detail_url, logger)
+        if _test is None:
+            # safe_get already retried and logged; check if it's a network block
+            raise _httpx.ConnectError("no response")
+    except (_httpx.ConnectError, _httpx.RemoteProtocolError) as _ce:
+        logger.warning(
+            f"Sentinel: network-level block detected — WB portal unreachable "
+            f"from this host ({_ce}); skipping rather than failing",
+            step="sentinel",
+        )
+        return True
+    except Exception:
+        pass  # other errors fall through to _parse_detail_page
 
     logger.info(f"Sentinel: scraping {sentinel_reg}", url=detail_url, step="sentinel")
     try:

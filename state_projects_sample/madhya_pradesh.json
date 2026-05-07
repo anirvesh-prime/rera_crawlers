@@ -7,21 +7,23 @@
   "status_of_the_project": "Approved",
   "acknowledgement_no": null,
   "project_pin_code": null,
-  "project_city": null,
+  "project_city": "Bhopal",
   "project_state": "Madhya Pradesh",
   "project_location_raw": {
     "state": "Madhya Pradesh",
-    "taluk": "Bhopal",
+    "taluk": "Huzur",
     "district": "Bhopal",
     "raw_address": "Kh. No. 103/1, 105, 107, 115/1 at Gram Piplani Chamaran (Kalpana Nagar, Alam Nagar), Tehsil Huzoor, District Bhopal",
     "processed_latitude": 23.2519953,
-    "processed_longitude": 77.478653
+    "processed_longitude": 77.478653,
+    "city": "Bhopal"
   },
   "promoter_address_raw": {
     "raw_address": "Bhopal Municipal Corporation, PMAY, (HFA CELL), Third Floor, ISBT Bhavan, Hoshangabad Road, Habibganj, Bhopal - 462011"
   },
   "promoter_contact_details": {
-    "email": "bmcmp.hfa@gmail.com"
+    "email": "bmcmp.hfa@gmail.com",
+    "phone": "9424499853"
   },
   "submitted_date": null,
   "last_modified": null,
@@ -45,8 +47,8 @@
   "project_cost_detail": {
     "estimated_construction_cost": 184948000.0
   },
-  "number_of_residential_units": null,
-  "number_of_commercial_units": null,
+  "number_of_residential_units": 56,
+  "number_of_commercial_units": 47,
   "building_details": [
     {
       "updated": true,
@@ -54,18 +56,6 @@
       "flat_type": "2 BHK",
       "carpet_area": "56.38",
       "no_of_units": "56"
-    },
-    {
-      "flat_name": null,
-      "flat_type": null,
-      "carpet_area": null,
-      "no_of_units": null
-    },
-    {
-      "flat_name": null,
-      "flat_type": null,
-      "carpet_area": null,
-      "no_of_units": null
     },
     {
       "updated": true,
@@ -142,12 +132,12 @@
     },
     {
       "link": "https://www.rera.mp.gov.in/upload/project_upload/53fb0521225445517494e01a.pdf",
-      "type": "5 Building Permission Authority",
+      "type": "Building Permission Authority 1",
       "updated": true
     },
     {
       "link": "https://www.rera.mp.gov.in/upload/project_upload/718818818888.pdf",
-      "type": "5 Building Permission Authority",
+      "type": "Building Permission Authority 2",
       "updated": true
     },
     {
@@ -398,7 +388,8 @@
         "name": "Santosh Kumar Gupta",
         "role": "Developer",
         "email": "bmcmp.hfa@gmail.com",
-        "present_address": "Bhopal Municipal Corporation, PMAY, (HFA CELL), Third Floor, ISBT Bhavan, Hoshangabad Road, Habibganj, Bhopal - 462011"
+        "present_address": "Bhopal Municipal Corporation, PMAY, (HFA CELL), Third Floor, ISBT Bhavan, Hoshangabad Road, Habibganj, Bhopal - 462011",
+        "promoter_type": "Government/Semi Government Agency"
       }
     ]
   },
@@ -412,6 +403,23 @@
   "last_updated": "2026-04-15 08:05:14.867936+00:00",
   "updated_fields": null,
   "project_images": [
+    "https://www.rera.mp.gov.in/upload/project_upload/781b2f7755759577918a1be0.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/4dd32d1971117717391f2d91.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/7112d4771973177397f490e2.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/f8d945377311173537e1e79f.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/5af26c1777151715770068aa.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/b26ca119991391116750aab7.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/bb6e1d517115797191623641.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/acd4d63671777771791caaad.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/d977ed63117537196966f7f5.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/bea5f6196573737165ff3d59.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/aac8cd7157777357510e1a64.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/b2f92c5955795111534c782c.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/70d4a21961677776917507c8.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/582b63717711519753bb4339.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/bacfab97976717767117ad84.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/4ee33177611717767633833b.jpeg",
+    "https://www.rera.mp.gov.in/upload/project_upload/3f309c191571517755725f1c.jpeg",
     "https://www.rera.mp.gov.in/upload/project_upload/ba78f74161766171763c19b2.jpeg",
     "https://www.rera.mp.gov.in/upload/project_upload/a0f0f5626171674296c37db2.jpeg",
     "https://www.rera.mp.gov.in/upload/project_upload/97a5f591112264421486cddc.jpeg",
@@ -538,6 +546,21 @@
   ],
   "status_update": {
     "qpr_docs": [
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/824bc9567533311111007946.pdf",
+        "type": "Bank Statement",
+        "quarter": "Jan 2026 - Mar 2026"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/39973099177617177128e166.pdf",
+        "type": "chartered accountant certificate",
+        "quarter": "Jan 2026 - Mar 2026"
+      },
+      {
+        "link": "https://www.rera.mp.gov.in/upload/project_upload/ee8b9e957376771917077130.pdf",
+        "type": "Engineer's Certificate",
+        "quarter": "Jan 2026 - Mar 2026"
+      },
       {
         "link": "https://www.rera.mp.gov.in/upload/project_upload/2460bf211672914411476d4d.pdf",
         "type": "Engineer's Certificate",

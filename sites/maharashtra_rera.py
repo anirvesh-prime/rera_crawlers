@@ -37,10 +37,10 @@ from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.captcha_solver import solve_captcha_from_page, wait_for_captcha_canvas
 from core.config import settings
 from core.crawler_base import generate_project_key, random_delay, safe_get
-from core.db import upsert_project, insert_crawl_error
+from core.db import get_project_by_key, upsert_project, insert_crawl_error
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
-from core.project_normalizer import get_machine_context, merge_data_sections, normalize_project_payload
+from core.project_normalizer import build_document_urls, get_machine_context, merge_data_sections, normalize_project_payload
 
 LISTING_URL  = "https://maharera.maharashtra.gov.in/projects-search-result"
 DETAIL_BASE  = "https://maharerait.maharashtra.gov.in"
@@ -389,19 +389,31 @@ def _parse_mh_promoter_tab(soup: BeautifulSoup, out: dict) -> None:
         pairs = _extract_col4_pairs(proj_addr_container)
         loc = dict(out.get("project_location_raw") or {})
         _PROJ_ADDR_MAP = {
+            "street name": "street_name",
             "locality": "locality", "state/ut": "state", "district": "district",
             "taluka": "taluk", "village": "village", "pin code": "pin_code",
         }
         for lbl, field in _PROJ_ADDR_MAP.items():
             if lbl in pairs:
                 loc[field] = pairs[lbl]
-        try:
-            if "longitude :" in pairs:
-                loc["longitude"] = float(pairs["longitude :"])
-            if "latitude :" in pairs:
-                loc["latitude"] = float(pairs["latitude :"])
-        except (ValueError, TypeError):
-            pass
+        # Lat/lng labels on the Angular page are NOT .col-4, so they don't appear
+        # in the col4 pairs dict. Scan non-col-4 form labels in the same container.
+        for lbl_el in proj_addr_container.select("label.form-label:not(.col-4)"):
+            parent = lbl_el.find_parent()
+            val_el = parent.select_one(".f-w-700") if parent else None
+            if val_el:
+                label = lbl_el.get_text(strip=True).lower()
+                value = val_el.get_text(strip=True)
+                if "longitude" in label and value:
+                    try:
+                        loc["longitude"] = float(value)
+                    except (ValueError, TypeError):
+                        pass
+                elif "latitude" in label and value:
+                    try:
+                        loc["latitude"] = float(value)
+                    except (ValueError, TypeError):
+                        pass
         if loc:
             out["project_location_raw"] = loc
         if pairs.get("district"):
@@ -417,7 +429,11 @@ def _parse_mh_promoter_tab(soup: BeautifulSoup, out: dict) -> None:
         for key, val in pairs.items():
             if key.startswith("name of") and val:
                 out.setdefault("promoter_name", val)
-                out["promoters_details"] = {"name": val}
+                promoters: dict = {"name": val}
+                type_of_firm = pairs.get("promoter type", "")
+                if type_of_firm:
+                    promoters["type_of_firm"] = type_of_firm
+                out["promoters_details"] = promoters
                 break
 
     # ── Promoter Official Communication Address ───────────────────────────────
@@ -427,7 +443,9 @@ def _parse_mh_promoter_tab(soup: BeautifulSoup, out: dict) -> None:
         _PROMO_ADDR_MAP = {
             "unit number": "house_no_building_name",
             "building name": "building_name",
-            "landmark": "locality",
+            "street name": "street_name",
+            "locality": "locality",
+            "landmark": "landmark",
             "state/ut": "state",
             "district": "district",
             "taluka": "taluk",
@@ -611,22 +629,80 @@ def _parse_mh_partner_tables(soup: BeautifulSoup, out: dict) -> None:
                 out.setdefault("professional_information", profs)
 
 
+# Table header signatures used to identify each document table on the Angular page.
+# The Angular app constructs download URLs via JS at runtime — they are not present in
+# the static HTML. We extract type + filename from the rendered table cells instead.
+_DOC_TABLE_SIGNATURES: list[tuple[str, str, int]] = [
+    # (heading_keyword, doc_type_col_header_keyword, filename_col_header_keyword)
+    # Each entry: match if any th lower() contains heading_keyword in that table.
+    # Columns: (type_col_idx, name_col_idx) resolved at parse time.
+]
+
+
 def _parse_mh_documents_tab(soup: BeautifulSoup, out: dict) -> None:
-    """Collect document links rendered in the Angular page."""
+    """Collect document metadata rendered in the Angular page.
+
+    The Angular app builds download URLs via JavaScript at runtime, so they are
+    absent from the static HTML. We first try to find actual href links (in case
+    a future site update embeds them), then fall back to scraping document
+    type + filename from all rendered document tables.
+    """
     docs: list[dict] = []
-    seen: set[str] = set()
+    seen_links: set[str] = set()
+
+    # ── Primary: real href links (present in some older Angular versions) ──────
     for a in soup.select("a[href]"):
         href = a.get("href", "")
-        if not href or href in seen or href.startswith("javascript"):
+        if not href or href in seen_links or href.startswith("javascript"):
             continue
         if any(kw in href for kw in ("/download", "/dms", ".pdf", "documentId", "/doc/")):
             abs_url = href if href.startswith("http") else f"{DETAIL_BASE}{href}"
             label = a.get_text(strip=True) or a.get("title", "Document") or "Document"
-            seen.add(href)
-            docs.append({"label": label, "url": abs_url})
+            seen_links.add(href)
+            docs.append({"type": label, "link": abs_url})
+
+    # ── Fallback: extract type + filename from document tables ─────────────────
+    if not docs:
+        _SKIP = {"no records found", "no record found", "total", "#", "view", ""}
+        seen_names: set[str] = set()
+
+        for table in soup.select("table"):
+            headers = [th.get_text(strip=True).lower() for th in table.select("thead th")]
+            if not headers:
+                continue
+
+            # Identify type and filename column indices
+            type_idx: Optional[int] = None
+            name_idx: Optional[int] = None
+            for i, h in enumerate(headers):
+                if any(k in h for k in ("document type", "uploaded documents", "document name")):
+                    type_idx = i
+                elif any(k in h for k in ("file name", "uploaded file")):
+                    name_idx = i
+
+            if type_idx is None and name_idx is None:
+                continue
+
+            for tr in table.select("tbody tr"):
+                cells = [td.get_text(strip=True) for td in tr.select("td")]
+                doc_type = cells[type_idx].strip() if type_idx is not None and type_idx < len(cells) else ""
+                filename  = cells[name_idx].strip()  if name_idx  is not None and name_idx  < len(cells) else ""
+
+                if not filename or filename.lower() in _SKIP:
+                    continue
+                if filename in seen_names:
+                    continue
+                seen_names.add(filename)
+
+                entry: dict = {"type": doc_type or "Document", "filename": filename}
+                docs.append(entry)
+
     if docs:
         out["uploaded_documents"] = docs
-        out["document_urls"] = [{"type": d["label"], "link": d["url"]} for d in docs]
+        # Only build document_urls when actual hrefs are available
+        link_docs = [d for d in docs if d.get("link")]
+        if link_docs:
+            out["document_urls"] = build_document_urls(link_docs)
 
 
 def _extract_mh_html_fields(page, cert_id: str, logger: CrawlerLogger) -> dict:
@@ -813,6 +889,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             detail_url  = raw.pop("view_details_url", None)
             cert_id     = raw.pop("certificate_id", None)
             project_url = detail_url or url
+
+            # ── daily_light: skip projects already in the DB ──────────────────
+            if mode == "daily_light" and get_project_by_key(key):
+                counters["projects_skipped"] += 1
+                continue
+
             logger.set_project(key=key, reg_no=reg_no, url=project_url, page=page_no)
             try:
                 # ── Detail page enrichment via Playwright HTML scrape ────────
@@ -838,6 +920,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         "domain": DOMAIN,
                         "url":    project_url,
                         "state":  config.get("state", "Maharashtra"),
+                        "is_live": True,
                     }
                     # Merge data JSONB sections (listing data + detail API raw data)
                     if "data" in detail_fields and "data" in raw:

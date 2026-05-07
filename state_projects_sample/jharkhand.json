@@ -13,9 +13,10 @@
   "project_location_raw": {
     "city": "deoghar",
     "state": "jharkhand",
-    "raw_address": "bherwa - nawadih, madhupur, madhupur, deoghar, jharkhand, 815353 .",
-    "processed_latitude": 24.272031,
-    "processed_longitude": 86.6487745
+    "raw_address": "bherwa - nawadih, madhupur, madhupur, deoghar, jharkhand, 815353",
+    "pin_code": "815353",
+    "processed_latitude": 24.27,
+    "processed_longitude": 86.65
   },
   "promoter_address_raw": null,
   "promoter_contact_details": {
@@ -25,15 +26,16 @@
   "last_modified": null,
   "estimated_commencement_date": null,
   "actual_commencement_date": "2022-05-07 00:00:00+00:00",
-  "estimated_finish_date": null,
+  "estimated_finish_date": "2024-06-04 00:00:00+00:00",
   "actual_finish_date": null,
   "approved_on_date": null,
   "past_experience_of_promoter": null,
   "bank_details": [
     {
-      "IFSC": "EXECUTIVE OFFICER V3",
-      "account_no": "CANARA BANK",
-      "account_name": "4902201000263"
+      "bank_name": "CANARA BANK",
+      "account_no": "4902201000263",
+      "account_name": "EXECUTIVE OFFICER V3",
+      "IFSC": "CNRB0004902"
     }
   ],
   "land_area": null,

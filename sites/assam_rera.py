@@ -170,13 +170,21 @@ def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
         def cell_link(idx: int, pattern: str | None = None) -> str | None:
             if idx >= len(cells):
                 return None
-            for a in cells[idx].find_all("a", href=True):
+            cell = cells[idx]
+            # Check <a href> tags first
+            for a in cell.find_all("a", href=True):
                 href = a["href"].strip()
                 if href.startswith("javascript"):
                     continue
                 if pattern and pattern not in href:
                     continue
                 return urljoin(BASE_URL, href)
+            # Assam RERA uses <form action> (POST) for certificate links
+            for form in cell.find_all("form", action=True):
+                action = form["action"].strip()
+                if pattern and pattern not in action:
+                    continue
+                return urljoin(BASE_URL, action)
             return None
 
         # Col 1: reg number + detail link
@@ -311,13 +319,19 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:
                 d = _normalize_date_str(txt)
                 if d and "approved_on_date" not in out:
                     out["approved_on_date"] = d
-            # Find certificate link
+            # Find certificate link — site uses <form action> (POST), not <a href>
             for cell in cells:
                 for a in cell.find_all("a", href=True):
                     href = a["href"]
                     if "view_certificate" in href:
                         out["cert_url"] = urljoin(BASE_URL, href)
                         break
+                if "cert_url" not in out:
+                    for form in cell.find_all("form", action=True):
+                        action = form["action"]
+                        if "view_certificate" in action:
+                            out["cert_url"] = urljoin(BASE_URL, action)
+                            break
         break
 
     return {k: v for k, v in out.items() if v not in (None, "", {}, [])}
@@ -696,7 +710,9 @@ def _parse_form_a(html: str, form_a_url: str) -> dict:
         parts = [p.strip() for p in bank_and_branch_raw.split(",")]
         bank["bank_name"] = parts[0]
         if len(parts) > 1:
-            bank["branch"] = parts[1]
+            # Join all segments after the bank name to preserve the full branch address
+            # e.g. "STATE BANK OF INDIA, 1ST FLOOR, DD TOWER, CHRISTIAN BASTI, GS ROAD..."
+            bank["branch"] = ", ".join(parts[1:])
     # Remaining fields via label matching
     extra_bank_map = {
         "bank account":   "account_no",
@@ -969,6 +985,8 @@ def _handle_document(
         # documents store the source URL under "link" — preserve it explicitly.
         if result is not None and not result.get("link"):
             result["link"] = url
+        logger.info("Document uploaded", doc_type=doc_type, s3_key=s3_key, step="documents")
+        logger.log_document(doc_type, url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
         return result
     except Exception as exc:
         logger.warning("Document handling error", url=url, error=str(exc))
@@ -981,8 +999,9 @@ def _handle_document(
 def _sentinel_check(config: dict, logger: "CrawlerLogger", run_id: int) -> bool:
     """
     Data-quality sentinel for Assam RERA.
-    Loads state_projects_sample/assam.json as the baseline, re-scrapes the
-    sentinel project's detail page, and verifies ≥ 80% field coverage.
+    Full-flow check: fetches the sentinel project's searchprojectDetail page AND its
+    project_preview_open (Form-A) page, merges all three sources via _build_payload()
+    (same as run()), and verifies ≥ 80% field coverage against the full baseline.
     """
     import json as _json
     import os as _os
@@ -1022,7 +1041,46 @@ def _sentinel_check(config: dict, logger: "CrawlerLogger", run_id: int) -> bool:
             )
             return False
 
-        fresh = _parse_detail_page(resp.text, sentinel_url) or {}
+        detail = _parse_detail_page(resp.text, sentinel_url) or {}
+
+        # Build a minimal stub (listing-level fields sourced from baseline)
+        stub = {
+            "project_registration_no": sentinel_reg_no,
+            "project_name":            baseline.get("project_name") or detail.get("project_name", ""),
+            "promoter_name":           baseline.get("promoter_name", ""),
+            "project_location_raw_address": (
+                (baseline.get("project_location_raw") or {}).get("raw_address", "")
+            ),
+            "project_city":            baseline.get("project_city", ""),
+            "approved_on_date":        baseline.get("approved_on_date", ""),
+            "estimated_finish_date":   baseline.get("estimated_finish_date", ""),
+            "detail_url":              sentinel_url,
+            "internal_id":             sentinel_url.rstrip("/").split("/")[-1],
+        }
+
+        # ── Fetch Form-A (project_preview_open) for full field coverage ───────
+        form_a_url = detail.get("form_a_url", "")
+        internal_id = stub["internal_id"]
+        if not form_a_url and internal_id:
+            form_a_url = f"{BASE_URL}/view_project/project_preview_open/{internal_id}"
+
+        form_a: dict = {}
+        if form_a_url:
+            logger.info("Sentinel: fetching Form-A", url=form_a_url, step="sentinel")
+            try:
+                resp_form = safe_get(form_a_url, logger=logger, timeout=60.0)
+                if resp_form:
+                    form_a = _parse_form_a(resp_form.text, form_a_url) or {}
+                    logger.info(f"Sentinel: Form-A parsed ({len(form_a)} fields)", step="sentinel")
+                else:
+                    logger.warning("Sentinel: Form-A fetch failed — proceeding without it",
+                                   url=form_a_url, step="sentinel")
+            except Exception as exc:
+                logger.warning(f"Sentinel: Form-A error — {exc}", step="sentinel")
+
+        # ── Merge stub + detail + form_a (same as run()) ──────────────────────
+        fresh = _build_payload(stub, detail, form_a, config.get("config_id", 0))
+
     except Exception as exc:
         logger.error("Sentinel check raised an exception", error=str(exc))
         insert_crawl_error(
@@ -1271,6 +1329,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                 # ── Merge + normalize ──────────────────────────────────────
                 raw_payload = _build_payload(stub, detail, form_a, config_id)
+                raw_payload["is_live"] = True
                 payload = normalize_project_payload(
                     raw_payload, config,
                     machine_name=machine_name,

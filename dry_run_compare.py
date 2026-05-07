@@ -136,7 +136,11 @@ def _listing_patches_pondicherry(module, sample_url: str, reg_no: str, sample: d
 
 def _listing_patches_bihar(module, sample_url: str, reg_no: str, sample: dict) -> list:
     from core.crawler_base import safe_get as _real_safe_get
-    from sites.bihar_rera import LISTING_URL as _BIHAR_LISTING_URL, DOMAIN as _BIHAR_DOMAIN
+    from sites.bihar_rera import (
+        LISTING_URL as _BIHAR_LISTING_URL,
+        DOMAIN as _BIHAR_DOMAIN,
+        _GRID_ID as _BIHAR_GRID_ID,
+    )
 
     # The sample's "url" field is just the Bihar RERA homepage, not a Filanprint URL.
     # Derive the actual Filanprint detail URL from the uploaded_documents links.
@@ -164,16 +168,6 @@ def _listing_patches_bihar(module, sample_url: str, reg_no: str, sample: dict) -
         if rerap_id:
             filanprint_url = f"https://{_BIHAR_DOMAIN}/Filanprint.aspx?id={rerap_id}"
 
-    # Return fake HTML only for the listing page (satisfies the "if not resp: return"
-    # guard in bihar_rera.run), but let the real safe_get through for the Filanprint
-    # detail URL so that _parse_detail_page sees actual HTML and extracts all fields.
-    _fake_listing_resp = MagicMock(text="<html><body></body></html>", status_code=200)
-
-    def _conditional_safe_get(url, **kwargs):
-        if url == _BIHAR_LISTING_URL:
-            return _fake_listing_resp
-        return _real_safe_get(url, **kwargs)
-
     row = {
         "project_name":            sample.get("project_name", ""),
         "project_registration_no": reg_no,
@@ -181,6 +175,30 @@ def _listing_patches_bihar(module, sample_url: str, reg_no: str, sample: dict) -
         "project_location_raw":    sample.get("project_location_raw") or {},
         "submitted_date":          sample.get("submitted_date", ""),
     }
+
+    # The sentinel checks soup.find("table", id=_GRID_ID) before calling
+    # _parse_page_rows (which is patched). The fake listing HTML must include
+    # the grid table stub so the sentinel's structural check passes.
+    # The actual row content is irrelevant — _parse_page_rows is patched to
+    # always return [row].
+    _fake_listing_html = (
+        "<html><body>"
+        f'<table id="{_BIHAR_GRID_ID}">'
+        "<tr><th>Project Name</th><th>Reg No</th>"
+        "<th>Promoter</th><th>Address</th><th>Date</th></tr>"
+        f"<tr><td>{row['project_name']}</td><td>{reg_no}</td>"
+        f"<td>{row['promoter_name']}</td><td></td><td></td></tr>"
+        "</table></body></html>"
+    )
+    _fake_listing_resp = MagicMock(text=_fake_listing_html, status_code=200)
+
+    # Return real safe_get for the Filanprint detail URL so _parse_detail_page
+    # sees actual live HTML and extracts all fields correctly.
+    def _conditional_safe_get(url, **kwargs):
+        if url == _BIHAR_LISTING_URL:
+            return _fake_listing_resp
+        return _real_safe_get(url, **kwargs)
+
     return [
         patch.object(module, "_collect_detail_urls", return_value=[filanprint_url]),
         patch.object(module, "_parse_page_rows",     return_value=[row]),
@@ -256,13 +274,13 @@ def _listing_patches_maharashtra(module, sample_url: str, reg_no: str, sample: d
 
 
 def _listing_patches_gujarat(module, sample_url: str, reg_no: str, sample: dict) -> list:
-    """Bypass the district-listing phase and directly inject the sample project ID.
+    """Bypass the map-API listing phase and directly inject the sample project ID.
 
     Gujarat's run() has two phases:
-      Phase 1 — _scrape_listing_district() → list[int]  (project IDs)
-      Phase 2 — scrape each detail page
+      Phase 1 — _fetch_all_project_ids(page, logger) → list[int]  (all project IDs)
+      Phase 2 — scrape each detail page via Playwright
 
-    We patch _scrape_listing_district to return only the known-good project ID
+    We patch _fetch_all_project_ids to return only the known-good project ID
     extracted from the sample's data.project_id (base64-encoded integer).
     """
     import base64, re as _re
@@ -289,11 +307,11 @@ def _listing_patches_gujarat(module, sample_url: str, reg_no: str, sample: dict)
         print("  [GUJARAT] Could not determine project ID from sample — Phase 1 will run normally")
         return []
 
-    print(f"  [GUJARAT] Injecting project ID {proj_id} directly (bypassing district listing)")
+    print(f"  [GUJARAT] Injecting project ID {proj_id} directly (bypassing map-API listing)")
     return [
-        # Limit to one district so _scrape_listing_district is called only once
-        patch.object(module, "GUJARAT_DISTRICTS", ["Surat"]),
-        patch.object(module, "_scrape_listing_district", return_value=[proj_id]),
+        # Patch _fetch_all_project_ids (the new map-API listing function) to return
+        # only the sample project ID — avoids fetching the full ~14 MB locations payload.
+        patch.object(module, "_fetch_all_project_ids", return_value=[proj_id]),
     ]
 
 
@@ -348,6 +366,8 @@ def _listing_patches_delhi(module, sample_url: str, reg_no: str, sample: dict) -
         "project_location_raw":     loc or None,
         "promoter_address_raw":     prom_addr or None,
         "promoter_contact_details": contact or None,
+        # data: carry the listing-level data blob (email, cert link, lat/long, etc.)
+        "data":                     sample.get("data") or None,
         # Fake (truthy) secondary-fetch URLs so the run() enrichment branches fire.
         # _delhi_get is patched below to return a non-None mock, and the parsers
         # are patched to return the sample data directly.
@@ -363,7 +383,11 @@ def _listing_patches_delhi(module, sample_url: str, reg_no: str, sample: dict) -
         calls[0] += 1
         # Allow 2 calls: 1 consumed by _sentinel_check's structural page-0 check,
         # 1 consumed by the main run() pagination loop.
-        return [stub] if calls[0] <= 2 else []
+        # Return a shallow copy each time so _sentinel_check's pop() calls do not
+        # mutate the stub that run() will later process (both share the same dict
+        # reference without the copy, causing the secondary-fetch URLs to disappear
+        # before run() can use them).
+        return [dict(stub)] if calls[0] <= 2 else []
 
     # Secondary-fetch mocks: return sample data without hitting the live site.
     _members        = sample.get("members_details") or []
@@ -380,32 +404,53 @@ def _listing_patches_delhi(module, sample_url: str, reg_no: str, sample: dict) -
         "project_cost_detail":         sample.get("project_cost_detail"),
         "professional_information":    sample.get("professional_information"),
         "uploaded_documents":          sample.get("uploaded_documents") or [],
+        # project_images is now extracted from the jssor_1 slider by
+        # _parse_project_page — mirror it here so dry-run matches the sample.
+        "project_images":              sample.get("project_images"),
+        # building_details / land_area_details are not scraped by the current
+        # _parse_project_page but exist in the sample from an older crawl —
+        # inject them so the dry run mirrors the expected DB state.
+        "building_details":            sample.get("building_details"),
+        "land_area_details":           sample.get("land_area_details"),
     }.items() if v not in (None, "", [], {})}
 
     # _delhi_get must return a truthy response so the "if dir_resp:" / "if proj_resp:"
     # guards inside run() let execution reach the parser calls.
+    # Also patch _extract_submitted_qprs_url so the new QPR→node_id derivation
+    # branch in run() and _sentinel_check() does not fire (the stub already has
+    # a truthy _project_page_url so proj_page_url is never None in dry-run mode).
     fake_resp = MagicMock()
     fake_resp.text = ""
 
+    # Return a fresh shallow copy each time so that _sentinel_check()'s
+    # pop("uploaded_documents") calls do not mutate the dict that run() will
+    # later consume (both share the same object if return_value= is used).
+    def _fake_project_page(_html):
+        return dict(_project_page_data)
+
     return [
-        patch.object(module, "_parse_listing_page",  side_effect=_fake_parse),
-        patch.object(module, "_has_next_page",        return_value=False),
-        patch.object(module, "_delhi_get",            return_value=fake_resp),
-        patch.object(module, "_parse_directors_page", return_value=_members),
-        patch.object(module, "_parse_qpr_history",    return_value=_status_updates),
-        patch.object(module, "_parse_project_page",   return_value=_project_page_data),
+        patch.object(module, "_parse_listing_page",        side_effect=_fake_parse),
+        patch.object(module, "_has_next_page",              return_value=False),
+        patch.object(module, "_delhi_get",                  return_value=fake_resp),
+        patch.object(module, "_parse_directors_page",       return_value=_members),
+        patch.object(module, "_parse_qpr_history",          return_value=_status_updates),
+        patch.object(module, "_extract_submitted_qprs_url", return_value=None),
+        patch.object(module, "_parse_project_page",         side_effect=_fake_project_page),
     ]
 
 
 def _listing_patches_tamil_nadu(module, sample_url: str, reg_no: str, sample: dict) -> list:
     data = sample.get("data") or {}
     stub = {
-        "project_registration_no": reg_no,
-        "detail_url":              sample_url,
-        "promoter_url":            data.get("promoter_url", "") or "",
-        "form_c_url":              data.get("form_c", "") or "",
-        "project_name":            sample.get("project_name", ""),
-        "promoter_name":           sample.get("promoter_name", ""),
+        "project_registration_no":  reg_no,
+        "detail_url":               sample_url,
+        "promoter_url":             data.get("promoter_url", "") or "",
+        "form_c_url":               data.get("form_c", "") or "",
+        "project_name":             sample.get("project_name", ""),
+        "promoter_name":            sample.get("promoter_name", ""),
+        # TNRERA registration date from the listing ("dated DD-MM-YYYY" in the reg number
+        # cell) is used as the estimated commencement date.  Mirror this from the sample.
+        "estimated_commencement_date": sample.get("estimated_commencement_date") or "",
     }
     return [
         patch.object(module, "_get_year_listing_urls", return_value=["https://rera.tn.gov.in/_dry_run_sample"]),
@@ -467,10 +512,15 @@ def _listing_patches_goa(module, sample_url: str, reg_no: str, sample: dict) -> 
 
 
 def _listing_patches_tripura(module, sample_url: str, reg_no: str, sample: dict) -> list:
+    # Mirror the fields that the real _parse_listing_rows extracts from the live listing.
+    # Crucially, the listing table column header is "Total Area of Land (Sq.Mtr.)" so
+    # land_area_unit is always "sq Mtr" from the listing — even when the detail page
+    # contains a promoter data-entry error (e.g. "sq ft").
     stub = {
         "project_registration_no": reg_no,
         "detail_url":              sample_url,
         "project_name":            sample.get("project_name", ""),
+        "land_area_unit":          "sq Mtr",   # from listing column header "(Sq.Mtr.)"
     }
     calls = [0]
 
@@ -771,9 +821,41 @@ def _listing_patches_telangana(module, sample_url: str, reg_no: str, sample: dic
     ]
 
 
+def _listing_patches_karnataka(module, sample_url: str, reg_no: str, sample: dict) -> list:
+    """Inject the Karnataka sample project by patching _extract_listing_rows.
+
+    Karnataka has no per-project URLs — all detail fetches use a POST with an
+    acknowledgement number.  The ACK number for the sample is stored in the
+    sample JSON (acknowledgement_no field).  We:
+      1. Restrict DISTRICTS to just 'Bengaluru Urban' (district of the sample).
+      2. Patch _extract_listing_rows to return a single row with the sample's ACK.
+    """
+    ack_no = sample.get("acknowledgement_no", "ACK/KA/RERA/1248/469/PR/110223/006823")
+    loc = sample.get("project_location_raw") or {}
+    district = loc.get("district", "Bengaluru Urban")
+    stub = {
+        "acknowledgement_no":      ack_no,
+        "project_registration_no": ack_no,
+        "project_name":            sample.get("project_name", ""),
+        "promoter_name":           sample.get("promoter_name", ""),
+        "promoter_registration_no": None,
+        "project_city":            district.upper(),
+        "project_location_raw":    {"district": district},
+        "data": {
+            "search_district":        district,
+            "promoter_registration_no": None,
+            "listing_fallback":       True,
+        },
+    }
+    return [
+        # Only search the sample's district instead of all 31
+        patch.object(module, "DISTRICTS", [district]),
+        # Return only the sample row — skips the actual POST
+        patch.object(module, "_extract_listing_rows", return_value=[stub]),
+    ]
+
+
 # Map site_id → listing injector.
-# Sites NOT listed here (karnataka_rera) have no injector:
-#   karnataka uses ack_no-based POSTs (not derivable from sample URL).
 _LISTING_INJECTORS: dict = {
     "kerala_rera":         _listing_patches_kerala,
     "rajasthan_rera":      _listing_patches_rajasthan,
@@ -798,6 +880,7 @@ _LISTING_INJECTORS: dict = {
     "uttarakhand_rera":         _listing_patches_uttarakhand,
     "uttar_pradesh_rera":       _listing_patches_uttar_pradesh,
     "himachal_pradesh_rera":    _listing_patches_himachal_pradesh,
+    "karnataka_rera":           _listing_patches_karnataka,
 }
 
 

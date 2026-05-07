@@ -398,9 +398,8 @@
       "updated": true
     },
     {
-      "type": "Brochure 1",
       "link": "https://www.rera.mp.gov.in/upload/project_upload/59e2bf1441474481143d2bf3.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
+      "type": "4 Brochure",
       "updated": true
     },
     {
@@ -424,9 +423,8 @@
       "updated": true
     },
     {
-      "type": "Common Area facilities 1",
       "link": "https://www.rera.mp.gov.in/upload/project_upload/357511715313.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
+      "type": "8 Common Area Facilities",
       "updated": true
     },
     {
@@ -440,9 +438,8 @@
       "updated": true
     },
     {
-      "type": "Development work plan 1",
       "link": "https://www.rera.mp.gov.in/upload/project_upload/117782111521.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
+      "type": "11 Development Work Plan",
       "updated": true
     },
     {
@@ -471,39 +468,33 @@
       "updated": true
     },
     {
-      "type": "Project Specifications 1",
       "link": "https://www.rera.mp.gov.in/upload/project_upload/135331333777.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
+      "type": "17 Project Specifications",
       "updated": true
     },
     {
-      "type": "Building Plan 1",
       "link": "https://www.rera.mp.gov.in/upload/project_upload/8a7bfb112542124224ba2ce3.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
+      "type": "Sanction Building Plan 1",
       "updated": true
     },
     {
-      "type": "Building Plan 2",
       "link": "https://www.rera.mp.gov.in/upload/project_upload/c80cc61113754741518457bc.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
+      "type": "Sanction Building Plan 2",
       "updated": true
     },
     {
-      "type": "Building Plan 3",
       "link": "https://www.rera.mp.gov.in/upload/project_upload/17105045300sanctionbuildingplan.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
+      "type": "Sanction Building Plan 3",
       "updated": true
     },
     {
-      "type": "Layout Plan 1",
       "link": "https://www.rera.mp.gov.in/upload/project_upload/0a2e18711311342123d3f236.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
+      "type": "Sanction Layout Plan 1",
       "updated": true
     },
     {
-      "type": "Layout Plan 2",
       "link": "https://www.rera.mp.gov.in/upload/project_upload/155111714111.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
+      "type": "Sanction Layout Plan 2",
       "updated": true
     },
     {
@@ -537,9 +528,8 @@
       "updated": true
     },
     {
-      "type": "Brochure 2",
       "link": "https://www.rera.mp.gov.in/upload/project_upload/615411175181.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
+      "type": "26 Schedule F (Draft Brochure)",
       "updated": true
     },
     {
@@ -558,9 +548,8 @@
       "updated": true
     },
     {
-      "type": "Engineer Certificate 1",
       "link": "https://www.rera.mp.gov.in/upload/project_upload/6b3cd015133754711773007d.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
+      "type": "30 Engineer's Certificate",
       "updated": true
     },
     {
@@ -574,52 +563,7 @@
       "updated": true
     }
   ],
-  "document_urls": [
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Brochure 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Common Area facilities 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Development work plan 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Project Specifications 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Building Plan 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Building Plan 2"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Building Plan 3"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Layout Plan 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Layout Plan 2"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Brochure 2"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Engineer Certificate 1"
-    }
-  ],
+  "document_urls": null,
   "acknowledgement_no": null,
   "project_pin_code": null,
   "submitted_date": null,

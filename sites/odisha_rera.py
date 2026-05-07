@@ -856,15 +856,16 @@ def _parse_bank_accounts(soup: BeautifulSoup) -> list[dict]:
 
 # ── Sentinel check ────────────────────────────────────────────────────────────
 
-def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger, page: Page) -> bool:
+def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger, _page: "Page | None" = None) -> bool:
     """
     Data-quality sentinel for Odisha RERA.
-    Loads state_projects_sample/odisha.json as the baseline, navigates to the
-    sentinel project's detail page via the supplied Playwright page, parses the
-    Overview tab, and verifies ≥ 80% field coverage.
+    Loads state_projects_sample/odisha.json as the baseline, spawns its own
+    Playwright browser (same as run() does), navigates to the sentinel project's
+    detail page, parses the Overview tab, and verifies ≥ 80% field coverage.
     """
     import json as _json
     import os as _os
+    from playwright.sync_api import sync_playwright
     from core.sentinel_utils import check_field_coverage
 
     sentinel_reg = config.get("sentinel_registration_no", "")
@@ -892,9 +893,14 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger, page: Page
     logger.info(f"Sentinel: navigating to detail for {sentinel_reg}",
                 url=detail_url, step="sentinel")
     try:
-        page.goto(detail_url, wait_until="networkidle", timeout=40_000)
-        _wait_for_loaders(page)
-        soup  = BeautifulSoup(page.content(), "lxml")
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            ctx     = browser.new_context(ignore_https_errors=True)
+            _page   = ctx.new_page()
+            _page.goto(detail_url, wait_until="networkidle", timeout=60_000)
+            _wait_for_loaders(_page)
+            soup  = BeautifulSoup(_page.content(), "lxml")
+            browser.close()
         fresh = _parse_overview(soup)
         fresh.pop("_doc_links", None)
         fresh.pop("data", None)
@@ -942,8 +948,9 @@ def _handle_document(project_key: str, doc: dict, run_id: int,
                         original_url=document_identity_url(doc) or url, s3_key=s3_key,
                         s3_bucket=settings.S3_BUCKET_NAME, file_name=filename,
                         md5_checksum=md5, file_size_bytes=len(content))
-        page_url = doc.get("source_url") or doc.get("url")
-        logger.info("Document handled", label=label, s3_key=s3_key)
+        page_url = doc.get("url")
+        logger.info("Document handled", label=label, s3_key=s3_key, step="documents")
+        logger.log_document(label, url, "uploaded", s3_key=s3_key, file_size_bytes=len(content))
         return {"type": label, "link": page_url, "s3_link": s3_url}
     except Exception as e:
         logger.error(f"Document failed: {e}", url=url)
@@ -1209,7 +1216,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         "domain":           DOMAIN,
                         "config_id":        config["config_id"],
                         "url":              detail_url,
-                        "is_live":          False,
+                        "is_live":          True,
                         "machine_name":     machine_name,
                         "crawl_machine_ip": machine_ip,
                         **card_data,

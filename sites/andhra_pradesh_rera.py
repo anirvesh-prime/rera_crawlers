@@ -744,6 +744,10 @@ def _parse_professionals(soup: BeautifulSoup) -> list[dict] | None:
             deduped.append(p)
     professionals = deduped
 
+    # Sort by (role, name) to produce a deterministic order regardless of the
+    # sequence in which the portal renders the professional tables.
+    professionals.sort(key=lambda p: (p.get("role", ""), p.get("name", "")))
+
     return professionals or None
 
 
@@ -967,7 +971,11 @@ def _scrape_detail_page(soup: BeautifulSoup, detail_url: str) -> dict:
         raw["number_of_residential_units"] = len(bd)
 
     comm_bd = _parse_commercial_units(soup)
-    raw["number_of_commercial_units"] = len(comm_bd) if comm_bd else 0
+    # Prefer the explicit page label value (captured by label extraction into
+    # raw["number_of_commercial_units"] via _LABEL_MAP) over counting rows from
+    # the commercial-unit table parser, which can false-match other tables.
+    if "number_of_commercial_units" not in raw:
+        raw["number_of_commercial_units"] = len(comm_bd) if comm_bd else 0
 
     # ── Professionals / Members ───────────────────────────────────────────────
     pi = _parse_professionals(soup)
@@ -1029,7 +1037,10 @@ def _handle_document(
         if s3_key is None:
             return None
         s3_url = get_s3_url(s3_key)
-        return document_result_entry(doc, s3_url, filename)
+        label = doc.get("type") or doc.get("label") or "document"
+        logger.info("Document uploaded", label=label, s3_key=s3_key, step="documents")
+        logger.log_document(label, url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
+        return document_result_entry({**doc, "source_url": url}, s3_url, filename)
     except Exception as exc:
         logger.warning("Document handling error", url=url, error=str(exc))
         return None
@@ -1207,6 +1218,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 detail_data["crawl_machine_ip"] = machine_ip
                 detail_data["machine_name"]     = machine_name
                 detail_data["key"]              = project_key
+                detail_data["is_live"]          = True
 
                 # Merge raw data blob with listing info
                 existing_data = detail_data.pop("data", None) or {}

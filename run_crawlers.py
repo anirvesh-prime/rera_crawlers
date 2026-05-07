@@ -262,17 +262,20 @@ def main():
               for k in ("projects_found", "projects_new", "projects_updated",
                         "projects_skipped", "documents_uploaded", "error_count", "elapsed_s")}
 
-    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%S")
-    summary_path = Path(settings.LOG_DIR) / "orchestrator" / f"{ts}_summary.json"
-    summary_path.parent.mkdir(parents=True, exist_ok=True)
-    summary_path.write_text(
-        json.dumps({"mode": args.mode, "started": started.isoformat(),
-                    "sites": summary, "totals": totals}, indent=2, default=str)
-    )
-
     print(f"{_SEP}")
     print(f"  TOTALS  {_fmt_row({'site_id': 'all', 'run_id': 0, **totals})}")
-    print(f"  Summary: {summary_path}")
+
+    # Write summary JSON to disk only when local logging is enabled.
+    if settings.LOG_LOCAL:
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%S")
+        summary_path = Path(settings.LOG_DIR) / "orchestrator" / f"{ts}_summary.json"
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
+        summary_path.write_text(
+            json.dumps({"mode": args.mode, "started": started.isoformat(),
+                        "sites": summary, "totals": totals}, indent=2, default=str)
+        )
+        print(f"  Summary: {summary_path}")
+
     print(f"{_SEP}\n")
 
 

@@ -881,7 +881,7 @@
   "uploaded_documents": [
     {
       "type": "RERA Registration Certificate 1",
-      "link": "https://reraapps.odisha.gov.in/dms/public/library/pdfjsnewds/web/viewer.html?fileId=256149&text=9af8026908e676c723002852bc2909f87475d3746c86453fd9ebb27bec823dd9",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/projectCertificatePdf_1776840665.pdf",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
@@ -950,7 +950,7 @@
     },
     {
       "type": "Approved layout 1",
-      "link": "https://reraapps.odisha.gov.in/dms/public/library/pdfjsnewds/web/viewer.html?fileId=119797&text=4b98f609568e1e4e786b8ddcf53fe25d546b1d91dfec565163dbdfbc96270a7a",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpfFiBVm_1743081751.pdf",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
@@ -963,12 +963,12 @@
     },
     {
       "type": "Approved layout 2",
-      "link": "https://reraapps.odisha.gov.in/dms/public/library/pdfjsnewds/web/viewer.html?fileId=246505&text=d60177c27957aee6416e8b39cb8ba9aa860bbe8208391d90ba53673e24a9eb2f",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpj659yu_1775658592.pdf",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
-      "type": "Site Plan 1",
-      "link": "https://reraapps.odisha.gov.in/dms/public/library/pdfjsnewds/web/viewer.html?fileId=132471&text=314cf526b8ebeaa57c7182627ef82736f0b0efb5eabd83e7801dc8979099da38",
+      "type": "Site Plan",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpCwTlUp_1746877744.pdf",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
@@ -977,7 +977,7 @@
     },
     {
       "type": "Approved layout 3",
-      "link": "https://reraapps.odisha.gov.in/dms/public/library/pdfjsnewds/web/viewer.html?fileId=132472&text=6ebef75720555de3364132262d0c2780712345be75f4639ff157883c8c0af4da",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpMAkexT_1746877753.pdf",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
@@ -1061,11 +1061,11 @@
       "type": "CGW NOC"
     },
     {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpapSOUD_1762965197.pdf",
+      "link": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=205679&text=e234ed872dc9b3067c10a060bb17e8611bebf635e9d90c617c5a4f953c553638",
       "type": "Objection Previous Project & Self Declaration"
     },
     {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php3NbIIl_1762965846.pdf",
+      "link": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=205682&text=635bd50e6cde5cce2ddc1da24e33c4968a10b7407d64fb39659b33a86ee41108",
       "type": "New Address Cotrection Company Registration Certificate"
     },
     {
@@ -1074,27 +1074,27 @@
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpyCywTi_1769078841.pdf",
+      "link": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=228964&text=809c09abf3ad5712640963706828b92f4069b241a464fc6b41b051dd79035d50",
       "type": "Cadastral Map and BeMC Approch Road Letter"
     },
     {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpOlTFfS_1769078974.pdf",
+      "link": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=228965&text=ffde7f81b6e2fa4e97ad19e318160fad6b48150a622cd5c4bbabccbfc04f3bc0",
       "type": "Disha Real Estate New Partnership Deed"
     },
     {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php14siAB_1769079045.pdf",
+      "link": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=228966&text=aa075410f18d869375f0f647359142b536fb4e59f9afd46864c68acc8ce67e74",
       "type": "Fire Affidavit with Undertaking"
     },
     {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpgWlswd_1746877369.pdf",
+      "link": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=132484&text=47b4f78c2b9ba4490be6262ed7c4bdf226df50a54e4adbc5fb48a6dadc33c37e",
       "type": "SCHEDULE ‘A’"
     },
     {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phptwOxrN_1745422555.pdf",
+      "link": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=128070&text=3df7a713b0f6b57210167a5bc7353da3f24d2a7e0bf09edd6821c0b13499a273",
       "type": "SCHEDULE ‘B’"
     },
     {
-      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpvN27oD_1748247723.pdf",
+      "link": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=135488&text=d2e54c3151baad02b95d55a7a62c56fbcdd765a352bf3c029d838a244f9eba7d",
       "type": "SCHEDULE ‘C’"
     }
   ],
@@ -1113,7 +1113,7 @@
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Site Plan 1"
+      "type": "Site Plan"
     },
     {
       "link": "https://s3.example.com/dry-run",
@@ -1123,5 +1123,42 @@
       "link": "https://s3.example.com/dry-run",
       "type": "approval letter 1"
     }
-  ]
+  ],
+  "status_of_the_project": null,
+  "acknowledgement_no": null,
+  "project_pin_code": null,
+  "project_city": null,
+  "submitted_date": null,
+  "last_modified": null,
+  "estimated_commencement_date": null,
+  "actual_commencement_date": null,
+  "estimated_finish_date": null,
+  "actual_finish_date": null,
+  "approved_on_date": null,
+  "past_experience_of_promoter": null,
+  "land_area": null,
+  "construction_area": null,
+  "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
+  "number_of_commercial_units": null,
+  "complaints_litigation_details": null,
+  "authorised_signatory_details": null,
+  "project_description": null,
+  "development_agreement_detail": null,
+  "construction_progress": null,
+  "members_details": null,
+  "retrieved_on": null,
+  "last_updated": null,
+  "updated_fields": null,
+  "project_images": null,
+  "detail_images": null,
+  "lister_images": null,
+  "images": null,
+  "old_updates": null,
+  "iw_part_processed": null,
+  "last_crawled_date": null,
+  "land_area_details": null,
+  "doc_ocr_url": null,
+  "checked_updates_date": null,
+  "alternative_rera_ids": null
 }

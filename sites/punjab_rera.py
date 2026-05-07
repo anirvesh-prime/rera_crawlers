@@ -31,10 +31,18 @@ from core.checkpoint import reset_checkpoint
 from core.captcha_solver import captcha_to_text
 from core.crawler_base import generate_project_key, random_delay
 from core.config import settings
-from core.db import upsert_project, insert_crawl_error
+from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error
+from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
-from core.project_normalizer import get_machine_context, normalize_project_payload
+from core.project_normalizer import (
+    build_document_filename,
+    build_document_urls,
+    document_result_entry,
+    get_machine_context,
+    normalize_project_payload,
+)
+from core.s3 import compute_md5, upload_document, get_s3_url
 
 LISTING_URL   = "https://rera.punjab.gov.in/reraindex/publicview/projectinfo"
 SEARCH_URL    = "https://rera.punjab.gov.in/reraindex/PublicView/ProjectPVregdprojectInfo"
@@ -798,6 +806,53 @@ def _fetch_detail_fields(session: httpx.Client, row: dict, logger: CrawlerLogger
         return {}
 
 
+# ── Document download + S3 upload ────────────────────────────────────────────
+
+def _handle_document(
+    project_key: str,
+    doc: dict,
+    run_id: int,
+    site_id: str,
+    logger: CrawlerLogger,
+    client: httpx.Client,
+) -> dict | None:
+    """Download one document, upload to S3, persist to DB. Returns enriched entry or None."""
+    url = doc.get("link")
+    label = doc.get("type") or "document"
+    if not url:
+        return None
+    fname = build_document_filename({"url": url, "label": label})
+    try:
+        resp = client.get(url, headers={"Referer": LISTING_URL}, timeout=60.0)
+        if not resp or len(resp.content) < 100:
+            logger.warning("Document download empty or failed", url=url, step="documents")
+            return None
+        data = resp.content
+        md5 = compute_md5(data)
+        s3_key = upload_document(project_key, fname, data, dry_run=settings.DRY_RUN_S3)
+        if s3_key is None:
+            return None
+        s3_url = get_s3_url(s3_key)
+        upsert_document(
+            project_key=project_key,
+            document_type=label,
+            original_url=url,
+            s3_key=s3_key,
+            s3_bucket=settings.S3_BUCKET_NAME,
+            file_name=fname,
+            md5_checksum=md5,
+            file_size_bytes=len(data),
+        )
+        logger.info("Document uploaded", label=label, s3_key=s3_key, step="documents")
+        logger.log_document(label, url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
+        return document_result_entry({**doc, "url": url}, s3_url, fname)
+    except Exception as exc:
+        logger.warning(f"Document handling error: {exc}", url=url, step="documents")
+        insert_crawl_error(run_id, site_id, "S3_UPLOAD_FAILED", str(exc),
+                           project_key=project_key, url=url)
+        return None
+
+
 # ── Main entry point ──────────────────────────────────────────────────────────
 
 def run(config: dict, run_id: int, mode: str) -> dict:
@@ -830,6 +885,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         for idx, row in enumerate(rows):
             reg_no = row["project_registration_no"]
             key = generate_project_key(reg_no)
+
+            # ── daily_light: skip projects already in the DB ──────────────────
+            if mode == "daily_light" and get_project_by_key(key):
+                counters["projects_skipped"] += 1
+                continue
+
             logger.set_project(key=key, reg_no=reg_no, url=LISTING_URL, page=idx)
             try:
                 try:
@@ -854,6 +915,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         "domain": DOMAIN,
                         "url": detail_url,
                         "state": config.get("state", "Punjab"),
+                        "is_live": True,
                     }
 
                     normalized = normalize_project_payload(
@@ -871,6 +933,43 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         counters["projects_updated"] += 1
                     else:
                         counters["projects_skipped"] += 1
+
+                    # ── Document download + S3 upload ─────────────────────────
+                    raw_docs: list[dict] = payload.get("uploaded_documents") or []
+                    if raw_docs:
+                        uploaded_documents: list[dict] = []
+                        doc_name_counts: dict[str, int] = {}
+                        for doc in raw_docs:
+                            selected = select_document_for_download(
+                                config["state"], doc, doc_name_counts, domain=DOMAIN,
+                            )
+                            if selected:
+                                uploaded = _handle_document(
+                                    key, selected, run_id, config["id"], logger, session
+                                )
+                                if uploaded:
+                                    uploaded_documents.append(uploaded)
+                                    counters["documents_uploaded"] += 1
+                                else:
+                                    uploaded_documents.append({
+                                        "link": doc.get("link"),
+                                        "type": doc.get("type", "document"),
+                                    })
+                            else:
+                                uploaded_documents.append({
+                                    "link": doc.get("link"),
+                                    "type": doc.get("type", "document"),
+                                })
+                        if uploaded_documents:
+                            upsert_project({
+                                "key": key,
+                                "url": detail_url,
+                                "state": db_dict["state"],
+                                "domain": db_dict["domain"],
+                                "project_registration_no": reg_no,
+                                "uploaded_documents": uploaded_documents,
+                                "document_urls": build_document_urls(uploaded_documents),
+                            })
 
                 except ValidationError as exc:
                     counters["error_count"] += 1

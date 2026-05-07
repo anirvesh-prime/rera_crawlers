@@ -24,6 +24,7 @@ class Settings(BaseSettings):
 
     # Crawler
     LOG_DIR: str = "logs"
+    LOG_LOCAL: bool = False          # set True to also write .jsonl files locally
     DRY_RUN_S3: bool
     CRAWL_ITEM_LIMIT: int = 0        # 0 = unlimited
     SCRAPE_DETAILS: bool = True      # set False to skip detail-page fetches
