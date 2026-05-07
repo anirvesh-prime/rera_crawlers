@@ -228,6 +228,7 @@ class CrawlerLogger:
             console_msg = f"[reg={ctx['registration_no']}] {console_msg}"
         if step:
             console_msg = f"[{step}] {console_msg}"
+        console_msg = f"[{self.site_id}] {console_msg}"
 
         self._logger.log(
             level,
