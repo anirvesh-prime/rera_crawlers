@@ -9,6 +9,7 @@ UTC = timezone.utc
 from typing import Any
 
 import psycopg
+from psycopg.errors import DuplicateObject, DuplicateTable, UniqueViolation
 from psycopg.rows import dict_row
 from psycopg.sql import SQL, Identifier
 from psycopg.types.json import Jsonb
@@ -349,10 +350,36 @@ def get_connection() -> psycopg.Connection:
     return _conn
 
 
+_SCHEMA_MIGRATION_LOCK_ID = 987_654_321
+# Errors that mean the DDL object already exists — safe to skip when another
+# concurrent worker created it first.  UniqueViolation (23505) covers the
+# pg_class race where two workers both pass IF NOT EXISTS before either commits.
+_IDEMPOTENT_DDL_ERRORS = (DuplicateTable, DuplicateObject, UniqueViolation)
+
+
 def ensure_schema(conn: psycopg.Connection):
-    for statement in _SCHEMA_DDL:
-        conn.execute(statement)
-    conn.commit()
+    """Apply DDL migrations in a serialized, crash-safe way.
+
+    Uses a PostgreSQL session-level advisory lock so that parallel worker
+    processes do not race on CREATE INDEX / RENAME DDL.  Without the lock,
+    two workers can both pass an IF NOT EXISTS check before either commits,
+    producing a duplicate-key error on pg_class (UniqueViolation 23505).
+
+    Each statement runs in its own savepoint so that a statement already
+    applied by a concurrent worker can be skipped without aborting the rest.
+    """
+    conn.execute("SELECT pg_advisory_lock(%s)", (_SCHEMA_MIGRATION_LOCK_ID,))
+    try:
+        for statement in _SCHEMA_DDL:
+            try:
+                with conn.transaction():
+                    conn.execute(statement)
+            except _IDEMPOTENT_DDL_ERRORS:
+                pass  # already applied by a concurrent worker; safe to skip
+        conn.commit()
+    finally:
+        conn.execute("SELECT pg_advisory_unlock(%s)", (_SCHEMA_MIGRATION_LOCK_ID,))
+        conn.commit()
 
 
 def _db_value(value: Any, column: str = "") -> Any:
