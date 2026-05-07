@@ -860,6 +860,7 @@ def _handle_document(
             except Exception:
                 pass
 
+        t_dl = time.monotonic()
         with client.stream(
             "GET", url,
             headers={"Referer": LISTING_URL},
@@ -882,13 +883,16 @@ def _handle_document(
                         )
             finally:
                 timer.cancel()
+        dl_elapsed = time.monotonic() - t_dl
 
         data = b"".join(chunks)
         if len(data) < 100:
             logger.warning("Document download empty or failed", url=url, step="documents")
             return None
         md5 = compute_md5(data)
+        t_s3 = time.monotonic()
         s3_key = upload_document(project_key, fname, data, dry_run=settings.DRY_RUN_S3)
+        s3_elapsed = time.monotonic() - t_s3
         if s3_key is None:
             return None
         s3_url = get_s3_url(s3_key)
@@ -901,6 +905,11 @@ def _handle_document(
             file_name=fname,
             md5_checksum=md5,
             file_size_bytes=len(data),
+        )
+        logger.warning(
+            f"Doc timing [{label}]: download={dl_elapsed:.2f}s  s3={s3_elapsed:.2f}s"
+            f"  total={dl_elapsed+s3_elapsed:.2f}s  size={len(data)//1024}KB",
+            step="documents",
         )
         logger.info("Document uploaded", label=label, s3_key=s3_key, step="documents")
         logger.log_document(label, url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))

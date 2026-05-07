@@ -9,8 +9,8 @@ Strategy:
   from the Angular app and the replacement search API has a server-side SQL bug).
 - For each project, navigate to its detail page via Playwright, wait for the
   Angular SPA to fully render, then parse the HTML with BeautifulSoup.
-- Documents: collect all anchor links pointing to /vdms/download paths or PDFs
-  from the rendered detail page.
+- Documents: collect all anchor links pointing to /vdms/view-doc or /vdms/download
+  paths from the rendered detail page.
 """
 from __future__ import annotations
 
@@ -41,11 +41,98 @@ from core.project_normalizer import (
 from core.s3 import compute_md5, upload_document, get_s3_url
 from core.config import settings
 
-BASE_URL    = "https://gujrera.gujarat.gov.in"
-VDMS_BASE   = f"{BASE_URL}/vdms/download"
-DOMAIN      = "gujrera.gujarat.gov.in"
-STATE       = "Gujarat"
-LISTING_URL = f"{BASE_URL}/#/home-p/view-registered-project"
+BASE_URL       = "https://gujrera.gujarat.gov.in"
+VDMS_BASE      = f"{BASE_URL}/vdms/download"
+VDMS_VIEW_DOC  = f"{BASE_URL}/vdms/view-doc"
+DOMAIN         = "gujrera.gujarat.gov.in"
+STATE          = "Gujarat"
+LISTING_URL    = f"{BASE_URL}/#/home-p/view-registered-project"
+
+# Maps API field names → human-readable document type labels.
+# Used by _fetch_document_tokens() to build uploaded_documents entries.
+_FINDOC_UID_LABELS: dict[str, str] = {
+    "auditedBalSheetDoc1UId":           "Audited Balance Sheet (Year 1)",
+    "auditedBalSheetDoc2_UId":          "Audited Balance Sheet (Year 2)",
+    "auditedBalSheetDoc3UId":           "Audited Balance Sheet (Year 3)",
+    "auditedProfitLossSheetDoc1UId":    "Audited P&L Statement (Year 1)",
+    "auditedProfitLossSheetDoc2UId":    "Audited P&L Statement (Year 2)",
+    "auditedProfitLossSheetDoc3UId":    "Audited P&L Statement (Year 3)",
+    "cashFlowStmtFileDoc1UId":          "Cash Flow Statement (Year 1)",
+    "cashFlowStmtFileDoc2UId":          "Cash Flow Statement (Year 2)",
+    "cashFlowStmtFileDoc3UId":          "Cash Flow Statement (Year 3)",
+    "auditedReportDoc1UId":             "Audited Report (Year 1)",
+    "auditedReportDoc2UId":             "Audited Report (Year 2)",
+    "auditedReportDoc3UId":             "Audited Report (Year 3)",
+    "directorReportDoc1UId":            "Director Report (Year 1)",
+    "directorReportDoc2UId":            "Director Report (Year 2)",
+    "directorReportDoc3UId":            "Director Report (Year 3)",
+    "auditorsDoc1UId":                  "Auditors Report (Year 1)",
+    "auditorsDoc2UId":                  "Auditors Report (Year 2)",
+    "auditorsDoc3UId":                  "Auditors Report (Year 3)",
+    "incomeTaxReturn1UId":              "Income Tax Return (Year 1)",
+    "incomeTaxReturn2UId":              "Income Tax Return (Year 2)",
+    "incomeTaxReturn3UId":              "Income Tax Return (Year 3)",
+    "cashFlowStmtYear1UId":             "Cash Flow Statement Year 1",
+    "cashFlowStmtYear2UId":             "Cash Flow Statement Year 2",
+    "cashFlowStmtYear3UId":             "Cash Flow Statement Year 3",
+    "auditedReportYear1UId":            "Audited Report Year 1",
+    "auditedReportYear2UId":            "Audited Report Year 2",
+    "auditedReportYear3UId":            "Audited Report Year 3",
+    "auditedProfitLossSheetYear1UId":   "Audited P&L Year 1",
+    "auditedProfitLossSheetYear2UId":   "Audited P&L Year 2",
+    "auditedProfitLossSheetYear3UId":   "Audited P&L Year 3",
+    "auditedBalSheetYear1UId":          "Audited Balance Sheet Year 1",
+    "auditedBalSheetYear2UId":          "Audited Balance Sheet Year 2",
+    "auditedBalSheetYear3UId":          "Audited Balance Sheet Year 3",
+    "anyOtherDocumentUId":              "Other Document",
+    "statutoryDocumentUId":             "Statutory Document",
+}
+
+_PROJECTDOC_UID_LABELS: dict[str, str] = {
+    "commencementCertDocUId":               "Commencement Certificate",
+    "approveSacPlanDocUId":                 "Approved SAC Plan",
+    "approveLayoutPlanDocUId":              "Approved Layout Plan",
+    "agreementFileDocUId":                  "Sale Agreement",
+    "landLocationFileDocUId":               "Land Location Document",
+    "encumbranceCertificateDocUId":         "Encumbrance Certificate",
+    "sanctionedLayoutPlanDocUId":           "Sanctioned Layout Plan",
+    "areaDevelopmentDocUId":                "Area Development Document",
+    "performaForSaleOfAgreementUId":        "Proforma for Sale Agreement",
+    "performaOfAllotmentLetterDocUId":      "Proforma of Allotment Letter",
+    "brochureOfCurrentProjectDocUId":       "Project Brochure",
+    "projectRelatedDocUId":                 "Project Related Document",
+    "declarationFormbDocUId":               "Declaration Form B",
+    "declarationFormB1UId":                 "Declaration Form B1",
+    "declarationFormB2UId":                 "Declaration Form B2",
+    "approvedBuildingPlanPlottingPlanUId":  "Approved Building/Plotting Plan",
+    "allNOCsfromAuthoritiesUId":            "NOCs from Authorities",
+    "titleClearanceCertificateUId":         "Title Clearance Certificate",
+    "titleReportUId":                       "Title Report",
+    "developmentAgreementUId":              "Development Agreement",
+    "propertyCardUId":                      "Property Card",
+    "propertyCard2UId":                     "Property Card 2",
+    "propertyCard3UId":                     "Property Card 3",
+    "buCertificateUId":                     "Building Use / Occupation Certificate",
+    "ganttchartForm1AUId":                  "Gantt Chart Form 1A",
+    "alloteeConsentDocUId":                 "Allottee Consent Document",
+    "panCardDocUId":                        "PAN Card",
+    "photoGraphDocUId":                     "Promoter Photograph",
+    "projectSpecificDocUId":                "Project Specific Document",
+    "drainageAffidavitUid":                 "Drainage Affidavit",
+    "statutoryDocumentUId":                 "Statutory Document",
+    "anyOtherDocumentUId":                  "Other Document",
+    "performaforSaledeedUId":               "Proforma for Sale Deed",
+    "projectphotoUId":                      "Project Photo",
+    "auditorsDoc1UId":                      "Auditors Report (Year 1)",
+    "auditorsDoc2UId":                      "Auditors Report (Year 2)",
+    "auditorsDoc3UId":                      "Auditors Report (Year 3)",
+    "incomeTaxReturn1UId":                  "Income Tax Return (Year 1)",
+    "incomeTaxReturn2UId":                  "Income Tax Return (Year 2)",
+    "incomeTaxReturn3UId":                  "Income Tax Return (Year 3)",
+    "directorReportDoc1UId":                "Director Report (Year 1)",
+    "directorReportDoc2UId":                "Director Report (Year 2)",
+    "directorReportDoc3UId":                "Director Report (Year 3)",
+}
 
 # Gujarat districts — iterated to discover all registered projects
 GUJARAT_DISTRICTS = [
@@ -484,7 +571,7 @@ def _extract_doc_links(soup: BeautifulSoup, seen: set[str] | None = None) -> lis
         elif not href.startswith("http"):
             continue
         href_lower = href.lower()
-        if not any(x in href_lower for x in ("/vdms/download", "download", "upload")):
+        if not any(x in href_lower for x in ("/vdms/view-doc", "/vdms/download", "download", "upload")):
             continue
         # Skip static/navigational PDFs (annual reports, presentations, news articles)
         if "/staticpage/" in href_lower or "/resources/staticpage" in href_lower:
@@ -797,6 +884,89 @@ def _parse_facilities(soup: BeautifulSoup) -> dict:
     return {}
 
 
+def _fetch_document_tokens(page, proj_id: int) -> list[dict]:
+    """Fetch document tokens from Gujarat RERA backend APIs via the Playwright page.
+
+    The Angular SPA does not embed document hrefs in the HTML — it binds them via
+    Angular ``(click)`` handlers loaded from three REST APIs.  This function calls
+    those APIs inside the already-open browser context and returns a list of
+    ``{label, url}`` dicts suitable for use as ``uploaded_documents`` entries.
+
+    APIs consulted:
+      1. /project_reg/public/alldatabyprojectid/{id}  → certificateUid (RERA cert)
+      2. /formone/public/getpublicform-one-form-two-id/{id}
+             → form_one_pdf_uid (Form 1A&B / Architect cert)
+             → form_two_pdf_uid (Form 2 / Engineer cert)
+             → form_three_pdf_uid (Form 3 / CA cert)
+      3. /project_reg/public/getproject-doc/{id}
+             → findoc  (financial documents)
+             → projectdoc (title, NOCs, plans, statutory docs …)
+    """
+    docs: list[dict] = []
+    seen_uids: set[str] = set()
+
+    def _add(uid: str | None, label: str) -> None:
+        if not uid or not isinstance(uid, str) or uid in seen_uids:
+            return
+        seen_uids.add(uid)
+        docs.append({"label": label, "url": f"{VDMS_VIEW_DOC}/{uid}"})
+
+    try:
+        # 1. RERA Registration Certificate
+        proj_data = page.evaluate(
+            f"""async () => {{
+                const r = await fetch('/project_reg/public/alldatabyprojectid/{proj_id}');
+                if (!r.ok) return null;
+                return await r.json();
+            }}"""
+        )
+        cert_uid = ((proj_data or {}).get("data") or {}).get("certificateUid")
+        _add(cert_uid, "RERA Registration Certificate")
+    except Exception:
+        pass
+
+    try:
+        # 2. Form 1A&B (Architect cert), Form 2 (Engineer cert), Form 3 (CA cert)
+        forms_data = page.evaluate(
+            f"""async () => {{
+                const r = await fetch(
+                    '/formone/public/getpublicform-one-form-two-id/{proj_id}');
+                if (!r.ok) return null;
+                return await r.json();
+            }}"""
+        )
+        result_list = ((forms_data or {}).get("result") or [])
+        # Take the latest application (last item) that has REG_PROCESS type when available
+        reg_entries = [e for e in result_list if e.get("application_Type") == "REG_PROCESS"]
+        form_entry = reg_entries[-1] if reg_entries else (result_list[-1] if result_list else {})
+        _add(form_entry.get("form_one_pdf_uid"), "Form 1A&B (Architect Certificate)")
+        _add(form_entry.get("form_two_pdf_uid"), "Form 2 (Engineer Certificate)")
+        _add(form_entry.get("form_three_pdf_uid"), "Form 3 (CA Certificate)")
+    except Exception:
+        pass
+
+    try:
+        # 3. Financial + project documents
+        doc_data = page.evaluate(
+            f"""async () => {{
+                const r = await fetch('/project_reg/public/getproject-doc/{proj_id}');
+                if (!r.ok) return null;
+                return await r.json();
+            }}"""
+        )
+        api_doc = (doc_data or {}).get("data") or {}
+        findoc     = api_doc.get("findoc") or {}
+        projectdoc = api_doc.get("projectdoc") or {}
+        for field, label in _FINDOC_UID_LABELS.items():
+            _add(findoc.get(field), label)
+        for field, label in _PROJECTDOC_UID_LABELS.items():
+            _add(projectdoc.get(field), label)
+    except Exception:
+        pass
+
+    return docs
+
+
 def _fetch_all_project_ids(page, logger: CrawlerLogger) -> list[int]:
     """Fetch all registered project IDs from the public map-locations API.
 
@@ -950,6 +1120,8 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
             except Exception:
                 _sentinel_ack_no = ""
             html  = page.content()
+            # Fetch document tokens while the page context is still alive
+            _sentinel_doc_links = _fetch_document_tokens(page, proj_id)
             ctx.close()
             browser.close()
 
@@ -986,10 +1158,9 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
                 if res_count:
                     fresh["number_of_residential_units"] = res_count
 
-        # uploaded_documents (doc links; sentinel records metadata, doesn't download)
-        doc_links = _extract_doc_links(soup)
-        if doc_links:
-            fresh["uploaded_documents"] = doc_links
+        # uploaded_documents (doc links fetched from APIs; sentinel records metadata only)
+        if _sentinel_doc_links:
+            fresh["uploaded_documents"] = _sentinel_doc_links
 
     except Exception as exc:
         logger.error(f"Sentinel: error — {exc}", step="sentinel")
@@ -1265,8 +1436,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 else:                     counts["projects_skipped"] += 1
                 logger.info(f"DB: {action}", step="db_upsert")
 
-                seen_doc_urls: set[str] = set()
-                doc_links = _extract_doc_links(soup, seen_doc_urls)
+                # Fetch document links via backend APIs (Angular SPA does not embed
+                # real hrefs — all document links are Angular click-bound to /vdms/view-doc/{uid})
+                doc_links = _fetch_document_tokens(page, proj_id)
                 if doc_links:
                     logger.info(f"Processing {len(doc_links)} documents", step="documents")
                     uploaded_docs: list[dict] = []
