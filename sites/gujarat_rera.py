@@ -48,91 +48,6 @@ DOMAIN         = "gujrera.gujarat.gov.in"
 STATE          = "Gujarat"
 LISTING_URL    = f"{BASE_URL}/#/home-p/view-registered-project"
 
-# Maps API field names → human-readable document type labels.
-# Used by _fetch_document_tokens() to build uploaded_documents entries.
-_FINDOC_UID_LABELS: dict[str, str] = {
-    "auditedBalSheetDoc1UId":           "Audited Balance Sheet (Year 1)",
-    "auditedBalSheetDoc2_UId":          "Audited Balance Sheet (Year 2)",
-    "auditedBalSheetDoc3UId":           "Audited Balance Sheet (Year 3)",
-    "auditedProfitLossSheetDoc1UId":    "Audited P&L Statement (Year 1)",
-    "auditedProfitLossSheetDoc2UId":    "Audited P&L Statement (Year 2)",
-    "auditedProfitLossSheetDoc3UId":    "Audited P&L Statement (Year 3)",
-    "cashFlowStmtFileDoc1UId":          "Cash Flow Statement (Year 1)",
-    "cashFlowStmtFileDoc2UId":          "Cash Flow Statement (Year 2)",
-    "cashFlowStmtFileDoc3UId":          "Cash Flow Statement (Year 3)",
-    "auditedReportDoc1UId":             "Audited Report (Year 1)",
-    "auditedReportDoc2UId":             "Audited Report (Year 2)",
-    "auditedReportDoc3UId":             "Audited Report (Year 3)",
-    "directorReportDoc1UId":            "Director Report (Year 1)",
-    "directorReportDoc2UId":            "Director Report (Year 2)",
-    "directorReportDoc3UId":            "Director Report (Year 3)",
-    "auditorsDoc1UId":                  "Auditors Report (Year 1)",
-    "auditorsDoc2UId":                  "Auditors Report (Year 2)",
-    "auditorsDoc3UId":                  "Auditors Report (Year 3)",
-    "incomeTaxReturn1UId":              "Income Tax Return (Year 1)",
-    "incomeTaxReturn2UId":              "Income Tax Return (Year 2)",
-    "incomeTaxReturn3UId":              "Income Tax Return (Year 3)",
-    "cashFlowStmtYear1UId":             "Cash Flow Statement Year 1",
-    "cashFlowStmtYear2UId":             "Cash Flow Statement Year 2",
-    "cashFlowStmtYear3UId":             "Cash Flow Statement Year 3",
-    "auditedReportYear1UId":            "Audited Report Year 1",
-    "auditedReportYear2UId":            "Audited Report Year 2",
-    "auditedReportYear3UId":            "Audited Report Year 3",
-    "auditedProfitLossSheetYear1UId":   "Audited P&L Year 1",
-    "auditedProfitLossSheetYear2UId":   "Audited P&L Year 2",
-    "auditedProfitLossSheetYear3UId":   "Audited P&L Year 3",
-    "auditedBalSheetYear1UId":          "Audited Balance Sheet Year 1",
-    "auditedBalSheetYear2UId":          "Audited Balance Sheet Year 2",
-    "auditedBalSheetYear3UId":          "Audited Balance Sheet Year 3",
-    "anyOtherDocumentUId":              "Other Document",
-    "statutoryDocumentUId":             "Statutory Document",
-}
-
-_PROJECTDOC_UID_LABELS: dict[str, str] = {
-    "commencementCertDocUId":               "Commencement Certificate",
-    "approveSacPlanDocUId":                 "Approved SAC Plan",
-    "approveLayoutPlanDocUId":              "Approved Layout Plan",
-    "agreementFileDocUId":                  "Sale Agreement",
-    "landLocationFileDocUId":               "Land Location Document",
-    "encumbranceCertificateDocUId":         "Encumbrance Certificate",
-    "sanctionedLayoutPlanDocUId":           "Sanctioned Layout Plan",
-    "areaDevelopmentDocUId":                "Area Development Document",
-    "performaForSaleOfAgreementUId":        "Proforma for Sale Agreement",
-    "performaOfAllotmentLetterDocUId":      "Proforma of Allotment Letter",
-    "brochureOfCurrentProjectDocUId":       "Project Brochure",
-    "projectRelatedDocUId":                 "Project Related Document",
-    "declarationFormbDocUId":               "Declaration Form B",
-    "declarationFormB1UId":                 "Declaration Form B1",
-    "declarationFormB2UId":                 "Declaration Form B2",
-    "approvedBuildingPlanPlottingPlanUId":  "Approved Building/Plotting Plan",
-    "allNOCsfromAuthoritiesUId":            "NOCs from Authorities",
-    "titleClearanceCertificateUId":         "Title Clearance Certificate",
-    "titleReportUId":                       "Title Report",
-    "developmentAgreementUId":              "Development Agreement",
-    "propertyCardUId":                      "Property Card",
-    "propertyCard2UId":                     "Property Card 2",
-    "propertyCard3UId":                     "Property Card 3",
-    "buCertificateUId":                     "Building Use / Occupation Certificate",
-    "ganttchartForm1AUId":                  "Gantt Chart Form 1A",
-    "alloteeConsentDocUId":                 "Allottee Consent Document",
-    "panCardDocUId":                        "PAN Card",
-    "photoGraphDocUId":                     "Promoter Photograph",
-    "projectSpecificDocUId":                "Project Specific Document",
-    "drainageAffidavitUid":                 "Drainage Affidavit",
-    "statutoryDocumentUId":                 "Statutory Document",
-    "anyOtherDocumentUId":                  "Other Document",
-    "performaforSaledeedUId":               "Proforma for Sale Deed",
-    "projectphotoUId":                      "Project Photo",
-    "auditorsDoc1UId":                      "Auditors Report (Year 1)",
-    "auditorsDoc2UId":                      "Auditors Report (Year 2)",
-    "auditorsDoc3UId":                      "Auditors Report (Year 3)",
-    "incomeTaxReturn1UId":                  "Income Tax Return (Year 1)",
-    "incomeTaxReturn2UId":                  "Income Tax Return (Year 2)",
-    "incomeTaxReturn3UId":                  "Income Tax Return (Year 3)",
-    "directorReportDoc1UId":                "Director Report (Year 1)",
-    "directorReportDoc2UId":                "Director Report (Year 2)",
-    "directorReportDoc3UId":                "Director Report (Year 3)",
-}
 
 # Gujarat districts — iterated to discover all registered projects
 GUJARAT_DISTRICTS = [
@@ -884,83 +799,95 @@ def _parse_facilities(soup: BeautifulSoup) -> dict:
     return {}
 
 
-def _fetch_document_tokens(page, proj_id: int) -> list[dict]:
-    """Fetch document tokens from Gujarat RERA backend APIs via the Playwright page.
+def _fetch_document_tokens(page) -> list[dict]:
+    """Extract document links from the rendered Gujarat RERA project detail page.
 
-    The Angular SPA does not embed document hrefs in the HTML — it binds them via
-    Angular ``(click)`` handlers loaded from three REST APIs.  This function calls
-    those APIs inside the already-open browser context and returns a list of
-    ``{label, url}`` dicts suitable for use as ``uploaded_documents`` entries.
+    The Angular SPA renders ``<app-file-view>`` components for every document slot.
+    Each component's "View File" button (``a.dwnldBtn``) fires a click handler that
+    calls ``/vdms/getDocMetadata/{uid}`` before opening the document.  We intercept
+    those requests to extract the UID, then build the public URL
+    ``/vdms/view-doc/{uid}``.
 
-    APIs consulted:
-      1. /project_reg/public/alldatabyprojectid/{id}  → certificateUid (RERA cert)
-      2. /formone/public/getpublicform-one-form-two-id/{id}
-             → form_one_pdf_uid (Form 1A&B / Architect cert)
-             → form_two_pdf_uid (Form 2 / Engineer cert)
-             → form_three_pdf_uid (Form 3 / CA cert)
-      3. /project_reg/public/getproject-doc/{id}
-             → findoc  (financial documents)
-             → projectdoc (title, NOCs, plans, statutory docs …)
+    Strategy (pure page interaction — no separate REST API calls):
+      1. Click every expansion button to unhide all document tab sections.
+      2. For each ``a.dwnldBtn`` in DOM order:
+           - Resolve the document label by walking up the DOM to the nearest
+             ``<label>``, ``<h6>``, or ``.text`` container.
+           - JS-dispatch a click event on the button.
+           - Wait up to 600 ms for a ``/vdms/getDocMetadata/`` request; if one
+             arrives the path suffix is the UID.  No request → document not uploaded.
+      3. Skip slots where the UID is absent, "0", or already seen.
     """
     docs: list[dict] = []
     seen_uids: set[str] = set()
 
-    def _add(uid: str | None, label: str) -> None:
-        if not uid or not isinstance(uid, str) or uid in seen_uids:
-            return
-        seen_uids.add(uid)
-        docs.append({"label": label, "url": f"{VDMS_VIEW_DOC}/{uid}"})
-
     try:
-        # 1. RERA Registration Certificate
-        proj_data = page.evaluate(
-            f"""async () => {{
-                const r = await fetch('/project_reg/public/alldatabyprojectid/{proj_id}');
-                if (!r.ok) return null;
-                return await r.json();
-            }}"""
+        # Step 1: expand all collapsible document sections
+        page.evaluate(
+            "() => { document.querySelectorAll('button').forEach(b => b.click()); }"
         )
-        cert_uid = ((proj_data or {}).get("data") or {}).get("certificateUid")
-        _add(cert_uid, "RERA Registration Certificate")
-    except Exception:
-        pass
+        page.wait_for_timeout(2000)
 
-    try:
-        # 2. Form 1A&B (Architect cert), Form 2 (Engineer cert), Form 3 (CA cert)
-        forms_data = page.evaluate(
-            f"""async () => {{
-                const r = await fetch(
-                    '/formone/public/getpublicform-one-form-two-id/{proj_id}');
-                if (!r.ok) return null;
-                return await r.json();
-            }}"""
+        # Step 2: collect (button_index, label) pairs from the DOM
+        btn_labels: list[tuple[int, str]] = []
+        raw = page.evaluate(
+            """() => {
+                const results = [];
+                const allBtns = Array.from(document.querySelectorAll('a.dwnldBtn'));
+                allBtns.forEach((btn, idx) => {
+                    let label = '';
+                    let cur = btn.parentElement;
+                    for (let d = 0; d < 8; d++) {
+                        if (!cur) break;
+                        const lbl = cur.querySelector(':scope > label');
+                        if (lbl) { label = lbl.innerText.trim(); break; }
+                        const h6 = cur.querySelector(':scope > h6');
+                        if (h6) { label = h6.innerText.trim(); break; }
+                        const txt = cur.querySelector(':scope > .text');
+                        if (txt) { label = txt.innerText.trim(); break; }
+                        const p = cur.querySelector(':scope > p');
+                        if (p) {
+                            const t = p.innerText.trim();
+                            if (t.length > 2 && t.length < 120) { label = t; break; }
+                        }
+                        cur = cur.parentElement;
+                    }
+                    results.push({idx, label: label.replace(/\\s+/g, ' ').trim()});
+                });
+                return results;
+            }"""
         )
-        result_list = ((forms_data or {}).get("result") or [])
-        # Take the latest application (last item) that has REG_PROCESS type when available
-        reg_entries = [e for e in result_list if e.get("application_Type") == "REG_PROCESS"]
-        form_entry = reg_entries[-1] if reg_entries else (result_list[-1] if result_list else {})
-        _add(form_entry.get("form_one_pdf_uid"), "Form 1A&B (Architect Certificate)")
-        _add(form_entry.get("form_two_pdf_uid"), "Form 2 (Engineer Certificate)")
-        _add(form_entry.get("form_three_pdf_uid"), "Form 3 (CA Certificate)")
-    except Exception:
-        pass
+        btn_labels = [(entry["idx"], entry["label"]) for entry in raw if entry["label"]]
 
-    try:
-        # 3. Financial + project documents
-        doc_data = page.evaluate(
-            f"""async () => {{
-                const r = await fetch('/project_reg/public/getproject-doc/{proj_id}');
-                if (!r.ok) return null;
-                return await r.json();
-            }}"""
-        )
-        api_doc = (doc_data or {}).get("data") or {}
-        findoc     = api_doc.get("findoc") or {}
-        projectdoc = api_doc.get("projectdoc") or {}
-        for field, label in _FINDOC_UID_LABELS.items():
-            _add(findoc.get(field), label)
-        for field, label in _PROJECTDOC_UID_LABELS.items():
-            _add(projectdoc.get(field), label)
+        # Step 3: click each labelled button and capture the UID from the request
+        for btn_idx, label in btn_labels:
+            last_uid: list[str] = []
+
+            def _on_req(req: object, _u: list = last_uid) -> None:
+                url = req.url  # type: ignore[attr-defined]
+                if "/vdms/getDocMetadata/" in url:
+                    _u.append(url.split("/vdms/getDocMetadata/")[-1])
+
+            page.on("request", _on_req)
+            try:
+                page.evaluate(
+                    f"""() => {{
+                        const btns = document.querySelectorAll('a.dwnldBtn');
+                        const btn = btns[{btn_idx}];
+                        if (btn) btn.dispatchEvent(
+                            new MouseEvent('click', {{bubbles: true, cancelable: true}}));
+                    }}"""
+                )
+                page.wait_for_timeout(600)
+            finally:
+                page.remove_listener("request", _on_req)
+
+            uid = last_uid[0] if last_uid else None
+            if not uid or uid == "0" or uid in seen_uids:
+                continue
+            seen_uids.add(uid)
+            docs.append({"label": label, "url": f"{VDMS_VIEW_DOC}/{uid}"})
+
     except Exception:
         pass
 
@@ -1121,7 +1048,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
                 _sentinel_ack_no = ""
             html  = page.content()
             # Fetch document tokens while the page context is still alive
-            _sentinel_doc_links = _fetch_document_tokens(page, proj_id)
+            _sentinel_doc_links = _fetch_document_tokens(page)
             ctx.close()
             browser.close()
 
@@ -1436,9 +1363,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 else:                     counts["projects_skipped"] += 1
                 logger.info(f"DB: {action}", step="db_upsert")
 
-                # Fetch document links via backend APIs (Angular SPA does not embed
-                # real hrefs — all document links are Angular click-bound to /vdms/view-doc/{uid})
-                doc_links = _fetch_document_tokens(page, proj_id)
+                # Extract document links by clicking each View File button on the
+                # rendered page (Angular click handlers fire /vdms/getDocMetadata/{uid})
+                doc_links = _fetch_document_tokens(page)
                 if doc_links:
                     logger.info(f"Processing {len(doc_links)} documents", step="documents")
                     uploaded_docs: list[dict] = []

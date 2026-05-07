@@ -43,14 +43,19 @@ BASE_URL              = "https://rera.tn.gov.in"
 CMS_INDEX_URL         = f"{BASE_URL}/cms/reg_projects_building_tamilnadu.php"
 # CMS index pages for layout project types (Normal and Regularisation)
 CMS_LAYOUT_INDEX_URLS = [
-    f"{BASE_URL}/cms/reg_projects_normallayout_tamilnadu.php",
-    f"{BASE_URL}/cms/reg_projects_regularisationlayout_tamilnadu.php",
+    f"{BASE_URL}/cms/reg_projects_nlayout_tamilnadu.php",
+    f"{BASE_URL}/cms/reg_projects_rlayout_tamilnadu.php",
 ]
 # URL templates for each project type (used as fallback when CMS index is unreachable)
 _TYPE_URL_TEMPLATES = {
     "Building":               f"{BASE_URL}/cms/reg_projects_tamilnadu/Building/{{year}}.php",
-    "NormalLayout":           f"{BASE_URL}/cms/reg_projects_tamilnadu/NormalLayout/{{year}}.php",
-    "RegularisationLayout":   f"{BASE_URL}/cms/reg_projects_tamilnadu/RegularisationLayout/{{year}}.php",
+    "Normal_Layout":          f"{BASE_URL}/cms/reg_projects_tamilnadu/Normal_Layout/{{year}}.php",
+    "Regularisation_Layout":  f"{BASE_URL}/cms/reg_projects_tamilnadu/Regularisation_Layout/{{year}}.php",
+}
+# Maps short CMS filename key → _TYPE_URL_TEMPLATES key (for fallback URL generation)
+_LAYOUT_CMS_TO_TYPE: dict[str, str] = {
+    "nlayout": "Normal_Layout",
+    "rlayout": "Regularisation_Layout",
 }
 STATE_CODE       = "TN"
 DOMAIN           = "rera.tn.gov.in"
@@ -139,10 +144,11 @@ def _get_year_listing_urls(logger: CrawlerLogger) -> list[str]:
         layout_urls = _discover_urls_from_cms(layout_index, logger)
         if not layout_urls:
             logger.warning("Layout CMS index unreachable; using fallback", url=layout_index)
-            # Derive the type from the index URL filename
+            # Derive the type from the index URL filename (nlayout→Normal_Layout, etc.)
             m = re.search(r"reg_projects_(\w+)_tamilnadu", layout_index, re.I)
-            type_key = m.group(1).title() if m else "NormalLayout"
-            tmpl = _TYPE_URL_TEMPLATES.get(type_key, _TYPE_URL_TEMPLATES["NormalLayout"])
+            raw_key = m.group(1).lower() if m else "nlayout"
+            type_key = _LAYOUT_CMS_TO_TYPE.get(raw_key, "Normal_Layout")
+            tmpl = _TYPE_URL_TEMPLATES.get(type_key, _TYPE_URL_TEMPLATES["Normal_Layout"])
             layout_urls = [tmpl.format(year=y) for y in sorted(_KNOWN_YEARS, reverse=True)]
         for u in layout_urls:
             if u not in seen:
@@ -160,7 +166,7 @@ def _get_year_listing_urls(logger: CrawlerLogger) -> list[str]:
 _UUID_RE  = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.I)
 _LAT_RE   = re.compile(r"Latitude[-:\s]*([\d.]+)", re.I)
 _LNG_RE   = re.compile(r"Longitude[-:\s]*([\d.]+)", re.I)
-_REGNO_RE = re.compile(r"(?:TNRERA/[\w/]+|TN/\d+/Building/[\w/]+/\d{4})", re.I)
+_REGNO_RE = re.compile(r"(?:TNRERA/[\w/]+|TN/\d+/(?:Building|Layout)/[\w/]+/\d{4})", re.I)
 
 
 def _parse_listing_row(tds) -> dict | None:
@@ -214,6 +220,7 @@ def _parse_listing_row(tds) -> dict | None:
         td6_soup = tds[6]
         promoter_uuid = project_uuid = lat = lng = None
         promoter_full_url = project_full_url = None
+        # Legacy UUID-based detail page links (older projects still served via /public-view1/2)
         for a in td6_soup.find_all("a", href=True):
             href = a["href"]
             uuid_match = _UUID_RE.search(href)
@@ -234,22 +241,43 @@ def _parse_listing_row(tds) -> dict | None:
         if lng_m:
             lng = lng_m.group(1)
 
+        # -- Document links from td[6]: Form A / Approval Details / Carpet Area PDFs
+        #    (current portal serves static PDFs; formcqr links may still exist on older rows)
         form_c_url = None
-        for a in tds[6].find_all("a", href=True):
+        docs: list[dict] = []
+        _td6_seen: set[str] = set()
+        for a in td6_soup.find_all("a", href=True):
             href = a["href"]
+            if href.lower().startswith("javascript"):
+                continue
             if "formcqr" in href.lower():
                 form_c_url = href if href.startswith("http") else f"{BASE_URL}{href}"
-                break
-        if not form_c_url:
-            for a in tds[7].find_all("a", href=True):
-                href = a["href"]
-                if "formcqr" in href.lower():
-                    form_c_url = href if href.startswith("http") else f"{BASE_URL}{href}"
-                    break
+                continue
+            full = href if href.startswith("http") else f"{BASE_URL}{href}"
+            if full in _td6_seen:
+                continue
+            _td6_seen.add(full)
+            label_text = a.get_text(strip=True) or "document"
+            docs.append({"label": label_text, "type": label_text, "url": full})
 
-        docs = []
-        if approval_url:
-            docs.append({"label": "Approval Details", "type": "Approval Details", "url": approval_url})
+        # -- Approval Details from td[4] (may duplicate one td[6] entry; deduplicate)
+        if approval_url and approval_url not in _td6_seen:
+            docs.insert(0, {"label": "Approval Details", "type": "Approval Details", "url": approval_url})
+
+        # -- Work-progress / current-status PDF from td[7] if present
+        for a in tds[7].find_all("a", href=True):
+            href = a["href"]
+            if href.lower().startswith("javascript"):
+                continue
+            if "formcqr" in href.lower():
+                form_c_url = href if href.startswith("http") else f"{BASE_URL}{href}"
+                continue
+            full = href if href.startswith("http") else f"{BASE_URL}{href}"
+            if full not in _td6_seen:
+                _td6_seen.add(full)
+                label_text = a.get_text(strip=True) or "Work Progress"
+                docs.append({"label": label_text, "type": label_text, "url": full})
+
         if form_c_url:
             docs.insert(0, {"label": "Form C", "type": "Form C", "url": form_c_url})
 
