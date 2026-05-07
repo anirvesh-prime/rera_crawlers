@@ -1129,7 +1129,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                     counts["projects_updated"] += 1
                 else:
                     counts["projects_skipped"] += 1
-                logger.info(f"Project {reg_no}: {action}", key=project_key)
+                logger.info(f"DB result: {action}", step="db_upsert")
             except Exception as exc:
                 logger.error(f"DB upsert failed for {reg_no}: {exc}")
                 counts["error_count"] += 1

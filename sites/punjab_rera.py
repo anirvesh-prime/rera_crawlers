@@ -933,6 +933,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         counters["projects_updated"] += 1
                     else:
                         counters["projects_skipped"] += 1
+                    logger.info(f"DB result: {status}", step="db_upsert")
 
                     # ── Document download + S3 upload ─────────────────────────
                     raw_docs: list[dict] = payload.get("uploaded_documents") or []

@@ -1260,7 +1260,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     counts["projects_updated"] += 1
                 else:
                     counts["projects_skipped"] += 1
-                logger.info(f"DB result: {action}")
+                logger.info(f"DB result: {action}", step="db_upsert")
 
                 # Documents
                 all_docs = detail_data.get("uploaded_documents") or []

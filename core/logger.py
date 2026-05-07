@@ -12,6 +12,20 @@ from core.config import settings
 
 _FLUSH_SIZE = 25  # flush to DB after this many buffered entries
 _DOCUMENT_EVENT_FLUSH_SIZE = 50  # flush document-event buffer after this many entries
+
+# Steps that represent a successful DB write — shown on the console at INFO level
+_WRITE_STEPS = frozenset({"db_upsert", "upsert"})
+
+
+class _WriteStepFilter(logging.Filter):
+    """Let WARNING+ through unconditionally; let INFO through only for write steps."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.levelno >= logging.WARNING:
+            return True
+        return getattr(record, "step", None) in _WRITE_STEPS
+
+
 _CONTEXT_ALIASES = {
     "project_key": ("project_key", "key"),
     "registration_no": ("registration_no", "reg_no"),
@@ -117,7 +131,8 @@ class CrawlerLogger:
 
         if not self._logger.handlers:
             ch = logging.StreamHandler()
-            ch.setLevel(logging.WARNING)   # console: warnings and errors only
+            ch.setLevel(logging.INFO)      # filter controls what actually appears
+            ch.addFilter(_WriteStepFilter())  # WARNING+ always; INFO only for write steps
             ch.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
             self._logger.addHandler(ch)
 
