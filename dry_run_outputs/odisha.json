@@ -877,7 +877,7 @@
   "iw_processed": false,
   "checked_updates": false,
   "rera_housing_found": false,
-  "is_live": false,
+  "is_live": true,
   "uploaded_documents": [
     {
       "type": "RERA Registration Certificate 1",
@@ -1061,40 +1061,40 @@
       "type": "CGW NOC"
     },
     {
-      "link": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=205679&text=e234ed872dc9b3067c10a060bb17e8611bebf635e9d90c617c5a4f953c553638",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpapSOUD_1762965197.pdf",
       "type": "Objection Previous Project & Self Declaration"
     },
     {
-      "link": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=205682&text=635bd50e6cde5cce2ddc1da24e33c4968a10b7407d64fb39659b33a86ee41108",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php3NbIIl_1762965846.pdf",
       "type": "New Address Cotrection Company Registration Certificate"
     },
     {
       "type": "approval letter 1",
-      "link": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=228963&text=18407d9aaa01095c401427ad6ffd57611d99e5177e1a0b3229ef8cdfef0dbb6d",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpwFNwg0_1769078729.pdf",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
-      "link": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=228964&text=809c09abf3ad5712640963706828b92f4069b241a464fc6b41b051dd79035d50",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpyCywTi_1769078841.pdf",
       "type": "Cadastral Map and BeMC Approch Road Letter"
     },
     {
-      "link": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=228965&text=ffde7f81b6e2fa4e97ad19e318160fad6b48150a622cd5c4bbabccbfc04f3bc0",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpOlTFfS_1769078974.pdf",
       "type": "Disha Real Estate New Partnership Deed"
     },
     {
-      "link": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=228966&text=aa075410f18d869375f0f647359142b536fb4e59f9afd46864c68acc8ce67e74",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/php14siAB_1769079045.pdf",
       "type": "Fire Affidavit with Undertaking"
     },
     {
-      "link": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=132484&text=47b4f78c2b9ba4490be6262ed7c4bdf226df50a54e4adbc5fb48a6dadc33c37e",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpgWlswd_1746877369.pdf",
       "type": "SCHEDULE ‘A’"
     },
     {
-      "link": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=128070&text=3df7a713b0f6b57210167a5bc7353da3f24d2a7e0bf09edd6821c0b13499a273",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phptwOxrN_1745422555.pdf",
       "type": "SCHEDULE ‘B’"
     },
     {
-      "link": "https://reraapps.odisha.gov.in/dms/public/library/common_viewer/demos-preview.html?fileId=135488&text=d2e54c3151baad02b95d55a7a62c56fbcdd765a352bf3c029d838a244f9eba7d",
+      "link": "https://reraapps.odisha.gov.in/dms/public/Decrypted/phpvN27oD_1748247723.pdf",
       "type": "SCHEDULE ‘C’"
     }
   ],

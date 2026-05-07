@@ -173,23 +173,9 @@
     {
       "amenity_detail": [
         {
-          "name": "Electrical meter room, Sub-station, Receiving station :",
-          "percent_completed": "0",
-          "remarks": "Only electric meter box"
-        },
-        {
           "name": "Water conservation, Rain water harvesting :",
           "percent_completed": "0",
           "remarks": "Only rain water harvesting"
-        },
-        {
-          "name": "Sewerage (Chamber, Lines, Septic tank, STP) :",
-          "percent_completed": "0",
-          "remarks": "Only STP"
-        },
-        {
-          "name": "Visitors Parking :",
-          "percent_completed": "0"
         },
         {
           "name": "Landscaping & Tree planting :",
@@ -204,6 +190,20 @@
           "name": "Water supply :",
           "percent_completed": "0",
           "remarks": "Borewell"
+        },
+        {
+          "name": "Sewerage (Chamber, Lines, Septic tank, STP) :",
+          "percent_completed": "0",
+          "remarks": "Only STP"
+        },
+        {
+          "name": "Visitors Parking :",
+          "percent_completed": "0"
+        },
+        {
+          "name": "Electrical meter room, Sub-station, Receiving station :",
+          "percent_completed": "0",
+          "remarks": "Only electric meter box"
         }
       ]
     },

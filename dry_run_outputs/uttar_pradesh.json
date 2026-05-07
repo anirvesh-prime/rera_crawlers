@@ -3410,6 +3410,7 @@
   "domain": "up-rera.in",
   "state": "uttar pradesh",
   "config_id": 11816,
+  "is_live": false,
   "project_state": "uttar pradesh",
   "machine_name": "Anirveshs-MacBook-Air.local",
   "crawl_machine_ip": "127.0.0.1",
@@ -3457,6 +3458,5 @@
   "checked_updates": null,
   "checked_updates_date": null,
   "rera_housing_found": null,
-  "is_live": null,
   "alternative_rera_ids": null
 }

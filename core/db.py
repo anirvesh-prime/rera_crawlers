@@ -125,6 +125,14 @@ def _field_differs(column: str, old_val: Any, new_val: Any) -> bool:
 
 _SCHEMA_DDL = [
     """
+    ALTER TABLE IF EXISTS project_documents
+    RENAME TO rera_project_documents
+    """,
+    """
+    ALTER INDEX IF EXISTS project_documents_project_key_original_url_idx
+    RENAME TO rera_project_documents_project_key_original_url_idx
+    """,
+    """
     CREATE TABLE IF NOT EXISTS rera_projects (
         key TEXT NOT NULL PRIMARY KEY,
         project_name TEXT,
@@ -242,7 +250,7 @@ _SCHEMA_DDL = [
     )
     """,
     """
-    CREATE TABLE IF NOT EXISTS project_documents (
+    CREATE TABLE IF NOT EXISTS rera_project_documents (
         id SERIAL PRIMARY KEY,
         project_key TEXT NOT NULL,
         document_type TEXT,
@@ -259,8 +267,8 @@ _SCHEMA_DDL = [
     # Enforce uniqueness at DB level — prevents duplicate rows even when two
     # processes race inside upsert_document.
     """
-    CREATE UNIQUE INDEX IF NOT EXISTS project_documents_project_key_original_url_idx
-        ON project_documents (project_key, original_url)
+    CREATE UNIQUE INDEX IF NOT EXISTS rera_project_documents_project_key_original_url_idx
+        ON rera_project_documents (project_key, original_url)
     """,
     """
     CREATE TABLE IF NOT EXISTS crawl_logs (
@@ -275,55 +283,6 @@ _SCHEMA_DDL = [
         traceback TEXT,
         extra JSONB,
         logged_at TIMESTAMPTZ DEFAULT now()
-    )
-    """,
-    # ── Stage-level structured event tables ───────────────────────────────────
-    # One row per named stage lifecycle event (start / end) for any crawl stage.
-    """
-    CREATE TABLE IF NOT EXISTS crawl_stage_events (
-        id SERIAL PRIMARY KEY,
-        run_id INTEGER REFERENCES crawl_runs(id),
-        site_id TEXT NOT NULL,
-        stage TEXT NOT NULL,
-        project_key TEXT,
-        registration_no TEXT,
-        status TEXT,
-        message TEXT,
-        duration_ms INTEGER,
-        occurred_at TIMESTAMPTZ DEFAULT now(),
-        extra JSONB
-    )
-    """,
-    # One row per listing page fetched (URL, page number, cards found, timing).
-    """
-    CREATE TABLE IF NOT EXISTS crawl_listing_events (
-        id SERIAL PRIMARY KEY,
-        run_id INTEGER REFERENCES crawl_runs(id),
-        site_id TEXT NOT NULL,
-        page_no INTEGER,
-        url TEXT,
-        cards_found INTEGER,
-        status TEXT,
-        fetch_duration_ms INTEGER,
-        occurred_at TIMESTAMPTZ DEFAULT now(),
-        extra JSONB
-    )
-    """,
-    # One row per project detail page fetch (fields extracted, docs found, timing).
-    """
-    CREATE TABLE IF NOT EXISTS crawl_detail_events (
-        id SERIAL PRIMARY KEY,
-        run_id INTEGER REFERENCES crawl_runs(id),
-        site_id TEXT NOT NULL,
-        project_key TEXT,
-        registration_no TEXT,
-        url TEXT,
-        fields_extracted INTEGER,
-        doc_links_found INTEGER,
-        status TEXT,
-        fetch_duration_ms INTEGER,
-        occurred_at TIMESTAMPTZ DEFAULT now(),
-        extra JSONB
     )
     """,
     # One row per document download / S3 upload attempt.
@@ -525,32 +484,6 @@ def set_checkpoint(site_id: str, run_type: str, last_page: int, last_project_key
             (site_id, run_type, last_page, last_project_key, run_id),
         )
         conn.commit()
-
-
-def insert_log(
-    run_id: int | None,
-    site_id: str,
-    level: str,
-    message: str,
-    project_key: str | None = None,
-    registration_no: str | None = None,
-    step: str | None = None,
-    traceback: str | None = None,
-    extra: dict | None = None,
-):
-    try:
-        with get_connection() as conn:
-            conn.execute(
-                """INSERT INTO crawl_logs
-                   (run_id, site_id, level, message, project_key, registration_no, step, traceback, extra)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                (run_id, site_id, level, message,
-                 project_key, registration_no, step, traceback,
-                 json.dumps(extra or {})),
-            )
-            conn.commit()
-    except Exception:
-        pass  # never let logging break the crawler
 
 
 def clear_checkpoint(site_id: str, run_type: str):
@@ -761,122 +694,39 @@ def bulk_insert_logs(entries: list[dict]) -> None:
         pass  # never let logging break the crawler
 
 
-def bulk_insert_stage_events(entries: list[dict]) -> None:
-    """Batch-insert buffered stage-event entries into their specialized tables.
+def bulk_insert_document_events(entries: list[dict]) -> None:
+    """Batch-insert buffered document-event entries.
 
-    Each entry must carry a ``"table"`` key naming one of:
-        ``crawl_stage_events``, ``crawl_listing_events``,
-        ``crawl_detail_events``, ``crawl_document_events``.
-
-    Entries are grouped by table and inserted in a single nested transaction so
-    the operation is safe to call from inside an existing transaction (e.g.
-    during upsert_project).  Never raises — a DB hiccup must not kill the crawler.
+    Uses a nested transaction so it is safe to call from inside an existing
+    transaction (e.g. during upsert_project). Never raises — a DB hiccup must
+    not kill the crawler.
     """
     if not entries:
         return
 
-    by_table: dict[str, list[dict]] = {}
-    for e in entries:
-        by_table.setdefault(e.get("table", "crawl_stage_events"), []).append(e)
-
     try:
         conn = get_connection()
         with conn.transaction():
-            rows = by_table.get("crawl_stage_events", [])
-            if rows:
-                conn.executemany(
-                    """
-                    INSERT INTO crawl_stage_events
-                        (run_id, site_id, stage, project_key, registration_no,
-                         status, message, duration_ms, extra)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    """,
-                    [
-                        (
-                            e.get("run_id"), e.get("site_id"), e.get("stage"),
-                            e.get("project_key"), e.get("registration_no"),
-                            e.get("status"), e.get("message"), e.get("duration_ms"),
-                            json.dumps(e.get("extra") or {}),
-                        )
-                        for e in rows
-                    ],
-                )
-
-            rows = by_table.get("crawl_listing_events", [])
-            if rows:
-                conn.executemany(
-                    """
-                    INSERT INTO crawl_listing_events
-                        (run_id, site_id, page_no, url, cards_found,
-                         status, fetch_duration_ms, extra)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    """,
-                    [
-                        (
-                            e.get("run_id"), e.get("site_id"), e.get("page_no"),
-                            e.get("url"), e.get("cards_found"),
-                            e.get("status"), e.get("fetch_duration_ms"),
-                            json.dumps(e.get("extra") or {}),
-                        )
-                        for e in rows
-                    ],
-                )
-
-            rows = by_table.get("crawl_detail_events", [])
-            if rows:
-                conn.executemany(
-                    """
-                    INSERT INTO crawl_detail_events
-                        (run_id, site_id, project_key, registration_no, url,
-                         fields_extracted, doc_links_found, status,
-                         fetch_duration_ms, extra)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    """,
-                    [
-                        (
-                            e.get("run_id"), e.get("site_id"),
-                            e.get("project_key"), e.get("registration_no"),
-                            e.get("url"), e.get("fields_extracted"),
-                            e.get("doc_links_found"), e.get("status"),
-                            e.get("fetch_duration_ms"),
-                            json.dumps(e.get("extra") or {}),
-                        )
-                        for e in rows
-                    ],
-                )
-
-            rows = by_table.get("crawl_document_events", [])
-            if rows:
-                conn.executemany(
-                    """
-                    INSERT INTO crawl_document_events
-                        (run_id, site_id, project_key, document_type,
-                         original_url, s3_key, file_size_bytes, status, extra)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    """,
-                    [
-                        (
-                            e.get("run_id"), e.get("site_id"),
-                            e.get("project_key"), e.get("document_type"),
-                            e.get("original_url"), e.get("s3_key"),
-                            e.get("file_size_bytes"), e.get("status"),
-                            json.dumps(e.get("extra") or {}),
-                        )
-                        for e in rows
-                    ],
-                )
+            conn.executemany(
+                """
+                INSERT INTO crawl_document_events
+                    (run_id, site_id, project_key, document_type,
+                     original_url, s3_key, file_size_bytes, status, extra)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                [
+                    (
+                        e.get("run_id"), e.get("site_id"),
+                        e.get("project_key"), e.get("document_type"),
+                        e.get("original_url"), e.get("s3_key"),
+                        e.get("file_size_bytes"), e.get("status"),
+                        json.dumps(e.get("extra") or {}),
+                    )
+                    for e in entries
+                ],
+            )
     except Exception:
         pass  # never let logging break the crawler
-
-
-# project_documents
-
-def get_document(project_key: str, original_url: str) -> dict | None:
-    with get_connection() as conn:
-        return conn.execute(
-            "SELECT * FROM project_documents WHERE project_key = %s AND original_url = %s",
-            (project_key, original_url),
-        ).fetchone()
 
 
 def upsert_document(
@@ -906,7 +756,7 @@ def upsert_document(
     with conn.transaction():
         existing = conn.execute(
             """
-            SELECT * FROM project_documents
+            SELECT * FROM rera_project_documents
             WHERE project_key = %s AND original_url = %s
             FOR UPDATE
             """,
@@ -916,7 +766,7 @@ def upsert_document(
         if existing is None:
             conn.execute(
                 """
-                INSERT INTO project_documents
+                INSERT INTO rera_project_documents
                     (project_key, document_type, original_url, s3_key, s3_bucket,
                      file_name, md5_checksum, file_size_bytes)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
@@ -929,7 +779,7 @@ def upsert_document(
         if existing["md5_checksum"] != md5_checksum:
             conn.execute(
                 """
-                UPDATE project_documents
+                UPDATE rera_project_documents
                 SET s3_key = %s, md5_checksum = %s, file_size_bytes = %s, uploaded_at = now()
                 WHERE id = %s
                 """,
@@ -938,7 +788,7 @@ def upsert_document(
             return "updated"
 
         conn.execute(
-            "UPDATE project_documents SET last_verified = now() WHERE id = %s",
+            "UPDATE rera_project_documents SET last_verified = now() WHERE id = %s",
             (existing["id"],),
         )
         return "skipped"

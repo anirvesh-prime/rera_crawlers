@@ -453,7 +453,7 @@ CREATE TABLE crawl_checkpoints (
 );
 
 -- Tracks every uploaded document with its MD5 checksum for deduplication
-CREATE TABLE project_documents (
+CREATE TABLE rera_project_documents (
     id              SERIAL PRIMARY KEY,
     project_key     TEXT NOT NULL,               -- FK to projects.key
     document_type   TEXT,                        -- 'registration_certificate' | 'extension_certificate' etc.
@@ -518,16 +518,16 @@ s3://{BUCKET_NAME}/
 - Document filenames are sanitized (spaces → underscores, special chars stripped)
 - If multiple documents of same type exist, append `_1`, `_2` suffix
 - `document_urls` JSONB column in `projects` table stores list of S3 URLs
-- `project_documents` table stores one row per document with MD5 checksum
+- `rera_project_documents` table stores one row per document with MD5 checksum
 
 ### Upload Logic
 ```
 1. Download PDF bytes from source URL
 2. Compute MD5 of bytes
-3. Check project_documents table: does a row exist with same project_key + original_url?
-   a. No row → upload to S3, insert into project_documents
+3. Check rera_project_documents table: does a row exist with same project_key + original_url?
+   a. No row → upload to S3, insert into rera_project_documents
    b. Row exists, MD5 matches → skip (no change)
-   c. Row exists, MD5 differs → re-upload to S3 (overwrite), update project_documents
+   c. Row exists, MD5 differs → re-upload to S3 (overwrite), update rera_project_documents
 ```
 
 ---
@@ -579,13 +579,13 @@ else:
 ```
 md5 = md5(downloaded_bytes)
 
-if no matching row in project_documents (by project_key + original_url):
+if no matching row in rera_project_documents (by project_key + original_url):
     → upload to S3
-    → insert into project_documents
+    → insert into rera_project_documents
 
-elif project_documents.md5_checksum != md5:
+elif rera_project_documents.md5_checksum != md5:
     → re-upload to S3 (overwrite same key)
-    → update project_documents row (new checksum, uploaded_at)
+    → update rera_project_documents row (new checksum, uploaded_at)
 
 else:
     → skip upload
@@ -747,7 +747,6 @@ class Settings(BaseSettings):
 ### `core/s3.py`
 - `upload_document(project_key, filename, bytes_data) -> s3_key`
 - `compute_md5(bytes_data) -> str`
-- `document_exists(project_key, filename) -> bool`
 
 ### `core/logger.py`
 - Structured JSON logger, writes to `logs/YYYY-MM-DD_HH-MM-SS_{site_id}.jsonl`
@@ -914,9 +913,9 @@ run_crawlers.py --mode daily_light/weekly_deep
       │              ├─► find all PDF links
       │              ├─► download bytes
       │              ├─► core/s3.py → compute_md5()
-      │              ├─► compare with project_documents table
+      │              ├─► compare with rera_project_documents table
       │              ├─► upload if changed → s3_key
-      │              └─► update project_documents + document_urls
+      │              └─► update rera_project_documents + document_urls
       │
       └─► core/db.py (update crawl_runs → completed/failed)
 ```

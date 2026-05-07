@@ -5,7 +5,6 @@ import logging
 import re
 
 import boto3
-from botocore.exceptions import ClientError
 
 from core.config import settings
 
@@ -57,15 +56,6 @@ def upload_document(project_key: str, filename: str, data: bytes, dry_run: bool 
     except Exception as exc:
         log.error("S3 upload failed — skipping: %s (key=%s)", exc, s3_key)
         return None
-
-
-def document_exists(project_key: str, filename: str) -> bool:
-    s3_key = build_s3_key(project_key, filename)
-    try:
-        _get_client().head_object(Bucket=settings.S3_BUCKET_NAME, Key=s3_key)
-        return True
-    except ClientError:
-        return False
 
 
 def get_s3_url(s3_key: str) -> str:

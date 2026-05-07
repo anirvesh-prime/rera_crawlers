@@ -1045,7 +1045,7 @@
   "iw_processed": false,
   "checked_updates": false,
   "rera_housing_found": false,
-  "is_live": true,
+  "is_live": false,
   "project_images": [
     "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_1_0f989c17-64a6-48b3-a8a7-291fb9b5aab4.jpg",
     "https://rera.cgstate.gov.in/Content/ProjectDocuments/Application_336/AminitiesPHOTO_2_ef105e86-a429-4854-baa7-44b0a83ddb40.jpg",

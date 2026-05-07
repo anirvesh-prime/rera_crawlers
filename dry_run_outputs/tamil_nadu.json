@@ -127,7 +127,7 @@
   "iw_processed": false,
   "checked_updates": false,
   "rera_housing_found": false,
-  "is_live": false,
+  "is_live": true,
   "document_urls": null,
   "project_type": null,
   "acknowledgement_no": null,

@@ -460,36 +460,6 @@ SITES: list[dict] = [
         "sentinel_district": "Gautam Buddha Nagar",
         "config_id": 11816,
     },
-    {
-        "id": "madhya_pradesh_rera_ongoing",
-        "name": "Madhya Pradesh RERA (Ongoing Projects)",
-        "state_code": "MP",
-        "state": "madhya pradesh",
-        "domain": "rera.mp.gov.in",
-        # PHP site — ongoing-projects-specific AJAX listing endpoint.
-        # Returns all ~5,360 ongoing projects in one HTML table fragment (server
-        # ignores show/pagenum and emits every row; DataTables handles client-side
-        # display).  Critically different from the all-projects listing:
-        #   • Column 1 carries the RERA registration number directly → daily_light
-        #     mode can dedup by key before any detail-page fetch.
-        #   • No "status" column (projects are implicitly ongoing by being listed).
-        # Listing AJAX:  /project-ongoing-loop.php?show=20&pagenum=1
-        # Listing page:  /projects-ongoing/  (used as Referer)
-        # Detail pages:  /view_project_details.php?id=<base64_id>[&extid=<base64_id>]
-        "listing_url": "https://www.rera.mp.gov.in/projects-ongoing/",
-        "listing_ajax_url": "https://www.rera.mp.gov.in/project-ongoing-loop.php",
-        "detail_base_url": "https://www.rera.mp.gov.in/view_project_details.php",
-        "crawler_module": "sites.madhya_pradesh_rera_ongoing",
-        "crawler_type": "static",
-        "enabled": False,
-        "rate_limit_delay": (1, 3),
-        "max_retries": 3,
-        # P-BPL-24-4939 (RESIDENTIAL CUM COMMERCIAL PROJECT AT ALAM NAGAR - BHOPAL)
-        # is an ongoing project visible in the ongoing listing; used as the sentinel.
-        "sentinel_registration_no": "P-BPL-24-4939",
-        "sentinel_detail_url": "https://www.rera.mp.gov.in/view_project_details.php?id=L2NFS0wybnFhMFppUVV3MVduMFpEZz09",
-        "config_id": 12899,
-    },
 ]
 
 

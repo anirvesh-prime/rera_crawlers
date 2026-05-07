@@ -58,7 +58,7 @@
   "iw_processed": false,
   "checked_updates": false,
   "rera_housing_found": false,
-  "is_live": false,
+  "is_live": true,
   "uploaded_documents": [
     {
       "link": "https://prera.py.gov.in/reraAppOffice/getdocument?DOC_ID=12329",

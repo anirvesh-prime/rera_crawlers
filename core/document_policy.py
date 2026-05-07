@@ -171,11 +171,6 @@ def _resolve_state(state: str | None, *, domain: str | None = None) -> str:
     return (clean_string(state) or "").lower()
 
 
-def state_has_document_policy(state: str | None, *, domain: str | None = None) -> bool:
-    resolved_state = _resolve_state(state, domain=domain)
-    return resolved_state in STATE_DOC_DICT
-
-
 def decide_download_rera(state: str | None, doc_name: Any, *, domain: str | None = None) -> tuple[bool, str | None]:
     resolved_state = _resolve_state(state, domain=domain)
     allowed_doc_names = STATE_DOC_DICT.get(resolved_state, [])

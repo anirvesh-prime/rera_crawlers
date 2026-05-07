@@ -601,8 +601,8 @@ def _process_documents(
     """Download, MD5-check, and upload each document PDF to S3.
 
     Follows the spec's process_documents() pattern:
-      for each PDF: download → compute_md5 → compare with project_documents
-                  → upload to S3 if new/changed → update project_documents row
+      for each PDF: download → compute_md5 → compare with rera_project_documents
+                  → upload to S3 if new/changed → update rera_project_documents row
 
     Returns:
         enriched_documents: same list with 's3_link' injected for uploaded docs

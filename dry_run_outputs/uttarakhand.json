@@ -67,7 +67,7 @@
   "iw_processed": false,
   "checked_updates": false,
   "rera_housing_found": false,
-  "is_live": false,
+  "is_live": true,
   "acknowledgement_no": null,
   "project_pin_code": null,
   "project_city": null,

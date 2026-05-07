@@ -1,15 +1,20 @@
 {
-  "key": "9591605317190160457",
-  "project_registration_no": "WBRERA/P/NOR/2025/002592",
-  "url": "https://rera.wb.gov.in/project_details.php?procode=16792000000025",
+  "key": "1677663601985826711",
+  "project_registration_no": "WBRERA/P/ALI/2023/000353",
+  "url": "https://rera.wb.gov.in/project_details.php?procode=11382000000019",
   "state": "west bengal",
   "domain": "rera.wb.gov.in",
-  "project_name": "Crown",
+  "project_name": "ARADHANA APARTMENT",
   "project_type": "Residential",
+  "promoter_name": "Dubra Banerjee",
+  "status_of_the_project": "Not Started",
   "acknowledgement_no": "WBRERA/NPR-000629",
   "project_state": "west bengal",
   "crawl_machine_ip": "127.0.0.1",
   "machine_name": "Anirveshs-MacBook-Air.local",
+  "project_location_raw": {
+    "raw_address": "JAGADHATRI GALI WARD NO -6 , ALIPURDUAR Alipurduar PS. Alipurduar Dist. Alipurduar Pin 736121"
+  },
   "promoter_address_raw": {
     "district": "Alipurduar",
     "pin_code": "736121",
@@ -73,7 +78,7 @@
     "land_area_unit": "sq.mtr.",
     "construction_area_unit": "sq.mtr.",
     "complete_html_url": [
-      "https://rera.wb.gov.in/project_details.php?procode=16792000000025"
+      "https://rera.wb.gov.in/project_details.php?procode=11382000000019"
     ]
   },
   "promoters_details": {
@@ -317,11 +322,8 @@
     }
   ],
   "document_urls": null,
-  "promoter_name": null,
-  "status_of_the_project": null,
   "project_pin_code": null,
   "project_city": null,
-  "project_location_raw": null,
   "submitted_date": null,
   "last_modified": null,
   "estimated_commencement_date": null,

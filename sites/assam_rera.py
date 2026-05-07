@@ -25,7 +25,7 @@ from bs4 import BeautifulSoup
 
 from core.checkpoint import load_checkpoint, save_checkpoint
 from core.crawler_base import generate_project_key, random_delay, safe_get
-from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document, get_document
+from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -936,14 +936,12 @@ def _handle_document(
     """
     Download a single document and upload to S3. Returns result entry or None.
 
-    Flow (mirrors spec Section 7):
+    Shared flow:
     1. Download bytes from source URL.
     2. Compute MD5.
-    3. Check project_documents table:
-       - No row → upload to S3, insert into project_documents.
-       - Row exists, MD5 matches → skip upload, reuse existing S3 key.
-       - Row exists, MD5 differs → re-upload to S3, update project_documents.
-    4. Build and return a result entry with both the original URL (link) and s3_link.
+    3. Upload to S3.
+    4. Upsert the document row in rera_project_documents.
+    5. Build and return a result entry with both the original URL (link) and s3_link.
     """
     url = doc.get("url") or doc.get("link")
     if not url:
@@ -958,26 +956,20 @@ def _handle_document(
         data = resp.content
         md5  = compute_md5(data)
 
-        # Check if document already uploaded with the same content
-        existing_doc = get_document(project_key, url)
-        if existing_doc and existing_doc.get("md5_checksum") == md5:
-            # Content unchanged — reuse the existing S3 key
-            s3_key = existing_doc["s3_key"]
-        else:
-            s3_key = upload_document(project_key, filename, data, dry_run=settings.DRY_RUN_S3)
-            if s3_key is None:
-                return None
-            if not settings.DRY_RUN_S3:
-                upsert_document(
-                    project_key=project_key,
-                    document_type=doc_type,
-                    original_url=url,
-                    s3_key=s3_key,
-                    s3_bucket=settings.S3_BUCKET_NAME,
-                    file_name=filename,
-                    md5_checksum=md5,
-                    file_size_bytes=len(data),
-                )
+        s3_key = upload_document(project_key, filename, data, dry_run=settings.DRY_RUN_S3)
+        if s3_key is None:
+            return None
+        if not settings.DRY_RUN_S3:
+            upsert_document(
+                project_key=project_key,
+                document_type=doc_type,
+                original_url=url,
+                s3_key=s3_key,
+                s3_bucket=settings.S3_BUCKET_NAME,
+                file_name=filename,
+                md5_checksum=md5,
+                file_size_bytes=len(data),
+            )
 
         s3_url = get_s3_url(s3_key)
         result = document_result_entry(doc, s3_url=s3_url, md5=md5)

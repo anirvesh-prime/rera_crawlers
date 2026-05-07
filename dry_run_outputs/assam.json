@@ -333,7 +333,7 @@
   "iw_processed": false,
   "checked_updates": false,
   "rera_housing_found": false,
-  "is_live": false,
+  "is_live": true,
   "document_urls": [
     {
       "link": "https://s3.example.com/dry-run",

@@ -212,7 +212,7 @@
   "iw_processed": false,
   "checked_updates": false,
   "rera_housing_found": false,
-  "is_live": false,
+  "is_live": true,
   "estimated_commencement_date": null,
   "actual_commencement_date": null,
   "actual_finish_date": null,

@@ -857,7 +857,7 @@ def _handle_document(
     site_id: str,
     logger: CrawlerLogger,
 ) -> dict | None:
-    """Download a document, upload to S3, and record in project_documents table."""
+    """Download a document, upload to S3, and record it in rera_project_documents."""
     url = doc.get("link")
     doc_type = doc.get("type", "document")
     if not url:

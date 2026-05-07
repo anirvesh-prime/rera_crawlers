@@ -743,11 +743,80 @@ def _handle_document(
 
 # ── Main run() ────────────────────────────────────────────────────────────────
 
+def _sentinel_find_procode(sentinel_reg: str, logger: CrawlerLogger) -> str | None:
+    """
+    Use Playwright + the DataTables JS API on the WB RERA listing page to find
+    the procode for the given registration number.
+
+    Returns the procode string on success, or None if not found / site unreachable.
+    """
+    from playwright.sync_api import sync_playwright
+
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            ctx = browser.new_context(ignore_https_errors=True)
+            page = ctx.new_page()
+            page.goto(LISTING_URL, timeout=60_000, wait_until="networkidle")
+            page.wait_for_timeout(3_000)
+
+            # Check for 503 / maintenance page before going further
+            title = page.title()
+            if "503" in title or "unavailable" in title.lower():
+                logger.warning(
+                    f"Sentinel: listing page returned {title!r} — skipping",
+                    step="sentinel",
+                )
+                browser.close()
+                return None
+
+            procode = page.evaluate(
+                """(targetReg) => {
+                    if (typeof $ === 'undefined' || typeof $.fn.DataTable === 'undefined')
+                        return null;
+                    const tables = $.fn.dataTable.tables();
+                    if (!tables || !tables.length) return null;
+                    const dt = $(tables[0]).DataTable();
+                    const allRows = dt.rows().data().toArray();
+                    for (const row of allRows) {
+                        // row layout: [serial, old_reg_no, name_html, comp_date, reg_no, reg_date]
+                        if (Array.isArray(row) && row.length > 4 &&
+                                String(row[4]).trim() === targetReg) {
+                            const nameHtml = row[2] || '';
+                            const m = nameHtml.match(/procode=(\\d+)/i);
+                            return m ? m[1] : null;
+                        }
+                    }
+                    return null;
+                }""",
+                sentinel_reg,
+            )
+            browser.close()
+
+            if procode:
+                logger.info(
+                    f"Sentinel: found procode={procode} for {sentinel_reg}",
+                    step="sentinel",
+                )
+            else:
+                logger.warning(
+                    f"Sentinel: {sentinel_reg!r} not found in DataTables listing",
+                    step="sentinel",
+                )
+            return procode
+
+    except Exception as exc:
+        logger.warning(f"Sentinel: listing search failed ({exc})", step="sentinel")
+        return None
+
+
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     """
     Data-quality sentinel for West Bengal RERA.
-    Loads state_projects_sample/west_bengal.json as the baseline, re-scrapes the
-    sentinel project's detail page, and verifies ≥ 80% field coverage.
+
+    Uses the listing page's DataTables JS API to look up the sentinel project
+    by registration number, derives the correct detail URL from the live procode,
+    then verifies ≥ 80% field coverage against state_projects_sample/west_bengal.json.
     """
     import json as _json
     import os as _os
@@ -770,32 +839,23 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
                        path=sample_path, step="sentinel")
         return True
 
-    detail_url = baseline.get("url", "")
-    if not detail_url:
-        logger.warning("Sentinel: no detail URL in sample — skipping", step="sentinel")
-        return True
+    # ── Find the live procode via listing-page search ──────────────────────────
+    logger.info(
+        f"Sentinel: searching listing page for {sentinel_reg}", step="sentinel"
+    )
+    procode = _sentinel_find_procode(sentinel_reg, logger)
 
-    # ── Pre-flight connectivity check ─────────────────────────────────────────
-    # WB RERA blocks plain httpx connections at the network level (TCP RST).
-    # If the portal is unreachable from this host, skip rather than fail so we
-    # don't abort a legitimate crawl run because of a host-level network policy.
-    import httpx as _httpx
-    try:
-        _test = _get(detail_url, logger)
-        if _test is None:
-            # safe_get already retried and logged; check if it's a network block
-            raise _httpx.ConnectError("no response")
-    except (_httpx.ConnectError, _httpx.RemoteProtocolError) as _ce:
+    if procode is None:
+        # Site is down / project not found — skip rather than abort the crawl
         logger.warning(
-            f"Sentinel: network-level block detected — WB portal unreachable "
-            f"from this host ({_ce}); skipping rather than failing",
+            "Sentinel: could not locate project on listing page — skipping",
             step="sentinel",
         )
         return True
-    except Exception:
-        pass  # other errors fall through to _parse_detail_page
 
+    detail_url = f"{BASE_URL}/project_details.php?procode={procode}"
     logger.info(f"Sentinel: scraping {sentinel_reg}", url=detail_url, step="sentinel")
+
     try:
         fresh = _parse_detail_page(detail_url, logger) or {}
     except Exception as exc:

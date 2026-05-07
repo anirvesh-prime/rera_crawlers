@@ -225,14 +225,6 @@ def _extract_rj_table_rows(page) -> list[dict]:
             if idx < len(cells):
                 row[field] = cells[idx].get_text(strip=True)
 
-        # Extract enc_id from the "View" button's href or onclick attribute
-        for a in tr.select("a[href], a[onclick]"):
-            href = a.get("href", "") or a.get("onclick", "")
-            m = re.search(r"[?&/]id=?([A-Za-z0-9+/%_=-]{8,})", href)
-            if m:
-                row["enc_id"] = m.group(1)
-                break
-
         if row.get("reg_no"):
             rows.append(row)
 
@@ -242,7 +234,7 @@ def _extract_rj_table_rows(page) -> list[dict]:
 def _scrape_project_list_playwright(logger: CrawlerLogger) -> list[dict]:
     """
     Navigate the Rajasthan RERA Angular SPA listing page and extract all projects.
-    Returns list of dicts with keys: enc_id, reg_no, project_name, promoter_name,
+    Returns list of dicts with keys: reg_no, project_name, promoter_name,
     project_type, district, application_no, approved_on, status.
     """
     projects: list[dict] = []
@@ -320,6 +312,7 @@ _DETAIL_LABEL_FIELD_MAP: dict[str, str] = {
     "rera registration no": "project_registration_no",
     "rera registration number": "project_registration_no",
     "promoter name": "promoter_name",
+    "promoter details": "promoter_name",
     "name of promoter": "promoter_name",
     "developer name": "promoter_name",
     "project type": "project_type",
@@ -386,6 +379,23 @@ def _extract_kv_from_html(soup: BeautifulSoup) -> dict[str, str]:
     """Extract key-value pairs from multiple Bootstrap/Angular HTML patterns."""
     kv: dict[str, str] = {}
 
+    # Strategy 5 (highest priority): Rajasthan RERA 2.0 Angular pattern
+    # <div class="details"><span class="label">…</span><span class="value">…</span></div>
+    for div in soup.find_all("div", class_="details"):
+        label_el = div.select_one(".label")
+        value_el = div.select_one(".value")
+        if not label_el or not value_el:
+            continue
+        label = _clean(label_el.get_text())
+        # Exclude embedded <a> link text (e.g. "View" anchors inside the value span)
+        value_parts = [
+            t.strip() for t in value_el.strings
+            if t.strip() and getattr(t.parent, "name", None) != "a"
+        ]
+        value = _clean(" ".join(value_parts))
+        if label and value and len(label) < 80:
+            kv.setdefault(label, value)
+
     # Strategy 1: <tr> with <th>label</th><td>value</td>
     for tr in soup.find_all("tr"):
         cells = tr.find_all(["th", "td"])
@@ -430,6 +440,249 @@ def _extract_kv_from_html(soup: BeautifulSoup) -> dict[str, str]:
     return kv
 
 
+def _parse_viewproject_html(soup: BeautifulSoup) -> dict:  # noqa: C901
+    """Parse the full-detail ViewProject popup page (table-based layout).
+
+    The popup at /ViewProject?id=...&type=U contains all the rich project data
+    that is hidden behind the 'Updated project details' View link on the main
+    ProjectDetail page. It uses <table> sections identified by a header row.
+    """
+    out: dict = {}
+
+    def _tbl_heading(tbl) -> str:
+        rows = tbl.find_all("tr")
+        if rows:
+            return _clean(rows[0].get_text()).lower()
+        return ""
+
+    def _find_table(*keywords: str):
+        for tbl in soup.find_all("table"):
+            h = _tbl_heading(tbl)
+            if all(kw.lower() in h for kw in keywords):
+                return tbl
+        return None
+
+    def _parse_kv_rows(tbl, skip: int = 1) -> dict:
+        kv: dict = {}
+        rows = tbl.find_all("tr")[skip:]
+        for tr in rows:
+            cells = [_clean(td.get_text()) for td in tr.find_all(["td", "th"])]
+            if len(cells) >= 4:
+                if cells[0]:
+                    kv[cells[0]] = cells[1]
+                if cells[2]:
+                    kv[cells[2]] = cells[3]
+            elif len(cells) == 2 and cells[0]:
+                kv[cells[0]] = cells[1]
+        return kv
+
+    # ── Bank details ──────────────────────────────────────────────────────────
+    bank_tbl = _find_table("detail of separate bank account")
+    if bank_tbl:
+        kv = _parse_kv_rows(bank_tbl)
+        bank: dict = {}
+        for k, v in kv.items():
+            n = k.lower()
+            if "bank name" in n:           bank["bank_name"]    = v
+            elif "branch name" in n:       bank["branch"]        = v
+            elif "ifsc" in n:              bank["IFSC"]          = v
+            elif "a/c number" in n:        bank["account_no"]    = v
+            elif "account holder" in n:    bank["account_name"]  = v
+            elif "bank address" in n:      bank["address"]       = v
+        if bank:
+            out["bank_details"] = bank
+
+    # ── Land area & units ─────────────────────────────────────────────────────
+    land_tbl = _find_table("land details")
+    if land_tbl:
+        kv = _parse_kv_rows(land_tbl)
+        for k, v in kv.items():
+            n = k.lower()
+            if ("total area" in n or "phase area" in n) and "land_area" not in out:
+                try:
+                    out["land_area"] = float(v.replace(",", ""))
+                except (ValueError, TypeError):
+                    pass
+            if ("sanctioned number" in n or "number of apartments" in n) and v not in ("0", ""):
+                try:
+                    out.setdefault("number_of_residential_units", int(float(v)))
+                except (ValueError, TypeError):
+                    pass
+
+    # ── Construction area ─────────────────────────────────────────────────────
+    sba_tbl = _find_table("total built up area")
+    if sba_tbl:
+        kv = _parse_kv_rows(sba_tbl)
+        for k, v in kv.items():
+            if "built up area" in k.lower():
+                try:
+                    out["construction_area"] = float(v.replace(",", ""))
+                except (ValueError, TypeError):
+                    pass
+
+    # ── Project location ──────────────────────────────────────────────────────
+    loc_tbl = _find_table("location of project")
+    if loc_tbl:
+        kv = _parse_kv_rows(loc_tbl)
+        loc: dict = {}
+        _loc_map = {
+            "state": "state", "district": "district",
+            "tehsil": "taluk", "village": "village",
+            "plot": "house_no_building_name", "khasra": "house_no_building_name",
+            "ward": "ward", "street": "locality", "locality": "locality",
+            "post office": "post_office", "pincode": "pin_code", "pin code": "pin_code",
+        }
+        for k, v in kv.items():
+            if not v or v in ("-", "NA", ""):
+                continue
+            n = k.lower()
+            for kw, field in _loc_map.items():
+                if kw in n:
+                    loc.setdefault(field, v)
+                    break
+        if loc:
+            parts = [v for fld, v in loc.items() if fld not in ("state",) and v]
+            loc["raw_address"] = ", ".join(parts)
+            out["project_location_raw"] = loc
+
+    # ── Project description (Remark) ──────────────────────────────────────────
+    remark_tbl = _find_table("remark about project")
+    if remark_tbl:
+        rows = remark_tbl.find_all("tr")
+        if len(rows) >= 2:
+            desc = _clean(rows[1].get_text())
+            if desc:
+                out["project_description"] = desc
+
+    # ── Project cost ──────────────────────────────────────────────────────────
+    for tbl in soup.find_all("table"):
+        rows = tbl.find_all("tr")
+        if not rows:
+            continue
+        hdrs = [_clean(c.get_text()).lower() for c in rows[0].find_all(["td", "th"])]
+        if "title" in hdrs and "value" in hdrs:
+            cost: dict = {}
+            for tr in rows[1:]:
+                cells = [_clean(td.get_text()) for td in tr.find_all(["td", "th"])]
+                if len(cells) < 3 or not cells[1] or not cells[2]:
+                    continue
+                title, val = cells[1].lower(), cells[2]
+                if "land cost" in title:               cost["cost_of_land"] = val
+                elif "estimated" in title and "construction" in title:
+                    cost["estimated_construction_cost"] = val
+                elif "estimated" in title and "project" in title:
+                    cost["estimated_project_cost"] = val
+            if cost:
+                out["project_cost_detail"] = cost
+            break
+
+    # ── Building / apartment details ──────────────────────────────────────────
+    bldg_tbl = _find_table("building details")
+    if bldg_tbl:
+        rows = bldg_tbl.find_all("tr")
+        hdrs: list[str] = []
+        units: list[dict] = []
+        for tr in rows:
+            cells = [_clean(td.get_text()) for td in tr.find_all(["td", "th"])]
+            if not cells or not any(cells):
+                continue
+            if "apartment type" in cells[0].lower() and not hdrs:
+                hdrs = [c.lower() for c in cells]
+                continue
+            if hdrs and len(cells) >= 3:
+                u: dict = {}
+                for i, h in enumerate(hdrs[:len(cells)]):
+                    v = cells[i] if i < len(cells) else ""
+                    if not v or v == "View":
+                        continue
+                    if "apartment type" in h:       u["flat_type"]     = v
+                    elif "block number" in h:       u["block_name"]    = v
+                    elif "carpet area" in h:        u["carpet_area"]   = v
+                    elif "balcony" in h:            u["balcony_area"]  = v
+                    elif "terrace" in h:            u["open_area"]     = v
+                    elif "proposed number" in h:    u["no_of_units"]   = v
+                if u.get("flat_type") and u.get("carpet_area"):
+                    units.append(u)
+        if units:
+            out["building_details"] = units
+
+    # ── Professional information ───────────────────────────────────────────────
+    # Tables with e-mail/name/contact-number headers, preceded by a role heading
+    professionals: list[dict] = []
+    for tbl in soup.find_all("table"):
+        rows = tbl.find_all("tr")
+        if not rows:
+            continue
+        hdrs = [_clean(c.get_text()).lower() for c in rows[0].find_all(["td", "th"])]
+        if "e-mail address" not in hdrs or "name" not in hdrs:
+            continue
+        ei = next((i for i, h in enumerate(hdrs) if "e-mail" in h), None)
+        ni = next((i for i, h in enumerate(hdrs) if h == "name"), None)
+        ai = next((i for i, h in enumerate(hdrs) if "address" in h), None)
+        pi = next((i for i, h in enumerate(hdrs) if "contact number" in h), None)
+        # Try to infer role from a preceding heading cell in the same table
+        role_row = tbl.find_previous(["h5", "h4", "th", "caption"])
+        role = _clean(role_row.get_text()) if role_row else ""
+        for tr in rows[1:]:
+            cells = [_clean(td.get_text()) for td in tr.find_all(["td", "th"])]
+            if not cells:
+                continue
+            prof: dict = {}
+            if ni is not None and ni < len(cells) and cells[ni]:
+                prof["name"] = cells[ni]
+            if ei is not None and ei < len(cells) and cells[ei]:
+                prof["email"] = cells[ei]
+            if ai is not None and ai < len(cells) and cells[ai]:
+                prof["address"] = cells[ai]
+            if pi is not None and pi < len(cells) and cells[pi]:
+                prof["phone"] = cells[pi]
+            if role:
+                prof["role"] = role
+            if prof.get("name"):
+                professionals.append(prof)
+    if professionals:
+        out["professional_information"] = professionals
+
+    # ── Members / partners ────────────────────────────────────────────────────
+    for tbl in soup.find_all("table"):
+        rows = tbl.find_all("tr")
+        if not rows:
+            continue
+        hdrs = [_clean(c.get_text()).lower() for c in rows[0].find_all(["td", "th"])]
+        if "designation" in hdrs and "name" in hdrs:
+            ni = next((i for i, h in enumerate(hdrs) if h == "name"), None)
+            di = next((i for i, h in enumerate(hdrs) if "designation" in h), None)
+            members: list[dict] = []
+            for tr in rows[1:]:
+                cells = [_clean(td.get_text()) for td in tr.find_all(["td", "th"])]
+                if not cells:
+                    continue
+                m: dict = {}
+                if ni is not None and ni < len(cells):
+                    m["name"] = cells[ni]
+                if di is not None and di < len(cells):
+                    m["position"] = cells[di]
+                if m.get("name"):
+                    members.append(m)
+            if members:
+                out["members_details"] = members
+            break
+
+    # ── Promoter / organisation ───────────────────────────────────────────────
+    org_tbl = _find_table("organization")
+    if org_tbl:
+        kv = _parse_kv_rows(org_tbl)
+        promoter: dict = {}
+        for k, v in kv.items():
+            n = k.lower()
+            if "organization name" in n:    promoter["name"]         = v
+            elif "organization type" in n:  promoter["type_of_firm"] = v
+        if promoter:
+            out["promoters_details"] = promoter
+
+    return out
+
+
 def _parse_detail_docs(soup: BeautifulSoup) -> list[dict]:
     """Collect all document/download links from the rendered detail page HTML."""
     docs: list[dict] = []
@@ -457,6 +710,7 @@ def _parse_detail_docs(soup: BeautifulSoup) -> list[dict]:
 def _try_expand_tabs(page) -> None:
     """Click through all inactive tabs/accordions to expose hidden content."""
     selectors = [
+        "div.tab:not(.selected)",               # Rajasthan RERA 2.0 Angular tabs
         "li.nav-item a.nav-link:not(.active)",
         "a[data-toggle='tab']:not(.active)",
         ".nav-tabs li:not(.active) a",
@@ -509,31 +763,134 @@ def _parse_detail_html(soup: BeautifulSoup) -> dict:
     return out
 
 
+def _fetch_viewproject_html(page, logger: CrawlerLogger) -> str | None:
+    """
+    On the ProjectDetail page, find the 'Updated project details' (or
+    'Project details as at time of registration') ViewProject link, resolve its
+    fully encoded URL via JavaScript, then open it in a new tab and return the HTML.
+
+    Using element.href (not getAttribute) gives the browser-resolved,
+    correctly percent-encoded URL, avoiding double-encoding of base64 IDs.
+
+    Returns the popup HTML string, or None if the link isn't found.
+    """
+    # Wait for Angular to finish rendering the detail divs
+    page.wait_for_timeout(3_000)
+
+    # Use JS to find the ViewProject href — element.href is already fully encoded
+    viewproject_url: str | None = page.evaluate("""() => {
+        const links = Array.from(document.querySelectorAll('a[href*="ViewProject"]'));
+        // Prefer link whose surrounding text mentions "Updated"; fall back to any
+        const updated = links.find(a => {
+            const p = a.closest('div.details');
+            return p && p.textContent.includes('Updated project');
+        });
+        const chosen = updated || links[0];
+        return chosen ? chosen.href : null;
+    }""")
+
+    if not viewproject_url:
+        logger.warning("ViewProject link not found on detail page", step="detail_scrape")
+        return None
+
+    logger.info(f"Fetching ViewProject page: {viewproject_url}", step="detail_scrape")
+    try:
+        popup_page = page.context.new_page()
+        popup_page.goto(viewproject_url, timeout=60_000, wait_until="networkidle")
+        popup_page.wait_for_timeout(2_000)
+        html = popup_page.content()
+        popup_page.close()
+        logger.info("ViewProject page scraped", step="detail_scrape")
+        return html
+    except Exception as exc:
+        logger.warning(f"ViewProject page fetch failed: {exc}", step="detail_scrape")
+        return None
+
+
 def _scrape_detail_playwright(
-    page, enc_id: str, detail_url: str, logger: CrawlerLogger
+    page, project_ref: str, logger: CrawlerLogger
 ) -> tuple[dict, list[dict]]:
     """
-    Navigate to a project detail page, wait for the Angular SPA to render,
-    then parse the HTML to extract structured fields and document links.
+    Scrape the currently-loaded project detail page (Angular SPA already rendered).
+    Call _navigate_to_project_detail first to land on the right URL.
+
+    Also clicks the 'Updated project details' View link to open the full-detail
+    popup (/ViewProject) and merges that richer data into the result.
+
     Returns (data_dict, doc_links).
     """
     try:
-        page.goto(detail_url, timeout=60_000)
-        page.wait_for_load_state("networkidle", timeout=30_000)
         _try_expand_tabs(page)
-        # Allow Angular re-renders after tab clicks to settle
         page.wait_for_timeout(1_000)
         soup = BeautifulSoup(page.content(), "lxml")
         data = _parse_detail_html(soup)
         docs = _parse_detail_docs(soup)
+
+        # ── Open the full-detail popup and merge richer fields ────────────────
+        popup_html = _fetch_viewproject_html(page, logger)
+        if popup_html:
+            popup_soup = BeautifulSoup(popup_html, "lxml")
+            rich = _parse_viewproject_html(popup_soup)
+            # Rich data overrides sparse surface-level data
+            data.update(rich)
+            # Also collect any doc links from the popup
+            docs.extend(_parse_detail_docs(popup_soup))
+
         logger.info(
             f"Detail page scraped: {len(data)} fields, {len(docs)} docs",
-            enc_id=enc_id, step="detail_scrape",
+            step="detail_scrape",
         )
         return data, docs
     except Exception as exc:
-        logger.error(f"Detail page scrape failed: {exc}", enc_id=enc_id, step="detail_scrape")
+        logger.error(f"Detail page scrape failed: {exc}", step="detail_scrape")
         return {}, []
+
+
+def _navigate_to_project_detail(page, reg_no: str, logger: CrawlerLogger) -> str:
+    """
+    Navigate to a project's detail page by using the Rajasthan RERA listing's
+    Angular search form to filter by registration number, then clicking View.
+
+    The listing uses three Angular form inputs (projectName, promoterName,
+    registrationNo) rather than a DataTables global search box. Filling
+    registrationNo and clicking the Search button triggers the filter.
+
+    Returns the detail page URL on success, or empty string on failure.
+    """
+    try:
+        page.goto(LISTING_PAGE_URL, timeout=60_000)
+        page.wait_for_selector("table tbody tr", timeout=30_000)
+        page.wait_for_load_state("networkidle", timeout=20_000)
+
+        # Fill the registration-number search field and click Search
+        try:
+            reg_input = page.locator("input[name='registrationNo']").first
+            reg_input.fill(reg_no)
+            search_btn = page.locator(
+                "button.btn-primary.w-100, button:has-text('Search')"
+            ).first
+            search_btn.click()
+            page.wait_for_timeout(2_000)
+            page.wait_for_load_state("networkidle", timeout=15_000)
+        except Exception as se:
+            logger.warning(f"Registration search failed for {reg_no}: {se}")
+
+        # Click the View button on the first visible matching row
+        page.locator("tbody tr").first.locator("button").click()
+        page.wait_for_load_state("networkidle", timeout=30_000)
+        page.wait_for_timeout(1_500)
+
+        detail_url = page.url
+        if "ProjectDetail" in detail_url:
+            return detail_url
+
+        logger.warning(
+            f"View click for {reg_no} did not reach ProjectDetail — got {detail_url}"
+        )
+        return ""
+    except Exception as exc:
+        logger.error(f"Navigation to detail failed for {reg_no}: {exc}")
+        return ""
 
 
 
@@ -574,8 +931,8 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     """
     Data-quality sentinel for Rajasthan RERA — Playwright-only.
 
-    1. Reads enc_id from the baseline sample URL.
-    2. Opens the detail page in Playwright (no REST API calls).
+    1. Navigates to the public listing page and searches for sentinel_registration_no.
+    2. Clicks the View button to land on the project's detail page.
     3. Extracts fields via HTML scraping.
     4. Verifies ≥ 80% coverage against the stored baseline.
     """
@@ -600,25 +957,30 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
                        path=sample_path, step="sentinel")
         return True
 
-    # Derive enc_id from the baseline sample URL
-    baseline_url = baseline.get("url", "")
-    enc_id_match = re.search(r"[?&]id=([^&\s]+)", baseline_url)
-    enc_id = enc_id_match.group(1) if enc_id_match else ""
-
-    if not enc_id:
-        logger.warning("Sentinel: no enc_id in baseline URL — skipping detail check",
-                       step="sentinel")
-        return True
-
-    detail_url = f"{BASE_URL}/view-project-summary?id={enc_id}&type=U"
-    logger.info(f"Sentinel: scraping {detail_url}", step="sentinel")
-
+    logger.info(
+        f"Sentinel: navigating to listing to find {sentinel_reg}", step="sentinel"
+    )
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(headless=True)
             context = browser.new_context(user_agent=_UA)
             page = context.new_page()
-            fresh, _ = _scrape_detail_playwright(page, enc_id, detail_url, logger)
+
+            detail_url = _navigate_to_project_detail(page, sentinel_reg, logger)
+            if not detail_url:
+                logger.error(
+                    "Sentinel: could not navigate to project detail page",
+                    step="sentinel",
+                )
+                browser.close()
+                insert_crawl_error(
+                    run_id, config.get("id", "rajasthan_rera"),
+                    "SENTINEL_FAILED", "Could not navigate to detail page",
+                )
+                return False
+
+            logger.info(f"Sentinel: landed on {detail_url}", step="sentinel")
+            fresh, _ = _scrape_detail_playwright(page, sentinel_reg, logger)
             browser.close()
     except Exception as exc:
         logger.error(f"Sentinel: Playwright failed — {exc}", step="sentinel")
@@ -722,7 +1084,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         detail_page = context.new_page()
 
         for i, proj in enumerate(listed_projects):
-            enc_id = proj.get("enc_id", "")
             reg_no = proj.get("reg_no") or f"RJ-{i}"
             key    = generate_project_key(reg_no)
             if resume_pending:
@@ -731,11 +1092,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 counts["projects_skipped"] += 1
                 continue
 
-            detail_url = (
-                f"{BASE_URL}/view-project-summary?id={enc_id}&type=U"
-                if enc_id else LISTING_PAGE_URL
-            )
-            logger.set_project(key=key, reg_no=reg_no, url=detail_url, page=i)
+            logger.set_project(key=key, reg_no=reg_no, url=LISTING_PAGE_URL, page=i)
 
             if mode == "daily_light" and get_project_by_key(key):
                 logger.info("Skipping — already in DB (daily_light)", step="skip")
@@ -743,6 +1100,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 logger.clear_project()
                 continue
 
+            detail_url = ""
             try:
                 # Seed with listing-level fields from the HTML table
                 data: dict = {}
@@ -755,29 +1113,33 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                             val = _normalize_project_type(val)
                         data[schema_f] = val
 
+                # Navigate to detail page by clicking View from the listing
+                detail_url = _navigate_to_project_detail(detail_page, reg_no, logger)
+
                 # Scrape rich detail from the rendered detail page
                 detail_fields: dict = {}
                 doc_links: list[dict] = []
-                if enc_id:
+                if detail_url:
                     detail_fields, doc_links = _scrape_detail_playwright(
-                        detail_page, enc_id, detail_url, logger)
+                        detail_page, reg_no, logger)
                 # Detail page fields override listing fields (more authoritative)
                 data.update(detail_fields)
 
+                project_url = detail_url or LISTING_PAGE_URL
                 data.update({
                     "key":              key,
                     "state":            config["state"],
                     "project_state":    "Rajasthan",
                     "domain":           DOMAIN,
                     "config_id":        config["config_id"],
-                    "url":              detail_url,
+                    "url":              project_url,
                     "is_live":          True,
                     "machine_name":     machine_name,
                     "crawl_machine_ip": machine_ip,
                 })
 
                 prod_data_fields: dict = {"govt_type": "state", "is_processed": False}
-                if enc_id:
+                if detail_url:
                     prod_data_fields["details_page"]           = detail_url
                     prod_data_fields["land_area_unit"]         = "In sq. meters"
                     prod_data_fields["construction_area_unit"] = "in sq. meters"
@@ -807,7 +1169,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                 data["data"] = merge_data_sections(
                     prod_data_fields,
-                    {"source": "playwright_html", "enc_id": enc_id},
+                    {"source": "playwright_html", "detail_url": detail_url},
                 )
 
                 logger.info("Normalizing and validating", step="normalize")
@@ -868,9 +1230,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
             except Exception as exc:
                 logger.exception("Project processing failed", exc, step="project_loop",
-                                 enc_id=enc_id)
+                                 reg_no=reg_no)
                 insert_crawl_error(run_id, site_id, "PROJECT_ERROR", str(exc),
-                                   project_key=key, url=detail_url)
+                                   project_key=key, url=detail_url or LISTING_PAGE_URL)
                 counts["error_count"] += 1
             finally:
                 logger.clear_project()

@@ -760,7 +760,6 @@
   "document_urls": [
     {
       "link": "https://s3.example.com/dry-run",
-      "updated": true,
       "type": "Registration Certificate 1"
     }
   ],

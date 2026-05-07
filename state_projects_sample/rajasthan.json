@@ -4,83 +4,49 @@
   "project_type": "group-housing",
   "promoter_name": "J S BUILDCOM",
   "project_registration_no": "RAJ/P/2024/3058",
-  "status_of_the_project": "INPROGRESS",
-  "acknowledgement_no": "RAJ-RERA-APP-P-2024-9705",
+  "status_of_the_project": null,
+  "acknowledgement_no": null,
   "project_pin_code": null,
   "project_city": null,
   "project_state": null,
   "project_location_raw": {
     "state": "Rajasthan",
+    "district": "Jaipur",
     "taluk": "Sanganer",
     "village": "JAIPUR",
+    "house_no_building_name": "PLOT NO O-35A",
+    "ward": "GRAM MANYAWAS",
     "locality": "6-D ENGINEERS COLONY",
+    "post_office": "SANGANER",
     "pin_code": "302021",
-    "raw_address": "PLOT NO O-35A, GRAM MANYAWAS, 6-D ENGINEERS COLONY, N/A, Sanganer, Jaipur, Rajasthan, 302021",
-    "house_no_building_name": "PLOT NO O-35A"
+    "raw_address": "Jaipur, Sanganer, JAIPUR, PLOT NO O-35A, GRAM MANYAWAS, 6-D ENGINEERS COLONY, SANGANER, 302021"
   },
-  "promoter_address_raw": [
-    {
-      "state": "Rajasthan",
-      "taluk": "Jaipur",
-      "village": "JAIPUR",
-      "district": "Jaipur",
-      "locality": "KARDHANI SHOPPING CENTRE KALWAR ROAD",
-      "pin_code": "302012",
-      "house_no_building_name": "SHOP NO A-181"
-    }
-  ],
-  "promoter_contact_details": {
-    "email": " <!--OFC.GRANDBAZAR@GMAIL.COM -->",
-    "phone": " Company"
-  },
+  "promoter_address_raw": null,
+  "promoter_contact_details": null,
   "submitted_date": "2024-03-19 00:00:00+00:00",
   "last_modified": null,
-  "estimated_commencement_date": "2024-01-01 00:00:00+00:00",
-  "actual_commencement_date": "2024-01-01 00:00:00+00:00",
-  "estimated_finish_date": "2026-12-31 00:00:00+00:00",
+  "estimated_commencement_date": null,
+  "actual_commencement_date": null,
+  "estimated_finish_date": null,
   "actual_finish_date": null,
   "approved_on_date": null,
   "past_experience_of_promoter": null,
-  "bank_details": [
-    {
-      "IFSC": "AUBL0002444",
-      "branch": "KALWAR ROAD",
-      "address": "KRISHNA ENCLAVE 11 GOKULPURA KALWAR ROAD JAIPUR 302012",
-      "updated": true,
-      "bank_name": "AU SMALL FINANCE BANK LIMITED",
-      "account_no": "2402244456025797",
-      "account_name": "J S BUILDCOM VENTURA RERA ACCOUNT",
-      "account_type": "Collection Account (100%)"
-    },
-    {
-      "IFSC": "⠀",
-      "branch": "⠀",
-      "address": "⠀",
-      "updated": true,
-      "bank_name": "⠀",
-      "account_no": "⠀",
-      "account_name": "⠀",
-      "account_type": "RERA Retention Account (70%)"
-    },
-    {
-      "IFSC": "⠀",
-      "branch": "⠀",
-      "address": "⠀",
-      "updated": true,
-      "bank_name": "⠀",
-      "account_no": "⠀",
-      "account_name": "⠀",
-      "account_type": "Promoter's Account (30%)"
-    }
-  ],
+  "bank_details": {
+    "bank_name": "AU SMALL FINANCE BANK LIMITED",
+    "branch": "KALWAR ROAD",
+    "IFSC": "AUBL0002444",
+    "account_no": "2402244456025797",
+    "account_name": "J S BUILDCOM VENTURA RERA ACCOUNT",
+    "address": "KRISHNA ENCLAVE 11 GOKULPURA KALWAR ROAD JAIPUR 302012"
+  },
   "land_area": 2429.23,
-  "construction_area": null,
+  "construction_area": 16681.0,
   "total_floor_area_under_commercial_or_other_uses": null,
   "total_floor_area_under_residential": null,
   "project_cost_detail": {
-    "cost_of_land": "₹6,00,00,000.00",
-    "estimated_project_cost": "₹30,00,00,000.00",
-    "estimated_construction_cost": "₹24,00,00,000.00"
+    "cost_of_land": "60000000",
+    "estimated_project_cost": "300000000",
+    "estimated_construction_cost": "240000000"
   },
   "number_of_residential_units": 46,
   "number_of_commercial_units": null,
@@ -149,142 +115,7 @@
     }
   ],
   "complaints_litigation_details": null,
-  "uploaded_documents": [
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets//artemis-v1/uploads/QPR/R1/0b289d07-6fa4-43b6-8186-2fe748e15bc5.pdf,https://rera-app.rajasthan.gov.in/assets//artemis-v1/uploads/QPR/R1/0b289d07-6fa4-43b6-8186-2fe748e15bc5.pdf",
-      "type": "View uploaded R1",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets//artemis-v1/uploads/QPR/R2/7199f52f-333f-49c4-aed4-969388d8a609.pdf,https://rera-app.rajasthan.gov.in/assets//artemis-v1/uploads/QPR/R2/7199f52f-333f-49c4-aed4-969388d8a609.pdf",
-      "type": "View Uploaded R2",
-      "updated": true,
-      "dated_on": "2025-04-13"
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets//artemis-v1/uploads/QPR/R3/cd0f49c8-e768-4f8f-a94d-0a1ab5e4919e.pdf",
-      "type": "View Uploaded R3",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets//artemis-v1/uploads/QPR/RERAretentionAccount/cfd26c8d-fbf7-48e5-8880-7e666d7fba02.pdf",
-      "type": "View Certificate",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1/uploads/Certificate/f66f9eef-f28f-41d4-9a23-cf21db111896.pdf",
-      "type": "RERA Registration Certificate 1",
-      "s3_link": "http://docs.primetenders.com/documents/11178028613781263814/RERA_Registration_Certificate_1.pdf",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1//ProjectCommanarea/Drawings/91088a50-db30-4858-8564-260afae4635c.pdf",
-      "type": "6 Others",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1//Project/Building/4587/65e01eb1-e01a-4175-9a79-190ea5566821.pdf",
-      "type": "Structural drawings 1",
-      "s3_link": "http://docs.primetenders.com/documents/11178028613781263814/Structural_drawings_1.pdf",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1//Project/Building/4587/c0586815-0024-462b-8d37-09368a55cadf.pdf",
-      "type": "Building Sanction Plan 1",
-      "s3_link": "http://docs.primetenders.com/documents/11178028613781263814/Building_Sanction_Plan_1.pdf",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1//Project/Building/4587/8c51e3f3-4f36-41f7-8e92-826003dd15e4.pdf",
-      "type": "3 Services Drawings (SLD/ distribution details after LT panel, earthling layout, external lighting plan/ layout, TV & telephone riser diagram, lighting arrester location & pit location, coordination drawings, fire detection & alarm system layout of all floor)",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1//Project/Building/4587/6d0bc366-5af2-4b8d-89a2-51a003410f38.pdf",
-      "type": "4 Fire Fighting (Firefighting BOQ & specification, External Yard Hydrant Layout, Pump Room layout)",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1//Project/Building/4587/323896f9-5379-4918-a761-f67f50f045ea.pdf",
-      "type": "ARCHITECT Certificate 1",
-      "s3_link": "http://docs.primetenders.com/documents/11178028613781263814/ARCHITECT_Certificate_1.pdf",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1//Project/Building/4587/60495e90-6739-4aa8-afcf-dfc86ec99f0e.pdf",
-      "type": "Electrical 1",
-      "s3_link": "http://docs.primetenders.com/documents/11178028613781263814/Electrical_1.pdf",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1//Project/Building/4587/54b45fb9-4af6-4610-b51f-6c98e95bef0e.pdf",
-      "type": "Electrical 2",
-      "s3_link": "http://docs.primetenders.com/documents/11178028613781263814/Electrical_2.pdf",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1//Project/Building/4587/10306a4f-bc6e-4683-8b0f-d2ec7b45a40d.pdf",
-      "type": "8 Common Plumbing (Plumbing specification, water schematic drawing, internal water supply & drainage, external water supply & drainage, external sewage layout, pump room layout",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1//uploads/9cc796b1-2345-451a-b1fc-4f18ccc38a09.pdf",
-      "type": "2 Chain of Land Title Document",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1//uploads/eaeb3ec8-8516-4105-8e96-aeacd4fc8863.pdf",
-      "type": "4 Signed Performa for the allotment letter and agreement for sale (AFS) for project (As per RAJ - RERA Rules and FORM - G)",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1//uploads/9b478f77-acf6-495f-9fa6-6aeb19a21cd5.pdf",
-      "type": "5 Declaration in FORM B(As per RAJ-RERA Rules)",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1//uploads/9cd3c451-b4cd-4328-9e89-b8df5f5d0a64.pdf",
-      "type": "1 Other Approvals as may be required and obtained for the project (if any)",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1/uploads/159fc525-5783-4ddf-8227-f769fcb46f00.pdf",
-      "type": "4 NOC from Airport Authority of India",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1//uploads/a7837e3e-a258-4551-a975-4e7c3b003574.pdf",
-      "type": "Approved Site Plan 1",
-      "s3_link": "http://docs.primetenders.com/documents/11178028613781263814/Approved_Site_Plan_1.pdf",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1//uploads/d8443076-2ea2-4d3c-b052-9a9c19e69613.pdf",
-      "type": "3 Ghantt Charts or Milestone Charts and Project Schedule",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1//uploads/5f848628-3b36-459a-966a-80a077be7d2e.pdf",
-      "type": "Location with Demarcation 1",
-      "s3_link": "http://docs.primetenders.com/documents/11178028613781263814/Location_with_Demarcation_1.pdf",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1/uploads//6801fdcb-33f1-4990-a739-a1cbaa033094.pdf",
-      "type": "Please upload a copy of plan showing the unit numbering of all units * /artemis-v1/uploads//6801fdcb-33f1-4990-a739-a1cbaa033094.pdf",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1/Encum34F1DF48F1DC.pdf",
-      "type": "Sanctioned Letter * /artemis-v1/Encum34F1DF48F1DC.pdf",
-      "updated": true
-    },
-    {
-      "link": "https://rera-app.rajasthan.gov.in/assets/artemis-v1/uploads/accd93e2-96a6-4550-ab6d-2d7ca839c129.pdf",
-      "type": "Document Upload * /artemis-v1/uploads/accd93e2-96a6-4550-ab6d-2d7ca839c129.pdf",
-      "updated": true
-    }
-  ],
+  "uploaded_documents": null,
   "authorised_signatory_details": null,
   "co_promoter_details": [
     {
@@ -296,25 +127,15 @@
   "professional_information": [
     {
       "name": "Mr.Shrawan Kumawat",
-      "role": "Architect *",
       "email": "spaceedgejpr@gmail.com",
-      "phone": "9314510603",
-      "address": "B-6, Moti Marg, Bapu Nagar, Jaipur"
-    },
-    {},
-    {
-      "name": "LOKESH WADHWA",
-      "role": "Structural Engineer *",
-      "email": "frameconsultantsjaipur@gmail.com",
-      "phone": "9024160011",
-      "address": "D-85, GAUTAM MATH NIRMAN NAGAR ,JAIPUR"
+      "address": "B-6, Moti Marg, Bapu Nagar, Jaipur",
+      "phone": "9314510603"
     },
     {
       "name": "LOKESH WADHWA",
-      "role": "Engineer *",
       "email": "frameconsultantsjaipur@gmail.com",
-      "phone": "9024160011",
-      "address": "D-85, GAUTAM MATH NIRMAN NAGAR, JAIPUR"
+      "address": "D-85, GAUTAM MATH NIRMAN NAGAR ,JAIPUR",
+      "phone": "9024160011"
     }
   ],
   "development_agreement_detail": null,
@@ -438,7 +259,8 @@
     "construction_area_unit": "in sq. meters"
   },
   "promoters_details": {
-    "type_of_firm": "Company"
+    "name": "J S BUILDCOM",
+    "type_of_firm": "Partnership"
   },
   "domain": "rera.rajasthan.gov.in",
   "state": "rajasthan",

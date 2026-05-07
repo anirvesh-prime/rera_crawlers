@@ -2441,7 +2441,7 @@
   "iw_processed": false,
   "checked_updates": false,
   "rera_housing_found": false,
-  "is_live": false,
+  "is_live": true,
   "project_images": [
     "https://rera.delhi.gov.in/sites/all/themes/rera/img/gallery/pna.jpg"
   ],

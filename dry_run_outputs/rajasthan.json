@@ -1,36 +1,520 @@
 {
   "key": "11178028613781263814",
   "project_registration_no": "RAJ/P/2024/3058",
-  "url": "https://rera.rajasthan.gov.in/view-project-summary?id=AHTh/hIBTdU=&type=U",
+  "url": "https://rera.rajasthan.gov.in/ProjectDetail?id=A4LeF1gt6aXRt85tGnk3AQ",
   "state": "rajasthan",
   "domain": "rera.rajasthan.gov.in",
   "project_name": "VENTURA",
   "project_type": "group-housing",
-  "promoter_name": "J S BUILDCOM",
-  "status_of_the_project": "INPROGRESS",
-  "acknowledgement_no": "RAJ-RERA-APP-P-2024-9705",
+  "promoter_name": "J S BUILDCOM Partnership Firm",
+  "project_city": "Jaipur",
   "project_state": "Rajasthan",
+  "project_description": "we will not sale servent room independently. these all servant rooms including extra one will be sold to the allottees of the approved flats only and not be be sold independently to any other person or will be kept as the facility of the the apartment.",
   "crawl_machine_ip": "127.0.0.1",
   "machine_name": "Anirveshs-MacBook-Air.local",
+  "project_location_raw": {
+    "state": "Rajasthan",
+    "taluk": "Sanganer",
+    "village": "JAIPUR",
+    "house_no_building_name": "PLOT NO O-35A",
+    "locality": "6-D ENGINEERS COLONY",
+    "pin_code": "302021",
+    "raw_address": "Jaipur, Sanganer, JAIPUR, PLOT NO O-35A, GRAM MANYAWAS, 6-D ENGINEERS COLONY, SANGANER, 302021"
+  },
+  "bank_details": {
+    "bank_name": "AU SMALL FINANCE BANK LIMITED",
+    "branch": "KALWAR ROAD",
+    "IFSC": "AUBL0002444",
+    "account_no": "2402244456025797",
+    "account_name": "J S BUILDCOM VENTURA RERA ACCOUNT",
+    "address": "KRISHNA ENCLAVE 11 GOKULPURA KALWAR ROAD JAIPUR 302012"
+  },
+  "project_cost_detail": {
+    "cost_of_land": "0",
+    "estimated_construction_cost": "0"
+  },
+  "building_details": [
+    {
+      "flat_type": "Block Number",
+      "block_name": "Carpet Area (In sq. meters)",
+      "carpet_area": "Area of Exclusive Balcony (In sq. meters)",
+      "balcony_area": "Area of Exclusive Verandah (In sq. meters)",
+      "open_area": "Area of Exclusive Store (In sq. meters)",
+      "no_of_units": "Number of Apartments Booked/Allotted/Sold"
+    },
+    {
+      "flat_type": "1",
+      "block_name": "203.52",
+      "carpet_area": "26.83",
+      "balcony_area": "0",
+      "open_area": "0",
+      "no_of_units": "0"
+    },
+    {
+      "flat_type": "Document Name",
+      "carpet_area": "Floor Plan (Door, windows, rooms, LB, Kitchen, if any)",
+      "no_of_units": "HVAC Drawing (Showing air ducting, ac shafts etc , if any)"
+    },
+    {
+      "flat_type": "1",
+      "block_name": "205.6",
+      "carpet_area": "33.64",
+      "balcony_area": "0",
+      "open_area": "0",
+      "no_of_units": "0"
+    },
+    {
+      "flat_type": "Document Name",
+      "carpet_area": "Floor Plan (Door, windows, rooms, LB, Kitchen, if any)",
+      "no_of_units": "HVAC Drawing (Showing air ducting, ac shafts etc , if any)"
+    },
+    {
+      "flat_type": "1",
+      "block_name": "205.6",
+      "carpet_area": "33.64",
+      "balcony_area": "0",
+      "open_area": "0",
+      "no_of_units": "5"
+    },
+    {
+      "flat_type": "Document Name",
+      "carpet_area": "Floor Plan (Door, windows, rooms, LB, Kitchen, if any)",
+      "no_of_units": "HVAC Drawing (Showing air ducting, ac shafts etc , if any)"
+    },
+    {
+      "flat_type": "1",
+      "block_name": "205.6",
+      "carpet_area": "33.64",
+      "balcony_area": "0",
+      "open_area": "0",
+      "no_of_units": "0"
+    },
+    {
+      "flat_type": "Document Name",
+      "carpet_area": "Floor Plan (Door, windows, rooms, LB, Kitchen, if any)",
+      "no_of_units": "HVAC Drawing (Showing air ducting, ac shafts etc , if any)"
+    },
+    {
+      "flat_type": "1",
+      "block_name": "203.52",
+      "carpet_area": "26.83",
+      "balcony_area": "0",
+      "open_area": "0",
+      "no_of_units": "1"
+    },
+    {
+      "flat_type": "Document Name",
+      "carpet_area": "Floor Plan (Door, windows, rooms, LB, Kitchen, if any)",
+      "no_of_units": "HVAC Drawing (Showing air ducting, ac shafts etc , if any)"
+    },
+    {
+      "flat_type": "1",
+      "block_name": "203.52",
+      "carpet_area": "26.83",
+      "balcony_area": "0",
+      "open_area": "0",
+      "no_of_units": "0"
+    },
+    {
+      "flat_type": "Document Name",
+      "carpet_area": "Floor Plan (Door, windows, rooms, LB, Kitchen, if any)",
+      "no_of_units": "HVAC Drawing (Showing air ducting, ac shafts etc , if any)"
+    },
+    {
+      "flat_type": "1",
+      "block_name": "203.52",
+      "carpet_area": "26.83",
+      "balcony_area": "0",
+      "open_area": "0",
+      "no_of_units": "3"
+    },
+    {
+      "flat_type": "Document Name",
+      "carpet_area": "Floor Plan (Door, windows, rooms, LB, Kitchen, if any)",
+      "no_of_units": "HVAC Drawing (Showing air ducting, ac shafts etc , if any)"
+    },
+    {
+      "flat_type": "1",
+      "block_name": "205.6",
+      "carpet_area": "33.64",
+      "balcony_area": "0",
+      "open_area": "0",
+      "no_of_units": "6"
+    },
+    {
+      "flat_type": "Document Name",
+      "carpet_area": "Floor Plan (Door, windows, rooms, LB, Kitchen, if any)",
+      "no_of_units": "HVAC Drawing (Showing air ducting, ac shafts etc , if any)"
+    },
+    {
+      "flat_type": "Block Number",
+      "block_name": "Carpet Area (In sq. meters)",
+      "carpet_area": "Area of Exclusive Balcony (In sq. meters)",
+      "balcony_area": "Area of Exclusive Verandah (In sq. meters)",
+      "open_area": "Area of Exclusive Store (In sq. meters)",
+      "no_of_units": "Number of Apartments Booked/Allotted/Sold"
+    },
+    {
+      "flat_type": "-",
+      "block_name": "-",
+      "carpet_area": "-",
+      "balcony_area": "0"
+    }
+  ],
+  "professional_information": [
+    {
+      "name": "Mr.Shrawan Kumawat",
+      "email": "spaceedgejpr@gmail.com",
+      "address": "spaceedgejpr@gmail.com",
+      "phone": "9314510603",
+      "role": "Total"
+    },
+    {
+      "name": "Amit Choudhary",
+      "email": "cpstandco@gmail.com",
+      "address": "cpstandco@gmail.com",
+      "phone": "9079049437",
+      "role": "COA Registration No."
+    },
+    {
+      "name": "LOKESH WADHWA",
+      "email": "frameconsultantsjaipur@gmail.com",
+      "address": "frameconsultantsjaipur@gmail.com",
+      "phone": "9024160011",
+      "role": "Registration No."
+    },
+    {
+      "name": "LOKESH WADHWA",
+      "email": "frameconsultantsjaipur@gmail.com",
+      "address": "frameconsultantsjaipur@gmail.com",
+      "phone": "9024160011",
+      "role": "Contact Number"
+    }
+  ],
+  "members_details": [
+    {
+      "name": "JAMANA DEVI",
+      "position": "PARTNER"
+    },
+    {
+      "name": "SHWETA DALMIA",
+      "position": "PARTNER"
+    }
+  ],
   "data": {
     "is_processed": false,
     "land_area_unit": "In sq. meters",
     "construction_area_unit": "in sq. meters",
-    "type": "Group Housing"
+    "type": "Group Housing",
+    "temp": "RAJ/P/2024/3058 (19/03/2024)"
   },
+  "promoters_details": {
+    "name": "J S BUILDCOM",
+    "type_of_firm": "Partnership"
+  },
+  "submitted_date": "2024-03-19 00:00:00+00:00",
+  "number_of_residential_units": 46,
   "config_id": 2,
+  "land_area": 2429.23,
+  "construction_area": 16681.0,
   "is_updated": false,
   "is_duplicate": false,
   "iw_processed": false,
   "checked_updates": false,
   "rera_housing_found": false,
   "is_live": true,
+  "uploaded_documents": [
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/pdf/Real_Estate_Act_2016.pdf",
+      "type": "Act"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/pdf/RERA_Rules_2017.pdf",
+      "type": "Rules"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/pdf/Regulations-2024.pdf",
+      "type": "Regulations"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/SpclProMod/ProMoD5B63FB1B9D45.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/SpclProMod/ProMoD410B53B6E6DD.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/SpclProMod/ProMoD1AEEA5037A8D.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/SpclProMod/ProMoD1610DD071FE2.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/SpclProMod/ProMoDBF65C7F6EB8D.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/ProjectCommanarea/Drawings/91088a50-db30-4858-8564-260afae4635c.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/pdf/Real_Estate_Act_2016.pdf",
+      "type": "Act"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/pdf/RERA_Rules_2017.pdf",
+      "type": "Rules"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in/Content/pdf/Regulations-2024.pdf",
+      "type": "Regulations"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/54af076d-6577-477a-8464-0088c957bf64.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads//273231ca-dd98-415a-b488-ad70f02fca96.jpeg",
+      "type": "View Photo"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads//83fa47cf-9138-462c-bdbb-92bead889b29.jpeg",
+      "type": "View Photo"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/Certificate/f66f9eef-f28f-41d4-9a23-cf21db111896.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/SpclProMod/ProMoD5B63FB1B9D45.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/SpclProMod/ProMoD410B53B6E6DD.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/SpclProMod/ProMoD1AEEA5037A8D.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/SpclProMod/ProMoD1610DD071FE2.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/SpclProMod/ProMoDBF65C7F6EB8D.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/ProjectCommanarea/Drawings/91088a50-db30-4858-8564-260afae4635c.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/SpclProMod/ProMoD2A65B399F79B.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/Building/4587/c0586815-0024-462b-8d37-09368a55cadf.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/SpclProMod/ProMoD8BFA20938D63.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/SpclProMod/ProMoD1B59D03AE68A.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/SpclProMod/ProMoD4137CDA505D4.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/SpclProMod/",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/SpclProMod/ProMoDC59C905B91A1.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/SpclProMod/ProMoD6A626BD0F56C.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/005e836e-5580-47aa-8740-8d91dba05030.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/a7d66f06-3fc9-4a3c-a090-31d177b0f496.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/5cabf131-5969-413b-a990-2ba4f5f62a24.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/74110f47-c80f-40bc-a267-a1fd8ee3946b.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/2485cfbb-6e2c-405a-b0d7-154c19ab8bfa.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/fff5f55b-1abb-4505-8e92-72e6be7fe0cb.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/7ef6787b-6436-4613-b651-be0f615a3190.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/7bae28bf-09d8-46b6-80e2-ab6456250864.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/f0c11995-1c09-4e7c-a2cc-5dc633569562.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/7141ac2e-f75e-47c9-b54b-951354104898.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/83e8b0f1-970a-4b82-bff0-0ba58f6a7680.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/d2ba727f-2b38-4234-8d25-9ff4af75883e.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/b1c6af91-2d16-4477-a6e8-d0f49d061ce1.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/6b6461d0-d1e6-46a7-8a6d-4a9e7ffaf3ca.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/e5e05cfb-389f-48b4-9341-78276467c70e.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/f94a0bce-b453-43e0-bd09-1971bfcad014.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/549b0829-78ca-48e7-9f69-d94e8e571f16.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/30f9aac5-e996-4741-be0b-094b828ef6ab.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/6b6a213b-229c-4c01-a785-a58f4dc7b38a.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/49d8a42b-4f11-4426-a8b6-2969c6eaf762.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/bf9635f1-642e-4b3e-a1b4-94310eeae116.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/23301f1c-6b6f-4efb-9817-025d2bdf50c0.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/9d4507f6-7426-4ddf-8523-5e7b6ffef817.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/486c94fa-da0c-4ef6-a8b3-8e43f7e8fae4.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/cea3ace4-b4cb-4aaf-94f5-56ff0843f10b.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/116d48f4-f2b6-4ad0-8b10-40b2d3b45fa2.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/a8f640f9-2fd7-4ad2-b9e6-4bc06dd4cb18.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/c1706c8e-c6d7-458b-994d-240ed6d768f5.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/42d18c75-ea71-4328-95ed-01e31027c094.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/a764ef12-462e-41b6-92d2-cc062c882eb7.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/41d03ebb-1a7c-4e28-b96a-c0969840ef96.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/Project/12442/Building/4587/3400c623-06ba-4339-8fbd-d92355b9058a.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/9cc796b1-2345-451a-b1fc-4f18ccc38a09.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/eaeb3ec8-8516-4105-8e96-aeacd4fc8863.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/9b478f77-acf6-495f-9fa6-6aeb19a21cd5.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/5f848628-3b36-459a-966a-80a077be7d2e.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/a7837e3e-a258-4551-a975-4e7c3b003574.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/d8443076-2ea2-4d3c-b052-9a9c19e69613.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/159fc525-5783-4ddf-8227-f769fcb46f00.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/9cd3c451-b4cd-4328-9e89-b8df5f5d0a64.pdf",
+      "type": "View"
+    },
+    {
+      "link": "https://reraapp.rajasthan.gov.in//Content/uploads/accd93e2-96a6-4550-ab6d-2d7ca839c129.pdf",
+      "type": "document"
+    }
+  ],
+  "document_urls": null,
+  "status_of_the_project": null,
+  "acknowledgement_no": null,
   "project_pin_code": null,
-  "project_city": null,
-  "project_location_raw": null,
   "promoter_address_raw": null,
   "promoter_contact_details": null,
-  "submitted_date": null,
   "last_modified": null,
   "estimated_commencement_date": null,
   "actual_commencement_date": null,
@@ -38,29 +522,17 @@
   "actual_finish_date": null,
   "approved_on_date": null,
   "past_experience_of_promoter": null,
-  "bank_details": null,
-  "land_area": null,
-  "construction_area": null,
   "total_floor_area_under_commercial_or_other_uses": null,
   "total_floor_area_under_residential": null,
-  "project_cost_detail": null,
-  "number_of_residential_units": null,
   "number_of_commercial_units": null,
-  "building_details": null,
   "complaints_litigation_details": null,
-  "uploaded_documents": null,
   "authorised_signatory_details": null,
   "co_promoter_details": null,
-  "project_description": null,
   "provided_faciltiy": null,
-  "professional_information": null,
   "development_agreement_detail": null,
   "construction_progress": null,
   "land_detail": null,
-  "document_urls": null,
-  "members_details": null,
   "retrieved_on": null,
-  "promoters_details": null,
   "last_updated": null,
   "updated_fields": null,
   "project_images": null,
