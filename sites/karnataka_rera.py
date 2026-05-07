@@ -878,10 +878,18 @@ def _extract_documents(html: str, reg_no: str) -> list[dict]:
     """
     Extract all document links from the detail HTML.
     - Scans <a href> for /download_jc?DOC_ID= patterns; skips entries with empty DOC_ID.
+    - Skips placeholder links whose filename is "Not Applicable.pdf" — the portal
+      renders these for document categories that don't apply to a project (the server
+      returns a tiny blank 5 KB PDF with no content).  Downloading these wastes S3
+      storage and clutters the document list with meaningless files.
     - Resolves each document's human-readable type via _doc_label_from_row.
     - Adds the auto-generated RERA registration certificate entry.
     Returns list of {link, type} dicts.
     """
+    # Matches filenames that explicitly indicate "not applicable" placeholders.
+    # Anchored so "Some Not Applicable Doc.pdf" is not accidentally skipped.
+    _NOT_APPLICABLE_RE = re.compile(r'^not\s*applicable(\.pdf)?$', re.I)
+
     soup = BeautifulSoup(html, "lxml")
     docs: list[dict] = []
     seen_links: set[str] = set()
@@ -901,6 +909,13 @@ def _extract_documents(html: str, reg_no: str) -> list[dict]:
         seen_links.add(full_url)
 
         link_text = _clean(a.get_text())
+
+        # Skip placeholder "Not Applicable.pdf" links — the promoter uploads these
+        # when a required document category doesn't apply to their project.
+        # The server returns a real but blank PDF; downloading it provides no value.
+        if _NOT_APPLICABLE_RE.match(link_text):
+            continue
+
         parent_td = a.find_parent("td")
 
         if parent_td is None:

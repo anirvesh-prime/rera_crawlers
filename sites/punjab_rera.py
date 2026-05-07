@@ -1209,8 +1209,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             if idx > 0 and idx % 10 == 0:
                 random_delay(*delay_range)
 
-    # Clean up cache + checkpoint on successful completion
-    _clear_listing_cache()
+    # Reset per-run checkpoint on successful completion (cache is kept until TTL expires)
     reset_checkpoint(site_id, mode)
     logger.warning(
         f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s",
