@@ -224,6 +224,7 @@ def _scrape_mh_detail_page(cert_id: str, logger: CrawlerLogger) -> dict:
             page = context.new_page()
             page.goto(url, timeout=45_000)
 
+            captcha_solved = False
             for attempt in range(1, _MAX_CAPTCHA_ATTEMPTS + 1):
                 logger.info(f"Captcha attempt {attempt}/{_MAX_CAPTCHA_ATTEMPTS}", step="captcha")
 
@@ -263,6 +264,7 @@ def _scrape_mh_detail_page(cert_id: str, logger: CrawlerLogger) -> dict:
                 try:
                     page.wait_for_selector("label.form-label, .col-md-4 .f-s-15", timeout=10_000)
                     logger.info("CAPTCHA accepted — Angular content loaded", step="captcha")
+                    captcha_solved = True
                     break
                 except Exception:
                     pass
@@ -272,6 +274,15 @@ def _scrape_mh_detail_page(cert_id: str, logger: CrawlerLogger) -> dict:
                     step="captcha",
                 )
                 page.reload(timeout=45_000)
+
+            if not captcha_solved:
+                logger.error(
+                    f"All {_MAX_CAPTCHA_ATTEMPTS} captcha attempts failed — "
+                    "Angular content never loaded; skipping detail scrape",
+                    step="captcha",
+                )
+                browser.close()
+                return {}
 
             out = _extract_mh_html_fields(page, cert_id, logger)
             browser.close()
@@ -719,11 +730,21 @@ def _extract_mh_html_fields(page, cert_id: str, logger: CrawlerLogger) -> dict:
     except Exception:
         logger.warning("networkidle timeout — scraping page as-is", step="detail")
 
-    # Confirm expected Angular content is present
+    # Confirm expected Angular content is present; bail out if still on captcha page
+    angular_ready = False
     try:
         page.wait_for_selector("label.form-label, .col-md-4 .f-s-15", timeout=10_000)
+        angular_ready = True
     except Exception:
         logger.warning("Angular form labels not found on detail page", step="detail")
+
+    if not angular_ready:
+        # Still on captcha or an error page — no project data to extract
+        logger.error(
+            "Detail page content not loaded (possibly still on captcha page) — returning empty",
+            step="detail",
+        )
+        return {}
 
     soup = BeautifulSoup(page.content(), "lxml")
 

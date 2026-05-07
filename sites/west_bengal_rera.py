@@ -123,6 +123,7 @@ def _playwright_fetch_all_listing_rows(logger) -> list[dict]:
                     continue
                 name_html = raw[2] if len(raw) > 2 else ""
                 reg_no    = (raw[4] if len(raw) > 4 else "").strip()
+                reg_date  = (raw[5] if len(raw) > 5 else "").strip()
                 if not reg_no:
                     continue
 
@@ -143,6 +144,7 @@ def _playwright_fetch_all_listing_rows(logger) -> list[dict]:
                     "project_name":            project_name,
                     "promoter_name":           None,
                     "status_of_the_project":   None,
+                    "approved_on_date":        reg_date or None,
                     "detail_url":              detail_url,
                     "procode":                 procode,
                 }
@@ -243,18 +245,46 @@ def _clean(text: str) -> str:
 
 
 def _find_section_table(heading_el: Tag) -> Tag | None:
-    """Return the first <table> following heading_el, searching up to 12 siblings."""
-    sib = heading_el.next_sibling
-    for _ in range(12):
-        if sib is None:
-            break
-        if isinstance(sib, Tag):
-            if sib.name == "table":
-                return sib
-            t = sib.find("table")
+    """Return the first <table> following heading_el.
+
+    Searches up to 12 direct siblings of the heading element, then falls back
+    to searching siblings of the heading's parent and grandparent containers.
+    This handles the new WB RERA layout where headings are wrapped in
+    col-md-12 divs and the actual content tables are in sibling row divs.
+    """
+    def _search_siblings(start_el: Tag, limit: int = 12) -> Tag | None:
+        sib = start_el.next_sibling
+        for _ in range(limit):
+            if sib is None:
+                break
+            if isinstance(sib, Tag):
+                if sib.name == "table":
+                    return sib
+                t = sib.find("table")
+                if t:
+                    return t
+            sib = sib.next_sibling
+        return None
+
+    # 1. Try direct siblings of the heading element
+    t = _search_siblings(heading_el)
+    if t:
+        return t
+
+    # 2. Try siblings of the heading's parent container div
+    parent = heading_el.parent
+    if parent and isinstance(parent, Tag):
+        t = _search_siblings(parent)
+        if t:
+            return t
+
+        # 3. Try siblings of the grandparent container div
+        gp = parent.parent
+        if gp and isinstance(gp, Tag):
+            t = _search_siblings(gp, limit=6)
             if t:
                 return t
-        sib = sib.next_sibling
+
     return None
 
 
@@ -425,43 +455,66 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
     out: dict = {}
     raw: dict = {"source_url": url, "govt_type": "state"}
 
-    # ── PROJECT STATUS banner ─────────────────────────────────────────────────
-    # The banner contains: "PROJECT STATUS - <status>  PROJECT ID: …
-    #   PROJECT COMPLETION DATE: DD-MM-YYYY  …  RERA REGISTRATION NO.: …"
-    status_block = ""
-    for el in soup.find_all(string=re.compile(r"PROJECT STATUS", re.I)):
-        parent = el.parent
-        if parent:
-            status_block = _clean(parent.get_text(separator=" "))
-            break
-    if not status_block:
+    # State is always West Bengal for this crawler
+    out["project_state"] = "west bengal"
+
+    # ── PROJECT NAME ─────────────────────────────────────────────────────────
+    # The project name is in an <h2> inside the col-md-12 div that also
+    # contains the ul.outerrera status banner.
+    outerrera_ul = soup.find("ul", class_="outerrera")
+    if outerrera_ul:
+        name_container = outerrera_ul.parent
+        if name_container:
+            h2 = name_container.find("h2")
+            if h2:
+                out["project_name"] = _clean(h2.get_text())
+
+    # ── PROJECT STATUS banner (ul.outerrera) ──────────────────────────────────
+    # <ul class="outerrera">
+    #   <li>PROJECT STATUS - <strong>Not Started </strong></li>
+    #   <li>PROJECT ID: WBRERA/NPR-000629</li>
+    #   <li>PROJECT COMPLETION DATE: DD-MM-YYYY</li>
+    #   <li>EXTENSION COMPLETION DATE: NA</li>
+    #   <li>RERA REGISTRATION NO.: WBRERA/P/.../NNNNN</li>
+    # </ul>
+    if outerrera_ul:
+        status_block = _clean(outerrera_ul.get_text(separator=" "))
+    else:
+        # Fallback: search the full page text (may match scrolling news first)
         status_block = _clean(soup.get_text(separator=" "))
 
-    if "PROJECT STATUS" in status_block.upper():
-        m = re.search(r"PROJECT STATUS\s*[-–]\s*(.+?)PROJECT ID", status_block, re.I)
-        if m:
-            out["status_of_the_project"] = _clean(m.group(1))
+    # Parse from the full page text using anchored patterns (works with either source)
+    page_text = _clean(soup.get_text(separator=" "))
 
-        m = re.search(r"PROJECT ID\s*:\s*(WBRERA/NPR-\d+)", status_block, re.I)
-        if m:
-            out["acknowledgement_no"] = m.group(1).strip()
+    m = re.search(r"PROJECT STATUS\s*[-–]\s*(.+?)PROJECT ID", page_text, re.I)
+    if m:
+        out["status_of_the_project"] = _clean(m.group(1))
 
-        m = re.search(r"RERA REGISTRATION NO\.\s*:\s*(WBRERA/[A-Z]/[A-Z]+/\d{4}/\d+)",
-                      status_block, re.I)
-        if m:
-            out["project_registration_no"] = m.group(1).strip()
+    m = re.search(r"PROJECT ID\s*:\s*(WBRERA/NPR-\d+)", page_text, re.I)
+    if m:
+        out["acknowledgement_no"] = m.group(1).strip()
 
+    m = re.search(r"RERA REGISTRATION NO\.\s*:\s*(WBRERA/[A-Z]/[A-Z]+/\d{4}/\d+)",
+                  page_text, re.I)
+    if m:
+        out["project_registration_no"] = m.group(1).strip()
+
+    # Completion dates from the banner (skip the "NA" extension date)
+    if outerrera_ul:
         dates = _DATE_RE.findall(status_block)
-        if dates:
-            out["estimated_finish_date"] = dates[0]
-            out["actual_finish_date"]    = dates[0]
-            raw["completion_date_raw"]   = dates[0]
-            if len(dates) > 1 and dates[1].upper() != "NA":
-                raw["extension_completion_date"] = dates[1]
+    else:
+        dates = _DATE_RE.findall(page_text)
+    if dates:
+        out["estimated_finish_date"] = dates[0]
+        out["actual_finish_date"]    = dates[0]
+        raw["completion_date_raw"]   = dates[0]
+        if len(dates) > 1 and dates[1].upper() != "NA":
+            raw["extension_completion_date"] = dates[1]
 
-    # Registration / approved date
+    # Registration / approved date — not shown on detail page; will be injected
+    # from the DataTables listing reg_date field in _sentinel_check / run().
     reg_date_m = re.search(
-        r"Registration\s+Date\s*[:\-]?\s*(\d{2}-\d{2}-\d{4})", soup.get_text(), re.I
+        r"Registration\s+Date\s*[:\-]?\s*(\d{2}-\d{2}-\d{4})", page_text, re.I
     )
     if reg_date_m:
         out["approved_on_date"] = reg_date_m.group(1)
@@ -484,55 +537,150 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
             _add_doc(href, f"Rera Registration Certificate {cert_counter}")
 
     # ── Highlights ────────────────────────────────────────────────────────────
-    hl_str = soup.find(string=re.compile(r"^Highlights$", re.I))
+    # New layout (2025): <h3>Highlights</h3> followed by a <div class="ms_overviewList">
+    # which contains <ul><li><span>Label<br/><b>Value</b></span></li></ul> items.
+    hl_str = soup.find(string=re.compile(r"^Highlights", re.I))
     if hl_str:
-        container = hl_str.parent
-        h_text = _clean(container.get_text(separator=" ") if container else "")
+        hl_heading = hl_str.parent  # h3 or h5 element
+        # Find the ms_overviewList div (skip style sibling, grab first div sibling)
+        ov_div = None
+        sib = hl_heading.next_sibling
+        for _ in range(5):
+            if sib is None:
+                break
+            if isinstance(sib, Tag) and sib.name == "div":
+                ov_div = sib
+                break
+            sib = sib.next_sibling
 
-        la_m = re.search(r"Land\s+Area\s+([\d,]+(?:\.\d+)?)\s*(sq\.?\s*m(?:tr)?)?", h_text, re.I)
-        if la_m:
-            try:
-                out["land_area"] = float(la_m.group(1).replace(",", ""))
-                raw["land_area_unit"] = (la_m.group(2) or "sq.mtr.").strip()
-            except ValueError:
-                pass
-
-        sba_m = re.search(r"Super\s+Built\s+Area\s+([\d,]+(?:\.\d+)?)", h_text, re.I)
-        if sba_m:
-            try:
-                out["construction_area"] = float(sba_m.group(1).replace(",", ""))
-                raw["construction_area_unit"] = "sq.mtr."
-            except ValueError:
-                pass
-
-        pt_m = re.search(r"Project\s+Type\s+(\w+)", h_text, re.I)
-        if pt_m:
-            out.setdefault("project_type", pt_m.group(1).strip())
+        if ov_div:
+            for li in ov_div.find_all("li"):
+                span = li.find("span")
+                if not span:
+                    continue
+                # span text: "Label\nValue" (br separates them)
+                parts = span.get_text(separator="|", strip=True).split("|")
+                if len(parts) < 2:
+                    continue
+                label = parts[0].lower().strip()
+                val   = parts[-1].strip()  # last part is the actual value
+                if "land area" in label:
+                    m = re.search(r"([\d,]+(?:\.\d+)?)", val)
+                    if m:
+                        try:
+                            out["land_area"] = float(m.group(1).replace(",", ""))
+                            raw["land_area_unit"] = "sq.mtr."
+                        except ValueError:
+                            pass
+                elif "super built" in label or "total built" in label:
+                    m = re.search(r"([\d,]+(?:\.\d+)?)", val)
+                    if m:
+                        try:
+                            out["construction_area"] = float(m.group(1).replace(",", ""))
+                            raw["construction_area_unit"] = "sq.mtr."
+                        except ValueError:
+                            pass
+                elif "project type" in label:
+                    out.setdefault("project_type", val)
+        else:
+            # Fallback: text-based extraction from heading's container
+            h_text = _clean(hl_heading.get_text(separator=" "))
+            la_m = re.search(r"Land\s+Area\s+([\d,]+(?:\.\d+)?)", h_text, re.I)
+            if la_m:
+                try:
+                    out["land_area"] = float(la_m.group(1).replace(",", ""))
+                    raw["land_area_unit"] = "sq.mtr."
+                except ValueError:
+                    pass
+            pt_m = re.search(r"Project\s+Type\s+(\w+)", h_text, re.I)
+            if pt_m:
+                out.setdefault("project_type", pt_m.group(1).strip())
 
     # ── Residential Details ───────────────────────────────────────────────────
+    # New layout (2025): data is in col-md-3 div siblings, not a table.
+    # e.g. <div class="col-md-3">Land Area:<br>1021 sq.mtr.</div>
+    #       <div class="col-md-3">Total Built Up Area:<br>2629 sq.mtr.</div>
+    #       <div class="col-md-3">No. of Apartments:<br>31</div>
     res_h5 = soup.find("h5", string=re.compile(r"Residential Details", re.I))
     if res_h5:
-        next_h5 = res_h5.find_next_sibling("h5")
-        if next_h5:
-            addr = _clean(next_h5.get_text(separator=" "))
+        sib = res_h5.next_sibling
+        for _ in range(20):
+            if sib is None:
+                break
+            if isinstance(sib, Tag):
+                # Stop at next section heading
+                if sib.name in ("h3", "h4", "h5") and sib is not res_h5:
+                    break
+                if sib.name == "div":
+                    text = sib.get_text(separator=":", strip=True)
+                    if ":" in text:
+                        label, _, val = text.partition(":")
+                        label = label.lower().strip()
+                        # Strip extra leading colons added by get_text separator
+                        # when divs contain <br/> tags (e.g. "Land Area::1021")
+                        val   = val.lstrip(":").strip()
+                        if "land area" in label:
+                            m = re.search(r"([\d,]+(?:\.\d+)?)", val)
+                            if m:
+                                try:
+                                    out.setdefault("land_area",
+                                                   float(m.group(1).replace(",", "")))
+                                    raw.setdefault("land_area_unit", "sq.mtr.")
+                                except ValueError:
+                                    pass
+                        elif "total built" in label or "built up" in label:
+                            m = re.search(r"([\d,]+(?:\.\d+)?)", val)
+                            if m:
+                                try:
+                                    out.setdefault("construction_area",
+                                                   float(m.group(1).replace(",", "")))
+                                    raw.setdefault("construction_area_unit", "sq.mtr.")
+                                except ValueError:
+                                    pass
+                        elif any(kw in label for kw in (
+                            "no. of apart", "no. of flat", "no. of unit",
+                            "number of apart", "total unit", "total flat", "total apart",
+                        )):
+                            try:
+                                out["number_of_residential_units"] = int(val.replace(",", ""))
+                            except ValueError:
+                                pass
+                        elif "floor area" in label or "residential area" in label:
+                            v = _extract_area(val)
+                            if v is not None:
+                                out["total_floor_area_under_residential"] = v
+            sib = sib.next_sibling
+
+        # Also try the old table approach if divs yielded nothing
+        if "number_of_residential_units" not in out:
+            res_table = _find_section_table(res_h5)
+            if res_table:
+                for row in _table_rows(res_table):
+                    if len(row) < 2:
+                        continue
+                    label = row[0].lower()
+                    val   = row[1]
+                    if any(kw in label for kw in (
+                        "total unit", "total flat", "total apart", "no. of apart",
+                    )):
+                        try:
+                            out["number_of_residential_units"] = int(val.replace(",", ""))
+                        except ValueError:
+                            pass
+                    elif "floor area" in label or "residential area" in label:
+                        v = _extract_area(val)
+                        if v is not None:
+                            out["total_floor_area_under_residential"] = v
+
+    # ── Location ──────────────────────────────────────────────────────────────
+    # New layout (2025): <h3>Location</h3> followed by an <h5> with the full address.
+    loc_heading = soup.find(["h3", "h5"], string=re.compile(r"^Location$", re.I))
+    if loc_heading:
+        addr_h5 = loc_heading.find_next("h5")
+        if addr_h5:
+            addr = _clean(addr_h5.get_text(separator=" "))
             if len(addr) > 5:
                 out["project_location_raw"] = {"raw_address": addr}
-        res_table = _find_section_table(res_h5)
-        if res_table:
-            for row in _table_rows(res_table):
-                if len(row) < 2:
-                    continue
-                label = row[0].lower()
-                val   = row[1]
-                if any(kw in label for kw in ("total unit", "total flat", "total apart")):
-                    try:
-                        out["number_of_residential_units"] = int(val.replace(",", ""))
-                    except ValueError:
-                        pass
-                elif "floor area" in label or "residential area" in label:
-                    v = _extract_area(val)
-                    if v is not None:
-                        out["total_floor_area_under_residential"] = v
 
     # ── Facilities ────────────────────────────────────────────────────────────
     provided_facility: list[dict] = []
@@ -573,12 +721,28 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
 
 
     # ── Promoter Details (Personal Information block) ────────────────────────
+    # New layout (2025): <h5>Personal Information</h5> is in a col-md-12 div
+    # inside a row div. The actual promoter content (company name, address, etc.)
+    # is in the NEXT sibling of that row div (not the same col-md-12 container).
     promoter_address_raw: dict = {}
     promoters_details: dict = {}
 
     pi_h5 = soup.find("h5", string=re.compile(r"Personal Information", re.I))
     if pi_h5:
-        container = pi_h5.find_parent("div") or pi_h5
+        # Try grandparent row sibling for the actual content div
+        pi_parent = pi_h5.parent   # col-md-12
+        pi_row    = pi_parent.parent if pi_parent else None  # row div
+        content_div: Tag | None = None
+        if pi_row and isinstance(pi_row, Tag):
+            sib = pi_row.next_sibling
+            for _ in range(5):
+                if sib is None:
+                    break
+                if isinstance(sib, Tag):
+                    content_div = sib
+                    break
+                sib = sib.next_sibling
+        container = content_div or pi_h5.find_parent("div") or pi_h5
         pi_text = _clean(container.get_text(separator=" "))
         promoter_address_raw["registered_address"] = pi_text
 
@@ -699,6 +863,10 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
                 _add_doc(doc["url"], doc["label"])
 
     out["_doc_links"] = doc_links
+    # Also expose as uploaded_documents so the sentinel coverage check can verify
+    # that documents are reachable (sentinel uses this field name).
+    if doc_links:
+        out["uploaded_documents"] = doc_links
     out["data"] = raw
     return out
 
@@ -743,12 +911,15 @@ def _handle_document(
 
 # ── Main run() ────────────────────────────────────────────────────────────────
 
-def _sentinel_find_procode(sentinel_reg: str, logger: CrawlerLogger) -> str | None:
+def _sentinel_find_procode(
+    sentinel_reg: str, logger: CrawlerLogger
+) -> "tuple[str | None, str | None]":
     """
     Use Playwright + the DataTables JS API on the WB RERA listing page to find
-    the procode for the given registration number.
+    the procode and registration date for the given registration number.
 
-    Returns the procode string on success, or None if not found / site unreachable.
+    Returns (procode, reg_date) on success, or (None, None) if not found /
+    site unreachable.
     """
     from playwright.sync_api import sync_playwright
 
@@ -768,9 +939,9 @@ def _sentinel_find_procode(sentinel_reg: str, logger: CrawlerLogger) -> str | No
                     step="sentinel",
                 )
                 browser.close()
-                return None
+                return None, None
 
-            procode = page.evaluate(
+            result = page.evaluate(
                 """(targetReg) => {
                     if (typeof $ === 'undefined' || typeof $.fn.DataTable === 'undefined')
                         return null;
@@ -784,7 +955,9 @@ def _sentinel_find_procode(sentinel_reg: str, logger: CrawlerLogger) -> str | No
                                 String(row[4]).trim() === targetReg) {
                             const nameHtml = row[2] || '';
                             const m = nameHtml.match(/procode=(\\d+)/i);
-                            return m ? m[1] : null;
+                            const procode = m ? m[1] : null;
+                            const regDate = row.length > 5 ? String(row[5]).trim() : '';
+                            return {procode: procode, reg_date: regDate};
                         }
                     }
                     return null;
@@ -793,9 +966,13 @@ def _sentinel_find_procode(sentinel_reg: str, logger: CrawlerLogger) -> str | No
             )
             browser.close()
 
+            procode  = (result or {}).get("procode")
+            reg_date = (result or {}).get("reg_date") or None
+
             if procode:
                 logger.info(
-                    f"Sentinel: found procode={procode} for {sentinel_reg}",
+                    f"Sentinel: found procode={procode} reg_date={reg_date!r} "
+                    f"for {sentinel_reg}",
                     step="sentinel",
                 )
             else:
@@ -803,11 +980,11 @@ def _sentinel_find_procode(sentinel_reg: str, logger: CrawlerLogger) -> str | No
                     f"Sentinel: {sentinel_reg!r} not found in DataTables listing",
                     step="sentinel",
                 )
-            return procode
+            return procode, reg_date
 
     except Exception as exc:
         logger.warning(f"Sentinel: listing search failed ({exc})", step="sentinel")
-        return None
+        return None, None
 
 
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
@@ -843,7 +1020,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     logger.info(
         f"Sentinel: searching listing page for {sentinel_reg}", step="sentinel"
     )
-    procode = _sentinel_find_procode(sentinel_reg, logger)
+    procode, reg_date = _sentinel_find_procode(sentinel_reg, logger)
 
     if procode is None:
         # Site is down / project not found — skip rather than abort the crawl
@@ -865,6 +1042,11 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     if not fresh:
         logger.error("Sentinel: no data extracted", url=detail_url, step="sentinel")
         return False
+
+    # Inject listing-sourced fields that aren't available on the detail page alone.
+    # approved_on_date comes from the DataTables reg_date column (registration date).
+    if reg_date and not fresh.get("approved_on_date"):
+        fresh["approved_on_date"] = reg_date
 
     if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
         insert_crawl_error(
@@ -956,6 +1138,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             }
             if row.get("project_location_raw"):
                 data["project_location_raw"] = row["project_location_raw"]
+            if row.get("approved_on_date"):
+                data["approved_on_date"] = row["approved_on_date"]
 
             doc_links: list[dict] = []
             if row.get("detail_url") and settings.SCRAPE_DETAILS:

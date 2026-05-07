@@ -20,6 +20,8 @@ from __future__ import annotations
 import base64
 import re
 import time
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -691,18 +693,28 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 
 def _solve_listing_captcha(session: httpx.Client, logger: CrawlerLogger) -> tuple[str | None, BeautifulSoup | None]:
     try:
+        t_page = time.monotonic()
         resp = session.get(LISTING_URL)
         resp.raise_for_status()
+        page_elapsed = time.monotonic() - t_page
         soup = BeautifulSoup(resp.text, "lxml")
         captcha_img = soup.select_one(SEL_CAPTCHA_IMG)
         if not captcha_img or not captcha_img.get("src"):
             logger.warning("Captcha image not found on listing page", step="captcha")
             return None, soup
         img_url = urljoin(LISTING_URL, captcha_img["src"])
+        t_img = time.monotonic()
         img_resp = session.get(img_url)
         img_resp.raise_for_status()
+        img_elapsed = time.monotonic() - t_img
         data_url = "data:image/png;base64," + base64.b64encode(img_resp.content).decode()
+        t_solve = time.monotonic()
         solved = (captcha_to_text(data_url, default_captcha_source="eprocure") or "").strip()
+        solve_elapsed = time.monotonic() - t_solve
+        logger.info(
+            f"Captcha timing: page={page_elapsed:.2f}s  img={img_elapsed:.2f}s  solver={solve_elapsed:.2f}s  total={page_elapsed+img_elapsed+solve_elapsed:.2f}s",
+            step="captcha",
+        )
         if solved:
             logger.info(f"Captcha solved: {solved!r}", step="captcha")
             return solved, soup
@@ -808,6 +820,13 @@ def _fetch_detail_fields(session: httpx.Client, row: dict, logger: CrawlerLogger
 
 # ── Document download + S3 upload ────────────────────────────────────────────
 
+_DOC_CONNECT_TIMEOUT = 10.0   # seconds to establish TCP connection
+_DOC_READ_TIMEOUT    = 30.0   # seconds between data chunks
+_DOC_TOTAL_TIMEOUT   = 60.0   # hard cap: total download time in seconds
+_DOC_MAX_BYTES       = 50 * 1024 * 1024  # 50 MB safety limit
+_MAX_DOC_WORKERS     = 6      # parallel document download threads
+
+
 def _handle_document(
     project_key: str,
     doc: dict,
@@ -823,11 +842,51 @@ def _handle_document(
         return None
     fname = build_document_filename({"url": url, "label": label})
     try:
-        resp = client.get(url, headers={"Referer": LISTING_URL}, timeout=60.0)
-        if not resp or len(resp.content) < 100:
+        logger.info(f"Downloading document: {label}", url=url, step="documents")
+        doc_timeout = httpx.Timeout(
+            connect=_DOC_CONNECT_TIMEOUT,
+            read=_DOC_READ_TIMEOUT,
+            write=_DOC_READ_TIMEOUT,
+            pool=10.0,
+        )
+        chunks: list[bytes] = []
+        total_bytes = 0
+        deadline_hit = threading.Event()
+
+        def _abort_on_deadline(stream):
+            deadline_hit.set()
+            try:
+                stream.close()
+            except Exception:
+                pass
+
+        with client.stream(
+            "GET", url,
+            headers={"Referer": LISTING_URL},
+            timeout=doc_timeout,
+            follow_redirects=True,
+        ) as stream:
+            timer = threading.Timer(_DOC_TOTAL_TIMEOUT, _abort_on_deadline, args=(stream,))
+            timer.start()
+            try:
+                for chunk in stream.iter_bytes(chunk_size=65536):
+                    if deadline_hit.is_set():
+                        raise TimeoutError(
+                            f"Document download exceeded {_DOC_TOTAL_TIMEOUT}s total limit"
+                        )
+                    chunks.append(chunk)
+                    total_bytes += len(chunk)
+                    if total_bytes > _DOC_MAX_BYTES:
+                        raise ValueError(
+                            f"Document too large (>{_DOC_MAX_BYTES // (1024*1024)} MB), skipping"
+                        )
+            finally:
+                timer.cancel()
+
+        data = b"".join(chunks)
+        if len(data) < 100:
             logger.warning("Document download empty or failed", url=url, step="documents")
             return None
-        data = resp.content
         md5 = compute_md5(data)
         s3_key = upload_document(project_key, fname, data, dry_run=settings.DRY_RUN_S3)
         if s3_key is None:
@@ -938,29 +997,56 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     # ── Document download + S3 upload ─────────────────────────
                     raw_docs: list[dict] = payload.get("uploaded_documents") or []
                     if raw_docs:
-                        uploaded_documents: list[dict] = []
+                        # Phase 1 (sequential): resolve names; build selected / skipped lists.
+                        # select_document_for_download mutates doc_name_counts for dedup, so
+                        # this must stay sequential to guarantee stable filenames.
                         doc_name_counts: dict[str, int] = {}
+                        selected_pairs: list[tuple[dict, dict]] = []  # (original, selected)
+                        skipped_entries: list[dict] = []
                         for doc in raw_docs:
                             selected = select_document_for_download(
                                 config["state"], doc, doc_name_counts, domain=DOMAIN,
                             )
                             if selected:
-                                uploaded = _handle_document(
-                                    key, selected, run_id, config["id"], logger, session
-                                )
-                                if uploaded:
-                                    uploaded_documents.append(uploaded)
-                                    counters["documents_uploaded"] += 1
-                                else:
-                                    uploaded_documents.append({
-                                        "link": doc.get("link"),
-                                        "type": doc.get("type", "document"),
-                                    })
+                                selected_pairs.append((doc, selected))
                             else:
-                                uploaded_documents.append({
+                                skipped_entries.append({
                                     "link": doc.get("link"),
                                     "type": doc.get("type", "document"),
                                 })
+
+                        # Phase 2 (parallel): download + upload selected docs concurrently.
+                        dl_results: list[dict | None] = [None] * len(selected_pairs)
+                        with ThreadPoolExecutor(max_workers=_MAX_DOC_WORKERS) as pool:
+                            future_to_idx = {
+                                pool.submit(
+                                    _handle_document,
+                                    key, sel, run_id, config["id"], logger, session,
+                                ): i
+                                for i, (_orig, sel) in enumerate(selected_pairs)
+                            }
+                            for future in as_completed(future_to_idx):
+                                i = future_to_idx[future]
+                                try:
+                                    dl_results[i] = future.result()
+                                except Exception as exc:
+                                    logger.warning(
+                                        f"Document parallel error: {exc}", step="documents"
+                                    )
+
+                        # Phase 3: assemble final list in original order.
+                        uploaded_documents: list[dict] = []
+                        for (orig, _sel), result in zip(selected_pairs, dl_results):
+                            if result:
+                                uploaded_documents.append(result)
+                                counters["documents_uploaded"] += 1
+                            else:
+                                uploaded_documents.append({
+                                    "link": orig.get("link"),
+                                    "type": orig.get("type", "document"),
+                                })
+                        uploaded_documents.extend(skipped_entries)
+
                         if uploaded_documents:
                             upsert_project({
                                 "key": key,
@@ -989,7 +1075,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             finally:
                 logger.clear_project()
 
-            if idx % 10 == 0:
+            if idx > 0 and idx % 10 == 0:
                 random_delay(*delay_range)
 
     reset_checkpoint(config["id"], mode)

@@ -135,18 +135,22 @@ def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
 
     Visible column mapping (0-indexed, after BeautifulSoup strips HTML comments):
       0  Serial No.
-      1  Registration Certificate Number  → project_registration_no (has <a> to searchprojectDetail)
+      1  Registration Certificate Number  → project_registration_no
       2  Project Name                     → project_name
       3  Promoter                         → promoter_name
       4  Project Location                 → project_location_raw.raw_address
       5  Project District                 → project_city / project_location_raw.district
-      6  View Webpage                     → (skipped)
+      6  View Webpage                     → project_preview_open link → internal_id
       7  View Certificate                 → cert_url (may be '---')
       8  View Occupancy                   → (skipped)
       9  View Cumulative QPR              → (skipped)
       10 View Quarterly Progress          → (skipped)
       11 Approved Date                    → approved_on_date
       12 Expiry Date                      → estimated_finish_date
+
+    NOTE: As of 2025, column 1 no longer has <a href> links to searchprojectDetail.
+    The internal project ID is now extracted from the "View Webpage" link in column 6,
+    which points to /view_project/project_preview_open/{id}.
     """
     table = (
         soup.find("table", id="compliant_hearing")
@@ -187,18 +191,18 @@ def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
                 return urljoin(BASE_URL, action)
             return None
 
-        # Col 1: reg number + detail link
-        detail_url = cell_link(1, "searchprojectDetail")
+        # Col 1: registration number (no longer has <a> links as of 2025)
         reg_no_raw = cell_text(1)
-        # Strip any stray numeric suffixes or spaces
         reg_no = reg_no_raw.strip()
         if not reg_no or not re.search(r"[A-Z0-9]", reg_no):
             continue
 
-        # Internal ID from detail URL
+        # Col 6: "View Webpage" → project_preview_open/{id} link → extract internal ID
+        # The old searchprojectDetail links are gone; the ID now comes from col 6.
         internal_id: str | None = None
-        if detail_url:
-            m = re.search(r"/searchprojectDetail/(\d+)", detail_url)
+        form_a_link = cell_link(6, "project_preview_open")
+        if form_a_link:
+            m = re.search(r"/project_preview_open/(\d+)", form_a_link)
             if m:
                 internal_id = m.group(1)
 
@@ -215,7 +219,7 @@ def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
             "promoter_name":           cell_text(3),
             "project_location_raw_address": cell_text(4),
             "project_city":            cell_text(5).upper(),
-            "detail_url":              detail_url or (
+            "detail_url":              (
                 f"{BASE_URL}/view_project/searchprojectDetail/{internal_id}"
                 if internal_id else None
             ),
@@ -1286,6 +1290,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             continue
 
         logger.set_project(key=project_key, reg_no=reg_no, url=detail_url or LISTING_URL, page=i)
+        items_processed += 1  # Count every attempted row toward the limit
         try:
             if not detail_url:
                 logger.warning("No detail URL for project")
@@ -1344,7 +1349,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 else:
                     counts["projects_skipped"] += 1
                 logger.info(f"DB result: {status}", step="db_upsert")
-                items_processed += 1
 
                 # ── Documents ──────────────────────────────────────────────
                 all_docs: list[dict] = raw_payload.get("uploaded_documents") or []

@@ -352,9 +352,12 @@ def _parse_detail_page(html: str) -> dict:
     #   1. Use the GV_Doc table (new format) for proper Document Type labels on
     #      All_Document PDFs — the link text is a raw Windows path, not a label.
     #      Skip rows with no href (e.g. "Brochure of Current Project").
-    #   2. Append the Registration Certificate at the END from its anchor href.
+    #   2. After GV_Doc, do a supplemental scan for any PDF anchors elsewhere on
+    #      the page (e.g. "Mutation(Correction-Slip)" rows) that were not captured
+    #      by GV_Doc.  These use a simple [Label | View] row pattern.
+    #   3. Append the Registration Certificate at the END from its anchor href.
     #      This matches the sample order: GV_Doc docs first, Reg Cert last.
-    #   3. Fall back to anchor-href scan when GV_Doc is absent (old page format).
+    #   4. Fall back to anchor-href scan when GV_Doc is absent (old page format).
     docs: list[dict] = []
 
     # Registration Certificate — collected here, appended after GV_Doc rows
@@ -383,6 +386,36 @@ def _parse_detail_page(html: str) -> dict:
                 continue
             full_url = raw_path if raw_path.startswith("http") else f"https://{DOMAIN}/{raw_path}"
             docs.append({"link": full_url, "type": doc_type})
+
+        # ── Supplemental scan: catch PDF anchors outside GV_Doc ───────────────
+        # Bihar RERA pages sometimes contain extra documents (e.g. Mutation /
+        # Correction-Slip) in simple [Label | View] rows that sit outside GV_Doc.
+        # When GV_Doc is present the else-branch below is skipped, so we do a
+        # targeted second pass here to pick those up.
+        seen_urls = {d["link"] for d in docs}
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            if ".pdf" not in href.lower():
+                continue
+            if "Registration_Certificate/" in href or "PassBook/" in href:
+                continue  # handled separately
+            raw_path = href.replace("~\\", "").replace("\\", "/").lstrip("/")
+            full_url = raw_path if raw_path.startswith("http") else f"https://{DOMAIN}/{raw_path}"
+            if full_url in seen_urls:
+                continue  # already captured via GV_Doc
+            # Derive label from the sibling cell in the parent <tr> (if any).
+            row = a.find_parent("tr")
+            if row:
+                sibling_texts = [
+                    c.get_text(strip=True)
+                    for c in row.find_all(["td", "th"])
+                    if c.get_text(strip=True) not in ("", "View", "Download")
+                ]
+                doc_type = sibling_texts[0] if sibling_texts else "Project Document"
+            else:
+                doc_type = a.get_text(separator=" ", strip=True) or "Project Document"
+            docs.append({"link": full_url, "type": doc_type})
+            seen_urls.add(full_url)
     else:
         # Fallback for older page format — scan all PDF anchors
         for a in soup.find_all("a", href=True):
