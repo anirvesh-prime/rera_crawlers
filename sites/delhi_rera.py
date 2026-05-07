@@ -822,19 +822,24 @@ def _parse_row(tr: Tag) -> dict | None:
     ext_cert = reg_kv.get("extension certificate", "").strip() or None
 
     # ── QPR cell ──────────────────────────────────────────────────────────────
-    # The cell contains two <a> tags:
+    # The cell may contain:
     #   <a href="online_view_periodic_progress_reports_history/...">View QPRs
     #     <a class="product_list" href="project_page/{node_id}">View Project</a>
     #   </a>
+    # In newer layouts the "View Project" link may use a different class or
+    # be a sibling anchor — match any <a href="project_page/..."> in the cell.
     qpr_url: str | None = None
     project_page_url: str | None = None
     if qpr_td:
-        qpr_a = qpr_td.find("a", href=True)
-        if qpr_a:
-            qpr_url = _abs(qpr_a["href"])
-        proj_a = qpr_td.find("a", class_="product_list", href=True)
-        if proj_a:
-            project_page_url = _abs(proj_a["href"])
+        for a in qpr_td.find_all("a", href=True):
+            href = str(a.get("href", ""))
+            if "project_page/" in href and project_page_url is None:
+                project_page_url = _abs(href)
+            elif "online_view_periodic_progress_reports_history" in href and qpr_url is None:
+                qpr_url = _abs(href)
+            elif qpr_url is None and "project_page/" not in href:
+                # First non-project-page link → QPR history
+                qpr_url = _abs(href)
 
     # ── Build sub-dicts ───────────────────────────────────────────────────────
     contact: dict = {
@@ -916,6 +921,59 @@ def _has_next_page(html: str) -> bool:
     ))
 
 
+def _fetch_project_page_urls_playwright(listing_url: str, logger: CrawlerLogger) -> dict[str, str]:
+    """Use Playwright to load a listing page and click 'View Project' for each row.
+
+    Returns a dict mapping reg_no → absolute project_page URL.  Called as a
+    fallback when the static HTML fetch doesn't expose any project_page/ links
+    (e.g. because the site renders them via JavaScript or the link class changed).
+    """
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        logger.warning("Playwright not installed — cannot click View Project buttons",
+                       step="project_page")
+        return {}
+
+    result: dict[str, str] = {}
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            ctx = browser.new_context(ignore_https_errors=True)
+            page = ctx.new_page()
+            page.goto(listing_url, wait_until="domcontentloaded", timeout=30_000)
+            rows = page.query_selector_all("div.view-content table tbody tr")
+            for row in rows:
+                # Identify the project by reg_no
+                reg_td = row.query_selector("td.views-field-field-rera-registrationno")
+                if not reg_td:
+                    continue
+                m = _REG_NO_RE.search(reg_td.inner_text())
+                if not m:
+                    continue
+                reg_no = m.group(0).upper()
+
+                # Look for any link whose href contains project_page/ OR whose
+                # visible text contains "View Project" (handles class/layout changes)
+                proj_link = row.query_selector("a[href*='project_page/']")
+                if not proj_link:
+                    proj_link = row.query_selector("a:has-text('View Project')")
+                if proj_link:
+                    href = proj_link.get_attribute("href")
+                    if href:
+                        result[reg_no] = _abs(href)
+
+            browser.close()
+        logger.info(
+            f"Playwright: found {len(result)} View Project URLs on {listing_url}",
+            step="project_page",
+        )
+    except Exception as exc:
+        logger.warning(f"Playwright View Project extraction failed: {exc}",
+                       step="project_page")
+    return result
+
+
 # ─── Sentinel ─────────────────────────────────────────────────────────────────
 
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
@@ -995,7 +1053,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 
     proj_page_url = fresh.pop("_project_page_url", None)
     qpr_url_sentinel = fresh.pop("_qpr_url", None)
-    fresh.pop("_directors_url", None)
+    directors_url_sentinel = fresh.pop("_directors_url", None)
 
     # Derive project_page_url from QPR history if not in listing row
     # (Delhi's listing no longer carries a product_list anchor)
@@ -1013,6 +1071,18 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
                     )
 
     logger.info("Sentinel: enriching row for coverage check", reg=sentinel_reg, step="sentinel")
+
+    # Enrich with directors — same logic as run()
+    if directors_url_sentinel:
+        dir_resp = _delhi_get(directors_url_sentinel, logger=logger)
+        if dir_resp:
+            directors = _parse_directors_page(dir_resp.text)
+            if directors:
+                fresh["co_promoter_details"] = [
+                    {k: v for k, v in d.items() if k != "photo"}
+                    for d in directors
+                ]
+                fresh["members_details"] = directors
 
     # Enrich with project page — same logic as run()
     if proj_page_url:
@@ -1185,6 +1255,17 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
         counters["projects_found"] += len(rows)
         logger.info(f"Page {page}: {len(rows)} rows", step="listing")
+
+        # ── Playwright fallback: click "View Project" for any rows missing the URL ──
+        # The static HTML may not expose project_page/ links (class change / JS render).
+        # One Playwright session per listing page covers all rows at once.
+        if any(not r.get("_project_page_url") for r in rows) and settings.SCRAPE_DETAILS:
+            pw_urls = _fetch_project_page_urls_playwright(page_url, logger)
+            if pw_urls:
+                for r in rows:
+                    reg = r.get("project_registration_no", "").upper()
+                    if not r.get("_project_page_url") and reg in pw_urls:
+                        r["_project_page_url"] = pw_urls[reg]
 
         stop_all = False
         for row in rows:

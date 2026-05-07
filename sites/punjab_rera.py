@@ -18,10 +18,12 @@ Strategy:
 from __future__ import annotations
 
 import base64
+import json
 import re
 import time
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from bs4 import BeautifulSoup
@@ -29,7 +31,7 @@ import httpx
 from playwright.sync_api import TimeoutError as PWTimeout, sync_playwright
 from pydantic import ValidationError
 
-from core.checkpoint import reset_checkpoint
+from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.captcha_solver import captcha_to_text
 from core.crawler_base import generate_project_key, random_delay
 from core.config import settings
@@ -818,6 +820,58 @@ def _fetch_detail_fields(session: httpx.Client, row: dict, logger: CrawlerLogger
         return {}
 
 
+# ── Listing cache ────────────────────────────────────────────────────────────
+
+_LISTING_CACHE_TTL = 4 * 3600  # reuse fetched rows for up to 4 hours
+
+
+def _listing_cache_path() -> Path:
+    return Path(settings.LOG_DIR) / "punjab_rera_listing_cache.json"
+
+
+def _load_listing_cache(logger: CrawlerLogger) -> list[dict] | None:
+    """Return cached listing rows if the file exists and is within TTL."""
+    path = _listing_cache_path()
+    try:
+        if not path.exists():
+            return None
+        age = time.time() - path.stat().st_mtime
+        if age > _LISTING_CACHE_TTL:
+            logger.info(
+                f"Listing cache expired ({age/3600:.1f}h old, TTL={_LISTING_CACHE_TTL/3600:.0f}h) — will re-fetch",
+                step="listing",
+            )
+            return None
+        rows = json.loads(path.read_text())
+        logger.warning(
+            f"Listing cache HIT: {len(rows)} rows ({age:.0f}s old) — skipping search fetch",
+            step="listing",
+        )
+        return rows
+    except Exception as exc:
+        logger.warning(f"Listing cache read failed: {exc}", step="listing")
+        return None
+
+
+def _save_listing_cache(rows: list[dict], logger: CrawlerLogger) -> None:
+    """Persist listing rows to disk so a restarted run can skip the fetch."""
+    path = _listing_cache_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(rows))
+        logger.info(f"Listing cache saved: {len(rows)} rows → {path}", step="listing")
+    except Exception as exc:
+        logger.warning(f"Listing cache write failed: {exc}", step="listing")
+
+
+def _clear_listing_cache() -> None:
+    """Remove the cache file after a successful run."""
+    try:
+        _listing_cache_path().unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
 # ── Document download + S3 upload ────────────────────────────────────────────
 
 _DOC_CONNECT_TIMEOUT = 10.0   # seconds to establish TCP connection
@@ -930,17 +984,49 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     machine_name, machine_ip = get_machine_context()
     delay_range = config.get("rate_limit_delay", (2, 4))
     item_limit = settings.CRAWL_ITEM_LIMIT or 0
+    t_run = time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if not _sentinel_check(config, run_id, logger):
+    t0 = time.monotonic()
+    sentinel_ok = _sentinel_check(config, run_id, logger)
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    if not sentinel_ok:
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counters["error_count"] += 1
         return counters
 
+    site_id = config["id"]
+
+    # ── Listing: try cache first, fall back to live fetch ────────────────────
     with httpx.Client(timeout=60.0, follow_redirects=True) as session:
-        rows = _search_projects(session, logger)
-        if not rows:
-            return counters
+        rows = _load_listing_cache(logger)
+        if rows is None:
+            t0 = time.monotonic()
+            rows = _search_projects(session, logger)
+            logger.warning(
+                f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(rows)}",
+                step="timing",
+            )
+            if not rows:
+                return counters
+            _save_listing_cache(rows, logger)
+        else:
+            logger.warning("Step timing [search]: 0.00s  (cache hit)", step="timing")
+
+        # ── Resume: skip rows already processed in a previous (interrupted) run
+        checkpoint = load_checkpoint(site_id, mode) or {}
+        resume_after = checkpoint.get("last_project_key")
+        if resume_after:
+            original_count = len(rows)
+            # Drop every row up to and including the last-completed key
+            for i, row in enumerate(rows):
+                if generate_project_key(row["project_registration_no"]) == resume_after:
+                    rows = rows[i + 1:]
+                    break
+            logger.warning(
+                f"Resuming: skipped {original_count - len(rows)} already-processed rows",
+                step="checkpoint",
+            )
 
         if item_limit:
             rows = rows[:item_limit]
@@ -962,7 +1048,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             logger.set_project(key=key, reg_no=reg_no, url=LISTING_URL, page=idx)
             try:
                 try:
+                    t0 = time.monotonic()
                     detail_fields = _fetch_detail_fields(session, row, logger)
+                    logger.warning(
+                        f"Step timing [detail_fetch]: {time.monotonic()-t0:.2f}s",
+                        step="timing",
+                    )
                     # Merge project_location_raw: detail page provides plot_no/address,
                     # listing row provides district as fallback.
                     loc_raw = detail_fields.pop("project_location_raw", {})
@@ -986,6 +1077,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         "is_live": True,
                     }
 
+                    t0 = time.monotonic()
                     normalized = normalize_project_payload(
                         payload, config,
                         machine_name=machine_name,
@@ -993,7 +1085,17 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     )
                     record = ProjectRecord(**normalized)
                     db_dict = record.to_db_dict()
+                    logger.warning(
+                        f"Step timing [normalize]: {time.monotonic()-t0:.2f}s",
+                        step="timing",
+                    )
+
+                    t0 = time.monotonic()
                     status = upsert_project(db_dict)
+                    logger.warning(
+                        f"Step timing [db_upsert]: {time.monotonic()-t0:.2f}s  status={status}",
+                        step="timing",
+                    )
 
                     if status == "new":
                         counters["projects_new"] += 1
@@ -1009,6 +1111,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         # Phase 1 (sequential): resolve names; build selected / skipped lists.
                         # select_document_for_download mutates doc_name_counts for dedup, so
                         # this must stay sequential to guarantee stable filenames.
+                        t0 = time.monotonic()
                         doc_name_counts: dict[str, int] = {}
                         selected_pairs: list[tuple[dict, dict]] = []  # (original, selected)
                         skipped_entries: list[dict] = []
@@ -1023,8 +1126,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                                     "link": doc.get("link"),
                                     "type": doc.get("type", "document"),
                                 })
+                        logger.warning(
+                            f"Step timing [doc_selection]: {time.monotonic()-t0:.2f}s"
+                            f"  total={len(raw_docs)}  selected={len(selected_pairs)}"
+                            f"  skipped={len(skipped_entries)}",
+                            step="timing",
+                        )
 
                         # Phase 2 (parallel): download + upload selected docs concurrently.
+                        t0 = time.monotonic()
                         dl_results: list[dict | None] = [None] * len(selected_pairs)
                         with ThreadPoolExecutor(max_workers=_MAX_DOC_WORKERS) as pool:
                             future_to_idx = {
@@ -1042,6 +1152,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                                     logger.warning(
                                         f"Document parallel error: {exc}", step="documents"
                                     )
+                        logger.warning(
+                            f"Step timing [doc_downloads]: {time.monotonic()-t0:.2f}s"
+                            f"  workers={_MAX_DOC_WORKERS}  docs={len(selected_pairs)}",
+                            step="timing",
+                        )
 
                         # Phase 3: assemble final list in original order.
                         uploaded_documents: list[dict] = []
@@ -1057,6 +1172,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         uploaded_documents.extend(skipped_entries)
 
                         if uploaded_documents:
+                            t0 = time.monotonic()
                             upsert_project({
                                 "key": key,
                                 "url": detail_url,
@@ -1066,6 +1182,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                                 "uploaded_documents": uploaded_documents,
                                 "document_urls": build_document_urls(uploaded_documents),
                             })
+                            logger.warning(
+                                f"Step timing [doc_db_upsert]: {time.monotonic()-t0:.2f}s",
+                                step="timing",
+                            )
 
                 except ValidationError as exc:
                     counters["error_count"] += 1
@@ -1082,11 +1202,19 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         project_key=key, url=LISTING_URL,
                     )
             finally:
+                # Checkpoint after every project so a restart can resume mid-list
+                save_checkpoint(site_id, mode, 0, key, run_id)
                 logger.clear_project()
 
             if idx > 0 and idx % 10 == 0:
                 random_delay(*delay_range)
 
-    reset_checkpoint(config["id"], mode)
+    # Clean up cache + checkpoint on successful completion
+    _clear_listing_cache()
+    reset_checkpoint(site_id, mode)
+    logger.warning(
+        f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s",
+        step="timing",
+    )
     logger.info(f"Punjab RERA complete: {counters}", step="done")
     return counters

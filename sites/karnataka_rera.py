@@ -806,10 +806,79 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
 
 # ── Document extraction ───────────────────────────────────────────────────────
 
+# Matches "*(Annexure - 60)" or "( Annexure - 60 )" suffixes on portal labels.
+_ANNEXURE_RE = re.compile(r"\s*\*?\(?\s*Annexure\s*[-–]\s*\d+\s*\)?", re.I)
+# Matches date strings like "06-03-2023" or "28/11/2003".
+_DATE_CELL_RE = re.compile(r"^\d{1,2}[-/]\d{2}[-/]\d{2,4}$")
+# Matches file extensions (.pdf, .xlsx, .jpeg, etc.).
+_FILE_EXT_RE = re.compile(r"\.\w{2,5}$")
+
+
+def _doc_label_from_row(parent_td, row_cells: list, section_heading: str,
+                        link_text: str) -> str:
+    """
+    Determine the human-readable document type for a download link found inside
+    a table cell.
+
+    Strategy (handles three distinct table layouts on the Karnataka portal):
+
+    1. Empty link text  →  the link has no visible label (e.g. licence-number
+       columns in the Professional table, or document columns in Land Survey).
+       Use the nearest preceding section heading (e.g. "Project Chartered
+       Accountant", "Land Survey Details") — always more meaningful than a
+       random data cell value.
+
+    2. Non-empty link text  →  walk LEFT through the current row's cells to
+       find the nearest cell whose text looks like a document-category label
+       (not a serial number, not a date, not another filename).  This correctly
+       handles:
+         • Financial docs:  [Label | 2022.pdf | 2021.pdf | 2020.pdf]
+           — year 2 & 3 get the same Label as year 1.
+         • Other Docs:      [Doc Name | Date | file.pdf]
+           — walks past the date to reach the doc name in col-0.
+         • 4-col project docs: [Label1 | file1 | Label2 | file2]
+           — each file's immediate left neighbour IS its own label.
+       If no label is found (e.g. numbered "Other Documents" rows where col-0
+       is a serial number), falls back to link_text (the filename itself).
+    """
+    if not link_text:
+        # Empty link tag — use section heading as the category label.
+        return section_heading or "Document"
+
+    if parent_td not in row_cells:
+        return link_text
+
+    col_idx = row_cells.index(parent_td)
+    # Walk left through preceding cells to find a proper label.
+    for i in range(col_idx - 1, -1, -1):
+        candidate = _clean(row_cells[i].get_text())
+        if not candidate:
+            continue
+        # Serial number → we've reached the leftmost data; no label exists.
+        if candidate.isdigit():
+            break
+        # Date cell (e.g. "06-03-2023") → skip and keep walking.
+        if _DATE_CELL_RE.match(candidate):
+            continue
+        # Another filename → keep walking left to find the true label.
+        if _FILE_EXT_RE.search(candidate):
+            continue
+        # Single-word codes without spaces (survey nos., case IDs like "820/3") → skip.
+        if "/" in candidate and " " not in candidate:
+            continue
+        # Looks like a real document-category label — strip the annexure suffix.
+        label = _ANNEXURE_RE.sub("", candidate).strip().rstrip("*").strip()
+        return label if label else link_text
+
+    # Nothing useful found to the left — use the filename as the type.
+    return link_text
+
+
 def _extract_documents(html: str, reg_no: str) -> list[dict]:
     """
     Extract all document links from the detail HTML.
     - Scans <a href> for /download_jc?DOC_ID= patterns; skips entries with empty DOC_ID.
+    - Resolves each document's human-readable type via _doc_label_from_row.
     - Adds the auto-generated RERA registration certificate entry.
     Returns list of {link, type} dicts.
     """
@@ -830,15 +899,30 @@ def _extract_documents(html: str, reg_no: str) -> list[dict]:
         if full_url in seen_links:
             continue
         seen_links.add(full_url)
-        # Infer document type from link text or nearest sibling cell
-        doc_type = _clean(a.get_text())
-        if not doc_type:
-            parent = a.find_parent("td")
-            if parent:
-                prev_td = parent.find_previous_sibling("td")
-                doc_type = _clean(prev_td.get_text()) if prev_td else "Document"
-        if not doc_type:
-            doc_type = "Document"
+
+        link_text = _clean(a.get_text())
+        parent_td = a.find_parent("td")
+
+        if parent_td is None:
+            # Standalone link (e.g. inside a Bootstrap grid div, not a table).
+            # The link text itself is the filename and serves as a reasonable label.
+            doc_type = link_text or "Document"
+        else:
+            row = parent_td.find_parent("tr")
+            row_cells = row.find_all("td") if row else []
+
+            # Nearest section heading above this link's table.
+            section_heading = ""
+            table = row.find_parent("table") if row else None
+            if table:
+                for hdr in table.find_all_previous(["h1", "h2", "h3", "h4"]):
+                    section_heading = _clean(hdr.get_text())
+                    break
+
+            doc_type = _doc_label_from_row(
+                parent_td, row_cells, section_heading, link_text
+            )
+
         docs.append({"link": full_url, "type": doc_type})
 
     # Auto-add registration certificate for approved projects

@@ -51,14 +51,20 @@ _GRID_TARGET = "ctl00$ContentPlaceHolder1$GV_Building"
 
 def _collect_detail_urls(logger: CrawlerLogger, max_items: int | None = None) -> list[str | None]:
     """
-    Use Playwright to click every project link on the Bihar listing page.
-    Each click opens a popup window at Filanprint.aspx?id=RERAP...
+    Use Playwright to click every project link across ALL listing pages.
+    Each click opens a popup window at Filanprint.aspx?id=RERAP...-N
 
-    Strategy: reload the listing page before each click to avoid execution-context
-    destruction that happens when the previous click navigates the main page.
+    Strategy:
+    - Maintain a single persistent listing page and navigate it forward page by page.
+    - Within each listing page, click projects sequentially without reloading:
+      the __doPostBack postback that opens the popup reloads the listing in-place
+      while preserving the current page number in ViewState, so subsequent project
+      clicks on the same listing page work immediately after the popup closes.
+    - To advance to the next listing page, find the Page$N pager link (or the
+      "..." overflow link) and click it.
 
-    Returns an ordered list of Filanprint URLs aligned with listing row order.
-    None means the popup was not captured for that row.
+    Returns a flat list of Filanprint URLs aligned with listing row order across
+    ALL pages.  None means the popup was not captured for that row.
 
     max_items: if set, stop after collecting this many URLs (for CRAWL_ITEM_LIMIT).
     """
@@ -69,54 +75,112 @@ def _collect_detail_urls(logger: CrawlerLogger, max_items: int | None = None) ->
         with sync_playwright() as pw:
             browser = pw.chromium.launch(headless=True)
             ctx = browser.new_context()
+            listing_page = ctx.new_page()
+            listing_page.goto(LISTING_URL, wait_until="domcontentloaded", timeout=30_000)
+            current_listing_pg = 1
 
-            # ── First pass: count data-row links ─────────────────────────────
-            page = ctx.new_page()
-            page.goto(LISTING_URL, wait_until="domcontentloaded", timeout=30_000)
-            link_texts: list[str] = page.eval_on_selector_all(
-                links_sel, "els => els.map(e => e.innerText.trim())"
-            )
-            # Filter out pager links (digits, "...", navigation words)
-            project_indices = [
-                i for i, t in enumerate(link_texts)
-                if t and not t.isdigit() and t not in ("...", "Next", "Prev", "Previous", "First", "Last")
-            ]
-            if max_items:
-                project_indices = project_indices[:max_items]
-            page.close()
-            logger.info(
-                f"Playwright: {len(project_indices)} project row links to collect"
-                + (f" (capped at {max_items})" if max_items else ""),
-                step="detail_collect",
-            )
+            while True:
+                # ── Identify project links on this listing page ───────────────
+                link_texts: list[str] = listing_page.eval_on_selector_all(
+                    links_sel, "els => els.map(e => e.innerText.trim())"
+                )
+                project_indices = [
+                    i for i, t in enumerate(link_texts)
+                    if t and not t.isdigit()
+                    and t not in ("...", "Next", "Prev", "Previous", "First", "Last")
+                ]
 
-            # ── Second pass: one fresh page per link ──────────────────────────
-            for rank, idx in enumerate(project_indices):
-                name = link_texts[idx]
-                try:
-                    page = ctx.new_page()
-                    page.goto(LISTING_URL, wait_until="domcontentloaded", timeout=30_000)
-                    with ctx.expect_page(timeout=15_000) as popup_info:
-                        page.eval_on_selector_all(links_sel, f"els => els[{idx}].click()")
-                    popup = popup_info.value
-                    popup.wait_for_load_state("domcontentloaded", timeout=15_000)
-                    url = popup.url
-                    popup.close()
-                    page.close()
-                    if "Filanprint.aspx" in url:
-                        detail_urls.append(url)
-                        logger.info(f"  [{rank}] {name!r} → {url}", step="detail_collect")
-                    else:
-                        detail_urls.append(None)
-                        logger.warning(f"  [{rank}] {name!r}: unexpected URL {url}", step="detail_collect")
-                except Exception as e:
+                if not project_indices:
+                    logger.info(
+                        f"Playwright: listing page {current_listing_pg} has no project links — stopping",
+                        step="detail_collect",
+                    )
+                    break
+
+                # Cap at remaining item budget for this page
+                if max_items:
+                    remaining = max_items - len(detail_urls)
+                    project_indices = project_indices[:remaining]
+
+                logger.info(
+                    f"Playwright: listing page {current_listing_pg},"
+                    f" collecting {len(project_indices)} detail URLs",
+                    step="detail_collect",
+                )
+
+                # ── Click each project; listing page stays alive between clicks ─
+                for rank, idx in enumerate(project_indices):
+                    name = link_texts[idx]
                     try:
-                        page.close()
-                    except Exception:
-                        pass
-                    detail_urls.append(None)
-                    logger.warning(f"  [{rank}] {name!r}: popup failed — {e}", step="detail_collect")
+                        with ctx.expect_page(timeout=15_000) as popup_info:
+                            listing_page.eval_on_selector_all(
+                                links_sel, f"els => els[{idx}].click()"
+                            )
+                        popup = popup_info.value
+                        popup.wait_for_load_state("domcontentloaded", timeout=15_000)
+                        url = popup.url
+                        popup.close()
+                        # Postback already reloaded the listing page in-place;
+                        # wait for it to settle before the next click.
+                        listing_page.wait_for_load_state("domcontentloaded", timeout=15_000)
 
+                        if "Filanprint.aspx" in url:
+                            detail_urls.append(url)
+                            logger.info(
+                                f"  [pg{current_listing_pg}:{rank}] {name!r} → {url}",
+                                step="detail_collect",
+                            )
+                        else:
+                            detail_urls.append(None)
+                            logger.warning(
+                                f"  [pg{current_listing_pg}:{rank}] {name!r}: unexpected URL {url}",
+                                step="detail_collect",
+                            )
+                    except Exception as e:
+                        detail_urls.append(None)
+                        logger.warning(
+                            f"  [pg{current_listing_pg}:{rank}] {name!r}: popup failed — {e}",
+                            step="detail_collect",
+                        )
+
+                if max_items and len(detail_urls) >= max_items:
+                    break
+
+                # ── Navigate to the next listing page ─────────────────────────
+                next_pg = current_listing_pg + 1
+                next_href = (
+                    f"javascript:__doPostBack('{_GRID_TARGET}','Page${next_pg}')"
+                )
+                next_link = listing_page.query_selector(f'a[href="{next_href}"]')
+                if next_link:
+                    next_link.click()
+                    listing_page.wait_for_load_state("domcontentloaded", timeout=15_000)
+                    current_listing_pg = next_pg
+                else:
+                    # "..." overflow link — find any pager link pointing to next_pg
+                    pager_info: list[dict] = listing_page.eval_on_selector_all(
+                        f"table#{_GRID_ID} tr:last-child a",
+                        "els => els.map(e => ({text: e.innerText.trim(), href: e.getAttribute('href')}))",
+                    )
+                    overflow = next(
+                        (
+                            info for info in pager_info
+                            if info.get("href", "").endswith(f"'Page${next_pg}')")
+                        ),
+                        None,
+                    )
+                    if overflow:
+                        listing_page.click(f'a[href="{overflow["href"]}"]')
+                        listing_page.wait_for_load_state("domcontentloaded", timeout=15_000)
+                        current_listing_pg = next_pg
+                    else:
+                        logger.info(
+                            f"Playwright: no link to page {next_pg} — all pages collected",
+                            step="detail_collect",
+                        )
+                        break
+
+            listing_page.close()
             browser.close()
     except Exception as e:
         logger.error(f"Playwright detail-url collection failed: {e}", step="detail_collect")
@@ -808,6 +872,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     current_page = 1
     soup         = BeautifulSoup(resp.text, "lxml")
     stop_all     = False
+    # Global offset: tracks how many listing rows have been seen across all pages.
+    # detail_url_list is a flat list of all detail URLs in listing order; within each
+    # listing page the per-page row_idx restarts at 0, so we add this offset to
+    # convert it to a global index into detail_url_list.
+    global_row_offset = 0
 
     while True:
         if stop_all:
@@ -828,8 +897,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
             key = generate_project_key(reg_no)
             detail_url: str = ""
-            if row_idx < len(detail_url_list) and detail_url_list[row_idx]:
-                detail_url = detail_url_list[row_idx]
+            global_idx = global_row_offset + row_idx
+            if global_idx < len(detail_url_list) and detail_url_list[global_idx]:
+                detail_url = detail_url_list[global_idx]
 
             # ── daily_light: skip projects already in the DB ──────────────────
             if mode == "daily_light" and get_project_by_key(key):
@@ -845,17 +915,26 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             try:
 
                 # ── Step 3: Fetch & parse detail page ────────────────────────────
-                # Use positional alignment: detail_url_list[row_idx] matches listing row
+                # Use global positional alignment: detail_url_list[global_idx]
+                # matches the listing row at (listing_page, row_idx).
                 detail_extra: dict = {}
                 if detail_url:
                     detail_resp = safe_get(detail_url, retries=2, logger=logger)
-                    if detail_resp:
+                    if detail_resp and "Invalid Project ID" not in detail_resp.text:
                         detail_extra = _parse_detail_page(detail_resp.text)
                         logger.info(f"Detail parsed for {reg_no!r}", step="detail")
+                    elif detail_resp:
+                        logger.warning(
+                            f"Detail page returned 'Invalid Project ID' for {reg_no!r}",
+                            step="detail",
+                        )
                     else:
                         logger.warning(f"Detail fetch failed for {reg_no!r}", step="detail")
                 else:
-                    logger.warning(f"No detail URL for row {row_idx} ({reg_no!r})", step="detail")
+                    logger.warning(
+                        f"No detail URL for listing page {current_page} row {row_idx} ({reg_no!r})",
+                        step="detail",
+                    )
 
                 # ── Step 4: Merge listing + detail, upsert ───────────────────────
                 try:
@@ -944,7 +1023,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
             random_delay(*delay_range)
 
-        # ── Advance to next page ──────────────────────────────────────────────
+        # ── Advance global offset and move to next listing page ──────────────
+        global_row_offset += len(rows)
+
         if max_pages and current_page >= max_pages:
             logger.info(f"Reached max_pages={max_pages}, stopping", step="listing")
             break
