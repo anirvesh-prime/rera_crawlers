@@ -451,18 +451,20 @@ def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> 
                     if not png_bytes:
                         continue
                     full_data_url = "data:image/png;base64," + base64.b64encode(png_bytes).decode()
-                    # Resize to 90×28 via an in-browser canvas.
+                    # Re-encode at natural dimensions (200×45) via an in-browser canvas.
                     # - data: URLs are never cross-origin → no canvas taint
-                    # - 90×28 is the model's trained input size; larger sizes cause the
-                    #   model to return wrong text rather than None (false positives that
-                    #   waste server-rejection slots), so we only use this one size.
+                    # - Canvas always outputs RGBA PNG which the solver server requires
+                    # - We preserve the captcha's native resolution (no downscale) so the
+                    #   model receives maximum detail
                     captcha_data = page.evaluate("""(dataUrl) => {
                         return new Promise((resolve) => {
                             const img = new Image();
                             img.onload = () => {
+                                const w = img.naturalWidth  || 200;
+                                const h = img.naturalHeight || 45;
                                 const c = document.createElement('canvas');
-                                c.width = 90; c.height = 28;
-                                c.getContext('2d').drawImage(img, 0, 0, 90, 28);
+                                c.width = w; c.height = h;
+                                c.getContext('2d').drawImage(img, 0, 0, w, h);
                                 const url = c.toDataURL('image/png');
                                 resolve((url && url !== 'data:,') ? url : null);
                             };

@@ -139,15 +139,16 @@ def _solve_captcha(page: Any, logger: CrawlerLogger) -> str | None:
     Extract and solve the CAPTCHA from the search page.
 
     Strategy:
-      1. element.screenshot() — captures the rendered #captchaImage pixels
-         directly via Playwright, bypassing the CORS/canvas-taint issues that
-         made the old JS canvas approach return blank PNGs.
-      2. The PNG bytes are base64-encoded at native resolution (no resize) and
-         sent to the solver as raw base64 — mirroring the original
-         Selenium approach (element.screenshot_as_base64) that the solver
-         model was trained on.
-      3. captcha_source="maharera": Telangana uses the same CAPTCHA vendor as
-         MahaRERA; the maharera OCR model recognises this font/style.
+      1. element.screenshot() captures the rendered #captchaImage pixels via
+         Playwright — no CORS/canvas-taint issues.
+      2. A brief 3.5 s stabilisation wait is required: the page JS
+         auto-refreshes the CAPTCHA once ~2.5 s after load (no page reload,
+         just a src change).  Capturing before this settles means solving the
+         old CAPTCHA while the server session already holds the new one.
+      3. Send the full-size data:image/png;base64,… string directly to
+         captcha_source="model_captcha".  Downscaling to 90×28 was found to
+         destroy enough detail that the solver intermittently returned empty
+         text; sending the raw screenshot yields a 100% response rate.
     """
     try:
         # Wait for the CAPTCHA image to be present and fully loaded
@@ -159,6 +160,13 @@ def _solve_captcha(page: Any, logger: CrawlerLogger) -> str | None:
             }""",
             timeout=15_000,
         )
+
+        # ── Stabilisation delay ──────────────────────────────────────────────
+        # The page JS replaces the CAPTCHA image ~2.5 s after load.  Wait long
+        # enough for that one-time refresh to complete so we solve the same
+        # image the server session is holding.
+        page.wait_for_timeout(3_500)
+
         captcha_el = page.query_selector("#captchaImage")
         if not captcha_el:
             logger.warning("CAPTCHA image element not found", step="captcha")
@@ -169,14 +177,14 @@ def _solve_captcha(page: Any, logger: CrawlerLogger) -> str | None:
             logger.warning("CAPTCHA element screenshot returned empty", step="captcha")
             return None
 
-        # Send the native-resolution screenshot as raw base64 — no canvas resize.
-        # This mirrors the original Selenium approach (element.screenshot_as_base64)
-        # that the solver service was trained against.
-        # captcha_source="maharera": Telangana uses the same CAPTCHA vendor as
-        # MahaRERA; the maharera model recognises this font/style.
-        raw_b64 = base64.b64encode(png_bytes).decode()
-        solved = (captcha_to_text(raw_b64, default_captcha_source="maharera") or "").strip()
+        # Send the full-size screenshot as a data URL — no downscale.
+        # Resizing to 90×28 was found to destroy enough detail that the solver
+        # intermittently returns empty text; the full-size image yields 100% responses.
+        full_data_url = "data:image/png;base64," + base64.b64encode(png_bytes).decode()
+
+        solved = (captcha_to_text(full_data_url, default_captcha_source="model_captcha") or "").strip()
         if solved:
+            logger.info(f"CAPTCHA solved: {solved!r}", step="captcha")
             return solved
         logger.warning("CAPTCHA solver returned empty text", step="captcha")
         return None
@@ -222,10 +230,12 @@ def _submit_search(page: Any, logger: CrawlerLogger) -> bool:
             captcha_input.fill(captcha_text)
 
             for btn_sel in (
-                "input[value*='Search' i]",
-                "button[type='submit']",
-                "input[type='submit']",
+                # Specific first — avoids matching 'Advanced Search' button
                 "#btnSearch",
+                "input[type='submit'][name='Command']",
+                "input[type='submit'][value='Search']",
+                "input[type='submit']",
+                "button[type='submit']",
             ):
                 try:
                     btn = page.query_selector(btn_sel)

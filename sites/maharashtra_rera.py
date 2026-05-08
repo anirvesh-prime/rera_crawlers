@@ -26,8 +26,10 @@ Strategy:
 """
 from __future__ import annotations
 
+import base64
 import json as _json
 import re
+import time as _time
 from typing import Optional
 
 import httpx
@@ -36,7 +38,7 @@ from playwright.sync_api import sync_playwright
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.captcha_solver import solve_captcha_from_page, wait_for_captcha_canvas
+from core.captcha_solver import captcha_to_text, solve_captcha_from_page, wait_for_captcha_canvas
 from core.config import settings
 from core.crawler_base import generate_project_key, random_delay, safe_get
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
@@ -227,7 +229,7 @@ _CAPTCHA_INTERCEPT_SCRIPT = """
 """
 
 
-_MAX_CAPTCHA_ATTEMPTS = 3
+_MAX_CAPTCHA_ATTEMPTS = 10
 
 
 def _scrape_mh_detail_page(cert_id: str, logger: CrawlerLogger) -> dict:
@@ -245,7 +247,11 @@ def _scrape_mh_detail_page(cert_id: str, logger: CrawlerLogger) -> dict:
                 user_agent=(
                     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
                     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-                )
+                ),
+                # Set viewport before navigation so the canvas renders at this
+                # size from the start — matches old crawler's set_window_size(800,800)
+                # without triggering a mid-load redraw.
+                viewport={"width": 800, "height": 800},
             )
             context.add_init_script(_CAPTCHA_INTERCEPT_SCRIPT)
             page = context.new_page()
@@ -263,19 +269,40 @@ def _scrape_mh_detail_page(cert_id: str, logger: CrawlerLogger) -> dict:
                     page.reload(timeout=45_000)
                     continue
 
-                captcha_value = solve_captcha_from_page(
-                    page, logger=logger, selectors=["canvas"], captcha_source="model_captcha",
-                )
+                # Primary: canvas fillText interception — the init script patches
+                # CanvasRenderingContext2D.prototype.fillText so every character
+                # drawn to the captcha canvas is captured exactly, no OCR needed.
+                captcha_value = None
+                captcha_texts = page.evaluate("() => window.__captchaTexts || []")
+                captcha_value = "".join(captcha_texts).strip() or None
                 if captcha_value:
-                    logger.info(f"Captcha solved via OCR: {captcha_value!r}", step="captcha")
-                else:
-                    captcha_texts = page.evaluate("() => window.__captchaTexts || []")
-                    captcha_value = "".join(captcha_texts).strip()
+                    logger.info(f"Captcha via fillText interception: {captcha_value!r}", step="captcha")
+
+                # Fallback 1: element screenshot → model_captcha OCR
+                # (used when the captcha is rendered as an image rather than
+                # drawn character-by-character via fillText)
+                if not captcha_value:
+                    try:
+                        canvas_el = page.query_selector("canvas")
+                        if canvas_el:
+                            img_bytes = canvas_el.screenshot()
+                            img_b64 = base64.b64encode(img_bytes).decode()
+                            captcha_value = captcha_to_text(
+                                f"data:image/png;base64,{img_b64}",
+                                default_captcha_source="model_captcha",
+                            ).strip() or None
+                            if captcha_value:
+                                logger.info(f"Captcha via element screenshot OCR: {captcha_value!r}", step="captcha")
+                    except Exception as _ss_exc:
+                        logger.warning(f"Element screenshot failed: {_ss_exc}", step="captcha")
+
+                # Fallback 2: canvas toDataURL via captcha_solver helper
+                if not captcha_value:
+                    captcha_value = solve_captcha_from_page(
+                        page, logger=logger, selectors=["canvas"], captcha_source="model_captcha",
+                    )
                     if captcha_value:
-                        logger.info(
-                            f"Captcha recovered via canvas interception: {captcha_value!r}",
-                            step="captcha",
-                        )
+                        logger.info(f"Captcha via toDataURL OCR: {captcha_value!r}", step="captcha")
 
                 if not captcha_value:
                     logger.warning(
@@ -286,11 +313,46 @@ def _scrape_mh_detail_page(cert_id: str, logger: CrawlerLogger) -> dict:
 
                 page.fill("input[name='captcha']", captcha_value)
                 page.click("button.next")
-                # Wait for Angular to start rendering — label.form-label is the
-                # earliest reliable indicator that the project detail page has loaded.
+
+                # Wait for network to settle after submit, then check outcome.
+                # networkidle gives Angular time to finish its XHR calls before
+                # we inspect the DOM — more reliable than a fixed sleep(2).
                 try:
-                    page.wait_for_selector("label.form-label, .col-md-4 .f-s-15", timeout=10_000)
-                    logger.info("CAPTCHA accepted — Angular content loaded", step="captcha")
+                    page.wait_for_load_state("networkidle", timeout=10_000)
+                except Exception:
+                    pass  # timeout is non-fatal; we still inspect the DOM below
+
+                # Check explicitly for "Captcha is not valid" error (mirrors old
+                # crawler's verifier() check) before waiting for Angular content.
+                try:
+                    invalid_el = page.query_selector("h2:text('Captcha is not valid.')")
+                    if invalid_el and invalid_el.is_visible():
+                        logger.info(f"Captcha invalid on attempt {attempt} — dismissing and retrying", step="captcha")
+                        # Dismiss the alert/modal (mirrors old crawler's confirm button click)
+                        try:
+                            page.click("button.confirm", timeout=3_000)
+                        except Exception:
+                            pass
+                        continue
+                except Exception:
+                    pass
+
+                # Wait for Angular to render data — label.bg-blue.f-w-700 holds
+                # the actual registration number and is only populated after
+                # Angular's data API calls complete (not just form structure).
+                # Fall back to the broader form-label selector if it doesn't appear.
+                try:
+                    page.wait_for_selector("label.bg-blue.f-w-700", timeout=20_000)
+                    logger.info("CAPTCHA accepted — Angular data loaded", step="captcha")
+                    captcha_solved = True
+                    break
+                except Exception:
+                    pass
+
+                # Broader fallback — catches older project page layouts
+                try:
+                    page.wait_for_selector("label.form-label, .col-md-4 .f-s-15", timeout=5_000)
+                    logger.info("CAPTCHA accepted — Angular form loaded (fallback)", step="captcha")
                     captcha_solved = True
                     break
                 except Exception:
@@ -905,13 +967,20 @@ def _extract_mh_html_fields(page, cert_id: str, logger: CrawlerLogger) -> dict:
     except Exception:
         logger.warning("networkidle timeout — scraping page as-is", step="detail")
 
-    # Confirm expected Angular content is present; bail out if still on captcha page
+    # Confirm data-populated Angular content is present — label.bg-blue.f-w-700
+    # carries the registration number and is only rendered after Angular's data
+    # API calls complete (unlike label.form-label which is just form structure).
     angular_ready = False
     try:
-        page.wait_for_selector("label.form-label, .col-md-4 .f-s-15", timeout=10_000)
+        page.wait_for_selector("label.bg-blue.f-w-700", timeout=20_000)
         angular_ready = True
     except Exception:
-        logger.warning("Angular form labels not found on detail page", step="detail")
+        # Broader fallback for older project layouts
+        try:
+            page.wait_for_selector("label.form-label, .col-md-4 .f-s-15", timeout=5_000)
+            angular_ready = True
+        except Exception:
+            logger.warning("Angular data labels not found on detail page", step="detail")
 
     if not angular_ready:
         # Still on captcha or an error page — no project data to extract
