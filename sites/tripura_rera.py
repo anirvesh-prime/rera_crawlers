@@ -3,31 +3,39 @@ Tripura RERA Crawler — reraonline.tripura.gov.in
 Type: static (httpx + BeautifulSoup — server-rendered Java MVC)
 
 Strategy:
-- GET /viewApprovedProjects returns ALL ~214 registered projects in a single HTML
-  response.  The server renders a client-side-only pagination widget whose links
-  are wrapped in an HTML comment (<!-- ... -->), so BeautifulSoup never sees them
-  as active anchors; _has_next_page() returns False after the first page and the
-  loop exits cleanly.
-- Each listing card (div.row.defalter_result_list): project name, address,
-  registration number, promoter, promoter type, property type, land area.
-  Cards contain NO explicit detail-page anchor (<a href="/viewProjectDetailPage">)
-  so the detail URL is always derived from the registration number.
-- Registration number format: PRTR{MM}{YY}{NNNN} (8 digits after PRTR) where
-  NNNN is the 4-digit zero-padded sequential project ID.
-  detail URL = /viewProjectDetailPage?projectID=int(reg_no[-4:])
-  e.g. PRTR03240386 → projectID=386  |  PRTR01200001 → projectID=1
-- Detail pages: /viewProjectDetailPage?projectID=N — full project metadata
-- Documents: links matching getdocument/download/.pdf patterns on detail page
+- A persistent httpx.Client is created per run so the JSESSIONID cookie acquired
+  from the homepage warm-up is automatically re-sent with every subsequent request.
+
+Primary listing — POST /search
+  Submitting the homepage search form (searchTxt='', startFrom=N) returns 5
+  projects per page with DIRECT "Read More" links to viewProjectDetailPage.
+  Pagination: startFrom increments by 5; stop when startFrom >= total_records.
+  Card selector: div.row.search_result_list > div.col-md-9.no_pad_lft
+
+Supplementary listing — GET /viewApprovedProjects
+  Returns ALL ~213 approved projects (including older completed ones not shown by
+  /search). Cards here carry NO explicit detail link, so the detail URL is derived:
+    PRTR{MM}{YY}{NNNN} → projectID = int(reg_no[-4:])
+    e.g. PRTR03240386 → projectID=386  |  PRTR01200001 → projectID=1
+  Projects already collected from /search are skipped.
+
+Detail pages — /viewProjectDetailPage?projectID=N
+  Full project metadata extracted via Bootstrap grid label/value pairs and
+  section tables (Promoter, Members, Architects, Structural Engineers, Contractors).
+
+Documents — download?DOC_ID=N links on the detail page.
+  Anchors with empty DOC_ID are silently skipped (not uploaded by promoter).
 """
 from __future__ import annotations
 
 import re
 
+import httpx
 from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
-from core.crawler_base import generate_project_key, random_delay, safe_get
+from core.crawler_base import generate_project_key, get_random_ua, random_delay, safe_get, safe_post
 from core.db import get_project_by_key, insert_crawl_error, upsert_document, upsert_project
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -44,10 +52,12 @@ from core.project_normalizer import (
 from core.s3 import compute_md5, get_s3_url, upload_document
 from core.config import settings
 
+SEARCH_URL  = "https://reraonline.tripura.gov.in/search"
 LISTING_URL = "https://reraonline.tripura.gov.in/viewApprovedProjects"
+HOME_URL    = "https://reraonline.tripura.gov.in/"
 BASE_URL    = "https://reraonline.tripura.gov.in"
 DOMAIN      = "reraonline.tripura.gov.in"
-PAGE_SIZE   = 10  # kept for checkpoint arithmetic; server returns all rows in one page
+SEARCH_PAGE_SIZE = 5   # /search returns 5 results per page
 
 # Registration numbers: PRTR{MM}{YY}{NNNN} — last 4 chars are the numeric project ID
 _REG_RE      = re.compile(r"\bPRTR\d+\b", re.I)
@@ -55,22 +65,165 @@ _AREA_UNIT_RE = re.compile(
     r"([\d,]+(?:\.\d+)?)\s*(sq\.?\s*mtr|sq\.?\s*ft|sq\.?\s*m|sqmt|sqmtr|sqft|m2|ft2)?",
     re.I,
 )
+# Headings that are NOT the project name (used to skip them when extracting project name from h1)
+_SKIP_H1_RE = re.compile(
+    r"(last\s*updated|chairman|lead\s*member|applicant|description|"
+    r"promoter|member|agent|architect|engineer|contractor|development|"
+    r"construction|document|financial|declaration|photograph|associated|"
+    r"vendor|rera\s*registration|project\s*type|project\s*status)",
+    re.I,
+)
 
 
-def _get(url: str, logger: CrawlerLogger, params: dict | None = None):
-    """Thin wrapper — SSL verification disabled for legacy government cert."""
-    return safe_get(url, verify=False, logger=logger, timeout=60.0, params=params)
+def _make_client() -> httpx.Client:
+    """Return a session-aware httpx.Client with SSL verification disabled."""
+    return httpx.Client(
+        verify=False,
+        follow_redirects=True,
+        timeout=60.0,
+        headers={
+            "User-Agent": get_random_ua(),
+            "Origin":  BASE_URL,
+            "Referer": HOME_URL,
+        },
+    )
 
 
-# ── Listing page parsing ───────────────────────────────────────────────────────
+def _get(url: str, logger: CrawlerLogger, client: httpx.Client,
+         params: dict | None = None):
+    """GET wrapper — reuses persistent session client."""
+    return safe_get(url, verify=False, logger=logger, timeout=60.0,
+                    params=params, client=client)
+
+
+def _post(url: str, data: dict, logger: CrawlerLogger, client: httpx.Client):
+    """POST wrapper — reuses persistent session client."""
+    return safe_post(url, data=data, verify=False, logger=logger,
+                     timeout=60.0, client=client)
+
+
+# ── Search listing parsing (primary — POST /search) ───────────────────────────
+
+def _parse_search_rows(soup: BeautifulSoup) -> tuple[list[dict], int]:
+    """
+    Parse one page of POST /search results.
+
+    Card structure (div.row.search_result_list > div.col-md-9.no_pad_lft):
+      <h1><span>Project: </span> {project_name}</h1>
+      <p>{address} <span class="glyphicon-map-marker"/></p>
+      <p>Reg No. : {PRTR…}</p>
+      <table>
+        <thead><tr><th>PROMOTER</th><th>PROMOTER TYPE</th>
+                   <th>TOTAL AREA</th><th>PROPERTY TYPE</th><th>STATUS</th></tr></thead>
+        <tbody><tr><td>…</td>…</tr></tbody>
+      </table>
+      <p class="pull-right"><a href="viewProjectDetailPage?projectID=N">Read More</a></p>
+
+    Returns (rows, total_records).
+    """
+    # Extract total record count from "Showing record X to Y out of Z Records"
+    total = 0
+    m = re.search(r"out of.*?(\d+)\s*Records", soup.get_text())
+    if m:
+        total = int(m.group(1))
+
+    rows: list[dict] = []
+    cards = soup.select("div.row.search_result_list div.col-md-9.no_pad_lft")
+    for card in cards:
+        # Project name — strip the "Project:" span text
+        h1 = card.find("h1")
+        project_name = None
+        if h1:
+            project_name = h1.get_text(" ", strip=True)
+            project_name = re.sub(r"^project\s*:\s*", "", project_name, flags=re.I).strip()
+            project_name = project_name or None
+
+        # Address and reg no — first two <p> tags
+        address, reg_no = None, None
+        for p in card.find_all("p"):
+            text = p.get_text(" ", strip=True)
+            m_reg = _REG_RE.search(text)
+            if m_reg:
+                reg_no = m_reg.group(0)
+            elif address is None and "glyphicon" not in text and text:
+                # Clean map-marker glyph text
+                address = text.replace("glyphicon-map-marker", "").strip() or None
+
+        if not reg_no:
+            continue
+
+        # Table: PROMOTER | PROMOTER TYPE | TOTAL AREA | PROPERTY TYPE | STATUS
+        summary: dict[str, str] = {}
+        table = card.find("table")
+        if table:
+            rows_tr = table.find_all("tr")
+            if len(rows_tr) >= 2:
+                headers = [th.get_text(" ", strip=True).lower()
+                           for th in rows_tr[0].find_all(["th", "td"])]
+                values  = [td.get_text(" ", strip=True)
+                           for td in rows_tr[1].find_all("td")]
+                summary = dict(zip(headers, values))
+
+        # Land area — "TOTAL AREA" column e.g. "453.0 (sq Mtr)"
+        land_area: float | None = None
+        land_area_unit: str | None = None
+        total_area_raw = summary.get("total area", "")
+        if total_area_raw:
+            val, unit = _extract_area(total_area_raw)
+            if val is not None:
+                land_area = val
+                land_area_unit = unit or "sq Mtr"
+
+        # Direct detail URL from "Read More" link
+        detail_url: str | None = None
+        link = card.find("a", href=re.compile(r"viewProjectDetailPage", re.I))
+        if link:
+            href = link["href"]
+            detail_url = href if href.startswith("http") else f"{BASE_URL}/{href.lstrip('/')}"
+
+        # Fallback: derive from reg number
+        if not detail_url and reg_no and len(reg_no) >= 4:
+            try:
+                detail_url = f"{BASE_URL}/viewProjectDetailPage?projectID={int(reg_no[-4:])}"
+            except ValueError:
+                pass
+
+        row: dict = {
+            "project_registration_no": reg_no,
+            "project_name":            project_name,
+            "promoter_name":           (
+                summary.get("promoter")
+                or summary.get("promoter name")
+                or summary.get("name of promoter")
+            ) or None,
+            "project_type":          summary.get("property type") or None,
+            "status_of_the_project": summary.get("status") or None,
+            "detail_url":            detail_url,
+        }
+        if address:
+            row["project_location_raw"] = {"raw_address": address}
+        if land_area is not None:
+            row["land_area"] = land_area
+        if land_area_unit:
+            row["land_area_unit"] = land_area_unit
+        if summary.get("promoter type"):
+            row["data"] = {"promoter_type": summary["promoter type"]}
+        rows.append(row)
+    return rows, total
+
+
+# ── Fallback listing parsing (GET /viewApprovedProjects) ──────────────────────
 
 def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
     """
-    Extract project rows from the approved-projects listing table.
-    Expected columns (order may vary):
-      S.No | Registration No. | Project Name | Promoter Name | Project Type | Status | View
+    Extract project rows from GET /viewApprovedProjects (supplementary listing).
+    The server returns ALL approved projects in one HTML response.
+    Cards (div.row.defalter_result_list) carry NO explicit detail link;
+    the detail URL is always derived from the registration number.
     """
-    rows = []
+    rows: list[dict] = []
+
+    # Layout A: carousel-style cards (div.row.defalter_result_list)
     cards = soup.select("div.row.defalter_result_list")
     if cards:
         for card in cards:
@@ -78,96 +231,72 @@ def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
             project_name = None
             if heading:
                 heading_text = heading.get_text(" ", strip=True)
-                project_name = heading_text.split("Project:")[-1].strip()
+                project_name = heading_text.split("Project:")[-1].strip() or None
 
-            paragraphs = card.find_all("p")
-            address = None
-            reg_no = None
-            for p in paragraphs:
+            address, reg_no = None, None
+            for p in card.find_all("p"):
                 text = p.get_text(" ", strip=True)
                 if "Reg No." in text:
-                    match = _REG_RE.search(text)
-                    if match:
-                        reg_no = match.group(0)
+                    m = _REG_RE.search(text)
+                    if m:
+                        reg_no = m.group(0)
                 elif address is None and text:
-                    address = text.replace("glyphicon-map-marker", "").strip()
+                    address = text.replace("glyphicon-map-marker", "").strip() or None
 
             if not reg_no:
                 continue
 
-            summary_row = {}
+            summary_row: dict[str, str] = {}
             table = card.find("table")
             if table:
-                data_rows = table.find_all("tr")
-                if len(data_rows) >= 2:
-                    headers = [th.get_text(" ", strip=True).lower() for th in data_rows[0].find_all(["th", "td"])]
-                    values = [td.get_text(" ", strip=True) for td in data_rows[1].find_all("td")]
+                trs = table.find_all("tr")
+                if len(trs) >= 2:
+                    headers = [th.get_text(" ", strip=True).lower()
+                                for th in trs[0].find_all(["th", "td"])]
+                    values  = [td.get_text(" ", strip=True)
+                                for td in trs[1].find_all("td")]
                     summary_row = dict(zip(headers, values))
 
-            land_area = None
-            land_area_unit_from_listing: str | None = None
+            land_area: float | None = None
+            land_area_unit: str | None = None
             land_text = summary_row.get("total area of land (sq.mtr.)", "")
             if land_text:
                 try:
                     land_area = float(land_text.replace(",", ""))
-                    # The listing column header explicitly says "(Sq.Mtr.)" — use it as
-                    # the authoritative unit instead of trusting the detail-page text,
-                    # which can contain promoter data-entry errors (e.g. "sq ft").
-                    land_area_unit_from_listing = "sq Mtr"
-                except ValueError:
-                    land_area = None
-
-            # Find detail page URL from an explicit link in the card
-            detail_url = None
-            for a in card.find_all("a", href=True):
-                href = a["href"]
-                if re.search(r"viewProjectDetailPage|viewProject|projectDetail", href, re.I):
-                    if href.startswith("http"):
-                        detail_url = href
-                    elif href.startswith("/"):
-                        detail_url = f"{BASE_URL}{href}"
-                    else:
-                        detail_url = f"{BASE_URL}/{href}"
-                    break
-            # Fallback: derive detail URL from registration number.
-            # Format: PRTR{MM}{YY}{NNNN} — last 4 chars are the zero-padded project ID.
-            # int() strips leading zeros: "0386" → 386, "0001" → 1.
-            if not detail_url and reg_no and len(reg_no) >= 4:
-                try:
-                    project_id = int(reg_no[-4:])
-                    detail_url = f"{BASE_URL}/viewProjectDetailPage?projectID={project_id}"
+                    land_area_unit = "sq Mtr"
                 except ValueError:
                     pass
 
-            row = {
+            detail_url = _derive_detail_url(reg_no)
+            row: dict = {
                 "project_registration_no": reg_no,
-                "project_name": project_name,
+                "project_name":  project_name,
                 "promoter_name": (
                     summary_row.get("promoter")
                     or summary_row.get("promoter name")
                     or summary_row.get("name of promoter")
                     or summary_row.get("name of the promoter")
-                ),
-                "project_type": summary_row.get("property type"),
-                "detail_url": detail_url,
+                ) or None,
+                "project_type": summary_row.get("property type") or None,
+                "detail_url":   detail_url,
             }
             if address:
                 row["project_location_raw"] = {"raw_address": address}
             if land_area is not None:
                 row["land_area"] = land_area
-            if land_area_unit_from_listing:
-                row["land_area_unit"] = land_area_unit_from_listing
+            if land_area_unit:
+                row["land_area_unit"] = land_area_unit
             if summary_row.get("promoter type"):
-                row["data"] = {"promoter_type": summary_row.get("promoter type")}
+                row["data"] = {"promoter_type": summary_row["promoter type"]}
             rows.append(row)
         return rows
 
+    # Layout B: plain HTML table fallback
     for table in soup.find_all("table"):
         for tr in table.find_all("tr"):
             tds = tr.find_all("td")
             if len(tds) < 3:
                 continue
-            # Locate the cell that holds a PRTR-format registration number
             reg_no, reg_idx = None, None
             for idx, td in enumerate(tds):
                 text = td.get_text(strip=True)
@@ -178,60 +307,28 @@ def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
                 continue
 
             def _cell(offset: int) -> str | None:
-                i = reg_idx + offset
+                i = reg_idx + offset  # type: ignore[index]
                 return tds[i].get_text(separator=" ", strip=True) or None if 0 <= i < len(tds) else None
-
-            project_name  = _cell(1)
-            promoter_name = _cell(2)
-            project_type  = _cell(3)
-            status        = _cell(4)
-
-            # Prefer an explicit anchor link; fall back to deriving from reg digits
-            detail_url = None
-            for td in tds:
-                a = td.find("a", href=re.compile(r"viewProjectDetailPage", re.I))
-                if a:
-                    href = a["href"]
-                    if href.startswith("http"):
-                        detail_url = href
-                    elif href.startswith("/"):
-                        detail_url = f"{BASE_URL}{href}"
-                    else:
-                        detail_url = f"{BASE_URL}/{href}"
-                    break
-            # Fallback: PRTR{MM}{YY}{NNNN} — last 4 chars are the zero-padded project ID.
-            if not detail_url and reg_no and len(reg_no) >= 4:
-                try:
-                    project_id = int(reg_no[-4:])
-                    detail_url = f"{BASE_URL}/viewProjectDetailPage?projectID={project_id}"
-                except ValueError:
-                    pass
 
             rows.append({
                 "project_registration_no": reg_no,
-                "project_name":            project_name,
-                "promoter_name":           promoter_name,
-                "project_type":            project_type,
-                "status_of_the_project":   status,
-                "detail_url":              detail_url,
+                "project_name":          _cell(1),
+                "promoter_name":         _cell(2),
+                "project_type":          _cell(3),
+                "status_of_the_project": _cell(4),
+                "detail_url":            _derive_detail_url(reg_no),
             })
     return rows
 
 
-def _has_next_page(soup: BeautifulSoup, current_start: int) -> bool:
-    """Return True if pagination links indicate more pages exist."""
-    for a in soup.find_all("a", href=True):
-        text = a.get_text(strip=True).lower()
-        href = a["href"]
-        if text in ("next", "»", ">") or "next" in text:
-            return True
-        m = re.search(r"startFrom=(\d+)", href)
-        if m and int(m.group(1)) > current_start:
-            return True
-        m = re.search(r"[?&]page=(\d+)", href)
-        if m and int(m.group(1)) > (current_start // PAGE_SIZE) + 1:
-            return True
-    return False
+def _derive_detail_url(reg_no: str) -> str | None:
+    """PRTR{MM}{YY}{NNNN} → /viewProjectDetailPage?projectID=int(last_4_digits)."""
+    if reg_no and len(reg_no) >= 4:
+        try:
+            return f"{BASE_URL}/viewProjectDetailPage?projectID={int(reg_no[-4:])}"
+        except ValueError:
+            pass
+    return None
 
 
 
@@ -389,9 +486,16 @@ def _normalize_professional(raw: dict, role: str | None = None) -> dict:
     return {k: v for k, v in out.items() if v}
 
 
-def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
+def _parse_detail_page(url: str, logger: CrawlerLogger,
+                        client: httpx.Client | None = None) -> dict:
     """Fetch and parse a Tripura project detail page."""
-    resp = _get(url, logger)
+    if client is not None:
+        resp = _get(url, logger, client)
+    else:
+        # Sentinel or standalone call — create a temporary client
+        with _make_client() as tmp:
+            tmp.get(HOME_URL)
+            resp = _get(url, logger, tmp)
     if not resp:
         return {}
     soup = BeautifulSoup(resp.text, "lxml")
@@ -463,6 +567,21 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
         has_role = any(any(x in h for x in ("role", "architect", "engineer")) for h in ths_lower)
         has_addr = any("address" in h for h in ths_lower)
         return has_name and (has_role or has_addr)
+
+    # Extract project name from h1[3] — the standalone project-name heading.
+    # The page structure is always:
+    #   h1[0]: "{PROJECT_NAME}Last UpdatedOn{DATE}"
+    #   h1[1]: "Last UpdatedOn{DATE}"
+    #   h1[2]: "{PERSON}Chairman / Lead Member, {PROJECT_NAME}"  (or "Applicant, …")
+    #   h1[3]: "{PROJECT_NAME}"  ← clean standalone name
+    #   h1[4]: "Project Description"
+    # Using h1[3] is more reliable than splitting h1[0] on "Last UpdatedOn".
+    if not out.get("project_name"):
+        for h1 in soup.find_all("h1"):
+            text = h1.get_text(strip=True)
+            if text and not _SKIP_H1_RE.search(text) and len(text) < 120:
+                out["project_name"] = text
+                break
 
     # Capture project_description from <h1>Project Description</h1> + next <p>
     if not out.get("project_description"):
@@ -562,6 +681,13 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
                 if p.get("name"):
                     p["has_same_data"] = True
                     professionals.append(p)
+        elif "contractor" in htext:
+            used_tables.add(id(table))
+            for r in _parse_section_table(table):
+                p = _normalize_professional(r, role="Contractors")
+                if p.get("name"):
+                    p["has_same_data"] = True
+                    professionals.append(p)
 
     # Fallback: scan remaining tables by header-column signature
     for table in soup.find_all("table"):
@@ -658,12 +784,17 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
 
 def _handle_document(
     project_key: str, doc: dict, run_id: int, site_id: str, logger: CrawlerLogger,
+    client: httpx.Client | None = None,
 ) -> dict | None:
     url   = doc["url"]
     label = doc["label"]
     fname = build_document_filename(doc)
     try:
-        resp = _get(url, logger)
+        if client is not None:
+            resp = _get(url, logger, client)
+        else:
+            with _make_client() as tmp:
+                resp = _get(url, logger, tmp)
         if not resp or len(resp.content) < 100:
             return None
         md5    = compute_md5(resp.content)
@@ -691,7 +822,8 @@ def _handle_document(
         return None
 
 
-def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
+def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger,
+                     client: httpx.Client | None = None) -> bool:
     """
     Data-quality sentinel for Tripura RERA.
     Loads state_projects_sample/tripura.json as the baseline, re-scrapes the
@@ -725,7 +857,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 
     logger.info(f"Sentinel: scraping {sentinel_reg}", url=detail_url, step="sentinel")
     try:
-        fresh = _parse_detail_page(detail_url, logger) or {}
+        fresh = _parse_detail_page(detail_url, logger, client=client) or {}
     except Exception as exc:
         logger.error(f"Sentinel: scrape error — {exc}", step="sentinel")
         return False
@@ -744,6 +876,177 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 
     logger.info("Sentinel check passed", reg=sentinel_reg, step="sentinel")
     return True
+
+
+# ── Shared project-processing helper ─────────────────────────────────────────
+
+def _process_row(
+    row: dict,
+    config: dict,
+    run_id: int,
+    site_id: str,
+    client: httpx.Client,
+    logger: CrawlerLogger,
+    machine_name: str,
+    machine_ip: str,
+    counts: dict,
+    done_regs: set,
+    items_processed: int,
+    item_limit: int,
+) -> int:
+    """
+    Process a single listing row: fetch detail, normalise, upsert, download docs.
+    Returns the updated items_processed count.
+    """
+    if item_limit and items_processed >= item_limit:
+        return items_processed
+
+    reg_no = row["project_registration_no"]
+    if reg_no in done_regs:
+        counts["projects_skipped"] += 1
+        return items_processed
+
+    key = generate_project_key(reg_no)
+    logger.set_project(key=key, reg_no=reg_no, url=row.get("detail_url", SEARCH_URL))
+
+    try:
+        if config.get("mode") == "daily_light" and get_project_by_key(key):
+            counts["projects_skipped"] += 1
+            logger.info("Skipping — already in DB (daily_light)")
+            done_regs.add(reg_no)
+            return items_processed
+
+        data: dict = {
+            "key":                     key,
+            "state":                   config["state"],
+            "project_state":           "Tripura",
+            "project_registration_no": reg_no,
+            "project_name":            row.get("project_name"),
+            "promoter_name":           row.get("promoter_name"),
+            "project_type":            row.get("project_type"),
+            "status_of_the_project":   row.get("status_of_the_project"),
+            "domain":                  DOMAIN,
+            "config_id":               config["config_id"],
+            "url":                     row.get("detail_url") or SEARCH_URL,
+            "is_live":                 True,
+            "machine_name":            machine_name,
+            "crawl_machine_ip":        machine_ip,
+            "promoters_details": (
+                {"name": row["promoter_name"]} if row.get("promoter_name") else None
+            ),
+        }
+        if row.get("project_location_raw"):
+            data["project_location_raw"] = row["project_location_raw"]
+        if row.get("land_area") is not None:
+            data["land_area"] = row["land_area"]
+
+        doc_links: list[dict] = []
+        if row.get("detail_url") and settings.SCRAPE_DETAILS:
+            random_delay(*config.get("rate_limit_delay", (1, 3)))
+            logger.info("Fetching detail page", step="detail_fetch")
+            detail = _parse_detail_page(row["detail_url"], logger, client)
+            doc_links   = detail.pop("_doc_links", [])
+            detail_data = detail.pop("data", {})
+
+            for k, v in detail.items():
+                if v is not None and k != "project_registration_no":
+                    data[k] = v
+
+            if data.get("promoter_name") and not data.get("promoters_details"):
+                data["promoters_details"] = {"name": data["promoter_name"]}
+
+            la = data.get("land_area")
+            ca = data.get("construction_area")
+            if la or ca:
+                la_unit = row.get("land_area_unit") or detail_data.get("land_area_unit") or "sq Mtr"
+                data["land_area_details"] = {
+                    k: v for k, v in {
+                        "land_area":              str(la) if la else None,
+                        "land_area_unit":         la_unit,
+                        "construction_area":      str(ca) if ca else None,
+                        "construction_area_unit": detail_data.get("construction_area_unit", "Sq Mtr"),
+                    }.items() if v
+                }
+
+            merged_data = merge_data_sections(
+                {"listing_row": {k: v for k, v in row.items() if k != "detail_url"}},
+                detail_data,
+            )
+            if row.get("land_area_unit") and isinstance(merged_data, dict):
+                merged_data["land_area_unit"] = row["land_area_unit"]
+            data["data"] = merged_data
+        else:
+            data["data"] = merge_data_sections(
+                row.get("data"),
+                {"listing_row": {k: v for k, v in row.items() if k not in {"detail_url", "data"}}},
+            )
+
+        logger.info("Normalizing and validating", step="normalize")
+        try:
+            normalized = normalize_project_payload(
+                data, config, machine_name=machine_name, machine_ip=machine_ip,
+            )
+            record  = ProjectRecord(**normalized)
+            db_dict = record.to_db_dict()
+        except (ValidationError, ValueError) as e:
+            logger.warning("Validation failed — using raw fallback", error=str(e))
+            insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(e),
+                               project_key=key, url=data.get("url"), raw_data=data)
+            counts["error_count"] += 1
+            db_dict = normalize_project_payload(
+                {**data, "data": merge_data_sections(
+                    data.get("data"), {"validation_fallback": True},
+                )},
+                config, machine_name=machine_name, machine_ip=machine_ip,
+            )
+
+        logger.info("Upserting to DB", step="db_upsert")
+        action = upsert_project(db_dict)
+        items_processed += 1
+        if action == "new":       counts["projects_new"] += 1
+        elif action == "updated": counts["projects_updated"] += 1
+        else:                     counts["projects_skipped"] += 1
+        logger.info(f"DB result: {action}", step="db_upsert")
+
+        logger.info(f"Downloading {len(doc_links)} documents", step="documents")
+        uploaded_documents: list[dict] = []
+        doc_name_counts: dict[str, int] = {}
+        for doc in doc_links:
+            selected = select_document_for_download(
+                config["state"], doc, doc_name_counts, domain=DOMAIN,
+            )
+            if selected:
+                uploaded = _handle_document(db_dict["key"], selected, run_id, site_id, logger, client)
+                if uploaded:
+                    uploaded_documents.append(uploaded)
+                    counts["documents_uploaded"] += 1
+                else:
+                    uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label", "document")})
+            else:
+                uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label", "document")})
+
+        if uploaded_documents:
+            upsert_project({
+                "key":                     db_dict["key"],
+                "url":                     db_dict["url"],
+                "state":                   db_dict["state"],
+                "domain":                  db_dict["domain"],
+                "project_registration_no": db_dict["project_registration_no"],
+                "uploaded_documents":      uploaded_documents,
+                "document_urls":           build_document_urls(uploaded_documents),
+            })
+
+        done_regs.add(reg_no)
+
+    except Exception as exc:
+        logger.exception("Project processing failed", exc, step="project_loop")
+        insert_crawl_error(run_id, site_id, "PROJECT_ERROR", str(exc),
+                           project_key=key, url=row.get("detail_url"))
+        counts["error_count"] += 1
+    finally:
+        logger.clear_project()
+
+    return items_processed
 
 
 # ── Main run() ────────────────────────────────────────────────────────────────
@@ -765,242 +1068,102 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     checkpoint = load_checkpoint(site_id, mode) or {}
     done_regs: set[str] = set(checkpoint.get("done_regs", []))
-    start_page = checkpoint.get("last_page", 0)
-    item_limit = settings.CRAWL_ITEM_LIMIT or 0
-    max_pages  = settings.MAX_PAGES or 0
-    machine_name, machine_ip = get_machine_context()
-
-    # ── Sentinel health check ────────────────────────────────────────────────
-    if not _sentinel_check(config, run_id, logger):
-        logger.error("Sentinel failed — aborting crawl", step="sentinel")
-        counts["error_count"] += 1
-        return counts
-
-    page = start_page
-    consecutive_empty = 0
+    item_limit    = settings.CRAWL_ITEM_LIMIT or 0
+    max_pages     = settings.MAX_PAGES or 0
     items_processed = 0
+    machine_name, machine_ip = get_machine_context()
+    # Pass mode through config so _process_row can check daily_light
+    config = {**config, "mode": mode}
 
-    while True:
-        if max_pages and page >= max_pages:
-            logger.info(f"Reached MAX_PAGES={max_pages}, stopping pagination")
-            break
+    with _make_client() as client:
+        # ── Warm up session (acquire JSESSIONID cookie) ──────────────────────
+        logger.info("Warming up session", url=HOME_URL, step="session")
+        try:
+            client.get(HOME_URL)
+        except Exception as exc:
+            logger.warning(f"Session warm-up failed (non-fatal): {exc}", step="session")
 
-        start_from = page * PAGE_SIZE
-        logger.info(f"Fetching listing page {page + 1} (startFrom={start_from})")
-
-        resp = _get(LISTING_URL, logger, params={"startFrom": start_from})
-        if not resp:
-            logger.error("Failed to fetch listing page", page=page + 1)
-            insert_crawl_error(run_id, site_id, "HTTP_ERROR",
-                               f"Listing page {page + 1} failed", url=LISTING_URL)
+        # ── Sentinel health check ────────────────────────────────────────────
+        if not _sentinel_check(config, run_id, logger, client=client):
+            logger.error("Sentinel failed — aborting crawl", step="sentinel")
             counts["error_count"] += 1
-            break
+            return counts
 
-        soup = BeautifulSoup(resp.text, "lxml")
-        rows = _parse_listing_rows(soup)
+        # ── Phase 1: Primary listing — POST /search ──────────────────────────
+        logger.info("Phase 1: POST /search (primary listing)", url=SEARCH_URL, step="listing")
+        start_from   = 0
+        total_records = 1  # will be updated from first response
+        search_page   = 0
 
-        # On the first page, also try page=1 style if startFrom=0 yields nothing
-        if not rows and page == 0:
-            resp2 = _get(LISTING_URL, logger, params={"page": 1})
-            if resp2:
-                soup2 = BeautifulSoup(resp2.text, "lxml")
-                rows2 = _parse_listing_rows(soup2)
-                if rows2:
-                    rows, soup = rows2, soup2
-
-        if not rows:
-            consecutive_empty += 1
-            if consecutive_empty >= 2:
-                logger.info("No rows found on two consecutive pages — pagination complete")
+        while start_from < total_records:
+            if max_pages and search_page >= max_pages:
+                logger.info(f"Reached MAX_PAGES={max_pages}, stopping search pagination")
                 break
-            page += 1
-            continue
-
-        consecutive_empty = 0
-        logger.info(f"Page {page + 1}: found {len(rows)} project rows")
-        counts["projects_found"] += len(rows)
-
-        for row in rows:
             if item_limit and items_processed >= item_limit:
                 logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached, stopping")
                 reset_checkpoint(site_id, mode)
                 return counts
 
-            reg_no = row["project_registration_no"]
-            if reg_no in done_regs:
-                counts["projects_skipped"] += 1
-                continue
-
-            key = generate_project_key(reg_no)
-            logger.set_project(key=key, reg_no=reg_no, url=row.get("detail_url", LISTING_URL))
-
-            try:
-                if mode == "daily_light" and get_project_by_key(key):
-                    counts["projects_skipped"] += 1
-                    logger.info("Skipping — already in DB (daily_light)")
-                    done_regs.add(reg_no)
-                    logger.clear_project()
-                    continue
-
-                data: dict = {
-                    "key":                     key,
-                    "state":                   config["state"],
-                    "project_state":           "Tripura",
-                    "project_registration_no": reg_no,
-                    "project_name":            row.get("project_name"),
-                    "promoter_name":           row.get("promoter_name"),
-                    "project_type":            row.get("project_type"),
-                    "status_of_the_project":   row.get("status_of_the_project"),
-                    "domain":                  DOMAIN,
-                    "config_id":               config["config_id"],
-                    "url":                     row.get("detail_url") or LISTING_URL,
-                    "is_live":                 True,
-                    "machine_name":            machine_name,
-                    "crawl_machine_ip":        machine_ip,
-                    "promoters_details": (
-                        {"name": row["promoter_name"]} if row.get("promoter_name") else None
-                    ),
-                }
-                if row.get("project_location_raw"):
-                    data["project_location_raw"] = row["project_location_raw"]
-                if row.get("land_area") is not None:
-                    data["land_area"] = row["land_area"]
-
-                doc_links: list[dict] = []
-                if row.get("detail_url") and settings.SCRAPE_DETAILS:
-                    random_delay(*config.get("rate_limit_delay", (1, 3)))
-                    logger.info("Fetching detail page", step="detail_fetch")
-                    detail = _parse_detail_page(row["detail_url"], logger)
-                    doc_links   = detail.pop("_doc_links", [])
-                    detail_data = detail.pop("data", {})
-
-                    for k, v in detail.items():
-                        # Never overwrite the canonical registration number
-                        if v is not None and k != "project_registration_no":
-                            data[k] = v
-
-                    # If promoter_name was only found on the detail page,
-                    # backfill promoters_details which was built from the listing row.
-                    if data.get("promoter_name") and not data.get("promoters_details"):
-                        data["promoters_details"] = {"name": data["promoter_name"]}
-
-                    la = data.get("land_area")
-                    ca = data.get("construction_area")
-                    if la or ca:
-                        # Prefer the listing-level unit (derived from the column header
-                        # "Total Area of Land (Sq.Mtr.)") over the detail-page text,
-                        # which can contain promoter data-entry errors (e.g. "sq ft").
-                        la_unit = (
-                            row.get("land_area_unit")
-                            or detail_data.get("land_area_unit")
-                            or "sq Mtr"
-                        )
-                        data["land_area_details"] = {
-                            k: v for k, v in {
-                                "land_area":              str(la) if la else None,
-                                "land_area_unit":         la_unit,
-                                "construction_area":      str(ca) if ca else None,
-                                "construction_area_unit": detail_data.get("construction_area_unit", "Sq Mtr"),
-                            }.items() if v
-                        }
-
-                    merged_data = merge_data_sections(
-                        {"listing_row": {k: v for k, v in row.items() if k != "detail_url"}},
-                        detail_data,
-                    )
-                    # Override land_area_unit in the data blob with the authoritative
-                    # listing-column value (always "sq Mtr") when it was captured, so
-                    # that detail-page data-entry errors (e.g. "sq ft") don't propagate.
-                    if row.get("land_area_unit") and isinstance(merged_data, dict):
-                        merged_data["land_area_unit"] = row["land_area_unit"]
-                    data["data"] = merged_data
-                else:
-                    data["data"] = merge_data_sections(
-                        row.get("data"),
-                        {"listing_row": {k: v for k, v in row.items() if k not in {"detail_url", "data"}}},
-                    )
-
-                logger.info("Normalizing and validating", step="normalize")
-                try:
-                    normalized = normalize_project_payload(
-                        data, config, machine_name=machine_name, machine_ip=machine_ip,
-                    )
-                    record  = ProjectRecord(**normalized)
-                    db_dict = record.to_db_dict()
-                except (ValidationError, ValueError) as e:
-                    logger.warning("Validation failed — using raw fallback", error=str(e))
-                    insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(e),
-                                       project_key=key, url=data.get("url"), raw_data=data)
-                    counts["error_count"] += 1
-                    db_dict = normalize_project_payload(
-                        {**data, "data": merge_data_sections(
-                            data.get("data"), {"validation_fallback": True}
-                        )},
-                        config, machine_name=machine_name, machine_ip=machine_ip,
-                    )
-
-                logger.info("Upserting to DB", step="db_upsert")
-                action = upsert_project(db_dict)
-                items_processed += 1
-                if action == "new":         counts["projects_new"] += 1
-                elif action == "updated":   counts["projects_updated"] += 1
-                else:                       counts["projects_skipped"] += 1
-                logger.info(f"DB result: {action}", step="db_upsert")
-
-                logger.info(f"Downloading {len(doc_links)} documents", step="documents")
-                uploaded_documents: list[dict] = []
-                doc_name_counts: dict[str, int] = {}
-                for doc in doc_links:
-                    selected = select_document_for_download(
-                        config["state"], doc, doc_name_counts, domain=DOMAIN,
-                    )
-                    if selected:
-                        uploaded = _handle_document(
-                            db_dict["key"], selected, run_id, site_id, logger,
-                        )
-                        if uploaded:
-                            uploaded_documents.append(uploaded)
-                            counts["documents_uploaded"] += 1
-                        else:
-                            uploaded_documents.append({
-                                "link": doc.get("url"),
-                                "type": doc.get("label", "document"),
-                            })
-                    else:
-                        uploaded_documents.append({
-                            "link": doc.get("url"),
-                            "type": doc.get("label", "document"),
-                        })
-
-                if uploaded_documents:
-                    upsert_project({
-                        "key":                     db_dict["key"],
-                        "url":                     db_dict["url"],
-                        "state":                   db_dict["state"],
-                        "domain":                  db_dict["domain"],
-                        "project_registration_no": db_dict["project_registration_no"],
-                        "uploaded_documents":      uploaded_documents,
-                        "document_urls":           build_document_urls(uploaded_documents),
-                    })
-
-                done_regs.add(reg_no)
-
-            except Exception as exc:
-                logger.exception("Project processing failed", exc, step="project_loop")
-                insert_crawl_error(run_id, site_id, "PROJECT_ERROR", str(exc),
-                                   project_key=key, url=row.get("detail_url"))
+            logger.info(f"Search page {search_page + 1} (startFrom={start_from})")
+            resp = _post(SEARCH_URL, {"searchTxt": "", "startFrom": str(start_from)},
+                         logger, client)
+            if not resp:
+                logger.error("Failed to fetch search page", start_from=start_from)
+                insert_crawl_error(run_id, site_id, "HTTP_ERROR",
+                                   f"Search startFrom={start_from} failed", url=SEARCH_URL)
                 counts["error_count"] += 1
-            finally:
-                logger.clear_project()
+                break
 
-        save_checkpoint(site_id, mode, page, None, run_id)
+            soup = BeautifulSoup(resp.text, "lxml")
+            rows, total_records = _parse_search_rows(soup)
+            if not rows:
+                logger.info("No rows on search page — stopping", start_from=start_from)
+                break
 
-        if not _has_next_page(soup, start_from):
-            logger.info("No next-page indicator found — pagination complete")
-            break
+            logger.info(f"Search page {search_page + 1}: {len(rows)} rows (total={total_records})")
+            counts["projects_found"] += len(rows)
 
-        page += 1
-        random_delay(*config.get("rate_limit_delay", (1, 3)))
+            for row in rows:
+                items_processed = _process_row(
+                    row, config, run_id, site_id, client, logger,
+                    machine_name, machine_ip, counts, done_regs,
+                    items_processed, item_limit,
+                )
+                if item_limit and items_processed >= item_limit:
+                    logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached")
+                    reset_checkpoint(site_id, mode)
+                    return counts
+
+            save_checkpoint(site_id, mode, search_page, None, run_id)
+            start_from  += SEARCH_PAGE_SIZE
+            search_page += 1
+            random_delay(*config.get("rate_limit_delay", (1, 3)))
+
+        # ── Phase 2: Supplementary — GET /viewApprovedProjects ───────────────
+        logger.info("Phase 2: GET /viewApprovedProjects (supplementary)", url=LISTING_URL, step="listing")
+        resp = _get(LISTING_URL, logger, client)
+        if not resp:
+            logger.warning("Failed to fetch supplementary listing — skipping Phase 2",
+                           url=LISTING_URL)
+        else:
+            soup = BeautifulSoup(resp.text, "lxml")
+            supp_rows = _parse_listing_rows(soup)
+            new_supp  = [r for r in supp_rows if r["project_registration_no"] not in done_regs]
+            logger.info(f"Supplementary listing: {len(supp_rows)} total, "
+                        f"{len(new_supp)} not seen in search")
+            counts["projects_found"] += len(new_supp)
+
+            for row in new_supp:
+                items_processed = _process_row(
+                    row, config, run_id, site_id, client, logger,
+                    machine_name, machine_ip, counts, done_regs,
+                    items_processed, item_limit,
+                )
+                if item_limit and items_processed >= item_limit:
+                    logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached")
+                    reset_checkpoint(site_id, mode)
+                    return counts
+                random_delay(*config.get("rate_limit_delay", (1, 3)))
 
     reset_checkpoint(site_id, mode)
     logger.info(f"Tripura RERA complete: {counts}")
