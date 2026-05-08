@@ -772,6 +772,34 @@ def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
                         entry["total_area"] = v
                 if len(entry) > 1:   # more than just flat_type
                     building_details.append(entry)
+
+    # Apartment / flat tables (residential projects).
+    # Telangana PrintPreview nests these under "Building Details" with columns:
+    #   Sr.No. | Floor ID | Mortgage Area | Apartment Type |
+    #   Saleable Area (in Sqmts) | Number of Apartment | Number of Booked Apartment
+    for table in soup.find_all("table"):
+        hdrs = [th.get_text(strip=True) for th in table.find_all("th")]
+        hdrs_joined = " ".join(hdrs).lower()
+        if re.search(r"floor.*id|apartment.*type|saleable.*area", hdrs_joined, re.I):
+            for r in _parse_table_rows(table):
+                entry = {}
+                for h, v in r.items():
+                    kl = h.lower()
+                    if re.search(r"apartment.*type|flat.*type", kl):
+                        entry["flat_type"] = v
+                    elif re.search(r"saleable.*area|carpet.*area", kl):
+                        entry["total_area"] = v
+                    elif re.search(r"number.*booked|booked.*apart", kl):
+                        entry["booked_units"] = v
+                    elif re.search(r"number.*apart|no.*apart", kl):
+                        entry["no_of_units"] = v
+                    elif re.search(r"floor.*id", kl):
+                        entry["floor_id"] = v
+                    elif re.search(r"mortgage", kl):
+                        entry["mortgage_area"] = v
+                if entry.get("flat_type") or entry.get("total_area"):
+                    building_details.append(entry)
+
     data["building_details"] = building_details or None
 
     # ── Co-promoters (Land Owner / Investor table) ────────────────────────────
@@ -821,7 +849,7 @@ def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
                 entry: dict[str, Any] = {}
                 for k, v in r.items():
                     kl = k.lower()
-                    if re.search(r"^name$|^common\s*area|title|description|item", kl):
+                    if re.search(r"^name$|^common\s*area|title|description|item|activity|task", kl):
                         entry["title"] = v
                     elif re.search(r"remark|detail|status|available", kl):
                         entry["remarks"] = v
@@ -838,6 +866,8 @@ def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
     # ── Documents ─────────────────────────────────────────────────────────────
     docs: list[dict] = []
     seen_doc_urls: set[str] = set()
+
+    # 1. Classic <a href> links (older PrintPreview versions).
     for a in soup.find_all("a", href=True):
         href = a["href"]
         if any(k in href for k in ("/GetUserDocumentFileContent/", "/Preview/", ".pdf")):
@@ -846,6 +876,55 @@ def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
                 seen_doc_urls.add(full_url)
                 label_text = _clean(a.get_text(strip=True)) or "Document"
                 docs.append({"link": full_url, "type": label_text})
+
+    # 2. Telangana "Uploaded Documents" table — documents are loaded via a POST
+    #    AJAX call (showFileDoc → /PrintPreview/GetUserDocumentIframe) using a
+    #    UPID stored in a hidden input.  Extract those hidden inputs and store
+    #    enough metadata for _handle_document to POST-download each file.
+    proj_id_el = soup.find("input", {"id": "ProjectID"})
+    proj_id_raw = (proj_id_el or {}).get("value", "") if proj_id_el else ""
+    div_parts   = proj_id_raw.split("/")
+    division    = div_parts[1] if len(div_parts) > 1 else "1"
+    post_endpoint = f"{BASE_URL}/PrintPreview/GetUserDocumentIframe"
+
+    for table in soup.find_all("table"):
+        hdrs_text = " ".join(th.get_text(strip=True) for th in table.find_all("th")).lower()
+        if "document name" not in hdrs_text or "uploaded document" not in hdrs_text:
+            continue
+        for tr in table.find_all("tr"):
+            tds = tr.find_all("td")
+            if not tds:
+                continue
+            # Document name from the <span title="…"> or td text
+            name_span = tds[0].find("span", title=True)
+            doc_name = name_span["title"] if name_span else _clean(tds[0].get_text(strip=True))
+
+            upid_el = tds[0].find("input", id=re.compile(r"^UPID_\d+$"))
+            if not upid_el:
+                continue
+            try:
+                upid = int(upid_el.get("value", "-1"))
+            except (ValueError, TypeError):
+                upid = -1
+            if upid <= 0:
+                continue  # "Not Uploaded" rows have UPID = -1
+
+            # Only include rows where a "View" button is present
+            btn = tds[1].find("button") if len(tds) > 1 else None
+            if btn is None:
+                continue
+
+            doc_key = f"upid:{upid}"
+            if doc_key in seen_doc_urls:
+                continue
+            seen_doc_urls.add(doc_key)
+            docs.append({
+                "link": post_endpoint,
+                "type": _clean(doc_name) or "Document",
+                "upid": upid,
+                "division": division,
+            })
+
     data["_raw_docs"] = docs
 
     # ── Data blob (land area units) ───────────────────────────────────────────

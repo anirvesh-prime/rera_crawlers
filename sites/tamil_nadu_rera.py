@@ -204,9 +204,25 @@ def _parse_listing_row(tds) -> dict | None:
         promoter_name = promoter_raw.split(",")[0].strip() if promoter_raw else None
 
         td3_text = tds[3].get_text(separator=" ", strip=True)
-        proj_name_m = re.search(r"Project\s+Name\s*:\s*[\"“]?(.+?)[\"”]?\s*-\s*(.+)", td3_text, re.I)
-        project_name = proj_name_m.group(1).strip() if proj_name_m else None
-        description = proj_name_m.group(2).strip() if proj_name_m else td3_text
+        # Pattern 1: "Project Name: <name> - <description>" (standard)
+        _pn_m = re.search(r'Project\s+Name\s*:\s*(.+?)\s*-\s*(.+)', td3_text, re.I)
+        # Pattern 2: "Project Name changed from X to Y - description" (name-change notice)
+        _pn_chg = None
+        if not _pn_m:
+            _pn_chg = re.search(
+                r'Project\s+Name\s+changed.*?\bto\b\s*[^\w]?([\w][^\-]{1,80}?)\s*-\s*(.+)',
+                td3_text, re.I,
+            )
+        if _pn_m:
+            project_name = _pn_m.group(1).strip().strip('\u201c\u201d"\'\u2018\u2019')
+            description  = _pn_m.group(2).strip()
+        elif _pn_chg:
+            project_name = _pn_chg.group(1).strip().strip('\u201c\u201d"\'\u2018\u2019')
+            description  = _pn_chg.group(2).strip()
+        else:
+            # No "Project Name:" — fallback name applied in _build_project_record
+            project_name = None
+            description  = td3_text
 
         approval_url = None
         approval_a = tds[4].find("a", href=True)
@@ -329,11 +345,21 @@ def _parse_listing_row(tds) -> dict | None:
 
     # td[3]: project name + description
     td3_text = tds[3].get_text(separator="\n", strip=True)
-    proj_name_m = re.search(r"Project\s+Name\s*:\s*(.+?)(?:\n|$)", td3_text, re.I)
-    project_name = proj_name_m.group(1).strip() if proj_name_m else None
-    if project_name:
-        description = td3_text[td3_text.index(project_name) + len(project_name):].strip()
+    # Pattern 1: "Project Name: <name>" on its own line or at end
+    _pn_m9 = re.search(r'Project\s+Name\s*:\s*(.+?)(?:\n|$)', td3_text, re.I)
+    # Pattern 2: "Project Name changed ... to Y"
+    _pn_chg9 = None
+    if not _pn_m9:
+        _pn_chg9 = re.search(r'Project\s+Name\s+changed.*?\bto\b\s*[^\w]?([\w][^\n]{1,80})', td3_text, re.I)
+    if _pn_m9:
+        project_name = _pn_m9.group(1).strip().strip('\u201c\u201d"\'\u2018\u2019')
+        description = td3_text[td3_text.index(_pn_m9.group(1)):].strip() if _pn_m9.group(1) in td3_text else td3_text
+    elif _pn_chg9:
+        project_name = _pn_chg9.group(1).strip().strip('\u201c\u201d"\'\u2018\u2019')
+        description = td3_text
     else:
+        # No "Project Name:" label — fallback applied in _build_project_record
+        project_name = None
         description = td3_text
 
     # td[5]: expiry/completion date
@@ -1282,12 +1308,19 @@ def _build_project_record(
         "estimated_commencement_date":  row.get("estimated_commencement_date"),
     }
 
-    # Default project_type to "residential" only for building projects.
-    # Layout projects (url contains "layout") have plot-based projects and
-    # don't carry a meaningful project_type; the detail page may set it instead.
-    detail_url_hint = (row.get("detail_url") or "").lower()
-    if "layout" not in detail_url_hint:
-        record["project_type"] = "residential"
+    # project_name: only use what the portal actually provides.
+    # Some listing rows have no "Project Name:" label — the portal genuinely
+    # does not give those projects a name separate from their description.
+    # We do NOT fabricate a name from the description.
+    # The registration number IS real portal data and uniquely identifies the
+    # project, so it is the only acceptable fallback when no name is present.
+    if not record.get("project_name"):
+        record["project_name"] = reg_no
+
+    # project_type: NOT defaulted — the portal listing does not carry a project
+    # type column and Tamil Nadu building registrations include both residential
+    # and commercial projects.  Leaving it None is more accurate than assuming
+    # "residential" for every building-type registration.
 
     # Status from listing (completed vs active)
     if row.get("is_completed"):
