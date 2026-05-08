@@ -2137,28 +2137,40 @@
       "type": "GujRERA Certificate Project"
     },
     {
+      "type": "Approved Layout Plan",
       "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/P2aPADWny6y1h87aCzqL3PVzX39zNdk80lwkhOXgj6zEa8rHH9gb4HZ8FMuTdbliMiBB4CIoLcfyiM30G99",
-      "type": "Approved Layout Plan"
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
+      "type": "Land documents & Location",
       "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/4mPPtFWp96hGhL7aCYqb3PVXXZLzldk8olBYhbIgk5z1R8YfHz9bJGZQmMRAd4jiWtBQiCYpLweyoM3029q",
-      "type": "Land documents & Location"
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
+      "type": "Approved Building/ Plotting Plan",
       "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/42APhgWgy6yEhrhaG8qVRPp8XaLzljkYBlzBhLKgmvzHa8rRHPab3PZUIMrGdEliMdBDACWgLGfyiL3aG99",
-      "type": "Approved Building/ Plotting Plan"
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
+      "type": "Approved Building 1",
       "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/43aPAgWgz6z0h97aC7qUJPjaX0qzmdk8plaZhYXgjvzH08XaHdrbTXZanMbLdpkiBDBJtCtoLcfyi939K9p",
-      "type": "Building/ Infrastructure Plan of Plotting"
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
+      "type": "Brochure",
       "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/32yP4gWg86gyhd1aH6qRJPjzX3LzljkYplaPhZXgjuz0i86HH9ab3PZUFMuzd3kiBlBUhCKMLIyybq3L29q",
-      "type": "Brochure"
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
+      "type": "Project Specification",
       "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/P2zPghWh06BihqraVxqaRPpXXZLzlskWFlPkhOugYwzGk8qRHPgb4HZ8mMRyd6fiviBBzCuoLczyRL3aD9h",
-      "type": "Project Specification"
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
       "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/45BPiFWpM6f1h86aK9qWTPGqXu9zNjkYplakhOKgm5z1k8qGHY9bJHZ8XMaZd5nipABkhCKgLGyyb83D19r",
@@ -2177,8 +2189,10 @@
       "type": "Commencement Certificate"
     },
     {
+      "type": "Area Development Plan",
       "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/44CPBFWp86gGhLXaWzqL2PkAX2LzlOkDplPZhGug8wzHh8hRHPpWBGXfYMxGdOkiaBB9gcpnA6y0em6IVY50TijXp1q3",
-      "type": "Area Development Plan"
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
       "link": "https://gujrera.gujarat.gov.in/vdms/view-doc/34PPtFWp06BGhLhaGzqL2PkaX00zRKkZalDZhYKgmczji86HH9ab3PZUHM0Ad4gi0lBUCC2hLkfyi939K9p",
@@ -2301,7 +2315,36 @@
       "type": "Non Agriculture-NOC"
     }
   ],
-  "document_urls": null,
+  "document_urls": [
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Approved Layout Plan"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Land documents & Location"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Approved Building/ Plotting Plan"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Approved Building 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Brochure"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Project Specification"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Area Development Plan"
+    }
+  ],
   "project_pin_code": null,
   "submitted_date": null,
   "last_modified": null,

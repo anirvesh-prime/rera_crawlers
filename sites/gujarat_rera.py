@@ -944,23 +944,78 @@ def _fetch_all_project_ids(page, logger: CrawlerLogger) -> list[int]:
 
 
 
+def _browser_fetch_bytes(page: object, url: str) -> bytes | None:
+    """Download *url* using the Playwright browser context.
+
+    The VDMS server (``vdms/view-doc/{uid}``) performs TLS fingerprinting and
+    resets connections from Python's httpx SSL stack.  Chromium's TLS handshake
+    is accepted, so we use ``page.evaluate(fetch(...))`` to download and base64-
+    encode the content inside the browser, then decode it in Python.
+    """
+    import base64 as _b64
+
+    js = f"""async () => {{
+        try {{
+            const r = await fetch('{url}');
+            if (!r.ok) return null;
+            const buf = await r.arrayBuffer();
+            const bytes = new Uint8Array(buf);
+            // Chunk to avoid spread-operator stack overflow on large files
+            let b64 = '';
+            const chunk = 8192;
+            for (let i = 0; i < bytes.length; i += chunk) {{
+                b64 += String.fromCharCode(...bytes.subarray(i, i + chunk));
+            }}
+            return btoa(b64);
+        }} catch (e) {{
+            return null;
+        }}
+    }}"""
+    try:
+        b64_str = page.evaluate(js)  # type: ignore[attr-defined]
+        if not b64_str:
+            return None
+        return _b64.b64decode(b64_str)
+    except Exception:
+        return None
+
+
 def _handle_document(
     project_key: str, doc: dict, run_id: int,
     site_id: str, logger: CrawlerLogger,
     client: httpx.Client,
+    page: object | None = None,
 ) -> dict | None:
+    """Download *doc* and upload it to S3.
+
+    Tries browser-based download first (required because the VDMS endpoint
+    rejects plain httpx connections via TLS fingerprinting), then falls back
+    to a direct HTTP GET via *client*.
+    """
     url   = doc.get("url")
     label = doc.get("label", "document")
     if not url:
         return None
     filename = build_document_filename(doc)
     try:
-        resp = safe_get(url, retries=2, timeout=20, client=client)
-        content = resp.content if resp else None
+        content: bytes | None = None
+
+        # Primary: download inside the Playwright browser (VDMS requires Chromium TLS)
+        if page is not None:
+            content = _browser_fetch_bytes(page, url)
+            if content and (len(content) < 100 or content[:5] in (b"<html", b"<!DOC")):
+                content = None
+
+        # Fallback: plain httpx GET (works when VDMS allows non-browser access)
+        if content is None:
+            resp = safe_get(url, retries=2, timeout=20, client=client)
+            content = resp.content if resp else None
+
         if not content or len(content) < 100:
             return None
         if content[:5] in (b"<html", b"<!DOC"):
             return None
+
         md5    = compute_md5(content)
         s3_key = upload_document(project_key, filename, content, dry_run=settings.DRY_RUN_S3)
         if s3_key is None:
@@ -1374,7 +1429,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                         selected = select_document_for_download(
                             config["state"], doc, doc_name_counts, domain=DOMAIN)
                         if selected:
-                            result = _handle_document(key, selected, run_id, site_id, logger, session)
+                            result = _handle_document(key, selected, run_id, site_id, logger, session, page=page)
                             uploaded_docs.append(result or {"link": doc.get("url"), "type": doc.get("label", "document")})
                             if result:
                                 counts["documents_uploaded"] += 1

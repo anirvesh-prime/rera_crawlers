@@ -32,7 +32,11 @@ How the portal works (observed from live HTML):
 from __future__ import annotations
 
 import re
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import httpx
 from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
@@ -949,12 +953,24 @@ def _extract_documents(html: str, reg_no: str) -> list[dict]:
     return docs
 
 
+# ── Document download constants ───────────────────────────────────────────────
+
+_DOC_CONNECT_TIMEOUT = 10.0   # seconds to establish TCP connection
+_DOC_READ_TIMEOUT    = 20.0   # seconds between data chunks
+_DOC_MAX_BYTES       = 50 * 1024 * 1024  # 50 MB safety limit
+_MAX_DOC_WORKERS     = 5      # parallel document download threads
+
+# psycopg connections are not thread-safe — serialise all DB writes from doc threads.
+_DB_LOCK = threading.Lock()
+
+
 def _handle_document(
     project_key: str,
     doc: dict,
     run_id: int,
     site_id: str,
     logger: CrawlerLogger,
+    client: httpx.Client,
 ) -> dict | None:
     """Download a document, upload to S3, and record it in rera_project_documents."""
     url = doc.get("link")
@@ -962,34 +978,50 @@ def _handle_document(
     if not url:
         return None
     filename = build_document_filename(doc)
+    t0 = time.monotonic()
     try:
-        resp = safe_get(url, logger=logger, timeout=60.0)
+        resp = client.get(url)
         if not resp or len(resp.content) < 100:
             logger.warning("Document download empty or failed", url=url, step="documents")
             return None
         data = resp.content
+        if len(data) > _DOC_MAX_BYTES:
+            logger.warning(
+                f"Document too large ({len(data)/1024/1024:.1f} MB), skipping",
+                url=url, step="documents",
+            )
+            return None
+        t_dl = time.monotonic() - t0
         md5 = compute_md5(data)
+        t_s3_start = time.monotonic()
         s3_key = upload_document(project_key, filename, data, dry_run=settings.DRY_RUN_S3)
         if s3_key is None:
             return None
+        t_s3 = time.monotonic() - t_s3_start
         s3_url = get_s3_url(s3_key)
-        upsert_document(
-            project_key=project_key,
-            document_type=doc_type,
-            original_url=url,
-            s3_key=s3_key,
-            s3_bucket=settings.S3_BUCKET_NAME,
-            file_name=filename,
-            md5_checksum=md5,
-            file_size_bytes=len(data),
+        with _DB_LOCK:
+            upsert_document(
+                project_key=project_key,
+                document_type=doc_type,
+                original_url=url,
+                s3_key=s3_key,
+                s3_bucket=settings.S3_BUCKET_NAME,
+                file_name=filename,
+                md5_checksum=md5,
+                file_size_bytes=len(data),
+            )
+        logger.warning(
+            f"Doc timing [{doc_type}]: download={t_dl:.2f}s  s3={t_s3:.2f}s"
+            f"  total={time.monotonic()-t0:.2f}s  size={len(data)//1024}KB",
+            step="documents",
         )
-        logger.info("Document uploaded", doc_type=doc_type, s3_key=s3_key, step="documents")
         logger.log_document(doc_type, url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
         return {**doc, "s3_link": s3_url}
     except Exception as exc:
-        logger.error(f"Document processing failed: {exc}", url=url, step="documents")
-        insert_crawl_error(run_id, site_id, "S3_UPLOAD_FAILED", str(exc),
-                           url=url, project_key=project_key)
+        logger.warning(f"Document handling error: {exc}", url=url, step="documents")
+        with _DB_LOCK:
+            insert_crawl_error(run_id, site_id, "S3_UPLOAD_FAILED", str(exc),
+                               url=url, project_key=project_key)
         return None
 
 
@@ -999,16 +1031,64 @@ def _process_documents(
     run_id: int,
     site_id: str,
     logger: CrawlerLogger,
+    state: str = "karnataka",
 ) -> tuple[list[dict], int]:
-    enriched: list[dict] = []
-    upload_count = 0
+    # ── Phase 1: filter to policy-allowed documents (sequential, CPU-only) ─────
+    t0 = time.monotonic()
+    counters: dict[str, int] = {}
+    selected_pairs: list[tuple[dict, dict]] = []  # (original_doc, selected_doc)
+    skipped_entries: list[dict] = []
     for doc in documents:
-        result = _handle_document(project_key, doc, run_id, site_id, logger)
+        sel = select_document_for_download(state, doc, counters)
+        if sel:
+            selected_pairs.append((doc, sel))
+        else:
+            skipped_entries.append({"link": doc.get("link"), "type": doc.get("type", "document")})
+    logger.warning(
+        f"Step timing [doc_selection]: {time.monotonic()-t0:.2f}s"
+        f"  total={len(documents)}  selected={len(selected_pairs)}  skipped={len(skipped_entries)}",
+        step="timing",
+    )
+    if not selected_pairs:
+        return skipped_entries, 0
+
+    # ── Phase 2: parallel downloads ────────────────────────────────────────────
+    t0 = time.monotonic()
+    doc_timeout = httpx.Timeout(
+        connect=_DOC_CONNECT_TIMEOUT,
+        read=_DOC_READ_TIMEOUT,
+        write=_DOC_READ_TIMEOUT,
+        pool=10.0,
+    )
+    dl_results: list[dict | None] = [None] * len(selected_pairs)
+    with httpx.Client(timeout=doc_timeout, follow_redirects=True) as client:
+        with ThreadPoolExecutor(max_workers=_MAX_DOC_WORKERS) as executor:
+            futures = {
+                executor.submit(_handle_document, project_key, sel, run_id, site_id, logger, client): i
+                for i, (_orig, sel) in enumerate(selected_pairs)
+            }
+            for fut in as_completed(futures):
+                idx = futures[fut]
+                try:
+                    dl_results[idx] = fut.result()
+                except Exception as exc:
+                    logger.warning(f"Doc thread error: {exc}", step="documents")
+    logger.warning(
+        f"Step timing [doc_downloads]: {time.monotonic()-t0:.2f}s"
+        f"  workers={_MAX_DOC_WORKERS}  docs={len(selected_pairs)}",
+        step="timing",
+    )
+
+    # ── Phase 3: reassemble in original order ─────────────────────────────────
+    upload_count = 0
+    enriched: list[dict] = []
+    for (orig, _sel), result in zip(selected_pairs, dl_results):
         if result:
             enriched.append(result)
             upload_count += 1
         else:
-            enriched.append(doc)
+            enriched.append({"link": orig.get("link"), "type": orig.get("type", "document")})
+    enriched.extend(skipped_entries)
     return enriched, upload_count
 
 
@@ -1118,12 +1198,17 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     item_limit  = settings.CRAWL_ITEM_LIMIT or 0   # 0 = unlimited
     max_pages   = settings.MAX_PAGES or 0           # 0 = unlimited
     delay_range = config.get("rate_limit_delay", (2, 5))
+    state       = config.get("state", "karnataka")
     districts   = DISTRICTS
     items_processed = 0
     stop_all = False
+    t_run = time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if not _sentinel_check(config, run_id, logger):
+    t0 = time.monotonic()
+    sentinel_ok = _sentinel_check(config, run_id, logger)
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    if not sentinel_ok:
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counters["error_count"] += 1
         return counters
@@ -1200,6 +1285,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 try:
 
                     # ── Fetch and parse detail page (two-step) ──────────────────
+                    t0 = time.monotonic()
                     detail_html, fetch_meta = _fetch_detail(ack_no, logger)
                     if detail_html:
                         detail = _parse_detail(
@@ -1223,14 +1309,19 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         detail = dict(listing_row)
                         reg_no = detail.get("project_registration_no", ack_no)
                         uploaded_docs = []
+                    logger.warning(
+                        f"Step timing [detail_fetch]: {time.monotonic()-t0:.2f}s",
+                        step="timing",
+                    )
 
                     # ── Build merged record ─────────────────────────────────────
+                    t0 = time.monotonic()
                     merged: dict = {
                         **detail,
                         "acknowledgement_no": ack_no,
                         "url":    PROJECT_URL,
                         "domain": DOMAIN,
-                        "state":  config.get("state", "karnataka"),
+                        "state":  state,
                         "data":   merge_data_sections(detail.get("data"), {}),
                         "is_live": True,
                     }
@@ -1247,8 +1338,17 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         )
                         record  = ProjectRecord(**normalized)
                         db_dict = record.to_db_dict()
+                        logger.warning(
+                            f"Step timing [normalize]: {time.monotonic()-t0:.2f}s",
+                            step="timing",
+                        )
+                        t0 = time.monotonic()
                         status  = upsert_project(db_dict)
                         items_processed += 1
+                        logger.warning(
+                            f"Step timing [db_upsert]: {time.monotonic()-t0:.2f}s  status={status}",
+                            step="timing",
+                        )
 
                         if status == "new":
                             counters["projects_new"] += 1
@@ -1262,7 +1362,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         # ── Document upload (new or weekly_deep) ────────────────
                         if uploaded_docs:
                             enriched, doc_count = _process_documents(
-                                project_key, uploaded_docs, run_id, config["id"], logger,
+                                project_key, uploaded_docs, run_id, config["id"], logger, state,
                             )
                             counters["documents_uploaded"] += doc_count
                             if doc_count:
@@ -1295,7 +1395,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 finally:
                     logger.clear_project()
 
-                random_delay(*delay_range)
+                # Rate-limit: pause every 10 projects, not after every single one
+                if items_processed > 0 and items_processed % 10 == 0:
+                    random_delay(*delay_range)
 
             # ── Pagination ──────────────────────────────────────────────────
             page_number += 1
@@ -1317,5 +1419,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         )
 
     reset_checkpoint(config["id"], mode)
+    logger.warning(
+        f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s",
+        step="timing",
+    )
     logger.info(f"Karnataka RERA crawl complete: {counters}", step="done")
     return counters
