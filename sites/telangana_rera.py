@@ -777,26 +777,26 @@ def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
     # Telangana PrintPreview nests these under "Building Details" with columns:
     #   Sr.No. | Floor ID | Mortgage Area | Apartment Type |
     #   Saleable Area (in Sqmts) | Number of Apartment | Number of Booked Apartment
+    # Keys are mapped to the canonical building_details allowed set so they
+    # survive the normalize_structured_json whitelist filter.
     for table in soup.find_all("table"):
         hdrs = [th.get_text(strip=True) for th in table.find_all("th")]
         hdrs_joined = " ".join(hdrs).lower()
         if re.search(r"floor.*id|apartment.*type|saleable.*area", hdrs_joined, re.I):
             for r in _parse_table_rows(table):
-                entry = {}
+                entry: dict[str, Any] = {}
                 for h, v in r.items():
                     kl = h.lower()
                     if re.search(r"apartment.*type|flat.*type", kl):
                         entry["flat_type"] = v
                     elif re.search(r"saleable.*area|carpet.*area", kl):
-                        entry["total_area"] = v
+                        entry["total_area"] = v          # allowed key
                     elif re.search(r"number.*booked|booked.*apart", kl):
-                        entry["booked_units"] = v
+                        entry["booking_detail"] = v      # allowed key (booked count)
                     elif re.search(r"number.*apart|no.*apart", kl):
-                        entry["no_of_units"] = v
+                        entry["no_of_units"] = v         # allowed key
                     elif re.search(r"floor.*id", kl):
-                        entry["floor_id"] = v
-                    elif re.search(r"mortgage", kl):
-                        entry["mortgage_area"] = v
+                        entry["floor_no"] = v            # allowed key
                 if entry.get("flat_type") or entry.get("total_area"):
                     building_details.append(entry)
 
@@ -936,6 +936,69 @@ def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
 
 # ── Document download + S3 upload ─────────────────────────────────────────────
 
+def _fetch_upid_document(
+    upid: int,
+    division: str,
+    cookies: dict,
+    logger: CrawlerLogger,
+) -> bytes | None:
+    """
+    Download a Telangana document that requires a POST to GetUserDocumentIframe.
+
+    Flow:
+      1. POST {"ID": upid, "Division": division, "RoleID": 1, "CurrentUserID": 0}
+         → server returns an HTML page with an <iframe src="…pdf…"> or a PDF redirect.
+      2. If the response is HTML, extract the iframe src and GET that URL.
+      3. If the response is already PDF bytes, return them directly.
+    """
+    import httpx
+    from bs4 import BeautifulSoup as _BS
+
+    post_url = f"{BASE_URL}/PrintPreview/GetUserDocumentIframe"
+    payload  = {"ID": upid, "Division": division, "RoleID": 1, "CurrentUserID": 0}
+    headers  = {
+        "User-Agent":   "Mozilla/5.0",
+        "Referer":      BASE_URL,
+        "Content-Type": "application/json",
+    }
+    try:
+        with httpx.Client(
+            timeout=60.0, follow_redirects=True, verify=False, cookies=cookies
+        ) as client:
+            resp = client.post(post_url, json=payload, headers=headers)
+            if not resp.is_success:
+                logger.warning(f"UPID POST failed: status={resp.status_code}", step="documents")
+                return None
+
+            content_type = resp.headers.get("content-type", "")
+            if "pdf" in content_type or resp.content[:4] == b"%PDF":
+                return resp.content  # server returned PDF directly
+
+            # Parse the iframe HTML for a src URL containing the actual file
+            iframe_html = resp.text
+            _soup = _BS(iframe_html, "lxml")
+            iframe = _soup.find("iframe")
+            if not iframe or not iframe.get("src"):
+                # Try finding an <a> or embed tag
+                embed = _soup.find("embed") or _soup.find("object")
+                src = (embed or {}).get("src") or (embed or {}).get("data")
+            else:
+                src = iframe["src"]
+
+            if not src:
+                logger.warning(f"UPID {upid}: no src found in iframe response", step="documents")
+                return None
+
+            pdf_url = src if src.startswith("http") else urljoin(BASE_URL, src)
+            pdf_resp = client.get(pdf_url, headers={"User-Agent": "Mozilla/5.0", "Referer": BASE_URL})
+            if pdf_resp.is_success and len(pdf_resp.content) > 100:
+                return pdf_resp.content
+
+    except Exception as exc:
+        logger.warning(f"UPID {upid} download error: {exc}", step="documents")
+    return None
+
+
 def _handle_document(
     project_key: str,
     doc: dict,
@@ -954,16 +1017,30 @@ def _handle_document(
     try:
         import httpx
         headers = {"User-Agent": "Mozilla/5.0", "Referer": BASE_URL}
-        with httpx.Client(
-            timeout=60.0,
-            follow_redirects=True,
-            verify=False,
-            cookies=cookies or {},
-        ) as client:
-            resp = client.get(url, headers=headers)
-            if not resp.is_success or len(resp.content) < 100:
-                return None
-            data = resp.content
+
+        # Telangana POST-based documents (UPID from hidden inputs)
+        upid = doc.get("upid")
+        if upid:
+            data = _fetch_upid_document(
+                upid=upid,
+                division=str(doc.get("division", "1")),
+                cookies=cookies or {},
+                logger=logger,
+            )
+        else:
+            with httpx.Client(
+                timeout=60.0,
+                follow_redirects=True,
+                verify=False,
+                cookies=cookies or {},
+            ) as client:
+                resp = client.get(url, headers=headers)
+                if not resp.is_success or len(resp.content) < 100:
+                    return None
+                data = resp.content
+
+        if not data or len(data) < 100:
+            return None
 
         md5 = compute_md5(data)
         s3_key = upload_document(project_key, filename, data, dry_run=settings.DRY_RUN_S3)
@@ -994,24 +1071,39 @@ def _build_uploaded_documents(row: dict, detail: dict) -> list[dict]:
     """
     Assemble the raw uploaded_documents list from listing-row URLs and
     document links found in the PrintPreview HTML.
+
+    UPID-based documents (POST downloads) all share the same endpoint URL so
+    they cannot be deduplicated by link.  Instead we use ``upid:{id}`` as the
+    deduplication key for those, and the URL for classic direct-link documents.
     """
     docs: list[dict] = []
     seen: set[str] = set()
 
-    def _add(link: str | None, doc_type: str) -> None:
+    def _add_direct(link: str | None, doc_type: str) -> None:
+        """Add a classic GET-download document, deduped by URL."""
         if not link or link in seen:
             return
         seen.add(link)
         docs.append({"link": link, "type": doc_type})
 
     # Certificate PDF (CharacterD=52)
-    _add(row.get("cert_url"), "Registration Certificate 1")
+    _add_direct(row.get("cert_url"), "Registration Certificate 1")
     # Preview PDF (CharacterD=87)
-    _add(row.get("preview_pdf_url"), "Rera Project Details")
+    _add_direct(row.get("preview_pdf_url"), "Rera Project Details")
 
-    # Document links found on the PrintPreview HTML page
+    # Document links found on the PrintPreview HTML page.
+    # UPID-based docs carry a "upid" key — use that for dedup; direct-link docs
+    # use the URL.
     for doc in detail.get("_raw_docs") or []:
-        _add(doc.get("link"), doc.get("type", "Document"))
+        upid = doc.get("upid")
+        if upid is not None:
+            key = f"upid:{upid}"
+            if key in seen:
+                continue
+            seen.add(key)
+            docs.append(dict(doc))          # preserve upid + division for download
+        else:
+            _add_direct(doc.get("link"), doc.get("type", "Document"))
 
     return docs
 
