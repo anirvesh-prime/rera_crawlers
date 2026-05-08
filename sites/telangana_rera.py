@@ -227,9 +227,27 @@ def _submit_search(page: Any, logger: CrawlerLogger) -> bool:
                 page.reload(wait_until="domcontentloaded", timeout=_NAV_TIMEOUT_MS)
                 continue
 
-            captcha_input.triple_click()
+            # Save the CAPTCHA element screenshot before submitting so we can
+            # visually compare what the model saw vs what it returned.
+            import pathlib
+            pathlib.Path("screenshots").mkdir(exist_ok=True)
+            captcha_shot_path = str(
+                pathlib.Path("screenshots") /
+                f"telangana_captcha_attempt{attempt}.png"
+            )
+            try:
+                captcha_el = page.query_selector("#captchaImage")
+                if captcha_el:
+                    captcha_el.screenshot(path=captcha_shot_path)
+            except Exception:
+                captcha_shot_path = "<screenshot failed>"
+
             captcha_input.fill(captcha_text)
-            logger.info(f"Submitting CAPTCHA answer: {captcha_text!r}", step="captcha")
+            logger.info(
+                f"Submitting CAPTCHA answer: {captcha_text!r} | "
+                f"captcha_image={captcha_shot_path}",
+                step="captcha",
+            )
 
             btn_clicked: str | None = None
             for btn_sel in (
@@ -255,7 +273,16 @@ def _submit_search(page: Any, logger: CrawlerLogger) -> bool:
                 logger.info("Search submitted successfully", step="search")
                 return True
             except Exception:
-                # Dump page URL + visible error text to help diagnose rejection
+                # Dismiss "Captcha is not valid." modal if present (click OK)
+                # so we stay in the same session and can re-solve without a reload.
+                try:
+                    ok_btn = page.query_selector("button:has-text('OK'), input[value='OK']")
+                    if ok_btn:
+                        ok_btn.click()
+                        page.wait_for_timeout(500)
+                except Exception:
+                    pass
+
                 landed_url = page.url
                 try:
                     error_text = page.inner_text("body") or ""
@@ -266,25 +293,22 @@ def _submit_search(page: Any, logger: CrawlerLogger) -> bool:
                 except Exception:
                     error_snippet = "<could not read body>"
 
-                # Save a screenshot for visual inspection
-                import pathlib
-                shot_path = str(
+                page_shot_path = str(
                     pathlib.Path("screenshots") /
                     f"telangana_submit_fail_attempt{attempt}.png"
                 )
                 try:
-                    pathlib.Path("screenshots").mkdir(exist_ok=True)
-                    page.screenshot(path=shot_path, full_page=False)
+                    page.screenshot(path=page_shot_path, full_page=False)
                 except Exception:
-                    shot_path = "<screenshot failed>"
+                    page_shot_path = "<screenshot failed>"
 
                 logger.warning(
                     f"No results table after submit (attempt {attempt}); "
                     f"url={landed_url!r} | page_text={error_snippet!r} | "
-                    f"screenshot={shot_path}",
+                    f"captcha_image={captcha_shot_path} | "
+                    f"page_screenshot={page_shot_path}",
                     step="search",
                 )
-                page.reload(wait_until="domcontentloaded", timeout=_NAV_TIMEOUT_MS)
 
         except Exception as exc:
             logger.warning(f"Search attempt {attempt} error: {exc}", step="search")

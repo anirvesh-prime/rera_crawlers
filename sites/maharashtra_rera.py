@@ -324,18 +324,27 @@ def _scrape_mh_detail_page(cert_id: str, logger: CrawlerLogger) -> dict:
 
                 # Check explicitly for "Captcha is not valid" error (mirrors old
                 # crawler's verifier() check) before waiting for Angular content.
+                # IMPORTANT: after dismissing the modal we MUST reload — not just
+                # `continue` — because the captcha canvas auto-regenerates on the
+                # same page, so __captchaTexts would accumulate old + new captcha
+                # text and every subsequent attempt would submit a concatenated
+                # wrong answer.
+                captcha_invalid = False
                 try:
                     invalid_el = page.query_selector("h2:text('Captcha is not valid.')")
                     if invalid_el and invalid_el.is_visible():
-                        logger.info(f"Captcha invalid on attempt {attempt} — dismissing and retrying", step="captcha")
-                        # Dismiss the alert/modal (mirrors old crawler's confirm button click)
+                        captcha_invalid = True
+                        logger.info(f"Captcha invalid on attempt {attempt} — reloading for fresh captcha", step="captcha")
                         try:
                             page.click("button.confirm", timeout=3_000)
                         except Exception:
                             pass
-                        continue
                 except Exception:
                     pass
+
+                if captcha_invalid:
+                    page.reload(timeout=45_000)
+                    continue
 
                 # Wait for Angular to render data — label.bg-blue.f-w-700 holds
                 # the actual registration number and is only populated after
@@ -383,6 +392,8 @@ def _scrape_mh_detail_page(cert_id: str, logger: CrawlerLogger) -> dict:
 
 
 _MH_OVERVIEW_LABEL_MAP: dict[str, str] = {
+    "project name":                          "project_name",
+    "name of the project":                   "project_name",
     "registration no":                       "project_registration_no",
     "registration number":                   "project_registration_no",
     "project type":                          "project_type",
@@ -479,6 +490,19 @@ def _parse_mh_overview_tab(soup: BeautifulSoup, out: dict) -> None:
         if txt.lower() in _MH_STATUS_VALUES:
             out.setdefault("status_of_the_project", txt)
             break
+
+    # Project name fallback: read from the card/page heading (h2, h3, h4) near
+    # the top of the content area if label-based extraction didn't find it.
+    if not out.get("project_name"):
+        _SKIP_HEADINGS = {"maharashtra real estate regulatory authority", "maharerait", "maha-rera"}
+        for tag in ("h2", "h3", "h4"):
+            for el in soup.select(tag):
+                txt = el.get_text(strip=True)
+                if txt and len(txt) > 3 and txt.lower() not in _SKIP_HEADINGS:
+                    out["project_name"] = txt
+                    break
+            if out.get("project_name"):
+                break
 
 
 def _parse_mh_promoter_tab(soup: BeautifulSoup, out: dict) -> None:
