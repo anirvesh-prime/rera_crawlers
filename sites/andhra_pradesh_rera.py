@@ -227,9 +227,12 @@ def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
 
         detail_url: str | None = None
         if enc:
-            # enc may already start with "?" (e.g. "?enc=..."), so strip leading
-            # "?" before joining to avoid the double-"??" bug.
-            detail_url = f"{DETAIL_BASE}?{enc.lstrip('?')}"
+            # The listing JS does:  window.open("../Project.aspx?" + enc, ...)
+            # enc always starts with "?enc=...", so the resulting URL is
+            # "Project.aspx??enc=..." (double-??) which is what the server
+            # requires.  Do NOT strip the leading "?" — the single-"?" URL
+            # silently redirects to the home page.
+            detail_url = f"{DETAIL_BASE}?{enc}"
 
         rows.append({
             "project_registration_no": reg_id,
