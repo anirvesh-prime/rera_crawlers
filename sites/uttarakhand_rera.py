@@ -162,13 +162,18 @@ def _resolve_url(href: str) -> str | None:
 # HTTP client factory
 # ---------------------------------------------------------------------------
 
-def _make_client() -> httpx.Client:
-    """Return a session-aware httpx.Client with legacy SSL support."""
+def _make_client(read_timeout: float = 90.0) -> httpx.Client:
+    """Return a session-aware httpx.Client with legacy SSL support.
+
+    ``read_timeout`` is raised to 90 s by default because the listing page
+    (~200 KB from a slow Spring server) regularly needs more than 60 s to
+    transfer completely.
+    """
     ssl_ctx = get_legacy_ssl_context()
     return httpx.Client(
         verify=ssl_ctx,
         follow_redirects=True,
-        timeout=httpx.Timeout(connect=15.0, read=60.0, write=10.0, pool=5.0),
+        timeout=httpx.Timeout(connect=15.0, read=read_timeout, write=10.0, pool=5.0),
         headers={"User-Agent": _UA},
     )
 
@@ -898,8 +903,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             resp.raise_for_status()
             listing_html = resp.text
     except (httpx.ConnectError, httpx.RemoteProtocolError,
-            httpx.ReadError, OSError) as _net_exc:
-        # Portal actively resets Python TCP connections (TLS fingerprint block).
+            httpx.ReadError, httpx.TimeoutException, OSError) as _net_exc:
+        # Portal actively resets Python TCP connections (TLS fingerprint block),
+        # or the listing page read times out on slow responses.
         # Fall back to Playwright whose Chromium fingerprint is accepted.
         logger.warning(
             f"httpx listing blocked ({_net_exc}); falling back to Playwright",

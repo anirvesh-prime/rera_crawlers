@@ -251,19 +251,19 @@ def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
 def _fetch_detail(
     detail_url: str,
     logger: CrawlerLogger,
+    client: httpx.Client | None = None,
 ) -> tuple[BeautifulSoup, dict] | tuple[None, dict]:
-    """Fetch a project detail page and return (parsed soup, session cookies).
+    """Fetch a project detail page and return (parsed soup, unused-cookie-stub).
 
-    The session cookies dict (e.g. ``{'ASP.NET_SessionId': '…'}``) must be
-    forwarded to document POST requests so the server recognises the session
-    and returns file bytes instead of the HTML page.
+    Pass *client* (a persistent httpx.Client) so that the ASP.NET session cookie
+    set during this GET is automatically included in subsequent POST requests that
+    use the same client — enabling document downloads without re-authenticating.
     """
     resp = safe_get(detail_url, headers=_LISTING_HEADERS, retries=3,
-                    timeout=30, logger=logger)
+                    timeout=60, logger=logger, client=client)
     if not resp:
         return None, {}
-    cookies = dict(resp.cookies)
-    return BeautifulSoup(resp.text, "lxml"), cookies
+    return BeautifulSoup(resp.text, "lxml"), {}
 
 
 # ── Detail page field extraction ───────────────────────────────────────────────
@@ -1074,6 +1074,7 @@ def _handle_document(
     site_id: str,
     logger: CrawlerLogger,
     form_fields: dict[str, str] | None = None,
+    client: httpx.Client | None = None,
 ) -> dict | None:
     """
     Download a document, upload to S3, return a document result entry or None.
@@ -1083,9 +1084,8 @@ def _handle_document(
     when the detail page was first fetched.  The server responds with the raw
     file bytes (Content-Disposition: attachment).
 
-    The session cookie (ASP.NET_SessionId) stored in form_fields["_session_cookies"]
-    is pre-loaded into a fresh httpx.Client so the server recognises the session
-    and returns file bytes instead of an HTML page.
+    *client* MUST be the same httpx.Client that was used to fetch the detail page
+    so that the ASP.NET_SessionId cookie is automatically included in the POST.
 
     Fallback: plain GET to doc["link"] for any doc that carries a direct URL
     (rare on AP RERA but kept for robustness).
@@ -1097,12 +1097,16 @@ def _handle_document(
     source_url: str = ""
 
     if doc_id is not None and form_fields:
-        form_action     = form_fields.get("_form_action", "")
-        session_cookies = form_fields.get("_session_cookies") or {}
+        form_action = form_fields.get("_form_action", "")
         if not form_action:
             logger.warning("No form action — cannot POST for doc_id", doc_id=doc_id)
         else:
-            post_data = {k: v for k, v in form_fields.items() if not k.startswith("_")}
+            # Exclude only our own internal metadata keys (prefixed with a single
+            # underscore + lowercase letter).  ASP.NET hidden fields like
+            # __VIEWSTATE and __EVENTVALIDATION also start with '_' but must
+            # be included — they are identified by the double-underscore prefix.
+            _SKIP = frozenset({"_form_action", "_session_cookies", "_detail_url"})
+            post_data = {k: v for k, v in form_fields.items() if k not in _SKIP}
             post_data["hdndocid"]        = str(doc_id)
             post_data["btndownload"]     = ""
             post_data["__EVENTTARGET"]   = ""
@@ -1111,14 +1115,10 @@ def _handle_document(
                             "Content-Type": "application/x-www-form-urlencoded",
                             "Referer": form_action}
             try:
-                # Pre-load the session cookie (ASP.NET_SessionId) so the server
-                # recognises this request as part of the same session that fetched
-                # the detail page, and returns the file instead of an HTML page.
-                with httpx.Client(timeout=60, follow_redirects=True,
-                                  cookies=session_cookies) as doc_client:
-                    resp = safe_post(form_action, data=post_data, headers=post_headers,
-                                     retries=2, timeout=60, logger=logger,
-                                     client=doc_client)
+                # Use the shared project_client so the ASP.NET_SessionId cookie
+                # accumulated during the detail-page GET is automatically sent.
+                resp = safe_post(form_action, data=post_data, headers=post_headers,
+                                 retries=2, timeout=60, logger=logger, client=client)
                 if resp is not None:
                     ct = resp.headers.get("content-type", "")
                     if "html" in ct.lower():
@@ -1135,7 +1135,7 @@ def _handle_document(
         # Fallback: direct GET (e.g. rare projects with a plain PDF href)
         try:
             resp = safe_get(direct_url, headers=_LISTING_HEADERS,
-                            retries=2, timeout=60, logger=logger)
+                            retries=2, timeout=60, logger=logger, client=client)
             source_url = direct_url
         except Exception as exc:
             logger.warning("Document GET error", url=direct_url, error=str(exc))
@@ -1304,11 +1304,16 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             counts["error_count"] += 1
             continue
         logger.set_project(key=project_key, reg_no=reg_no, url=detail_url, page=i)
+        # One persistent client per project: preserves ASP.NET_SessionId across
+        # the detail-page GET and all subsequent document POSTs.
+        project_client = httpx.Client(timeout=60, follow_redirects=True)
         try:
             try:
                 random_delay(delay_min, delay_max)
                 logger.info("Fetching detail page")
-                detail_soup, detail_cookies = _fetch_detail(detail_url, logger)
+                detail_soup, _cookies = _fetch_detail(
+                    detail_url, logger, client=project_client
+                )
                 if not detail_soup:
                     logger.warning("Detail page fetch failed")
                     insert_crawl_error(run_id, site_id, "DETAIL_FAILED",
@@ -1317,11 +1322,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     counts["error_count"] += 1
                     continue
 
-                # Capture ASP.NET form fields for document POST downloads.
-                # Session cookies are stored so that _handle_document can create
-                # a new httpx.Client pre-loaded with ASP.NET_SessionId.
+                # Capture ASP.NET form fields; the shared client carries cookies.
                 form_fields = _extract_asp_form_fields(detail_soup, detail_url)
-                form_fields["_session_cookies"] = detail_cookies
 
                 # Extract detail fields
                 detail_data = _scrape_detail_page(detail_soup, detail_url)
@@ -1397,7 +1399,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     )
                     if selected:
                         result = _handle_document(project_key, selected, run_id, site_id, logger,
-                                                  form_fields=form_fields)
+                                                  form_fields=form_fields,
+                                                  client=project_client)
                         if result:
                             uploaded_results.append(result)
                             counts["documents_uploaded"] += 1
@@ -1425,6 +1428,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                                    project_key=project_key, url=detail_url)
                 counts["error_count"] += 1
         finally:
+            project_client.close()
             logger.clear_project()
 
     # ── Final checkpoint ──────────────────────────────────────────────────────

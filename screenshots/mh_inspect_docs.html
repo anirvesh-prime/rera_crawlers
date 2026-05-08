@@ -1,0 +1,573 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="X-UA-Compatible" content="ie=edge"><title>Maharashtra Real Estate Regulatory Authority</title><script src="https://cdn.jsdelivr.net/npm/regenerator-runtime@0.13.7/runtime.min.js"></script><link href="https://maharerait.maharashtra.gov.in/content/assets/css/style.css" rel="stylesheet"><link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i|Nunito:300,300i,400,400i,600,600i,700,700i|Poppins:300,300i,400,400i,500,500i,600,600i,700,700i" rel="stylesheet"><link href="https://maharerait.maharashtra.gov.in/content/assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet"><link href="https://maharerait.maharashtra.gov.in/content/assets/vendor/simple-datatables/style.css" rel="stylesheet"><link href="https://maharerait.maharashtra.gov.in/content/assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet"><link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet"><link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet"><script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto|Varela+Round|Open+Sans"><link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons"><script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script><script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script><script async="" defer="defer" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBODKQJRZF8Es5yjpj0uhADgssqUlRkBd8"></script><link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css"><script src="https://code.jquery.com/jquery-3.6.0.js"></script><script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script><script src="https://cdn.jsdelivr.net/npm/regenerator-runtime@0.13.7/runtime.min.js"></script><link href="https://unpkg.com/angular-calendar@0.26.6/css/angular-calendar.css" rel="stylesheet"><link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons"><script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script><script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/pdfobject/2.2.12/pdfobject.min.js"></script><script type="systemjs-importmap">{
+      "imports": {
+        "single-spa": "https://cdn.jsdelivr.net/npm/single-spa@5.9.0/lib/system/single-spa.min.js",
+        "login":"//maharerait.maharashtra.gov.in/loginpage/main.js",
+        "register":"//maharerait.maharashtra.gov.in/registerpage/main.js",
+        "admin":"//maharerait.maharashtra.gov.in/adminpage/main.js",
+        "dashboard":"//maharerait.maharashtra.gov.in/dashboardpage/main.js",
+        "promoter":"//maharerait.maharashtra.gov.in/promoterpage/main.js",
+        "workflow":"//maharerait.maharashtra.gov.in/workflowpage/main.js",
+        "header":"//maharerait.maharashtra.gov.in/headerpage/main.js",
+        "agent":"//maharerait.maharashtra.gov.in/agentpage/main.js",
+        "project":"//maharerait.maharashtra.gov.in/projectpage/main.js",
+        "inbox":"//maharerait.maharashtra.gov.in/inboxpage/main.js",
+        "complaint":"//maharerait.maharashtra.gov.in/complaintpage/main.js",
+        "appeal":"//maharerait.maharashtra.gov.in/appealpage/main.js",
+        "appeal-login":"//maharerait.maharashtra.gov.in/appealloginpage/main.js",
+        "public":"//maharerait.maharashtra.gov.in/publicpage/main.js"
+
+
+      }
+    }</script><link rel="preload" href="https://cdn.jsdelivr.net/npm/single-spa@5.9.0/lib/system/single-spa.min.js" as="script" crossorigin="anonymous"><script type="systemjs-importmap">{
+          "imports": {
+            "@single-spa/welcome": "https://unpkg.com/single-spa-welcome/dist/single-spa-welcome.js",
+            "@maha-rera/root-config": "https://maharerait.maharashtra.gov.in/maha-rera-root-config.js",
+            "@maha-rera/login":"https://maharerait.maharashtra.gov.in/loginpage/main.js",
+            "@maha-rera/register":"https://maharerait.maharashtra.gov.in/registerpage/main.js",
+            "@maha-rera/admin":"https://maharerait.maharashtra.gov.in/adminpage/main.js",
+            "@maha-rera/dashboard":"https://maharerait.maharashtra.gov.in/dashboardpage/main.js",
+            "@maha-rera/promoter":"https://maharerait.maharashtra.gov.in/promoterpage/main.js",
+            "@maha-rera/workflow":"https://maharerait.maharashtra.gov.in/workflowpage/main.js",
+            "@maha-rera/header":"https://maharerait.maharashtra.gov.in/headerpage/main.js",
+            "@maha-rera/agent":"https://maharerait.maharashtra.gov.in/agentpage/main.js",
+            "@maha-rera/project":"https://maharerait.maharashtra.gov.in/projectpage/main.js",
+            "@maha-rera/inbox":"https://maharerait.maharashtra.gov.in/inboxpage/main.js",
+            "@maha-rera/complaint":"https://maharerait.maharashtra.gov.in/complaintpage/main.js",
+            "@maha-rera/appeal":"https://maharerait.maharashtra.gov.in/appealpage/main.js",
+            "@maha-rera/appeal-login":"https://maharerait.maharashtra.gov.in/appealloginpage/main.js",
+            "@maha-rera/public":"https://maharerait.maharashtra.gov.in/publicpage/main.js"
+
+          }
+        }</script><script src="https://cdn.jsdelivr.net/npm/zone.js@0.11.3/dist/zone.min.js"></script><script src="https://cdn.jsdelivr.net/npm/import-map-overrides@2.2.0/dist/import-map-overrides.js"></script><style type="text/css">.imo-unstyled {
+  border: none;
+  padding: 0;
+  width: auto;
+  overflow: visible;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: normal;
+  cursor: pointer;
+  -webkit-font-smoothing: inherit;
+  -moz-osx-font-smoothing: inherit;
+  -webkit-appearance: none;
+}
+
+.imo-unstyled::-moz-focus-inner {
+  border: 0;
+  padding: 0;
+}
+
+.imo-trigger {
+  position: fixed;
+  bottom: 0;
+  right: 0;
+  margin: 10px;
+  border-radius: 5px;
+  background-color: navajowhite;
+  height: 50px;
+  width: 50px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 18px;
+  font-family: sans-serif;
+  z-index: 10500;
+}
+
+.imo-popup {
+  box-sizing: border-box;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 50%;
+  z-index: 10000;
+  background-color: black;
+  color: white;
+  font-family: sans-serif;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.imo-popup a:visited,
+imo-popup a {
+  color: white;
+}
+
+.imo-popup .imo-module-dialog {
+  left: calc(50% - 200px);
+}
+
+.imo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.imo-list {
+  margin-left: 16px;
+}
+
+.imo-list > *:not(:last-child) {
+  margin-bottom: 8px;
+}
+
+.imo-list-container *,
+.imo-modal-container * {
+  font-family: sans-serif;
+  box-sizing: border-box;
+}
+
+.imo-module-dialog {
+  position: fixed;
+  z-index: 30000000;
+  top: 30%;
+  max-width: 600px;
+  margin: 0 auto;
+  border: 4px solid navajowhite;
+  background-color: white;
+  padding: 1em;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+
+.imo-module-dialog input {
+  width: 100%;
+  font-size: 16px;
+  box-sizing: border-box;
+  padding-right: 20px;
+}
+
+.imo-module-dialog table {
+  margin-bottom: 16px;
+}
+
+.imo-module-dialog table td:first-child {
+  text-align: right;
+  padding-right: 16px;
+  word-break: keep-all;
+}
+
+.imo-module-dialog table td {
+  word-break: break-all;
+}
+
+.imo-module-dialog.imo-overridden {
+  border: 4px solid salmon;
+}
+
+.imo-table-header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.imo-overrides-table {
+  border-collapse: collapse;
+  margin-top: 32px;
+}
+
+.imo-overrides-table tr td:first-child {
+  display: flex;
+  align-items: center;
+  padding-right: 32px;
+  position: relative;
+}
+
+.imo-needs-refresh {
+  position: absolute;
+  right: 8px;
+  font-size: 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.imo-needs-refresh::before {
+  content: "\27F2";
+}
+
+.imo-status {
+  height: 16px;
+  width: 16px;
+  border-radius: 8px;
+  border: 1px solid white;
+  margin-right: 8px;
+}
+
+.imo-disabled-override {
+  background-color: lightblue;
+}
+
+.imo-next-override {
+  background-color: darkred;
+}
+
+.imo-current-override {
+  background-color: salmon;
+}
+
+.imo-default-module {
+  background-color: lightgoldenrodyellow;
+}
+
+.imo-external-override {
+  background-color: orange;
+}
+
+.imo-next-default {
+  background-color: darkgoldenrod;
+}
+
+.imo-dev-lib-override {
+  background-color: lightpink;
+}
+
+.imo-overrides-table tbody tr:hover {
+  cursor: pointer;
+  background-color: #404040;
+}
+
+.imo-overrides-table td,
+.imo-overrides-table th {
+  line-height: 18px;
+  padding: 16px;
+  border: 1px solid white;
+}
+
+.imo-add-new {
+  margin-left: 16px;
+}
+
+.imo-clear-input {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.imo-modal-container {
+  font-family: sans-serif;
+}
+
+.imo-modal {
+  background-color: rgba(61, 70, 77, 0.6);
+  position: fixed;
+  width: 100vw;
+  height: 100vh;
+  top: 0;
+  left: 0;
+  z-index: 20000000;
+}
+
+.imo-list-search,
+.imo-list-container button,
+.imo-modal-container button {
+  font-size: 14px;
+  height: 27px;
+  line-height: 27px;
+}
+
+.imo-list-search {
+  line-height: 22px;
+  border: none;
+  padding: 5px;
+}
+</style><script src="https://cdn.jsdelivr.net/npm/systemjs@6.8.3/dist/system.min.js"></script><script src="https://cdn.jsdelivr.net/npm/systemjs@6.8.3/dist/extras/amd.min.js"></script><style>.mrera-text[_ngcontent-nom-c1]{color:#fff;font-weight:600;font-size:22px}@media (max-width: 1200px){.mrera-text[_ngcontent-nom-c1]{font-size:20px}}@media (max-width: 768px){.mrera-text[_ngcontent-nom-c1]{font-size:18px}}@media (max-width: 480px){.mrera-text[_ngcontent-nom-c1]{font-size:18px}}</style><style>.main[_ngcontent-jgr-c18]{margin-left:0!important}.tdClass[_ngcontent-jgr-c18]{text-align:center;font-weight:700;font-size:12px}label.form-label.f-weight-800[_ngcontent-jgr-c18], label.form-label.f-weight-400[_ngcontent-jgr-c18]{color:#2f6e99}#downloadReceipt[_ngcontent-jgr-c18]{font-size:12px;font-weight:600;margin-bottom:0;color:#000;line-height:24px;margin-top:5px;color:#00f}.form-control[_ngcontent-jgr-c18]{height:36px!important;font-size:12px!important;letter-spacing:1px!important;display:inline-block!important;padding:5px 8px!important}.form-control[_ngcontent-jgr-c18]{font-size:12px!important}.form-card[_ngcontent-jgr-c18]{padding:0!important}label.form-label[_ngcontent-jgr-c18], label.form-check-label[_ngcontent-jgr-c18]{font-size:15px!important;font-weight:400}.col-6.col-sm-12.col-md-6.col-lg-6.wh[_ngcontent-jgr-c18]{padding-right:3px!important;padding-left:3px!important}.input-wrapper[_ngcontent-jgr-c18]{display:flex;align-items:center;position:relative}.form-control[_ngcontent-jgr-c18]{padding-right:30px}.trash-icon[_ngcontent-jgr-c18]{position:absolute;right:5px;top:50%;transform:translateY(-50%);cursor:pointer;color:red}input[type=radio][_ngcontent-jgr-c18]{margin-right:20px}.disabled-select[_ngcontent-jgr-c18]{pointer-events:none;background-color:#eee;color:#888}label.form-label[_ngcontent-jgr-c18]   .badge[_ngcontent-jgr-c18]   i[data-title][_ngcontent-jgr-c18], label.form-check-label[_ngcontent-jgr-c18]   .badge[_ngcontent-jgr-c18]   i[data-title][_ngcontent-jgr-c18]{position:relative}label.form-label[_ngcontent-jgr-c18]   .badge[_ngcontent-jgr-c18]   i[data-title][_ngcontent-jgr-c18]:hover:after{font-size:14px;font-weight:400;display:block;position:absolute;left:50%;transform:translate(-50%);bottom:1.5em;content:attr(data-title);background-color:#979797;width:auto;text-align:center;color:#fff;border-radius:6px;padding:10px;font-family:Poppins,sans-serif;z-index:1;box-shadow:0 2px 4px #0003}label.form-check-label[_ngcontent-jgr-c18]   .badge[_ngcontent-jgr-c18]   i[data-title][_ngcontent-jgr-c18]:hover:after, label.form-check-label[_ngcontent-jgr-c18]   .badge[_ngcontent-jgr-c18]   i.tooltip-visible[_ngcontent-jgr-c18]:after{font-size:12px;font-weight:400;display:block;position:absolute;left:50%;transform:translate(-50%);bottom:1.5em;content:attr(data-title);background-color:#979797;width:250px;white-space:normal;word-wrap:break-word;text-align:center;color:#fff;border-radius:6px;padding:10px;font-family:Poppins,sans-serif;z-index:1;box-shadow:0 2px 4px #0003}.badge[_ngcontent-jgr-c18]{min-width:9px;padding:1px 2px;font-size:10px;font-weight:700;line-height:1;color:#fff;text-align:center;white-space:nowrap;vertical-align:middle;background-color:#a9a7a7;border-radius:8px;position:relative}.table-wrapper[_ngcontent-jgr-c18]{overflow-x:auto;width:100%;max-width:100%}.table-wrapper[_ngcontent-jgr-c18]   table[_ngcontent-jgr-c18]{width:200%;table-layout:fixed}.m-t-0[_ngcontent-jgr-c18]{margin-top:0}.serial-no[_ngcontent-jgr-c18]{text-align:center;padding-right:0!important;padding-left:0!important}.p-b-0[_ngcontent-jgr-c18]{padding-bottom:0}.m-b-0[_ngcontent-jgr-c18]{margin-bottom:0}.m-t-15[_ngcontent-jgr-c18]{margin-top:15px}.table-width-200[_ngcontent-jgr-c18]{width:200%!important}.col-12.text-font[_ngcontent-jgr-c18]{padding:6px 0;font-size:14px}table[_ngcontent-jgr-c18]{width:100%!important}table.table[_ngcontent-jgr-c18]   tr[_ngcontent-jgr-c18]   td[_ngcontent-jgr-c18]{font-size:14px!important;font-weight:500;padding:10px!important}thead[_ngcontent-jgr-c18]   tr[_ngcontent-jgr-c18]   th[_ngcontent-jgr-c18]{font-size:14px!important;width:16px!important;border:1px solid #6ca1c4!important;color:#fff!important;padding:10px!important}tbody[_ngcontent-jgr-c18]   tr[_ngcontent-jgr-c18]   td[_ngcontent-jgr-c18]{border:1px solid #f0f0f0;color:#000!important;padding:10px!important}thead[_ngcontent-jgr-c18]{background-color:#2f6e99!important;color:#fff!important}label.form-label[_ngcontent-jgr-c18]{font-size:15px!important;font-weight:400!important}.white-box[_ngcontent-jgr-c18]{background-color:#fff;border:1px solid #d1d1d1;margin:6px 2px;padding:5px 13px;border-radius:4px}a#download[_ngcontent-jgr-c18]{background:#2F6E99;color:#fff;padding:5px 10px;border-radius:4px}.tabs[_ngcontent-jgr-c18]{display:flex;gap:5px;margin-bottom:10px}.tabs[_ngcontent-jgr-c18]   button[_ngcontent-jgr-c18]{padding:8px 12px;border:none;background-color:#f1f1f1;cursor:pointer;border-radius:4px}.tabs[_ngcontent-jgr-c18]   button.active[_ngcontent-jgr-c18]{background-color:#2f6e99;color:#fff}.partner-table[_ngcontent-jgr-c18]{width:100%;border-collapse:collapse}.partner-table[_ngcontent-jgr-c18]   th[_ngcontent-jgr-c18], .partner-table[_ngcontent-jgr-c18]   td[_ngcontent-jgr-c18]{border:1px solid #ccc;padding:8px}.partner-table[_ngcontent-jgr-c18]   th[_ngcontent-jgr-c18]{background-color:#0d6efd;color:#fff}.view-btn[_ngcontent-jgr-c18]{background-color:#d32f2f;color:#fff;padding:6px 10px;border:none;border-radius:4px;cursor:pointer}.text-red[_ngcontent-jgr-c18]{background-color:#d32f2f}@media screen and (min-device-width: 280px) and (max-device-width: 768px){button.accordion-button[_ngcontent-jgr-c18], button.accordion-button.collapsed[_ngcontent-jgr-c18]{font-size:12px!important;--bs-accordion-btn-icon-width: .8rem}.col-sm-12.col-md-7.col-lg-7.adj[_ngcontent-jgr-c18]{font-size:13px;width:60%}.col-sm-12.col-md-4.col-lg-4.adj[_ngcontent-jgr-c18]{font-size:13px;--bs-accordion-btn-icon-width: .8rem;width:auto}}button.accordion-button[_ngcontent-jgr-c18]{padding:12px 4px!important}.accordion-button[_ngcontent-jgr-c18]:not(.collapsed):after{right:0;position:absolute}.orange-background[_ngcontent-jgr-c18]{background:#2f6e99;border-radius:4px;margin:5px 0;color:#fff!important;padding:19px 10px 8px;height:98%}.white-box2[_ngcontent-jgr-c18]{background-color:#eaf0f4!important;border-right:1px solid #d1d1d1;margin:6px 2px;padding:5px 13px;border-radius:4px}.border-right[_ngcontent-jgr-c18]{border:none}@media all and (min-width: 280px) and (max-width: 600px){.col-4.col-sm-12.col-lg-5.col-md-5[_ngcontent-jgr-c18], .col-8.col-sm-12.col-lg-7.col-md-7[_ngcontent-jgr-c18], .col-12[_ngcontent-jgr-c18], .col-6[_ngcontent-jgr-c18], .col-4[_ngcontent-jgr-c18], .col-3[_ngcontent-jgr-c18], .col-9.col-sm-12.col-lg-9.col-md-9[_ngcontent-jgr-c18]{width:100%!important}}tbody[_ngcontent-jgr-c18], td[_ngcontent-jgr-c18]{border-color:inherit;border-style:solid;border-width:0;font-size:14px;font-weight:700;text-transform:none}.bg-blue[_ngcontent-jgr-c18]{color:#2f6e99}.bg-black[_ngcontent-jgr-c18]{color:#000}.p-r-l-0[_ngcontent-jgr-c18]{padding-left:0;padding-right:0}.p-l-0[_ngcontent-jgr-c18]{padding-left:0}.p-r-0[_ngcontent-jgr-c18]{padding-right:0}.abeyance-msg[_ngcontent-jgr-c18]{color:#cd5c5c;padding:20px}.f-w-700[_ngcontent-jgr-c18]{font-weight:700!important}.f-w-400[_ngcontent-jgr-c18]{font-weight:400!important}.f-s-15[_ngcontent-jgr-c18]{font-size:15px!important}.investor-container[_ngcontent-jgr-c18]{padding:0 5px 5px}.no-hover-btn[_ngcontent-jgr-c18]{background-color:#2f6e99!important;color:#fff;border:none;font-size:16px}.no-hover-btn[_ngcontent-jgr-c18]:hover, .no-hover-btn[_ngcontent-jgr-c18]:focus, .no-hover-btn[_ngcontent-jgr-c18]:active{background-color:#2f6e99!important;color:#fff!important;box-shadow:none!important}</style><style>.captcha-container[_ngcontent-jgr-c17]{padding:30px;width:100%}.captcha-actions[_ngcontent-jgr-c17]   input[type=text][_ngcontent-jgr-c17]{padding:5px;border:1px solid #ccc;border-radius:10px 0 0 10px;outline:none}.captcha-actions[_ngcontent-jgr-c17]   input[type=button][_ngcontent-jgr-c17]{outline:none;padding:6px;border:none;background:#ccc;border-radius:0 10px 10px 0}.captcha-actions[_ngcontent-jgr-c17]   a[_ngcontent-jgr-c17]{padding:10px;cursor:pointer;font-size:15px;font-weight:700;text-decoration:none;color:#222}.recaptcha-input[_ngcontent-jgr-c17]   .captcha-actions[_ngcontent-jgr-c17]   input[_ngcontent-jgr-c17]{border-radius:4px}.recaptcha-input[_ngcontent-jgr-c17]   canvas[_ngcontent-jgr-c17]{width:50%}.recaptcha-input[_ngcontent-jgr-c17]   .cpt-btn[_ngcontent-jgr-c17]{width:7%;font-size:25px;text-align:center}.toast-top-center[_ngcontent-jgr-c17]{top:12px;left:50%;margin:0 auto 0 -150px}</style><style>label.form-label[_ngcontent-jgr-c11], label.form-check-label[_ngcontent-jgr-c11]{font-size:15px!important;font-weight:400}.col-12.text-font[_ngcontent-jgr-c11]{padding:6px 0;font-size:14px}.col-12.text-font[_ngcontent-jgr-c11]   b[_ngcontent-jgr-c11]{color:#d15133}table[_ngcontent-jgr-c11]{width:100%!important}table.table[_ngcontent-jgr-c11]   tr[_ngcontent-jgr-c11]   td[_ngcontent-jgr-c11]{font-size:14px!important;font-weight:500;padding:10px!important}thead[_ngcontent-jgr-c11]   tr[_ngcontent-jgr-c11]   th[_ngcontent-jgr-c11]{font-size:14px!important;width:16px!important;border:1px solid #6ca1c4!important;color:#fff!important;padding:10px!important}tbody[_ngcontent-jgr-c11]   tr[_ngcontent-jgr-c11]   td[_ngcontent-jgr-c11]{border:1px solid #f0f0f0;color:#000!important;padding:10px!important}thead[_ngcontent-jgr-c11]{background-color:#2f6e99!important;color:#fff!important}label.form-label[_ngcontent-jgr-c11]{font-size:15px!important;font-weight:400!important}.white-box[_ngcontent-jgr-c11]{background-color:#fff;border:1px solid #d1d1d1;margin:6px 2px;padding:5px 13px;border-radius:4px}a#download[_ngcontent-jgr-c11]{background:#2F6E99;color:#fff;padding:5px 10px;border-radius:4px}.blue-color[_ngcontent-jgr-c11]{color:#2f6e99!important}tbody[_ngcontent-jgr-c11], td[_ngcontent-jgr-c11]{border-color:inherit;border-style:solid;border-width:0;font-size:14px;font-weight:700;text-transform:none}.bg-blue[_ngcontent-jgr-c11]{color:#2f6e99}.bg-black[_ngcontent-jgr-c11]{color:#000}.f-w-700[_ngcontent-jgr-c11]{font-weight:700!important}.f-w-400[_ngcontent-jgr-c11]{font-weight:400!important}</style><style>.uppercase[_ngcontent-jgr-c13]{text-transform:uppercase}.form-control[_ngcontent-jgr-c13]{height:36px!important;font-size:12px!important;letter-spacing:1px!important;display:inline-block!important;padding:5px 8px!important}.m-t-0[_ngcontent-jgr-c13]{margin-top:0}label.form-label[_ngcontent-jgr-c13], label.form-check-label[_ngcontent-jgr-c13]{font-size:15px!important;font-weight:400}.col-12.text-font[_ngcontent-jgr-c13]{padding:6px 0;font-size:14px}.col-12.text-font[_ngcontent-jgr-c13]   b[_ngcontent-jgr-c13]{color:#2f6e99}table[_ngcontent-jgr-c13]{width:100%!important}table.table[_ngcontent-jgr-c13]   tr[_ngcontent-jgr-c13]   td[_ngcontent-jgr-c13]{font-size:14px!important;font-weight:500;padding:10px!important}thead[_ngcontent-jgr-c13]   tr[_ngcontent-jgr-c13]   th[_ngcontent-jgr-c13]{font-size:14px!important;width:16px!important;border:1px solid #6ca1c4!important;color:#fff!important;padding:10px!important}tbody[_ngcontent-jgr-c13]   tr[_ngcontent-jgr-c13]   td[_ngcontent-jgr-c13]{border:1px solid #f0f0f0;color:#000!important;padding:10px!important}thead[_ngcontent-jgr-c13]{background-color:#2f6e99!important;color:#fff!important}label.form-label[_ngcontent-jgr-c13]{font-size:15px!important;font-weight:400!important}.white-box[_ngcontent-jgr-c13]{background-color:#fff;border:1px solid #d1d1d1;margin:6px 2px;padding:5px 13px;border-radius:4px}a#download[_ngcontent-jgr-c13]{background:#2f6e99;color:#fff;padding:5px 10px;border-radius:4px}tbody[_ngcontent-jgr-c13], td[_ngcontent-jgr-c13]{border-color:inherit;border-style:solid;border-width:0;font-size:14px;font-weight:700;text-transform:none}.bg-blue[_ngcontent-jgr-c13]{color:#2f6e99}.bg-black[_ngcontent-jgr-c13]{color:#000}.f-w-700[_ngcontent-jgr-c13]{font-weight:700!important}.f-w-400[_ngcontent-jgr-c13]{font-weight:400!important}</style><style>.form-control[_ngcontent-jgr-c10]{height:36px!important;font-size:12px!important;letter-spacing:1px!important;display:inline-block!important;padding:5px 8px!important}.serial-no[_ngcontent-jgr-c10]{text-align:center;padding-right:0!important;padding-left:0!important}@media screen and (min-device-width: 280px) and (max-device-width: 768px){button.accordion-button[_ngcontent-jgr-c10], button.accordion-button.collapsed[_ngcontent-jgr-c10]{font-size:12px!important;--bs-accordion-btn-icon-width: .8rem}.col-sm-12.col-md-7.col-lg-7.adj[_ngcontent-jgr-c10]{font-size:13px;width:60%}.col-sm-12.col-md-4.col-lg-4.adj[_ngcontent-jgr-c10]{font-size:13px;--bs-accordion-btn-icon-width: .8rem;width:auto}}thead[_ngcontent-jgr-c10]   th[_ngcontent-jgr-c10]{background-color:#2f6e99!important;color:#fff!important}button.accordion-button[_ngcontent-jgr-c10]{margin:8px 0}.accordion-button[_ngcontent-jgr-c10]:not(.collapsed):after{right:0;position:absolute}</style><style>.form-control[_ngcontent-jgr-c8]{height:36px!important;font-size:12px!important;letter-spacing:1px!important;display:inline-block!important;padding:5px 8px!important}.disable-text[_ngcontent-jgr-c8]{color:#999!important;background-color:#f2f2f2!important}.m-t-0[_ngcontent-jgr-c8]{margin-top:0}label.form-label[_ngcontent-jgr-c8]{font-size:15px;color:#fff}.box[_ngcontent-jgr-c8]{border-radius:6px;border:1px solid #d1d1d1;padding:0 12px}.col-12.text-font[_ngcontent-jgr-c8]{font-size:95%}@media screen and (min-device-width: 280px) and (max-device-width: 768px){.col-sm-12.col-md-3.col-lg-3[_ngcontent-jgr-c8], .col-sm-12.col-md-6.col-lg-6[_ngcontent-jgr-c8]{width:100%!important}}</style><style>.form-control[_ngcontent-jgr-c9]{height:36px!important;font-size:12px!important;letter-spacing:1px!important;display:inline-block!important;padding:15px 8px!important}label.form-label[_ngcontent-jgr-c9], label.form-check-label[_ngcontent-jgr-c9]{font-size:14px!important}.bg-blue[_ngcontent-jgr-c9]{color:#2f6e99}.bg-black[_ngcontent-jgr-c9]{color:#000}.f-w-700[_ngcontent-jgr-c9]{font-weight:700!important}.f-w-400[_ngcontent-jgr-c9]{font-weight:400!important}.f-s-15[_ngcontent-jgr-c9]{font-size:15px!important}table[_ngcontent-jgr-c9]{width:100%!important}table.table[_ngcontent-jgr-c9]   tr[_ngcontent-jgr-c9]   td[_ngcontent-jgr-c9]{font-size:14px!important;font-weight:500;padding:10px!important}thead[_ngcontent-jgr-c9]   tr[_ngcontent-jgr-c9]   th[_ngcontent-jgr-c9]{font-size:14px!important;border:1px solid #6ca1c4!important;color:#fff!important;padding:10px!important}tbody[_ngcontent-jgr-c9]   tr[_ngcontent-jgr-c9]   td[_ngcontent-jgr-c9]{border:1px solid #f0f0f0;color:#000!important;padding:10px!important}thead[_ngcontent-jgr-c9]{background-color:#2f6e99!important;color:#fff!important}a#download[_ngcontent-jgr-c9]{background:#2F6E99;color:#fff;padding:5px 10px;border-radius:4px}.investor-container[_ngcontent-jgr-c9]{padding:0 5px 5px}</style><style>.form-control[_ngcontent-jgr-c12]{height:36px!important;font-size:12px!important;letter-spacing:1px!important;display:inline-block!important;padding:5px 8px!important}label.form-label[_ngcontent-jgr-c12], label.form-check-label[_ngcontent-jgr-c12]{font-size:15px!important;font-weight:400}.col-12.text-font[_ngcontent-jgr-c12]{padding:6px 0;font-size:14px}.col-12.text-font[_ngcontent-jgr-c12]   b[_ngcontent-jgr-c12]{color:#2f6e99}table[_ngcontent-jgr-c12]{width:100%!important}table.table[_ngcontent-jgr-c12]   tr[_ngcontent-jgr-c12]   td[_ngcontent-jgr-c12]{font-size:14px!important;font-weight:500;padding:10px!important}thead[_ngcontent-jgr-c12]   tr[_ngcontent-jgr-c12]   th[_ngcontent-jgr-c12]{font-size:14px!important;width:16px!important;border:1px solid #6ca1c4!important;color:#fff!important;padding:10px!important}tbody[_ngcontent-jgr-c12]   tr[_ngcontent-jgr-c12]   td[_ngcontent-jgr-c12]{border:1px solid #f0f0f0;color:#000!important;padding:10px!important}thead[_ngcontent-jgr-c12]{background-color:#2f6e99!important;color:#fff!important}label.form-label[_ngcontent-jgr-c12]{font-size:15px!important;font-weight:400!important}.white-box[_ngcontent-jgr-c12]{background-color:#fff;border:1px solid #d1d1d1;margin:6px 2px;padding:5px 13px;border-radius:4px}a#download[_ngcontent-jgr-c12]{background:#2f6e99;color:#fff;padding:5px 10px;border-radius:4px}tbody[_ngcontent-jgr-c12], td[_ngcontent-jgr-c12]{border-color:inherit;border-style:solid;border-width:0;font-size:14px;font-weight:700;text-transform:none}.bg-blue[_ngcontent-jgr-c12]{color:#2f6e99}.bg-black[_ngcontent-jgr-c12]{color:#000}.f-w-700[_ngcontent-jgr-c12]{font-weight:700!important}.f-w-400[_ngcontent-jgr-c12]{font-weight:400!important}</style><style>.disabled-select[_ngcontent-jgr-c14]{pointer-events:none;background-color:#eee;color:#888}.form-control[_ngcontent-jgr-c14]{height:36px!important;font-size:12px!important;letter-spacing:1px!important;display:inline-block!important;padding:5px 8px!important}.serial-no[_ngcontent-jgr-c14]{text-align:center;padding-right:0!important;padding-left:0!important}label.form-label[_ngcontent-jgr-c14], label.form-check-label[_ngcontent-jgr-c14]{font-size:15px!important;font-weight:400}.white-box2[_ngcontent-jgr-c14]{background-color:transparent!important;border-right:1px solid #d1d1d1;margin:6px 2px;padding:5px 13px;border-radius:4px}.border-right[_ngcontent-jgr-c14]{border:none}.col-4.col-sm-12.col-md-4.col-lg-4.wh[_ngcontent-jgr-c14]{padding-right:3px!important;padding-left:3px!important}.col-12.text-font[_ngcontent-jgr-c14]{padding:6px 0;font-size:14px}.col-12.text-font[_ngcontent-jgr-c14]   b[_ngcontent-jgr-c14]{color:#d15133}table[_ngcontent-jgr-c14]{width:100%!important}table.table[_ngcontent-jgr-c14]   tr[_ngcontent-jgr-c14]   td[_ngcontent-jgr-c14]{font-size:14px!important;font-weight:500;padding:10px!important}thead[_ngcontent-jgr-c14]   tr[_ngcontent-jgr-c14]   th[_ngcontent-jgr-c14]{font-size:14px!important;width:16px!important;border:1px solid #6ca1c4!important;color:#fff!important;padding:10px!important}tbody[_ngcontent-jgr-c14]   tr[_ngcontent-jgr-c14]   td[_ngcontent-jgr-c14]{border:1px solid #f0f0f0;color:#000!important;padding:10px!important}thead[_ngcontent-jgr-c14]{background-color:#2f6e99!important;color:#fff!important}label.form-label[_ngcontent-jgr-c14]{font-size:15px!important;font-weight:400!important}.white-box[_ngcontent-jgr-c14]{background-color:#fff;border:1px solid #d1d1d1;margin:6px 2px;padding:5px 13px;border-radius:4px}a#download[_ngcontent-jgr-c14], a.Download[_ngcontent-jgr-c14]{background:#2F6E99;color:#fff;padding:5px 10px;border-radius:4px}tbody[_ngcontent-jgr-c14], td[_ngcontent-jgr-c14]{border-color:inherit;border-style:solid;border-width:0;font-size:14px;font-weight:700;text-transform:none}.bg-blue[_ngcontent-jgr-c14]{color:#2f6e99}.bg-black[_ngcontent-jgr-c14]{color:#000}.f-w-700[_ngcontent-jgr-c14]{font-weight:700!important}.f-w-400[_ngcontent-jgr-c14]{font-weight:400!important}</style><script type="text/javascript" charset="UTF-8" src="https://maps.googleapis.com/maps-api-v3/api/js/64/12d/common.js"></script><script type="text/javascript" charset="UTF-8" src="https://maps.googleapis.com/maps-api-v3/api/js/64/12d/util.js"></script></head><body><!--
+
+    This is the single-spa Layout Definition for your microfrontends.
+    See https://single-spa.js.org/docs/layout-definition/ for more information.
+
+  --><!-- Example layouts you might find helpful:
+
+  <nav>
+    <application name="@org/navbar"></application>
+  </nav>
+  <route path="settings">
+    <application name="@org/settings"></application>
+  </route>
+
+  --><main><div id="single-spa-application:@maha-rera/header"><header-root _nghost-nom-c3="" ng-version="15.2.9"><header-component _ngcontent-nom-c3="" _nghost-nom-c1=""><header _ngcontent-nom-c1="" id="header" class="row header fixed-top d-flex align-items-center"><div _ngcontent-nom-c1="" class="d-flex align-items-center px-3 col-9 col-md-9 col-lg-10"><a _ngcontent-nom-c1="" href="javascript:void(0)" class="logo d-flex align-items-center"><img _ngcontent-nom-c1="" alt="" style="width: 83px;" src="https://maharerait.maharashtra.gov.in/content/assets/img/maharera-logo-bg-blue.png"></a><span _ngcontent-nom-c1="" class="mrera-text">Maharashtra Real Estate Regulatory Authority</span></div><!----><!----><div _ngcontent-nom-c1="" class="col-3 col-md-3 col-lg-2 d-flex justify-content-end"><!----></div></header></header-component><app-alert-box _ngcontent-nom-c3="" _nghost-nom-c2=""><!----></app-alert-box><!----><router-outlet _ngcontent-nom-c3=""></router-outlet><!----><!----></header-root></div><div id="single-spa-application:@maha-rera/public"><project-root _nghost-jgr-c5="" ng-version="15.2.9"><router-outlet _ngcontent-jgr-c5=""></router-outlet><project-project-preview-app _nghost-jgr-c19=""><router-outlet _ngcontent-jgr-c19=""></router-outlet><new-project-preview _nghost-jgr-c18=""><main _ngcontent-jgr-c18="" id="main" class="main"><i _ngcontent-jgr-c18="" class="bi bi-list toggle-sidebar-btn"></i><div _ngcontent-jgr-c18="" class="card info-card sales-card container" style="background-color: white !important;"><section _ngcontent-jgr-c18="" class="section dashboard"><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="col-lg-12"><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" id="hidden_div"><div _ngcontent-jgr-c18="" class="d-flex align-items-center"><div _ngcontent-jgr-c18="" class="container-fluid"><div _ngcontent-jgr-c18="" class="row justify-content-center mt-0"><div _ngcontent-jgr-c18="" class="col-12"><form _ngcontent-jgr-c18="" novalidate="" class="ng-untouched ng-pristine ng-valid"><fieldset _ngcontent-jgr-c18=""><div _ngcontent-jgr-c18="" class="row" style="background-color: #ffffff; padding: 15px 0 10px 0; border-bottom: 1px solid #e8e8e8;"><div _ngcontent-jgr-c18="" class="col-sm-12 col-lg-5 col-md-5"><h4 _ngcontent-jgr-c18=""><b _ngcontent-jgr-c18="">Project Details</b></h4></div><div _ngcontent-jgr-c18="" class="col-sm-12 col-lg-7 col-md-7" style="background-color: #fdf8f7; padding: 5px 2%; border: 1px solid #f7eae8;"><div _ngcontent-jgr-c18="" class="row justify-content-center mb-2"><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-6 col-lg-6"><label _ngcontent-jgr-c18="" for="yourUsername" class="bg-blue f-w-700">Registration Number</label> : <label _ngcontent-jgr-c18="" class="bg-blue f-w-700">PP1190002502346</label></div><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-6 col-lg-6"><label _ngcontent-jgr-c18="" for="yourUsername" class="bg-blue f-w-700">Date of Registration</label> : <label _ngcontent-jgr-c18="" class="bg-blue f-w-700">13/02/2026</label></div></div><!----></div></div><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="col-3 col-sm-12 col-lg-3 col-md-3"><div _ngcontent-jgr-c18="" class="row" style="margin-top: 20px; margin-bottom: 20px; background: #2f6e99; border-radius: 4px; margin: 5px 0 5px 0; color: white !important; padding: 19px 10px; height: 98%;"><div _ngcontent-jgr-c18="" class="col-12"><div _ngcontent-jgr-c18="" class="col-12 text-font"><p _ngcontent-jgr-c18="" class="MsoNormal" style="margin-bottom: 0in; line-height: normal; font-weight: bolder;"><span _ngcontent-jgr-c18="" lang="EN-IN">Project Status</span></p></div><div _ngcontent-jgr-c18="" class="col-12 text-font"><p _ngcontent-jgr-c18="" class="MsoNormal" style="margin-bottom: 0in; line-height: normal;"><span _ngcontent-jgr-c18="" lang="EN-IN">Active </span></p></div></div><!----><div _ngcontent-jgr-c18="" class="col-12 d-flex align-items-center"><p _ngcontent-jgr-c18="" class="MsoNormal mb-0"><span _ngcontent-jgr-c18="" lang="EN-IN" style="font-weight: bolder;">Certificate Download</span></p><button _ngcontent-jgr-c18="" type="button" value="Upload" class="col-md-2 upload"><i _ngcontent-jgr-c18="" title="Download Certificate" data-toggle="tooltip" class="bi bi-cloud-download" style="color: white; padding-left: 0;"></i></button></div></div></div><div _ngcontent-jgr-c18="" class="col-9 col-sm-12 col-lg-9 col-md-9 p-r-l-0"><div _ngcontent-jgr-c18="" class="row" style="background-color: #fdf8f7; border: 1px solid #f7eae8; border-radius: 4px; margin: 5px 0 5px 0; padding: 5px;"><div _ngcontent-jgr-c18="" class="card-header" style="background-color: white;"><span _ngcontent-jgr-c18="" class="font-weight-bold"><b _ngcontent-jgr-c18="">Basic Details</b></span></div><div _ngcontent-jgr-c18="" class="col-4 col-sm-12 col-md-4 col-lg-4"><div _ngcontent-jgr-c18="" class="col-12 text-font f-s-15"> Project Location </div><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700">Maharashtra</div></div><div _ngcontent-jgr-c18="" class="col-4 col-sm-12 col-md-4 col-lg-4"><div _ngcontent-jgr-c18="" class="col-12 text-font f-s-15"> Project Type </div><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700">Plotted </div></div><div _ngcontent-jgr-c18="" class="col-4 col-sm-12 col-md-4 col-lg-4"><div _ngcontent-jgr-c18="" class="col-12 text-font f-s-15"> Project Name </div><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700">VISION CITY 3 </div></div><div _ngcontent-jgr-c18="" class="col-4 col-sm-12 col-md-4 col-lg-4"><div _ngcontent-jgr-c18="" class="col-12 text-font f-s-15"> Proposed Completion Date (Original) </div><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700">31/12/2030 </div></div><!----><!----></div></div></div><div _ngcontent-jgr-c18="" class="form-card"><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="col-3 col-sm-12 col-lg-3 col-md-3"><div _ngcontent-jgr-c18="" class="row" style="margin-top: 20px; margin-bottom: 20px; background: #2f6e99; border-radius: 4px; margin: 5px 0 5px 0; color: white !important; padding: 19px 10px; height: 98%;"><div _ngcontent-jgr-c18="" class="col-12"><div _ngcontent-jgr-c18="" class="col-12 text-font"><p _ngcontent-jgr-c18="" class="MsoNormal" style="margin-bottom: 0in; line-height: normal; font-weight: bolder;"><span _ngcontent-jgr-c18="" lang="EN-IN">Planning Authority</span></p></div><div _ngcontent-jgr-c18="" class="col-12 text-font"><p _ngcontent-jgr-c18="" class="MsoNormal" style="margin-bottom: 0in; line-height: normal;"> Others </p></div></div><div _ngcontent-jgr-c18="" class="col-12"><div _ngcontent-jgr-c18="" class="col-12 text-font"><p _ngcontent-jgr-c18="" class="MsoNormal" style="margin-bottom: 0in; line-height: normal; font-weight: bolder;"><span _ngcontent-jgr-c18="" lang="EN-IN">Full Name of the Planning Authority</span></p></div><!----><div _ngcontent-jgr-c18="" class="col-12 text-font"><p _ngcontent-jgr-c18="" class="MsoNormal" style="margin-bottom: 0in; line-height: normal;"> NAGPUR METROPOLITAN REGION DEVELOPMENT AUTHORITY </p></div></div><!----></div></div><div _ngcontent-jgr-c18="" class="col-9 col-sm-12 col-lg-9 col-md-9 p-r-l-0"><div _ngcontent-jgr-c18="" class="row" style="background-color: #ffffff; border: 1px solid #e5e5e5; border-radius: 4px; margin: 5px 0 5px 0; padding: 5px;"><div _ngcontent-jgr-c18="" class="card-header" style="background-color: white;"><span _ngcontent-jgr-c18="" class="font-weight-bold"><b _ngcontent-jgr-c18="">Land Area &amp; Address Details</b></span></div><!----><div _ngcontent-jgr-c18="" class="col-6 col-sm-12 col-md-6 col-lg-6 wh"><div _ngcontent-jgr-c18="" class="white-box"><label _ngcontent-jgr-c18="" class="form-label"> Final Plot bearing No/CTS Number/Survey Number</label><div _ngcontent-jgr-c18="" class="d-flex align-items-center"><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700"> 102/5 </div></div></div></div><div _ngcontent-jgr-c18="" class="col-6 col-sm-12 col-md-6 col-lg-6 wh"><div _ngcontent-jgr-c18="" class="white-box"><label _ngcontent-jgr-c18="" class="form-label">Total Land Area of Approved Layout (Sq. Mts.)</label><div _ngcontent-jgr-c18="" class="d-flex align-items-center"><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700"> 10864.97 </div></div></div></div><div _ngcontent-jgr-c18="" class="col-6 col-sm-12 col-md-6 col-lg-6 wh"><div _ngcontent-jgr-c18="" class="white-box"><label _ngcontent-jgr-c18="" class="form-label">Land Area for Project Applied for this Registration (Sq. Mts) </label><div _ngcontent-jgr-c18="" class="d-flex align-items-center"><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700"> 10864.97 </div></div></div></div><div _ngcontent-jgr-c18="" class="col-6 col-sm-12 col-md-6 col-lg-6 wh"><div _ngcontent-jgr-c18="" class="white-box" style="height: 98px;"><label _ngcontent-jgr-c18="" class="form-label"> Permissible Built-up Area</label><div _ngcontent-jgr-c18="" class="d-flex align-items-center"><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700"> 0 </div></div></div></div><div _ngcontent-jgr-c18="" class="col-6 col-sm-12 col-md-6 col-lg-6 wh"><div _ngcontent-jgr-c18="" class="white-box"><label _ngcontent-jgr-c18="" class="form-label">Sanctioned Built-up Area of the Project applied for Registration </label><div _ngcontent-jgr-c18="" class="d-flex align-items-center"><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700"> 0 </div></div></div></div><div _ngcontent-jgr-c18="" class="col-6 col-sm-12 col-md-6 col-lg-6 wh"><div _ngcontent-jgr-c18="" class="white-box"><label _ngcontent-jgr-c18="" class="form-label">Aggregate area(in sq. mts) of recreational open space as per Layout / DP Remarks</label><div _ngcontent-jgr-c18="" class="d-flex align-items-center"><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700"> 2014.51 </div></div></div></div></div></div></div></div><div _ngcontent-jgr-c18="" class="form-card"><div _ngcontent-jgr-c18=""><fieldset _ngcontent-jgr-c18=""><fieldset _ngcontent-jgr-c18="" disabled=""><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="white-box"><!----><div _ngcontent-jgr-c18="" class="col-md-12 d-flex justify-content-between align-items-center mb-1 m-t-15"><h5 _ngcontent-jgr-c18="" class="card-title mb-0" style="line-height: 34px;"> Commencement Certificate / NA Order Documents Details </h5></div><hr _ngcontent-jgr-c18=""><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-12 col-lg-12 table-responsive"><table _ngcontent-jgr-c18=""><thead _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><th _ngcontent-jgr-c18="" width="5%" class="center-text"># </th><th _ngcontent-jgr-c18="" width="20%">CC/NA Order Issued to </th><th _ngcontent-jgr-c18="" width="22%">CC/NA Order in the name of</th><th _ngcontent-jgr-c18="" width="15%">Date of CC/NA Order</th><th _ngcontent-jgr-c18="" width="15%">CC/NA Order Document </th><th _ngcontent-jgr-c18="" width="10%">Is CC One Year Old </th><th _ngcontent-jgr-c18="" width="12%">Supporting Document</th></tr></thead><tbody _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" class="center-text">1</td><td _ngcontent-jgr-c18="">Promoter</td><td _ngcontent-jgr-c18="">VISION INFRA</td><td _ngcontent-jgr-c18="">03/09/2025</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download declaratio`n proof" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a></td><td _ngcontent-jgr-c18="">No </td><td _ngcontent-jgr-c18=""><!----></td></tr><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" class="center-text">2</td><td _ngcontent-jgr-c18="">Promoter</td><td _ngcontent-jgr-c18="">VISION INFRA</td><td _ngcontent-jgr-c18="">06/05/2025</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download declaratio`n proof" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a></td><td _ngcontent-jgr-c18="">No </td><td _ngcontent-jgr-c18=""><!----></td></tr><!----></tbody></table></div></div></div></fieldset><div _ngcontent-jgr-c18="" class="row"><fieldset _ngcontent-jgr-c18="" style="padding-right: 3px;" disabled=""><form _ngcontent-jgr-c18="" novalidate="" class="ng-untouched ng-pristine ng-valid"><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="col-6 col-sm-12 col-md-6 col-lg-6 wh"><div _ngcontent-jgr-c18="" class="white-box"><h5 _ngcontent-jgr-c18="" class="card-title" style="line-height: 34px;"> Project Address Details </h5><hr _ngcontent-jgr-c18=""><!----><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c18="" class="row"><label _ngcontent-jgr-c18="" class="form-label col-4">Street Name</label><div _ngcontent-jgr-c18="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700"> UMRER ROAD </div></div></div></div><!----><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c18="" class="row"><label _ngcontent-jgr-c18="" class="form-label col-4">Locality</label><div _ngcontent-jgr-c18="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700"> MOUZA UMARGAON </div></div></div></div><!----><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c18="" class="row"><label _ngcontent-jgr-c18="" class="form-label col-4"> State/UT </label><div _ngcontent-jgr-c18="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700"> MAHARASHTRA </div></div></div></div><!----><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c18="" class="row"><label _ngcontent-jgr-c18="" class="form-label col-4"> District </label><div _ngcontent-jgr-c18="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700"> Nagpur </div></div></div></div><!----><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c18="" class="row"><label _ngcontent-jgr-c18="" class="form-label col-4"> Taluka </label><div _ngcontent-jgr-c18="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700"> Nagpur (Rural) </div></div></div></div><!----><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c18="" class="row"><label _ngcontent-jgr-c18="" class="form-label col-4"> Village </label><div _ngcontent-jgr-c18="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700"> Umergaon </div></div></div></div><!----><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c18="" class="row"><label _ngcontent-jgr-c18="" class="form-label col-4"> Pin Code </label><div _ngcontent-jgr-c18="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700"> 441204 </div></div></div></div><!----><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c18="" class="row"><label _ngcontent-jgr-c18="" class="form-label col-4"> Boundaries East </label><div _ngcontent-jgr-c18="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700"> KHASARA NO. 100 AND 101 </div></div></div></div><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c18="" class="row"><label _ngcontent-jgr-c18="" class="form-label col-4"> Boundaries West </label><div _ngcontent-jgr-c18="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700"> KHASARA NO. 103 </div></div></div></div><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c18="" class="row"><label _ngcontent-jgr-c18="" class="form-label col-4"> Boundaries South </label><div _ngcontent-jgr-c18="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700"> ROAD </div></div></div></div><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c18="" class="row"><label _ngcontent-jgr-c18="" class="form-label col-4"> Boundaries North </label><div _ngcontent-jgr-c18="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c18="" class="col-12 text-font f-w-700"> KHASARA NO. 89/1 </div></div></div></div><project-geo-tagging-preview _ngcontent-jgr-c18="" _nghost-jgr-c11=""><fieldset _ngcontent-jgr-c11=""><form _ngcontent-jgr-c11="" novalidate="" class="ng-untouched ng-pristine ng-valid"><div _ngcontent-jgr-c11="" class="form-card" style="padding: 0;"><fieldset _ngcontent-jgr-c11="" disabled=""><div _ngcontent-jgr-c11="" class="row" style="background-color: #eaf0f4; margin: 6px 0; color: #2F6E99!important;"><div _ngcontent-jgr-c11="" class="col-sm-12 col-md-6 col-lg-6"><label _ngcontent-jgr-c11="" class="form-label col-5 blue-color"> Longitude : </label><div _ngcontent-jgr-c11="" class="d-flex align-items-center col-7"><div _ngcontent-jgr-c11="" class="col-12 text-font f-w-700"> 79.17896805402802 </div></div></div><div _ngcontent-jgr-c11="" class="col-sm-12 col-md-6 col-lg-6"><label _ngcontent-jgr-c11="" class="form-label col-5 blue-color"> Latitude : </label><div _ngcontent-jgr-c11="" class="d-flex align-items-center col-7"><div _ngcontent-jgr-c11="" class="col-12 text-font f-w-700"> 21.07312106246724 </div></div></div></div></fieldset></div></form></fieldset></project-geo-tagging-preview></div></div><div _ngcontent-jgr-c18="" class="col-6 col-sm-12 col-md-6 col-lg-6 wh"><div _ngcontent-jgr-c18="" class="white-box"><div _ngcontent-jgr-c18=""><project-general-information-preview _ngcontent-jgr-c18="" _nghost-jgr-c13=""><fieldset _ngcontent-jgr-c13=""><form _ngcontent-jgr-c13="" novalidate="" class="ng-untouched ng-pristine"><div _ngcontent-jgr-c13=""><div _ngcontent-jgr-c13=""><h5 _ngcontent-jgr-c13="" class="card-title" style="line-height: 34px;"> Promoter Details </h5></div></div><hr _ngcontent-jgr-c13=""><!----><!----><!----><div _ngcontent-jgr-c13="" class="row"><div _ngcontent-jgr-c13="" class="col-12 col-sm-12 col-md-6 col-lg-6 wh"><div _ngcontent-jgr-c13="" class="row"><label _ngcontent-jgr-c13="" class="form-label col-4"> Promoter Type </label><div _ngcontent-jgr-c13="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c13="" class="col-12 text-font f-w-700"> Partnership </div></div></div></div><div _ngcontent-jgr-c13="" class="col-12 col-sm-12 col-md-6 col-lg-6 wh"><div _ngcontent-jgr-c13="" class="row"><label _ngcontent-jgr-c13="" class="form-label col-4" style="padding-right: 0;"> Name of Partnership </label><div _ngcontent-jgr-c13="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c13="" class="col-12 text-font f-w-700"> VISION INFRA </div></div></div></div><!----><!----><!----><!----><!----><!----><!----><!----></div><!----><!----><div _ngcontent-jgr-c13=""><hr _ngcontent-jgr-c13=""><div _ngcontent-jgr-c13="" class="card-title"><h5 _ngcontent-jgr-c13="" class="card-title" style="line-height: 34px;"> Promoter Official Communication Address </h5></div><hr _ngcontent-jgr-c13="" class="m-t-0"><project-communication-address-preview _ngcontent-jgr-c13="" _nghost-jgr-c12=""><fieldset _ngcontent-jgr-c12="" disabled=""><form _ngcontent-jgr-c12="" novalidate="" class="ng-untouched ng-pristine"><div _ngcontent-jgr-c12="" class="row"><div _ngcontent-jgr-c12="" class="col-sm-12 col-md-12 col-lg-12 has-validation"><div _ngcontent-jgr-c12="" class="row"><label _ngcontent-jgr-c12="" class="form-label col-4"> Unit Number </label><div _ngcontent-jgr-c12="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c12="" class="col-12 text-font f-w-700"> SHOP NO F/7 </div></div></div></div><!----><div _ngcontent-jgr-c12="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c12="" class="row"><label _ngcontent-jgr-c12="" class="form-label col-4"> Block Number </label><div _ngcontent-jgr-c12="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c12="" class="col-12 text-font f-w-700"> F/7 </div></div></div></div><!----><div _ngcontent-jgr-c12="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c12="" class="row"><label _ngcontent-jgr-c12="" class="form-label col-4"> Building Name </label><div _ngcontent-jgr-c12="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c12="" class="col-12 text-font f-w-700"> SHIVDARSHAN APARTMENT NO 1 </div></div></div></div><!----><div _ngcontent-jgr-c12="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c12="" class="row"><label _ngcontent-jgr-c12="" class="form-label col-4"> Street Name </label><div _ngcontent-jgr-c12="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c12="" class="col-12 text-font f-w-700"> UMRER ROAD </div></div></div></div><!----><div _ngcontent-jgr-c12="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c12="" class="row"><label _ngcontent-jgr-c12="" class="form-label col-4"> Locality </label><div _ngcontent-jgr-c12="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c12="" class="col-12 text-font f-w-700"> DIGHORI </div></div></div></div><!----><div _ngcontent-jgr-c12="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c12="" class="row"><label _ngcontent-jgr-c12="" class="form-label col-4"> Landmark </label><div _ngcontent-jgr-c12="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c12="" class="col-12 text-font f-w-700"> SHIVDARSHAN APARTMENT </div></div></div></div><!----><div _ngcontent-jgr-c12="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c12="" class="row"><label _ngcontent-jgr-c12="" class="form-label col-4"> State/UT </label><div _ngcontent-jgr-c12="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c12="" class="col-12 text-font f-w-700"> MAHARASHTRA </div></div></div></div><!----><div _ngcontent-jgr-c12="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c12="" class="row"><label _ngcontent-jgr-c12="" class="form-label col-4"> District </label><div _ngcontent-jgr-c12="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c12="" class="col-12 text-font f-w-700"> Nagpur </div></div></div></div><!----><div _ngcontent-jgr-c12="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c12="" class="row"><label _ngcontent-jgr-c12="" class="form-label col-4"> Taluka </label><div _ngcontent-jgr-c12="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c12="" class="col-12 text-font f-w-700"> Nagpur (Urban) </div></div></div></div><!----><div _ngcontent-jgr-c12="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c12="" class="row"><label _ngcontent-jgr-c12="" class="form-label col-4"> Village </label><div _ngcontent-jgr-c12="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c12="" class="col-12 text-font f-w-700"> Nagpur (M Corp.) </div></div></div></div><!----><div _ngcontent-jgr-c12="" class="col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c12="" class="row"><label _ngcontent-jgr-c12="" class="form-label col-4"> Pin Code </label><div _ngcontent-jgr-c12="" class="d-flex align-items-center col-8"><div _ngcontent-jgr-c12="" class="col-12 text-font f-w-700"> 440034 </div></div></div></div><!----></div></form></fieldset></project-communication-address-preview></div></form></fieldset></project-general-information-preview></div></div></div></div></form></fieldset></div></fieldset></div><br _ngcontent-jgr-c18=""><div _ngcontent-jgr-c18="" class="table-responsive"><div _ngcontent-jgr-c18="" class="tabs"><button _ngcontent-jgr-c18="" class="active"> Partner Details </button><!----><!----><button _ngcontent-jgr-c18=""> Promoter Past Experience Details </button><!----><!----><button _ngcontent-jgr-c18=""> Authorised Signatory </button><!----><!----><button _ngcontent-jgr-c18=""> Single Point of Contact </button><!----><!----><button _ngcontent-jgr-c18=""> Allottee Grievance Redressal Officer </button><!----><!----><button _ngcontent-jgr-c18=""> Project Professionals </button><!----><!----><button _ngcontent-jgr-c18=""> SRO Details </button><!----><!----><!----></div><div _ngcontent-jgr-c18=""><project-personnel-modal-preview _ngcontent-jgr-c18="" _nghost-jgr-c14=""><fieldset _ngcontent-jgr-c14=""><form _ngcontent-jgr-c14="" novalidate="" class="ng-untouched ng-pristine ng-valid"><div _ngcontent-jgr-c14="" class="row"><div _ngcontent-jgr-c14="" class="col-md-12 table-responsive"><table _ngcontent-jgr-c14=""><thead _ngcontent-jgr-c14=""><tr _ngcontent-jgr-c14=""><th _ngcontent-jgr-c14="" width="5%" class="center-text">#</th><th _ngcontent-jgr-c14="" width="45%">Name</th><th _ngcontent-jgr-c14="" width="45%">Designation</th><th _ngcontent-jgr-c14="" width="5%">View</th></tr></thead><tbody _ngcontent-jgr-c14=""><tr _ngcontent-jgr-c14=""><td _ngcontent-jgr-c14="" class="center-text">1</td><td _ngcontent-jgr-c14="">GIRISH YADAORAO SAKHARKAR</td><td _ngcontent-jgr-c14="">Partner</td><td _ngcontent-jgr-c14=""><a _ngcontent-jgr-c14="" data-toggle="tooltip" data-bs-original-title="Edit" href="javascript:void(0)" class="Download"><i _ngcontent-jgr-c14="" data-toggle="tooltip" aria-label="View " data-bs-original-title="Download" class="bi bi-eye-fill"></i></a></td></tr><tr _ngcontent-jgr-c14=""><td _ngcontent-jgr-c14="" class="center-text">2</td><td _ngcontent-jgr-c14="">VIJAY RAJKUMAR JAIN</td><td _ngcontent-jgr-c14="">Partner</td><td _ngcontent-jgr-c14=""><a _ngcontent-jgr-c14="" data-toggle="tooltip" data-bs-original-title="Edit" href="javascript:void(0)" class="Download"><i _ngcontent-jgr-c14="" data-toggle="tooltip" aria-label="View " data-bs-original-title="Download" class="bi bi-eye-fill"></i></a></td></tr><tr _ngcontent-jgr-c14=""><td _ngcontent-jgr-c14="" class="center-text">3</td><td _ngcontent-jgr-c14="">BIRENDRA KUMAR ONKARMAL YADUKA</td><td _ngcontent-jgr-c14="">Partner</td><td _ngcontent-jgr-c14=""><a _ngcontent-jgr-c14="" data-toggle="tooltip" data-bs-original-title="Edit" href="javascript:void(0)" class="Download"><i _ngcontent-jgr-c14="" data-toggle="tooltip" aria-label="View " data-bs-original-title="Download" class="bi bi-eye-fill"></i></a></td></tr><tr _ngcontent-jgr-c14=""><td _ngcontent-jgr-c14="" class="center-text">4</td><td _ngcontent-jgr-c14="">KISHORI VIJAY ZALKE</td><td _ngcontent-jgr-c14="">Partner</td><td _ngcontent-jgr-c14=""><a _ngcontent-jgr-c14="" data-toggle="tooltip" data-bs-original-title="Edit" href="javascript:void(0)" class="Download"><i _ngcontent-jgr-c14="" data-toggle="tooltip" aria-label="View " data-bs-original-title="Download" class="bi bi-eye-fill"></i></a></td></tr><tr _ngcontent-jgr-c14=""><td _ngcontent-jgr-c14="" class="center-text">5</td><td _ngcontent-jgr-c14="">PANKAJ HEMCHAND JAIN</td><td _ngcontent-jgr-c14="">Partner</td><td _ngcontent-jgr-c14=""><a _ngcontent-jgr-c14="" data-toggle="tooltip" data-bs-original-title="Edit" href="javascript:void(0)" class="Download"><i _ngcontent-jgr-c14="" data-toggle="tooltip" aria-label="View " data-bs-original-title="Download" class="bi bi-eye-fill"></i></a></td></tr><!----></tbody></table></div></div></form></fieldset><!----></project-personnel-modal-preview></div><!----><!----><!----><!----><!----><!----><!----></div><hr _ngcontent-jgr-c18=""><div _ngcontent-jgr-c18="" class="form-card"><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" id="accordionExample" class="accordion p-r-0"><div _ngcontent-jgr-c18="" class="accordion-item" style="margin-left: -10px;"><h2 _ngcontent-jgr-c18="" id="headingOne" class="accordion-header"><button _ngcontent-jgr-c18="" type="button" data-bs-toggle="collapse" data-bs-target="#documentLibrary" aria-expanded="true" aria-controls="documentLibrary" class="accordion-button collapsed row" style="margin-left: 0; padding-left: 0;"><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-7 col-lg-7"><b _ngcontent-jgr-c18="">Document Library</b></div><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-4 col-lg-4" style="text-align: end; color: #0c63e4;">Click here to view</div></button></h2><fieldset _ngcontent-jgr-c18="" disabled=""><div _ngcontent-jgr-c18="" id="documentLibrary" aria-labelledby="headingOne" data-bs-parent="#accordionExample" class="accordion-collapse collapse"><div _ngcontent-jgr-c18="" class="accordion-body"><div _ngcontent-jgr-c18="" class="row table-responsive"><table _ngcontent-jgr-c18="" style="table-layout: fixed; width: 100%;"><thead _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><th _ngcontent-jgr-c18="" class="serial-no" style="width: 5% !important;"># </th><th _ngcontent-jgr-c18="" style="width: 30% !important;"> Document Type </th><th _ngcontent-jgr-c18="" style="width: 35% !important;"> File Name </th><th _ngcontent-jgr-c18="" style="width: 20% !important;">Uploaded Date</th><th _ngcontent-jgr-c18="" style="width: 10% !important;"> View</th></tr></thead><tbody _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" style="text-align: center;"> 1</td><td _ngcontent-jgr-c18="">Withdrawal Update Form 1</td><td _ngcontent-jgr-c18="">FORM 1 Architect Cert.pdf</td><td _ngcontent-jgr-c18="">20/04/2026, 3:40 PM</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" value="download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="View" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a></td></tr><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" style="text-align: center;"> 2</td><td _ngcontent-jgr-c18="">Withdrawal Update Form 2</td><td _ngcontent-jgr-c18="">FORM 2.pdf</td><td _ngcontent-jgr-c18="">20/04/2026, 3:40 PM</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" value="download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="View" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a></td></tr><!----></tbody></table></div></div></div></fieldset></div></div></div></div><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="white-box"><div _ngcontent-jgr-c18="" style="text-align: left; font-size: 15px;"><b _ngcontent-jgr-c18="">Promoter Landowner </b></div><hr _ngcontent-jgr-c18="" class="m-t-0"><fieldset _ngcontent-jgr-c18="" disabled=""><form _ngcontent-jgr-c18="" novalidate="" class="ng-untouched ng-pristine ng-valid"><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-12 col-lg-12"><fieldset _ngcontent-jgr-c18=""><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-6 col-lg-6 mb-3"><label _ngcontent-jgr-c18="" class="form-label"> Landowner types in the project </label><div _ngcontent-jgr-c18="" class="form-check1"><input _ngcontent-jgr-c18="" type="checkbox" class="declerationCheckBox" style=""><label _ngcontent-jgr-c18="" for="landownerType1" class="form-check-label">Promoter <span _ngcontent-jgr-c18="" class="badge"><i _ngcontent-jgr-c18="" data-title="Select if promoter himself is the Landowner." class="bi bi-info"></i></span></label></div><div _ngcontent-jgr-c18="" class="form-check1"><input _ngcontent-jgr-c18="" type="checkbox" class="declerationCheckBox" style=""><label _ngcontent-jgr-c18="" for="landownerType2" class="form-check-label">Promoter Landowner(s) <span _ngcontent-jgr-c18="" class="badge"><i _ngcontent-jgr-c18="" data-title="Select if Landowner(s) is/are not
+																		the promoter but has/have area share and /or revenue share." class="bi bi-info"></i></span></label></div></div></fieldset></div><!----></div></form></fieldset></div></div><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="white-box"><div _ngcontent-jgr-c18="" style="text-align: left;"><b _ngcontent-jgr-c18="">Promoter Documents</b></div><hr _ngcontent-jgr-c18="" class="m-t-0"><div _ngcontent-jgr-c18="" class="table-responsive"><table _ngcontent-jgr-c18=""><thead _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><th _ngcontent-jgr-c18="" width="5%" class="center-text">#</th><th _ngcontent-jgr-c18="" width="40%">Uploaded Documents (For Promoter)</th><th _ngcontent-jgr-c18="" width="20%">Upload Date and Time</th><th _ngcontent-jgr-c18="" width="35%">File Name</th><th _ngcontent-jgr-c18="" width="10%">View</th></tr></thead><tbody _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" class="center-text">1</td><td _ngcontent-jgr-c18="">Legal Title report</td><td _ngcontent-jgr-c18="">3/01/2026, 11:29 AM</td><td _ngcontent-jgr-c18="">LEGAL_REPORT.pdf</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" value="download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download Document" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a><!----></td></tr><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" class="center-text">2</td><td _ngcontent-jgr-c18="">Land Ownership Document</td><td _ngcontent-jgr-c18="">16/12/2025, 6:33 PM</td><td _ngcontent-jgr-c18="">Sale deed_11zon.pdf</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" value="download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download Document" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a><!----></td></tr><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" class="center-text">3</td><td _ngcontent-jgr-c18="">Declaration Form B</td><td _ngcontent-jgr-c18="">18/12/2025, 10:45 AM</td><td _ngcontent-jgr-c18="">Affidavit Form B.pdf</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" value="download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download Document" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a><!----></td></tr><!----></tbody></table></div></div></div><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="white-box"><div _ngcontent-jgr-c18="" style="text-align: left; font-size: 15px;"><b _ngcontent-jgr-c18="">Investor Details</b></div><hr _ngcontent-jgr-c18="" class="m-t-0"><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-12 col-lg-12" style="padding: 10px; background-color: #eaf0f4; text-align: left!important; margin: 0 5px 0 5px; width: 99%;"><label _ngcontent-jgr-c18="" class="form-label-preview-label">Are there any Investor other than the Promoter in the Project :&nbsp;</label><label _ngcontent-jgr-c18="" class="form-label-preview-text f-w-700"><b _ngcontent-jgr-c18=""> No</b></label></div><div _ngcontent-jgr-c18="" class="table-responsive investor-container"><!----></div></div></div></div><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="white-box"><div _ngcontent-jgr-c18="" style="text-align: left;"><b _ngcontent-jgr-c18="">Litigation Details</b></div><hr _ngcontent-jgr-c18="" class="m-t-0"><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="col-6 col-sm-12 col-md-12 col-lg-12 wh" style="padding: 10px; background-color: #eaf0f4; text-align: left!important; margin: 0 5px 0 5px; width: 99%;"><label _ngcontent-jgr-c18="" class="form-label-preview-label">Is there any litigation against this proposed project : &nbsp; </label><label _ngcontent-jgr-c18="" class="form-label-preview-text f-w-700">No</label></div><div _ngcontent-jgr-c18="" class="table-responsive investor-container"><!----></div></div></div></div><!----><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="white-box"><div _ngcontent-jgr-c18=""><div _ngcontent-jgr-c18="" style="text-align: left;"><b _ngcontent-jgr-c18="">Proforma Allotment Letter</b></div><hr _ngcontent-jgr-c18="" class="m-t-0"><div _ngcontent-jgr-c18="" class="table-responsive"><table _ngcontent-jgr-c18=""><thead _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><th _ngcontent-jgr-c18="" width="50%">Proforma Allotment Letter</th><th _ngcontent-jgr-c18="" width="50%">Allotment Letter Deviation Report </th></tr></thead><tbody _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download1" role="button" value="download" title="Click to Download" class="download"> Model_Proforma_Allotment_Letter.pdf </a></td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download1" role="button" value="download" title="Click to Download" class="download"> </a></td></tr><!----></tbody></table></div></div><!----></div></div><!----><!----><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="white-box"><div _ngcontent-jgr-c18="" style="text-align: left;"><b _ngcontent-jgr-c18=""> Proforma Agreement for Sale Plot</b></div><hr _ngcontent-jgr-c18="" class="m-t-0"><div _ngcontent-jgr-c18="" class="table-responsive"><table _ngcontent-jgr-c18=""><thead _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><th _ngcontent-jgr-c18="" width="50%">Proforma Agreement for Sale Plot </th><th _ngcontent-jgr-c18="" width="50%">Agreement for Sale (Plot) Deviation Report</th></tr></thead><tbody _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download1" role="button" value="download" title="Click to Download" class="download"> Model_Agreement_for_Sale_English_Plotted_Layout.pdf </a></td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download1" role="button" value="download" title="Click to Download" class="download"> </a></td></tr><!----></tbody></table></div></div></div><!----><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="white-box"><div _ngcontent-jgr-c18="" style="text-align: left;"><b _ngcontent-jgr-c18="">Other Legal Documents</b></div><hr _ngcontent-jgr-c18="" class="m-t-0"><div _ngcontent-jgr-c18="" class="table-responsive"><table _ngcontent-jgr-c18=""><thead _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><th _ngcontent-jgr-c18="" width="5%" class="serial-no">#</th><th _ngcontent-jgr-c18="" width="45%">Document Type</th><th _ngcontent-jgr-c18="" width="45%">Uploaded File</th><th _ngcontent-jgr-c18="" width="5%">View</th></tr></thead><tbody _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" style="text-align: center;">1</td><td _ngcontent-jgr-c18="" style="text-align: left;">Others</td><td _ngcontent-jgr-c18="">SATBARA.pdf</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" value="download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download Document" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a></td></tr><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" style="text-align: center;">2</td><td _ngcontent-jgr-c18="" style="text-align: left;">Others</td><td _ngcontent-jgr-c18="">DISCLOSURE_INTEREST_PARTNERS.pdf</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" value="download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download Document" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a></td></tr><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" style="text-align: center;">3</td><td _ngcontent-jgr-c18="" style="text-align: left;">Others</td><td _ngcontent-jgr-c18="">Partnershipdeed_11zon.pdf</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" value="download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download Document" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a></td></tr><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" style="text-align: center;">4</td><td _ngcontent-jgr-c18="" style="text-align: left;">Others</td><td _ngcontent-jgr-c18="">DISCLOSURE_INTEREST_PARTNERS.pdf</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" value="download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download Document" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a></td></tr><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" style="text-align: center;">5</td><td _ngcontent-jgr-c18="" style="text-align: left;">Others</td><td _ngcontent-jgr-c18="">NMRDA_EMAIL_VERIFICATION.pdf</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" value="download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download Document" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a></td></tr><!----><!----></tbody></table></div></div></div><!----><!----><hr _ngcontent-jgr-c18=""><div _ngcontent-jgr-c18="" class="row"><!----></div><!----><!----><div _ngcontent-jgr-c18=""><div _ngcontent-jgr-c18="" class="col-12 text-align-left"><b _ngcontent-jgr-c18="">NA Plot Without Structure</b></div><hr _ngcontent-jgr-c18=""><div _ngcontent-jgr-c18="" class="row table-responsive"><table _ngcontent-jgr-c18=""><thead _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><th _ngcontent-jgr-c18="" width="3%" class="serial-no">#</th><th _ngcontent-jgr-c18="" width="27%">Plot Details </th><th _ngcontent-jgr-c18="" width="20%">Total No of Plots</th><th _ngcontent-jgr-c18="" width="25%">Permission Issued No of Plots</th><th _ngcontent-jgr-c18="" width="15%">Remarks</th><th _ngcontent-jgr-c18="" width="10%">View</th></tr></thead><tbody _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" style="text-align: center;"> 1</td><td _ngcontent-jgr-c18="">94</td><td _ngcontent-jgr-c18="" style="text-align: center;">94</td><td _ngcontent-jgr-c18="" style="text-align: center;">94 </td><td _ngcontent-jgr-c18=""></td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" value="download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download Document" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a></td></tr><!----></tbody></table></div><hr _ngcontent-jgr-c18=""></div><!----><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="white-box"><div _ngcontent-jgr-c18="" style="text-align: left;"><b _ngcontent-jgr-c18="">Phase Details</b></div><hr _ngcontent-jgr-c18="" class="m-t-0"><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-12 col-lg-12" style="padding: 10px; background-color: #eaf0f4; text-align: left!important; margin: 0 5px 0 5px; width: 99%;"><label _ngcontent-jgr-c18="" class="form-label-preview-label">Is this Project being developed in Multiple Phases : &nbsp; </label><label _ngcontent-jgr-c18="" class="form-label-preview-text f-w-700"> No</label></div><div _ngcontent-jgr-c18="" class="table-responsive investor-container"><!----></div></div></div></div><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="white-box"><div _ngcontent-jgr-c18="" style="text-align: left;"><b _ngcontent-jgr-c18="">Technical Documents</b></div><hr _ngcontent-jgr-c18="" class="m-t-0"><div _ngcontent-jgr-c18="" class="table-responsive"><table _ngcontent-jgr-c18="" class="m-b-0"><thead _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><th _ngcontent-jgr-c18="" width="10%" class="serial-no">#</th><th _ngcontent-jgr-c18="" width="40%">Document Type</th><th _ngcontent-jgr-c18="" width="45%">Uploaded File Name</th><th _ngcontent-jgr-c18="" width="5%">View</th></tr></thead><tbody _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" style="text-align: center;">1</td><td _ngcontent-jgr-c18="">Building Plan Approval</td><td _ngcontent-jgr-c18="">UMARGAON 102-5 FINAL CERTIFICATE.pdf</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" value="download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download Document" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a><!----></td></tr><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" style="text-align: center;">2</td><td _ngcontent-jgr-c18="">NA Order for Plotted Development</td><td _ngcontent-jgr-c18="">NA_ORDER.pdf</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" value="download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download Document" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a><!----></td></tr><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" style="text-align: center;">3</td><td _ngcontent-jgr-c18="">Annexure-A as per order 50/2024</td><td _ngcontent-jgr-c18="">ANNEXURE A COMMENCE DECLARATION.pdf</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" value="download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download Document" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a><!----></td></tr><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" style="text-align: center;">4</td><td _ngcontent-jgr-c18="">Layout Approval</td><td _ngcontent-jgr-c18="">MAP.pdf</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" value="download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download Document" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a><!----></td></tr><!----><!----></tbody></table></div></div></div><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" id="accordionExample" class="accordion p-r-0"><div _ngcontent-jgr-c18="" class="accordion-item" style="margin-left: -10px;"><project-form1-preview _ngcontent-jgr-c18="" _nghost-jgr-c10=""><h2 _ngcontent-jgr-c10="" id="headingOne" class="accordion-header"><button _ngcontent-jgr-c10="" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFormOne" aria-expanded="true" aria-controls="collapseFormOne" class="accordion-button collapsed" style="padding-left: 10px;"><div _ngcontent-jgr-c10="" class="col-sm-12 col-md-7 col-lg-7 adj"><b _ngcontent-jgr-c10="">Task Activities and Common Facilities</b></div><div _ngcontent-jgr-c10="" class="col-sm-12 col-md-4 col-lg-4 adj" style="text-align: end; color: #0c63e4;">Click here to view</div></button></h2><fieldset _ngcontent-jgr-c10="" disabled=""><div _ngcontent-jgr-c10="" id="collapseFormOne" aria-labelledby="headingOne" data-bs-parent="#accordionExample" class="accordion-collapse collapse"><div _ngcontent-jgr-c10="" class="accordion-body"><fieldset _ngcontent-jgr-c10=""><div _ngcontent-jgr-c10=""><div _ngcontent-jgr-c10="" class="col-lg-12"><div _ngcontent-jgr-c10="" class="col-md-12" style="text-align: center; background-color: #faedea; padding: 15px; border: 1px solid #f8d4cb; border-radius: 6px;"><h5 _ngcontent-jgr-c10="" class="card-title"> Table-A </h5><span _ngcontent-jgr-c10="" class="declerationText">Layout/Building/Wing Number(To be prepared separately for each Layout/Building/Wing of the project)</span><br _ngcontent-jgr-c10=""></div><form _ngcontent-jgr-c10="" novalidate="" class="ng-untouched ng-pristine ng-valid"><fieldset _ngcontent-jgr-c10="" disabled=""><div _ngcontent-jgr-c10=""><div _ngcontent-jgr-c10=""><div _ngcontent-jgr-c10="" class="col-md-12 d-flex" style="text-align: left; display: flex; flex-direction: row; align-items: left; text-align: left; display: flex; flex-direction: row; padding: 10px; background-color: #ecf2f6; border: 1px solid #d1d1d1; border-radius: 6px 6px 0 0; border: 1px solid #d1d1d1; border-radius: 6px 6px 0 0;"><b _ngcontent-jgr-c10="" style="margin: 0 10px; font-size: 15px !important; padding: 10px;"> NA Plot Without Structure </b></div><!----><!----><div _ngcontent-jgr-c10="" class="table-responsive"><table _ngcontent-jgr-c10="" class="table table-bordered table-striped poptable"><thead _ngcontent-jgr-c10=""><tr _ngcontent-jgr-c10=""><th _ngcontent-jgr-c10="" width="5%" class="center-text">#</th><th _ngcontent-jgr-c10="" width="65%">Tasks / Activity</th><th _ngcontent-jgr-c10="" width="15%"> Is Available</th><th _ngcontent-jgr-c10="" width="15%">Completion Percentage</th></tr></thead><tbody _ngcontent-jgr-c10=""><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">1</td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="" title="Excavation">Excavation</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">2</td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="" title="Basement (if any)">Basement (if any)</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">3</td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="" title="Podiums (if any) ">Podiums (if any) </label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">4</td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="" title="Plinth">Plinth</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">5</td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="" title="Stilt Floor ">Stilt Floor </label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">6</td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="" title="Slabs of Super Structure">Slabs of Super Structure</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">7</td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="" title="Internal walls, Intemal Plaster, Floorings, Floors and windows within Flats/Premises">Internal walls, Intemal Plaster, Floorings, Floors and windows within Flats/Premises</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">8</td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="" title="Sanitary Fittings within the flats / premises">Sanitary Fittings within the flats / premises</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">9</td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="" title="Staircases, Lifts Wells and Lobbies at each Floor level Overhead and Underground Water Tanks">Staircases, Lifts Wells and Lobbies at each Floor level Overhead and Underground Water Tanks</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">10</td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="" title="External plumbing and external plaster, elevation, completion of terraces with waterproofing of the Building / wing.">External plumbing and external plaster, elevation, completion of terraces with waterproofing of the Building / wing.</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">11</td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="" title="Installation of Lifts, water pumps, Fire Fighting Fittings and Equipment as per CFO NOC, Electrical fittings, mechanical equipment, compliance to conditions ofenvironment/CRZ NOC, Finishing to entrance lobby/s, plinth protection. paving of areas appurtenant to Building/Wing, Compound Wall and all other requirements as may be required to complete project as per specifications in agreement of Sale.">Installation of Lifts, water pumps, Fire Fighting Fittings and Equipment as per CFO NOC, Electrical fittings, mechanical equipment, compliance to conditions ofenvironment/CRZ NOC, Finishing to entrance lobby/s, plinth protection. paving of areas appurtenant to Building/Wing, Compound Wall and all other requirements as may be required to complete project as per specifications in agreement of Sale.</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><!----></tbody></table></div></div></div><!----></fieldset></form><div _ngcontent-jgr-c10="" class="col-md-12" style="text-align: center; background-color: #faedea; padding: 15px; border: 1px solid #f8d4cb; border-radius: 6px;"><h5 _ngcontent-jgr-c10="" class="card-title"> Form 1 Table B </h5><span _ngcontent-jgr-c10="" class="declerationText">Common Areas (Internal and External Development Work ) in respect of the Register Phase / Project Number </span><br _ngcontent-jgr-c10=""></div><div _ngcontent-jgr-c10=""><form _ngcontent-jgr-c10="" novalidate="" class="ng-untouched ng-pristine ng-valid"><div _ngcontent-jgr-c10=""><div _ngcontent-jgr-c10="" class="table-responsive"><table _ngcontent-jgr-c10="" class="table table-bordered table-striped"><thead _ngcontent-jgr-c10=""><tr _ngcontent-jgr-c10=""><th _ngcontent-jgr-c10="" width="5%" class="center-text">#</th><th _ngcontent-jgr-c10="" width="30%">Tasks / Activity</th><th _ngcontent-jgr-c10="" width="10%"> Is Available</th><th _ngcontent-jgr-c10="" width="10%">Completion Percentage</th><th _ngcontent-jgr-c10="" width="25%">Details</th></tr></thead><tbody _ngcontent-jgr-c10=""><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">1</td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Internal Roads &amp; Footpaths</label></td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Yes</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">0</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">NOT COMPLETED</label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">2</td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Water Supply</label></td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Yes</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">0</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">NOT COMPLETED</label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">3</td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Sewerage (Chamber, Lines, Septic Tank , STP)</label></td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Yes</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">0</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">NOT COMPLETED</label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">4</td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Storm Water Drains</label></td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Yes</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">0</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">NOT COMPLETED</label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">5</td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Landscaping &amp; Tree Planting</label></td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Yes</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">0</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">NOT COMPLETED</label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">6</td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Street Lighting</label></td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Yes</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">0</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">NOT COMPLETED</label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">7</td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Community Buildings</label></td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">8</td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Treatment And Disposal Of Sewage And Sullage Water</label></td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">9</td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Solid Waste Management And Disposal</label></td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">10</td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Water conservation /Rain water harvesting</label></td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Yes</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">0</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">NOT COMPLETED</label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">11</td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Energy managemcnt</label></td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">12</td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Fire protection and fire safety requirements</label></td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">13</td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Electrical meter room, sub-station, receiving station</label></td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">14</td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Aggregate area of recreational Open Space </label></td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Yes</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">0</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">AREA 2014.509 SQ MTRS</label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">15</td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">Open Parking </label></td><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><tr _ngcontent-jgr-c10=""><td _ngcontent-jgr-c10="" class="center-text">16</td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td><!----><!----><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10="">No</label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td><td _ngcontent-jgr-c10=""><label _ngcontent-jgr-c10=""></label></td></tr><!----></tbody></table></div></div><!----></form></div></div></div></fieldset></div></div></fieldset></project-form1-preview></div></div></div><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="white-box"><div _ngcontent-jgr-c18="" style="text-align: left;"><b _ngcontent-jgr-c18="">Other Technical Documents</b></div><!----><hr _ngcontent-jgr-c18="" class="m-t-0"><!----><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="table-responsive"><table _ngcontent-jgr-c18=""><thead _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><th _ngcontent-jgr-c18="" width="3%" class="serial-no">#</th><th _ngcontent-jgr-c18="" width="30%">Document Name</th><th _ngcontent-jgr-c18="" width="23%">File Name</th><th _ngcontent-jgr-c18="" width="7%">View</th></tr></thead><tbody _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" style="text-align: center;">1</td><td _ngcontent-jgr-c18="">Others</td><td _ngcontent-jgr-c18="">FORM 1 Architect Cert.pdf</td><td _ngcontent-jgr-c18="" style="text-align: center;"><a _ngcontent-jgr-c18="" id="download" role="button" value="download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download Document" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a></td></tr><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" style="text-align: center;">2</td><td _ngcontent-jgr-c18="">Others</td><td _ngcontent-jgr-c18="">FORM 2 ENGG.pdf</td><td _ngcontent-jgr-c18="" style="text-align: center;"><a _ngcontent-jgr-c18="" id="download" role="button" value="download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download Document" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a></td></tr><!----></tbody></table></div><!----></div></div></div><!----><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="orange-background col-sm-12 col-md-12 col-lg-12"><div _ngcontent-jgr-c18="" style="text-align: left;"><b _ngcontent-jgr-c18="">Bank Details</b></div><hr _ngcontent-jgr-c18="" class="m-t-0"><div _ngcontent-jgr-c18=""><project-bank-details-preview _ngcontent-jgr-c18="" _nghost-jgr-c8=""><fieldset _ngcontent-jgr-c8=""><from _ngcontent-jgr-c8="" class="ng-untouched ng-pristine ng-invalid"><div _ngcontent-jgr-c8=""><fieldset _ngcontent-jgr-c8="" disabled=""><div _ngcontent-jgr-c8="" class="col-md-12"><h5 _ngcontent-jgr-c8="" class="card-title" style="font-size: 12px; font-weight: 500;"> Separate Bank account of the project </h5></div><div _ngcontent-jgr-c8="" class="row"><div _ngcontent-jgr-c8="" class="col-sm-12 col-md-3 col-lg-3"><div _ngcontent-jgr-c8="" class="box"><label _ngcontent-jgr-c8="" class="form-label">Bank Name </label><div _ngcontent-jgr-c8="" _ngcontent-hco-c18="" class="col-12 text-font"> ICICI BANK LIMITED </div></div></div><div _ngcontent-jgr-c8="" class="col-sm-12 col-md-3 col-lg-3"><div _ngcontent-jgr-c8="" class="box"><label _ngcontent-jgr-c8="" class="form-label">IFSC Code</label><div _ngcontent-jgr-c8="" _ngcontent-hco-c18="" class="col-12 text-font"> ICIC0007398 </div></div></div><div _ngcontent-jgr-c8="" class="col-sm-12 col-md-6 col-lg-6"><div _ngcontent-jgr-c8="" class="box"><label _ngcontent-jgr-c8="" class="form-label">Bank Address</label><div _ngcontent-jgr-c8="" _ngcontent-hco-c18="" class="col-12 text-font"> ICICI Bank Ltd., NMC House 3285, Kirti Nagar, Narsala Road, Nagpur, Narsala.440034, Maharashtra </div></div></div></div><!----></fieldset></div></from><!----></fieldset></project-bank-details-preview></div></div></div><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-12 col-lg-12 p-r-l-0"><div _ngcontent-jgr-c18="" class="white-box"><div _ngcontent-jgr-c18="" style="text-align: left;"><b _ngcontent-jgr-c18="">Financial Encumberance Documents</b></div><hr _ngcontent-jgr-c18="" class="m-t-0"><project-financial-encumberance-preview _ngcontent-jgr-c18="" _nghost-jgr-c9=""><fieldset _ngcontent-jgr-c9=""><div _ngcontent-jgr-c9="" class="ng-untouched ng-pristine ng-invalid"><fieldset _ngcontent-jgr-c9="" class="row" disabled=""><div _ngcontent-jgr-c9="" class="col-sm-12 col-md-12 col-lg-12" style="padding: 10px; background-color: #eaf0f4; text-align: left!important; margin: 0 5px 0 5px; width: 99%;"><label _ngcontent-jgr-c9="" class="form-label">Do you have Financial Encumberance : </label><label _ngcontent-jgr-c9="" class="form-label-preview-text f-w-700"><b _ngcontent-jgr-c9="" style="padding-left: 10px;">No</b></label></div><!----><div _ngcontent-jgr-c9=""><div _ngcontent-jgr-c9="" class="col-sm-12 col-md-12 col-lg-12 table-responsive"><label _ngcontent-jgr-c9="" class="form-label"> Disclosure of Secured/ Unsecured Finance availed </label><table _ngcontent-jgr-c9=""><thead _ngcontent-jgr-c9=""><tr _ngcontent-jgr-c9=""><th _ngcontent-jgr-c9="" width="5%" class="center-text">#</th><th _ngcontent-jgr-c9="" width="60%"> Disclosure of Secured/ Unsecured Finance availed Documents Name</th><th _ngcontent-jgr-c9="" width="27%">Upload Date and Time</th><th _ngcontent-jgr-c9="" width="8%">View</th></tr></thead><tbody _ngcontent-jgr-c9=""><tr _ngcontent-jgr-c9=""><td _ngcontent-jgr-c9="" class="center-text">1</td><td _ngcontent-jgr-c9="">DISCLOSURE_SECURED_LOANS.pdf</td><td _ngcontent-jgr-c9="">3/01/2026, 11:36 AM</td><td _ngcontent-jgr-c9=""><a _ngcontent-jgr-c9="" id="download" role="button" value="download" class="download"><i _ngcontent-jgr-c9="" data-toggle="tooltip" aria-label="Download Document" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a></td></tr><!----></tbody></table></div><!----></div><!----><!----></fieldset></div></fieldset></project-financial-encumberance-preview><div _ngcontent-jgr-c18="" style="text-align: left;"><b _ngcontent-jgr-c18="">Other Financial Document(s)</b></div><hr _ngcontent-jgr-c18="" style="margin-top: 2px; margin-bottom: 10px;"><table _ngcontent-jgr-c18=""><thead _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><th _ngcontent-jgr-c18="" width="5%" class="center-text">#</th><th _ngcontent-jgr-c18="" width="30%">Document Type</th><th _ngcontent-jgr-c18="" width="20%">Upload Date and Time</th><th _ngcontent-jgr-c18="" width="35%">File Name</th><th _ngcontent-jgr-c18="" width="10%">View</th></tr></thead><tbody _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" class="center-text">1</td><td _ngcontent-jgr-c18="">Others</td><td _ngcontent-jgr-c18="">18/12/2025, 11:45 AM</td><td _ngcontent-jgr-c18="">CERSAI_For_Asset_Based.pdf</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" title="Click to Download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download declaratio`n proof" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a><a _ngcontent-jgr-c18="" id="downloadFile" hidden=""></a></td></tr><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" class="center-text">2</td><td _ngcontent-jgr-c18="">Others</td><td _ngcontent-jgr-c18="">18/12/2025, 11:45 AM</td><td _ngcontent-jgr-c18="">CERSAI_For_Debtor_Based.pdf</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" title="Click to Download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download declaratio`n proof" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a><a _ngcontent-jgr-c18="" id="downloadFile" hidden=""></a></td></tr><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" class="center-text">3</td><td _ngcontent-jgr-c18="">Others</td><td _ngcontent-jgr-c18="">18/12/2025, 11:45 AM</td><td _ngcontent-jgr-c18="">Undertaking about Cersai Report .pdf</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" title="Click to Download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download declaratio`n proof" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a><a _ngcontent-jgr-c18="" id="downloadFile" hidden=""></a></td></tr><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" class="center-text">4</td><td _ngcontent-jgr-c18="">Others</td><td _ngcontent-jgr-c18="">3/01/2026, 12:06 PM</td><td _ngcontent-jgr-c18="">Clarification_letter_11zon.pdf</td><td _ngcontent-jgr-c18=""><a _ngcontent-jgr-c18="" id="download" role="button" title="Click to Download" class="download"><i _ngcontent-jgr-c18="" data-toggle="tooltip" aria-label="Download declaratio`n proof" data-bs-original-title="Download" class="bi bi-eye-fill"></i></a><a _ngcontent-jgr-c18="" id="downloadFile" hidden=""></a></td></tr><!----></tbody></table></div></div></div><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="white-box"><div _ngcontent-jgr-c18="" style="text-align: left;"><b _ngcontent-jgr-c18="">Complaint Details</b></div><hr _ngcontent-jgr-c18="" class="m-t-0"><div _ngcontent-jgr-c18="" class="table-responsive"><table _ngcontent-jgr-c18=""><thead _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><th _ngcontent-jgr-c18="" width="3%" class="serial-no">#</th><th _ngcontent-jgr-c18="" width="20%">Complaint No.</th><th _ngcontent-jgr-c18="" width="20%">Complaint Date</th><th _ngcontent-jgr-c18="" width="20%">Complainant Name</th><th _ngcontent-jgr-c18="" width="20%">Respondent Name</th><th _ngcontent-jgr-c18="" width="20%">Complaint Status</th><th _ngcontent-jgr-c18="" width="10%">View</th></tr></thead><tbody _ngcontent-jgr-c18=""><!----><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" colspan="8" style="padding: 20px; background-color: #eaf0f4; text-align: center!important; margin: 6px;">No Records Found </td></tr><!----></tbody></table></div></div></div><div _ngcontent-jgr-c18="" class="row"><div _ngcontent-jgr-c18="" class="white-box"><div _ngcontent-jgr-c18="" style="text-align: left;"><b _ngcontent-jgr-c18="">Appeal Details</b></div><hr _ngcontent-jgr-c18="" class="m-t-0"><div _ngcontent-jgr-c18="" class="table-responsive"><table _ngcontent-jgr-c18=""><thead _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><th _ngcontent-jgr-c18="" width="3%" class="serial-no">#</th><th _ngcontent-jgr-c18="" width="16.6%">Appeal No.</th><th _ngcontent-jgr-c18="" width="16.6%">Complaint No./ Reference No.</th><th _ngcontent-jgr-c18="" width="16.6%">Appeal Date</th><th _ngcontent-jgr-c18="" width="16.6%">Appeallant Name</th><th _ngcontent-jgr-c18="" width="16.6%">Respondent Name</th><th _ngcontent-jgr-c18="" width="16.6%">Appeal Status</th></tr></thead><tbody _ngcontent-jgr-c18=""><!----><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" colspan="7" style="padding: 20px; background-color: #eaf0f4; text-align: center!important; margin: 6px;">No Records Found </td></tr><!----></tbody></table></div></div></div><!----><!----><div _ngcontent-jgr-c18="" class="row" style="margin-bottom: 10px;"><div _ngcontent-jgr-c18="" id="accordionExample" class="accordion p-r-0"><div _ngcontent-jgr-c18="" class="accordion-item" style="margin-left: -10px;"><h2 _ngcontent-jgr-c18="" id="headingOne" class="accordion-header"><button _ngcontent-jgr-c18="" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne" class="accordion-button row collapsed" style="margin-left: 0; padding-left: 0;"><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-7 col-lg-7 adj"><b _ngcontent-jgr-c18=""> Registered Agent(s)</b></div><div _ngcontent-jgr-c18="" class="col-sm-12 col-md-4 col-lg-4 adj" style="text-align: end; color: #0c63e4;">Click to see list</div></button></h2><fieldset _ngcontent-jgr-c18="" disabled=""><div _ngcontent-jgr-c18="" id="collapseOne" aria-labelledby="headingOne" data-bs-parent="#accordionExample" class="accordion-collapse collapse"><div _ngcontent-jgr-c18="" class="accordion-body table-responsive"><table _ngcontent-jgr-c18=""><thead _ngcontent-jgr-c18=""><tr _ngcontent-jgr-c18=""><th _ngcontent-jgr-c18="" width="3%" class="serial-no">#</th><th _ngcontent-jgr-c18="" width="30%">Professional Name</th><th _ngcontent-jgr-c18="" width="30%">MahaRERA Certificate No. </th><th _ngcontent-jgr-c18="" style="width: 30%;">Professional Type </th></tr></thead><tbody _ngcontent-jgr-c18=""><!----><tr _ngcontent-jgr-c18=""><td _ngcontent-jgr-c18="" colspan="8" style="text-align: center;">No Record Found</td></tr><!----></tbody></table></div></div></fieldset></div></div></div></div></fieldset></form></div></div></div></div></div><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><!----><project-pdf-viewer _ngcontent-jgr-c18="" _nghost-jgr-c15=""><!----></project-pdf-viewer><!----></div></div></div></section></div></main></new-project-preview><!----></project-project-preview-app><!----><app-alert-box _ngcontent-jgr-c5="" _nghost-jgr-c1=""><!----></app-alert-box><!----><project-confirm-box _ngcontent-jgr-c5="" _nghost-jgr-c2=""><!----></project-confirm-box><!----><!----><!----><!----><project-global-pdf-viewer _ngcontent-jgr-c5="" _nghost-jgr-c4=""><!----></project-global-pdf-viewer><app-login-loader _ngcontent-jgr-c5="" _nghost-jgr-c3=""><!----></app-login-loader></project-root></div></main><noscript>You need to enable JavaScript to run this app.</noscript><script>System.import('@maha-rera/root-config');</script><import-map-overrides-full show-when-local-storage="devtools" dev-libs=""></import-map-overrides-full><script>/* 
+window.apmrum = (window.apmrum || {});
+window.apmrum.serviceName='main-app-uat';
+window.apmrum.webApplication='main-app-uat';
+window.apmrum.ociDataUploadEndpoint='https://aaaadc7v4pjuqaaaaaaaaabs7e.apm-agt.ap-mumbai-1.oci.oraclecloud.com';
+window.apmrum.OracleAPMPublicDataKey='A6O63NFNBOAPIWSQWDLT3RC3WZVE25LN';
+*/</script><script>(function () {
+        "use strict";
+
+        /**
+         * Easy selector helper function
+         */
+        const select = (el, all = false) => {
+            el = el.trim();
+            if (all) {
+                return [...document.querySelectorAll(el)];
+            } else {
+                return document.querySelector(el);
+            }
+        };
+
+        /**
+         * Easy event listener function
+         */
+        const on = (type, el, listener, all = false) => {
+            if (all) {
+                select(el, all).forEach((e) => e.addEventListener(type, listener));
+            } else {
+                select(el, all).addEventListener(type, listener);
+            }
+        };
+
+        /**
+         * Easy on scroll event listener
+         */
+        const onscroll = (el, listener) => {
+            el.addEventListener("scroll", listener);
+        };
+
+        /**
+         * Sidebar toggle
+         */
+        if (select(".toggle-sidebar-btn")) {
+            on("click", ".toggle-sidebar-btn", function (e) {
+                select("body").classList.toggle("toggle-sidebar");
+            });
+        }
+
+        /**
+         * Search bar toggle
+         */
+        if (select(".search-bar-toggle")) {
+            on("click", ".search-bar-toggle", function (e) {
+                select(".search-bar").classList.toggle("search-bar-show");
+            });
+        }
+
+        /**
+         * Navbar links active state on scroll
+         */
+        let navbarlinks = select("#navbar .scrollto", true);
+        const navbarlinksActive = () => {
+            let position = window.scrollY + 200;
+            navbarlinks.forEach((navbarlink) => {
+                if (!navbarlink.hash) return;
+                let section = select(navbarlink.hash);
+                if (!section) return;
+                if (position >= section.offsetTop && position <= section.offsetTop + section.offsetHeight) {
+                    navbarlink.classList.add("active");
+                } else {
+                    navbarlink.classList.remove("active");
+                }
+            });
+        };
+        window.addEventListener("load", navbarlinksActive);
+        onscroll(document, navbarlinksActive);
+
+        /**
+         * Toggle .header-scrolled class to #header when page is scrolled
+         */
+        let selectHeader = select("#header");
+        if (selectHeader) {
+            const headerScrolled = () => {
+                if (window.scrollY > 100) {
+                    selectHeader.classList.add("header-scrolled");
+                } else {
+                    selectHeader.classList.remove("header-scrolled");
+                }
+            };
+            window.addEventListener("load", headerScrolled);
+            onscroll(document, headerScrolled);
+        }
+
+        /**
+         * Initiate Datatables
+         */
+        const datatables = select(".datatable", true);
+        datatables.forEach((datatable) => {
+            new simpleDatatables.DataTable(datatable);
+        });
+    })();
+
+   function scrollTabs(param) {
+     
+                let hidWidth;
+                let scrollBarWidths = 40;
+
+                let widthOfList = function () {
+                    let itemsWidth = 0;
+                    $(`#${param} li`).each(function () {
+                        let itemWidth = $(this).outerWidth();
+                        itemsWidth += itemWidth;
+                    });
+                    return itemsWidth;
+                };
+
+                var widthOfHidden = function () {
+                    return $(`#${param}-wrapper ` + ".wrapper").outerWidth() - widthOfList() - getLeftPosi() - scrollBarWidths;
+                };
+
+                let getLeftPosi = function () {
+                    return $(`#${param}`).position().left;
+                };
+
+                var reAdjust = function () {
+                    if ($(`#${param}-wrapper ` + ".wrapper").outerWidth() < widthOfList()) {
+                        $(`#${param}-wrapper ` + ".scroller-right").show();
+                    } else {
+                        $(`#${param}-wrapper ` + ".scroller-right").hide();
+                    }
+
+                    if (getLeftPosi() < 0) {
+                        $(`#${param}-wrapper ` + ".scroller-left").show();
+                    } else {
+                        $(`#${param}-wrapper ` + ".item").animate({ left: "-=" + getLeftPosi() + "px" }, "slow");
+                        $(`#${param}-wrapper ` + ".scroller-left").hide();
+                    }
+                };
+
+                reAdjust();
+
+                $(window).on("resize", function (e) {
+                    reAdjust();
+                });
+                let ScrollPosArray = [];
+                rDisabled=false;
+                $(`#${param}-wrapper ` + ".scroller-right").click(function () {
+                    if(rDisabled)
+                    {
+                        return;
+                    }
+                    rDisabled=true;
+                    $(`#${param}-wrapper ` + ".scroller-right").fadeIn("slow");
+                   
+                    var getAlreadyScrolledWidth = function () {
+                    if(ScrollPosArray && ScrollPosArray.length>0)
+                    {
+                    var itemsWidthHidden=0;
+                        ScrollPosArray.map(item=> {
+                            itemsWidthHidden += item;
+                    });
+                    }
+                    return itemsWidthHidden;
+                };
+                    //let widthOfHidden1 = -widthOfHidden() < $(".wrapper").outerWidth() ? widthOfHidden() : -$(".wrapper").outerWidth();
+                   // widthOfHidden1=-(widthOfList()-(-widthOfHidden())>$(`#${param}-wrapper ` + ".wrapper").outerWidth()?$(`#${param}-wrapper ` + ".wrapper").outerWidth():-widthOfHidden());
+                    widthOfHidden1=-155;
+                    ScrollPosArray.push(widthOfHidden1);
+                    console.log(ScrollPosArray);
+                    $(`#${param}`).animate({ left: "+=" + widthOfHidden1 + "px" }, "slow", function () {
+                        // console.log(widthOfHidden())
+                        if (-widthOfHidden()/2 < 1) {
+                            $(`#${param}-wrapper ` + ".scroller-right").fadeOut("slow");
+                        }
+                        else
+                        {
+                            $(`#${param}-wrapper ` + ".scroller-left").fadeIn("slow");
+                        }
+                    });                    
+                   setTimeout(() => {
+                    rDisabled=false;
+                   }, 1000);
+                });
+                 lDisabled=false;
+                $(`#${param}-wrapper ` + ".scroller-left").click(function () {
+                    if (ScrollPosArray.length !== 0) {
+                       if(lDisabled)
+                       {
+                        return;
+                       }
+                       lDisabled=true;
+                        $(`#${param}`).animate({ left: "-=" + ScrollPosArray[ScrollPosArray.length - 1] + "px" }, "slow", function () {
+                            ScrollPosArray.pop();
+                            if (ScrollPosArray.length == 0) {
+                                $(`#${param}-wrapper ` + ".scroller-left").fadeOut("slow");
+                            }
+                            else
+                            {
+                                $(`#${param}-wrapper ` + ".scroller-right").fadeIn("slow");
+                            }
+                        });
+                        setTimeout(() => {
+                            lDisabled=false;
+                        }, 1000);
+                    }
+                    console.log(ScrollPosArray);
+                });
+            }
+
+
+
+
+
+function initializeDatatable(id)
+{
+   if($.fn.dataTable.isDataTable("#"+id))
+   {
+    $("#"+id).DataTable().destroy();
+   }
+    if($("#"+id+">thead>tr:first>th:first").hasClass('sorting'))
+    {
+
+        $("#"+id).DataTable().destroy();
+               
+        setTimeout(() => {
+            new DataTable('#'+id,{
+        autoWidth:false,
+        lengthMenu: [
+        [10, 25, 50, -1],
+        [10, 25, 50, 'All']
+    ]
+    // ,
+    // order: [[0, 'desc']]
+    });
+        }, 500);
+        // // $("#"+id).DataTable().destroy();
+        // // $("#"+id).DataTable().draw();
+        // $("#"+id+">thead>tr:first>th:first").click()
+        // $("#"+id+">thead>tr:first>th:first").click()  
+        return;
+    }
+    new DataTable('#'+id,{
+        autoWidth:false,
+        lengthMenu: [
+        [10, 25, 50, -1],
+        [10, 25, 50, 'All']
+    ]
+    // ,
+    // order: [[0, 'desc']]
+    });
+}
+
+function deinitializeDatatable(id)
+{
+    if($.fn.dataTable.isDataTable("#"+id))
+   {
+    $("#"+id).DataTable().destroy();
+   }
+    if($("#"+id+">thead>tr:first>th:first").hasClass('sorting'))
+    {
+
+        $("#"+id).DataTable().destroy();
+        // // $("#"+id).DataTable().destroy();
+        // // $("#"+id).DataTable().draw();
+        // $("#"+id+">thead>tr:first>th:first").click()
+        // $("#"+id+">thead>tr:first>th:first").click()  
+        return;
+    }
+}
+
+function initializedTooltip()
+{
+    $('[data-toggle="tooltip"]').tooltip();
+}
+
+function showPDF(pdfname,divname)
+{
+    PDFObject.embed(pdfname, "#"+divname);
+}</script></body></html>

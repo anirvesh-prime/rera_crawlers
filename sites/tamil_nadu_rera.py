@@ -166,7 +166,10 @@ def _get_year_listing_urls(logger: CrawlerLogger) -> list[str]:
 _UUID_RE  = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", re.I)
 _LAT_RE   = re.compile(r"Latitude[-:\s]*([\d.]+)", re.I)
 _LNG_RE   = re.compile(r"Longitude[-:\s]*([\d.]+)", re.I)
-_REGNO_RE = re.compile(r"(?:TNRERA/[\w/]+|TN/\d+/(?:Building|Layout)/[\w/]+/\d{4})", re.I)
+_REGNO_RE = re.compile(
+    r"(?:TNRERA/[\w/]+|TN/\d+/(?:Building|Regularisation-Layout|Layout)/[\w/]+/\d{4})",
+    re.I,
+)
 
 
 def _parse_listing_row(tds) -> dict | None:
@@ -1488,7 +1491,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     logger.info(f"Will crawl {len(year_urls)} year listing(s)", mode=mode)
 
     machine_name, machine_ip = get_machine_context()
-    items_processed = 0
 
     for year_index, year_url in enumerate(year_urls):
         if year_index < last_page:
@@ -1503,15 +1505,14 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             continue
 
         for row in rows:
-            if item_limit and items_processed >= item_limit:
-                logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached, stopping")
-                return counts
-
             reg_no = row.get("project_registration_no")
             if not reg_no:
                 continue
 
             counts["projects_found"] += 1
+            if item_limit and counts["projects_found"] > item_limit:
+                logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached, stopping")
+                return counts
             project_key = generate_project_key(reg_no)
             if last_project_key and mode != "full":
                 if project_key == last_project_key:
@@ -1584,7 +1585,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 # ── DB upsert ────────────────────────────────────────────────────
                 db_dict = record.to_db_dict()
                 status = upsert_project(db_dict)
-                items_processed += 1
 
                 if status == "new":
                     counts["projects_new"] += 1

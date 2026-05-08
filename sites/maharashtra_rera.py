@@ -26,9 +26,11 @@ Strategy:
 """
 from __future__ import annotations
 
+import json as _json
 import re
 from typing import Optional
 
+import httpx
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 from pydantic import ValidationError
@@ -37,15 +39,40 @@ from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.captcha_solver import solve_captcha_from_page, wait_for_captcha_canvas
 from core.config import settings
 from core.crawler_base import generate_project_key, random_delay, safe_get
-from core.db import get_project_by_key, upsert_project, insert_crawl_error
+from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
+from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
-from core.project_normalizer import build_document_urls, get_machine_context, merge_data_sections, normalize_project_payload
+from core.project_normalizer import (
+    build_document_filename, build_document_urls, document_identity_url,
+    document_result_entry, get_machine_context, merge_data_sections,
+    normalize_project_payload,
+)
+from core.s3 import compute_md5, get_s3_url, upload_document
 
 LISTING_URL  = "https://maharera.maharashtra.gov.in/projects-search-result"
 DETAIL_BASE  = "https://maharerait.maharashtra.gov.in"
 STATE_CODE   = "MH"
 DOMAIN       = "maharera.maharashtra.gov.in"
+
+# ── MH RERA document API endpoints (discovered via live network inspection) ───
+_MH_DOC_API_BASE = (
+    f"{DETAIL_BASE}/api/maha-rera-public-view-project-registration-service"
+    "/public/projectregistartion"
+)
+_MH_DMS_DOWNLOAD_URL = (
+    f"{DETAIL_BASE}/api/maha-rera-dms-service/batch-job/downloadDocumentForPublicView"
+)
+# All getUploadedDocuments section/type payloads found via live inspection
+_MH_UPLOADED_DOC_PAYLOADS: list[dict] = [
+    {"documentSectionName": "Project_Technical", "documentTypeId": [10, 11, 12, 13, 52]},
+    {"documentSectionName": "Project_Technical", "documentTypeId": [15]},   # Architect cert
+    {"documentSectionName": "Project_Technical", "documentTypeId": [16]},   # Engineer cert
+    {"documentSectionNmae": "Project_Technical", "documentTypeId": [31]},   # note: API typo
+    {"documentSectionName": "Project_Legal",     "documentTypeId": [27]},
+    {"documentSectionNmae": "Project_Finance",   "documentTypeId": [26]},   # note: API typo
+    {"documentTypeId": [28, 30, 51]},
+]
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -640,6 +667,154 @@ def _parse_mh_partner_tables(soup: BeautifulSoup, out: dict) -> None:
                 out.setdefault("professional_information", profs)
 
 
+# ── Maharashtra document API helpers ─────────────────────────────────────────
+
+def _get_mh_auth_token(page) -> str:
+    """Extract the Bearer token stored in Angular sessionStorage after CAPTCHA login."""
+    try:
+        tokens_json = page.evaluate("() => sessionStorage.getItem('tokens') || ''")
+        if tokens_json:
+            tokens = _json.loads(tokens_json)
+            if isinstance(tokens, dict):
+                return tokens.get("accessToken", "")
+    except Exception:
+        pass
+    return ""
+
+
+def _fetch_mh_api_docs(cert_id: str, auth_token: str, logger: CrawlerLogger) -> list[dict]:
+    """
+    Fetch all document metadata from MH RERA document APIs using the session token.
+    Returns list of {type, filename, dms_ref} dicts (deduped by dms_ref).
+    """
+    if not auth_token:
+        return []
+
+    headers = {
+        "Authorization": f"Bearer {auth_token}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Origin": DETAIL_BASE,
+        "Referer": f"{DETAIL_BASE}/public/project/view/{cert_id}",
+    }
+    docs: list[dict] = []
+    seen_refs: set[str] = set()
+
+    try:
+        with httpx.Client(timeout=20) as client:
+            # getMigratedDocuments — legacy docs with human-readable names + DMS refs
+            try:
+                r = client.post(
+                    f"{_MH_DOC_API_BASE}/getMigratedDocuments",
+                    json={"projectId": cert_id},
+                    headers=headers,
+                )
+                for item in (r.json().get("responseObject") or []):
+                    dms_ref  = item.get("userDocumentDMSRefNo", "")
+                    filename = item.get("documentFileName", "")
+                    doc_name = item.get("documentName") or filename or "Document"
+                    if dms_ref and dms_ref not in seen_refs:
+                        seen_refs.add(dms_ref)
+                        docs.append({"type": doc_name, "filename": filename, "dms_ref": dms_ref})
+            except Exception as exc:
+                logger.warning(f"getMigratedDocuments: {exc}", step="docs")
+
+            # getUploadedDocuments — per section/type combinationstype
+            for payload_extra in _MH_UPLOADED_DOC_PAYLOADS:
+                try:
+                    r = client.post(
+                        f"{_MH_DOC_API_BASE}/getUploadedDocuments",
+                        json={"projectId": cert_id, **payload_extra},
+                        headers=headers,
+                    )
+                    for item in (r.json().get("responseObject") or []):
+                        dms_ref  = item.get("documentDmsRefNo", "")
+                        filename = item.get("documentFileName", "")
+                        if dms_ref and dms_ref not in seen_refs:
+                            seen_refs.add(dms_ref)
+                            docs.append({
+                                "type": filename or "Document",
+                                "filename": filename,
+                                "dms_ref": dms_ref,
+                            })
+                except Exception as exc:
+                    logger.warning(f"getUploadedDocuments: {exc}", step="docs")
+    except Exception as exc:
+        logger.warning(f"Document API fetch failed: {exc}", step="docs")
+
+    logger.info(f"Document API: {len(docs)} docs found", cert_id=cert_id, step="docs")
+    return docs
+
+
+def _handle_mh_document(
+    project_key: str,
+    doc: dict,
+    run_id: int,
+    site_id: str,
+    logger: CrawlerLogger,
+    auth_token: str,
+) -> dict | None:
+    """
+    Download one MH RERA document via the DMS POST endpoint and upload to S3.
+    Returns enriched doc dict with s3_link on success, None on failure.
+    """
+    dms_ref  = doc.get("dms_ref", "")
+    filename = doc.get("filename", "")
+    label    = doc.get("type") or filename or "Document"
+
+    if not dms_ref:
+        return None
+
+    # Use a stable identity URL encoding the DMS ref (no auth needed at DB level)
+    identity_url = f"{_MH_DMS_DOWNLOAD_URL}?documentId={dms_ref}"
+    fname = build_document_filename({"url": identity_url, "label": label})
+
+    headers = {
+        "Authorization": f"Bearer {auth_token}",
+        "Content-Type": "application/json",
+        "Accept": "application/pdf, application/octet-stream, */*",
+        "Origin": DETAIL_BASE,
+    }
+    try:
+        with httpx.Client(timeout=60) as client:
+            r = client.post(
+                _MH_DMS_DOWNLOAD_URL,
+                json={"fileName": filename, "documentId": dms_ref},
+                headers=headers,
+            )
+        if r.status_code != 200 or len(r.content) < 100:
+            logger.warning(
+                f"Document download failed [{label}]: status={r.status_code} len={len(r.content)}",
+                step="docs",
+            )
+            return None
+
+        data   = r.content
+        md5    = compute_md5(data)
+        s3_key = upload_document(project_key, fname, data, dry_run=settings.DRY_RUN_S3)
+        if s3_key is None:
+            return None
+        s3_url = get_s3_url(s3_key)
+        upsert_document(
+            project_key=project_key,
+            document_type=label,
+            original_url=identity_url,
+            s3_key=s3_key,
+            s3_bucket=settings.S3_BUCKET_NAME,
+            file_name=fname,
+            md5_checksum=md5,
+            file_size_bytes=len(data),
+        )
+        logger.info(f"Document uploaded [{label}]", s3_key=s3_key, step="docs")
+        logger.log_document(label, identity_url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
+        return document_result_entry({"type": label, "url": identity_url}, s3_url, fname)
+    except Exception as exc:
+        logger.error(f"Document failed [{label}]: {exc}", step="docs")
+        insert_crawl_error(run_id, site_id, "S3_UPLOAD_FAILED", str(exc),
+                           project_key=project_key, url=identity_url)
+        return None
+
+
 # Table header signatures used to identify each document table on the Angular page.
 # The Angular app constructs download URLs via JS at runtime — they are not present in
 # the static HTML. We extract type + filename from the rendered table cells instead.
@@ -753,11 +928,27 @@ def _extract_mh_html_fields(page, cert_id: str, logger: CrawlerLogger) -> dict:
     _parse_mh_building_tab(soup, out)      # Land area, building units
     _parse_mh_bank_details(soup, out)      # Bank account details
     _parse_mh_partner_tables(soup, out)    # Designated partners, signatories, professionals
-    _parse_mh_documents_tab(soup, out)     # Document library links
 
+    # ── Document fetching: API-first, HTML fallback ───────────────────────────
+    # After CAPTCHA is solved, the Angular app has a session token in sessionStorage.
+    # We use that token to call the document APIs directly and get real DMS refs.
+    auth_token = _get_mh_auth_token(page)
+    api_docs = _fetch_mh_api_docs(cert_id, auth_token, logger) if auth_token else []
+    if api_docs:
+        out["uploaded_documents"] = api_docs
+        logger.info(f"Using API docs: {len(api_docs)} found", step="docs")
+    else:
+        # Fallback: scrape doc type + filename from rendered HTML tables
+        _parse_mh_documents_tab(soup, out)
+        logger.info("Falling back to HTML doc scrape", step="docs")
+
+    # Stash auth token in data so run() can download documents after upsert
     existing_data = dict(out.get("data") or {})
     existing_data["project_id"] = str(cert_id)
     out["data"] = existing_data
+    # Embed token under a temporary key (stripped in run() before normalization)
+    if auth_token:
+        out["_auth_token"] = auth_token
 
     return {k: v for k, v in out.items() if v is not None}
 
@@ -935,6 +1126,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     random_delay(1, 2)
 
                 try:
+                    # Strip the temporary auth token before building the payload
+                    auth_token = detail_fields.pop("_auth_token", "")
+                    # Keep the API doc metadata separately for S3 upload after upsert
+                    api_docs = detail_fields.get("uploaded_documents") or []
+
                     payload: dict = {
                         **raw,
                         **detail_fields,
@@ -967,6 +1163,24 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         logger.info(f"Updated: {reg_no}", step="upsert")
                     else:
                         counters["projects_skipped"] += 1
+
+                    # ── Document download + S3 upload ─────────────────────────
+                    if auth_token and api_docs:
+                        logger.info(
+                            f"Downloading {len(api_docs)} document(s) for {reg_no}",
+                            step="docs",
+                        )
+                        for doc in api_docs:
+                            result = _handle_mh_document(
+                                project_key=key,
+                                doc=doc,
+                                run_id=run_id,
+                                site_id=config["id"],
+                                logger=logger,
+                                auth_token=auth_token,
+                            )
+                            if result:
+                                counters["documents_uploaded"] += 1
 
                 except ValidationError as exc:
                     counters["error_count"] += 1

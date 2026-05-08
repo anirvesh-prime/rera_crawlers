@@ -1,0 +1,708 @@
+{
+  "cert_id": "61699",
+  "test_dms_ref": "bda2f887-44e5-4860-b844-6168977ec4f3;0.1",
+  "download_requests": [
+    {
+      "method": "GET",
+      "url": "https://maharerait.maharashtra.gov.in/public/project/view/61699",
+      "post": null
+    },
+    {
+      "method": "GET",
+      "url": "https://cdnjs.cloudflare.com/ajax/libs/pdfobject/2.2.12/pdfobject.min.js",
+      "post": null
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getStatusForProjectPreview",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectAndAssociatedPromoterDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectCurrentStatus",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectGeneralDetailsByProjectId",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectLandHeaderDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectLandAddressDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectLandCCDetailsResponse",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getMigratedDocuments",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getPromoterSpocDetails",
+      "post": "{\"userProfileId\":111674,\"spocType\":\"AS\",\"isMappedWithProject\":true,\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectSpocMapping",
+      "post": "{\"userProfileId\":null,\"spocType\":\"PS\",\"isMappedWithProject\":true,\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectFormClauseMaster",
+      "post": "{\"projectFormClauseMode\":\"CLAUSE\",\"projectFormClauseType\":\"ALLOTMENT_LETTER\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectSpocMapping",
+      "post": "{\"userProfileId\":null,\"spocType\":\"GO\",\"isMappedWithProject\":true,\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectProfessionalByType",
+      "post": "{\"projectId\":\"61699\",\" professionalTypeName \":null}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectSroDetails",
+      "post": "{\"projectId\":\"61699\",\"userProfileId\":\"111674\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getUploadedDocuments",
+      "post": "{\"projectId\":\"61699\",\"documentSectionName\":\"Project_Technical\",\"documentTypeId\":[10,11,12,13,52]}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-mdm-service/mdm/getDocumentType",
+      "post": "{\"documentSectionName\":\"Project_Technical\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectMCGMDocuments",
+      "post": "{\"docTypeId\":40,\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getQPRDocsForAdmin",
+      "post": "{\"p_User_Id\":null,\"p_Project_Id\":\"61699\",\"p_Input_Type\":\"PLANNING AUTHORITY\",\"p_Action\":\"\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getBuildingWingUnitSummary",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getBuildingFloorSummaryByFloorType",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectPhase",
+      "post": "{\"projectId\":\"61699\",\"projectSectionCaptureTypeCode\":\"PRJ_LITIGATION\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectNAPlotDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectNAPlotDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getBuildingWingsActivityDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getBuildingWingsCostEstimation",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getUploadedDocuments",
+      "post": "{\"projectId\":\"61699\",\"documentSectionNmae\":\"Project_Technical\",\"documentTypeId\":[31]}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getUploadedDocuments",
+      "post": "{\"projectId\":\"61699\",\"documentSectionNmae\":\"Project_Finance\",\"documentTypeId\":[26]}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-appeal-service/reatappeal/getAppealDetailsPublicView",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getAgentByProjectId",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectLitigationDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getLegalInvestorDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getUploadedDocuments",
+      "post": "{\"projectId\":\"61699\",\"documentTypeId\":[28,30,51]}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getUploadedDocuments",
+      "post": "{\"projectId\":\"61699\",\"documentSectionName\":\"Project_Legal\",\"documentTypeId\":[27]}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-mdm-service/mdm/getDocumentType",
+      "post": "{\"documentSectionName\":\"Project_Legal\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectProformaLetterDetails",
+      "post": "{\"projectId\":\"61699\",\"filterFlag\":\"AL\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectProformaLetterDetails",
+      "post": "{\"projectId\":\"61699\",\"filterFlag\":\"SA\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectProformaLetterDetails",
+      "post": "{\"projectId\":\"61699\",\"filterFlag\":\"SAP\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getComplaintDetailsByProjectId",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectProfessionalByType",
+      "post": "{\"projectId\":\"61699\",\"professionalTypeName\":\"Architect\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getUploadedDocuments",
+      "post": "{\"projectId\":\"61699\",\"documentSectionNmae\":\"Project_Finance\",\"documentTypeId\":[26]}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectGeneralPlanSummary",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectPreviousExtensionDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getBlankBuildingWingsParkingDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectLandOwnerDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getBlankBuildingWingsParkingDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectGeneralDetailsByProjectId",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectLegalGeoTaggingDetailByProjectId",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectGeneralDetailsByProjectId",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectAndAssociatedPromoterDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getBuildingWingsActivityDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getForm3ProfessionalDetails",
+      "post": "{\"projectId\":\"61699\",\"formMode\":\"FORM1\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/fetchProjectEncumbranceDeclarationDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/fetchPromoterGeneralDetails",
+      "post": "{\"userProfileId\":\"111674\",\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getPromoterAddressDetails",
+      "post": "{\"userProfileId\":null,\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getUploadedDocuments",
+      "post": "{\"projectId\":\"61699\",\"documentSectionName\":\"Project_Technical\",\"documentTypeId\":[15]}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getUploadedDocuments",
+      "post": "{\"projectId\":\"61699\",\"documentSectionName\":\"Project_Technical\",\"documentTypeId\":[16]}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/fetchPromoterGeneralDetails",
+      "post": "{\"userProfileId\":111674,\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getUploadedDocuments",
+      "post": "{\"projectId\":\"61699\",\"documentSectionName\":\"Project_Technical\",\"documentTypeId\":[15]}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/fetchPromoterGeneralDetails",
+      "post": "{\"userProfileId\":111674,\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectPromoterBankDetails",
+      "post": "{\"projectId\":\"61699\",\"personType\":\"P\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/fetchPromoterPersonnelContactAddressDetails",
+      "post": "{\"userProfileId\":\"111674\",\"projectId\":\"61699\"}"
+    }
+  ],
+  "all_api_requests": [
+    {
+      "method": "GET",
+      "url": "https://maps.googleapis.com/maps/api/js?key=AIzaSyBODKQJRZF8Es5yjpj0uhADgssqUlRkBd8",
+      "post": null
+    },
+    {
+      "method": "GET",
+      "url": "https://maps.googleapis.com/maps/api/mapsjs/gen_204?csp_test=true",
+      "post": null
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-login-service/login/authenticatePublic",
+      "post": "{\"userName\":\"U2FsdGVkX1+1aR48SIestVtZQAsgZl9gJ0F0+J5PLZEAgwltmSeHXjyyOWjX/OBO\",\"password\":\"U2FsdGVkX1+Lz+RGuQneDqCjs23Cv5JJJHGAjgJhlcU=\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-user-profile-service/userprofile/getLoggedInUserDetails",
+      "post": "{\"userName\":\"@maharera_public_view\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getStatusForProjectPreview",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectAndAssociatedPromoterDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectCurrentStatus",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectGeneralDetailsByProjectId",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectLandHeaderDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectLandAddressDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectLandCCDetailsResponse",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getMigratedDocuments",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getPromoterSpocDetails",
+      "post": "{\"userProfileId\":111674,\"spocType\":\"AS\",\"isMappedWithProject\":true,\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectSpocMapping",
+      "post": "{\"userProfileId\":null,\"spocType\":\"PS\",\"isMappedWithProject\":true,\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectFormClauseMaster",
+      "post": "{\"projectFormClauseMode\":\"CLAUSE\",\"projectFormClauseType\":\"ALLOTMENT_LETTER\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectSpocMapping",
+      "post": "{\"userProfileId\":null,\"spocType\":\"GO\",\"isMappedWithProject\":true,\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectProfessionalByType",
+      "post": "{\"projectId\":\"61699\",\" professionalTypeName \":null}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectSroDetails",
+      "post": "{\"projectId\":\"61699\",\"userProfileId\":\"111674\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getUploadedDocuments",
+      "post": "{\"projectId\":\"61699\",\"documentSectionName\":\"Project_Technical\",\"documentTypeId\":[10,11,12,13,52]}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-mdm-service/mdm/getDocumentType",
+      "post": "{\"documentSectionName\":\"Project_Technical\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectMCGMDocuments",
+      "post": "{\"docTypeId\":40,\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getQPRDocsForAdmin",
+      "post": "{\"p_User_Id\":null,\"p_Project_Id\":\"61699\",\"p_Input_Type\":\"PLANNING AUTHORITY\",\"p_Action\":\"\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getBuildingWingUnitSummary",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getBuildingFloorSummaryByFloorType",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectPhase",
+      "post": "{\"projectId\":\"61699\",\"projectSectionCaptureTypeCode\":\"PRJ_LITIGATION\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectNAPlotDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectNAPlotDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getBuildingWingsActivityDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getBuildingWingsCostEstimation",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getUploadedDocuments",
+      "post": "{\"projectId\":\"61699\",\"documentSectionNmae\":\"Project_Technical\",\"documentTypeId\":[31]}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getUploadedDocuments",
+      "post": "{\"projectId\":\"61699\",\"documentSectionNmae\":\"Project_Finance\",\"documentTypeId\":[26]}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-complaint-management-service/complaint/getComplaintByProjectId",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-appeal-service/reatappeal/getAppealDetailsPublicView",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getAgentByProjectId",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectLitigationDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getLegalInvestorDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getUploadedDocuments",
+      "post": "{\"projectId\":\"61699\",\"documentTypeId\":[28,30,51]}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getUploadedDocuments",
+      "post": "{\"projectId\":\"61699\",\"documentSectionName\":\"Project_Legal\",\"documentTypeId\":[27]}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-mdm-service/mdm/getDocumentType",
+      "post": "{\"documentSectionName\":\"Project_Legal\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectProformaLetterDetails",
+      "post": "{\"projectId\":\"61699\",\"filterFlag\":\"AL\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectProformaLetterDetails",
+      "post": "{\"projectId\":\"61699\",\"filterFlag\":\"SA\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectProformaLetterDetails",
+      "post": "{\"projectId\":\"61699\",\"filterFlag\":\"SAP\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getComplaintDetailsByProjectId",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectProfessionalByType",
+      "post": "{\"projectId\":\"61699\",\"professionalTypeName\":\"Architect\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-mdm-service/mdm/getGlobalParamByparamType",
+      "post": "{\"parameterType\":\"PROJECT_PROFESSION_TYPE\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-promoter-management-service/promoter/getPromoterPastExpProject",
+      "post": "{\"userProfileId\":\"111674\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getUploadedDocuments",
+      "post": "{\"projectId\":\"61699\",\"documentSectionNmae\":\"Project_Finance\",\"documentTypeId\":[26]}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectGeneralPlanSummary",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectPreviousExtensionDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getBlankBuildingWingsParkingDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectLandOwnerDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getBlankBuildingWingsParkingDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectGeneralDetailsByProjectId",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-mdm-service/mdm/getGlobalParamByparamType",
+      "post": "{\"parameterType\":\"PERSONAL_TYPE\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-mdm-service/mdm/getGlobalParamByparamType",
+      "post": "{\"parameterType\":\"Project_Legal_Share_Type\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-mdm-service/mdm/getGlobalParamByparamType",
+      "post": "{\"parameterType\":\"LITIGATION_CASE_TYPE\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-mdm-service/mdm/getGlobalParamByparamType",
+      "post": "{\"parameterType\":\"LITIGATION_PETITION\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-mdm-service/mdm/getGlobalParamByparamType",
+      "post": "{\"parameterType\":\"LITIGATION_STATUS_TYPE\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-mdm-service/mdm/getGlobalParamByparamType",
+      "post": "{\"parameterType\":\"LITIGATION_ORDER_TYPE\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectLegalGeoTaggingDetailByProjectId",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectGeneralDetailsByProjectId",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectAndAssociatedPromoterDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getBuildingWingsActivityDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getForm3ProfessionalDetails",
+      "post": "{\"projectId\":\"61699\",\"formMode\":\"FORM1\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-mdm-service/mdm/getBankList",
+      "post": null
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/fetchProjectEncumbranceDeclarationDetails",
+      "post": "{\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/fetchPromoterGeneralDetails",
+      "post": "{\"userProfileId\":\"111674\",\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getPromoterAddressDetails",
+      "post": "{\"userProfileId\":null,\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getUploadedDocuments",
+      "post": "{\"projectId\":\"61699\",\"documentSectionName\":\"Project_Technical\",\"documentTypeId\":[15]}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getUploadedDocuments",
+      "post": "{\"projectId\":\"61699\",\"documentSectionName\":\"Project_Technical\",\"documentTypeId\":[16]}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/fetchPromoterGeneralDetails",
+      "post": "{\"userProfileId\":111674,\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getUploadedDocuments",
+      "post": "{\"projectId\":\"61699\",\"documentSectionName\":\"Project_Technical\",\"documentTypeId\":[15]}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/fetchPromoterGeneralDetails",
+      "post": "{\"userProfileId\":111674,\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/getProjectPromoterBankDetails",
+      "post": "{\"projectId\":\"61699\",\"personType\":\"P\"}"
+    },
+    {
+      "method": "POST",
+      "url": "https://maharerait.maharashtra.gov.in/api/maha-rera-public-view-project-registration-service/public/projectregistartion/fetchPromoterPersonnelContactAddressDetails",
+      "post": "{\"userProfileId\":\"111674\",\"projectId\":\"61699\"}"
+    },
+    {
+      "method": "GET",
+      "url": "https://maps.googleapis.com/maps-api-v3/api/js/64/12d/intl/en_gb/common.js",
+      "post": null
+    },
+    {
+      "method": "GET",
+      "url": "https://maps.googleapis.com/maps-api-v3/api/js/64/12d/intl/en_gb/util.js",
+      "post": null
+    }
+  ]
+}
