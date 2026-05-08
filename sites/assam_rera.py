@@ -23,7 +23,7 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
-from core.checkpoint import load_checkpoint, save_checkpoint
+from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.crawler_base import generate_project_key, random_delay, safe_get
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.document_policy import select_document_for_download
@@ -1401,6 +1401,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             logger.clear_project()
 
     # ── Final checkpoint ──────────────────────────────────────────────────────
-    save_checkpoint(site_id, mode, len(all_stubs), project_key, run_id)
+    # Clear the checkpoint so the next run starts fresh rather than replaying
+    # resume_pending through every project (which would skip all 1211 again).
+    reset_checkpoint(site_id, mode)
     logger.info("Crawl complete", **counts)
     return counts
