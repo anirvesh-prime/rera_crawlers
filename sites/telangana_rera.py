@@ -227,8 +227,11 @@ def _submit_search(page: Any, logger: CrawlerLogger) -> bool:
                 page.reload(wait_until="domcontentloaded", timeout=_NAV_TIMEOUT_MS)
                 continue
 
+            captcha_input.triple_click()
             captcha_input.fill(captcha_text)
+            logger.info(f"Submitting CAPTCHA answer: {captcha_text!r}", step="captcha")
 
+            btn_clicked: str | None = None
             for btn_sel in (
                 # Specific first — avoids matching 'Advanced Search' button
                 "#btnSearch",
@@ -241,16 +244,46 @@ def _submit_search(page: Any, logger: CrawlerLogger) -> bool:
                     btn = page.query_selector(btn_sel)
                     if btn:
                         btn.click()
+                        btn_clicked = btn_sel
                         break
                 except Exception:
                     pass
+            logger.info(f"Button clicked: {btn_clicked!r}", step="search")
 
             try:
                 page.wait_for_selector("table", timeout=60_000)
                 logger.info("Search submitted successfully", step="search")
                 return True
             except Exception:
-                logger.warning("No results table after submit; retrying", step="search")
+                # Dump page URL + visible error text to help diagnose rejection
+                landed_url = page.url
+                try:
+                    error_text = page.inner_text("body") or ""
+                    error_snippet = " | ".join(
+                        ln.strip() for ln in error_text.splitlines()
+                        if ln.strip() and len(ln.strip()) > 3
+                    )[:400]
+                except Exception:
+                    error_snippet = "<could not read body>"
+
+                # Save a screenshot for visual inspection
+                import pathlib
+                shot_path = str(
+                    pathlib.Path("screenshots") /
+                    f"telangana_submit_fail_attempt{attempt}.png"
+                )
+                try:
+                    pathlib.Path("screenshots").mkdir(exist_ok=True)
+                    page.screenshot(path=shot_path, full_page=False)
+                except Exception:
+                    shot_path = "<screenshot failed>"
+
+                logger.warning(
+                    f"No results table after submit (attempt {attempt}); "
+                    f"url={landed_url!r} | page_text={error_snippet!r} | "
+                    f"screenshot={shot_path}",
+                    step="search",
+                )
                 page.reload(wait_until="domcontentloaded", timeout=_NAV_TIMEOUT_MS)
 
         except Exception as exc:
