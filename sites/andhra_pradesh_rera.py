@@ -28,7 +28,7 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import generate_project_key, random_delay, safe_get
+from core.crawler_base import generate_project_key, random_delay, safe_get, safe_post
 from core.db import (
     get_project_by_key,
     upsert_project,
@@ -562,9 +562,11 @@ def _parse_documents(soup: BeautifulSoup, base_url: str) -> list[dict]:
     Parse the uploaded-documents section from the AP RERA detail page.
 
     Strategy 1: locate the table whose header contains 'Document Type' and
-    'Uploaded Document', then extract each row's document type name.  Any
-    real PDF href is captured; __doPostBack / # links are ignored for the
-    type-name entry (they are followed during the live S3 upload step).
+    'Uploaded Document', then extract each row's document type name and the
+    numeric document ID embedded in the anchor's onclick handler:
+      onclick="return DownloadFile(N);"
+    That ID is later POSTed as hdndocid to download the actual file.
+    Rows where the anchor text is 'NA' (no file uploaded) are skipped.
 
     Strategy 2: fallback scan for numbered/APRERA-prefixed rows in any table.
     """
@@ -599,18 +601,26 @@ def _parse_documents(soup: BeautifulSoup, base_url: str) -> list[dict]:
             seen.add(key)
 
             doc: dict = {"type": doc_type}
-            # Capture any real PDF href in this row
-            for a in tr.find_all("a", href=True):
-                href = str(a["href"]).strip()
-                if not href or href.startswith("javascript:") or href == "#":
+            # Extract DownloadFile(N) doc_id from anchor onclick; skip NA rows.
+            for a in tr.find_all("a"):
+                onclick = a.get("onclick", "") or ""
+                m_dl = re.search(r"DownloadFile\s*\(\s*(\d+)\s*\)", onclick)
+                if not m_dl:
                     continue
-                if href.startswith("/"):
-                    href = BASE_URL + href
-                elif not href.startswith("http"):
-                    href = urljoin(base_url, href)
-                if href.lower().endswith(".pdf") or "pdf" in href.lower():
-                    doc["link"] = href
+                # 'NA' anchor text means no file was uploaded for this row
+                if _clean(a.get_text()) == "NA":
                     break
+                doc["doc_id"] = int(m_dl.group(1))
+                # Also capture a direct PDF href if one exists (rare but possible)
+                href = (a.get("href", "") or "").strip()
+                if href and not href.startswith("javascript:") and href != "#":
+                    if href.startswith("/"):
+                        href = BASE_URL + href
+                    elif not href.startswith("http"):
+                        href = urljoin(base_url, href)
+                    if href.lower().endswith(".pdf") or "pdf" in href.lower():
+                        doc["link"] = href
+                break
             docs.append(doc)
 
         if docs:
@@ -627,9 +637,13 @@ def _parse_documents(soup: BeautifulSoup, base_url: str) -> list[dict]:
                         continue
                     seen.add(key)
                     doc = {"type": text}
-                    link_tag = tr.find("a", href=True)
+                    link_tag = tr.find("a")
                     if link_tag:
-                        href = str(link_tag["href"]).strip()
+                        onclick = link_tag.get("onclick", "") or ""
+                        m_dl = re.search(r"DownloadFile\s*\(\s*(\d+)\s*\)", onclick)
+                        if m_dl and _clean(link_tag.get_text()) != "NA":
+                            doc["doc_id"] = int(m_dl.group(1))
+                        href = (link_tag.get("href", "") or "").strip()
                         if href and not href.startswith("javascript:") and href != "#":
                             if href.startswith("/"):
                                 href = BASE_URL + href
@@ -641,6 +655,34 @@ def _parse_documents(soup: BeautifulSoup, base_url: str) -> list[dict]:
                     break
 
     return docs
+
+
+def _extract_asp_form_fields(soup: BeautifulSoup, detail_url: str) -> dict[str, str]:
+    """
+    Extract all ASP.NET hidden form fields and the resolved form action URL.
+
+    Returns a flat dict of {field_name: value}.  A special key ``_form_action``
+    holds the absolute POST URL.  This dict is passed to _handle_document so it
+    can POST with hdndocid=N to trigger a server-side document download.
+    """
+    form = soup.find("form")
+    if not form:
+        return {}
+    fields: dict[str, str] = {}
+    for inp in form.find_all("input"):
+        name = inp.get("name", "")
+        val  = inp.get("value", "") or ""
+        if name:
+            fields[name] = val
+    action = (form.get("action", "") or "").strip()
+    if action.startswith("./"):
+        action = "https://rera.ap.gov.in/RERA/Views/" + action[2:]
+    elif action.startswith("/"):
+        action = BASE_URL + action
+    elif not action.startswith("http"):
+        action = urljoin(detail_url, action)
+    fields["_form_action"] = action
+    return fields
 
 
 def _parse_professionals(soup: BeautifulSoup) -> list[dict] | None:
@@ -1020,29 +1062,82 @@ def _handle_document(
     run_id: int,
     site_id: str,
     logger: CrawlerLogger,
+    form_fields: dict[str, str] | None = None,
 ) -> dict | None:
-    """Download a document, upload to S3, return a document result entry or None."""
-    url = doc.get("link") or doc.get("source_url") or doc.get("url")
-    if not url:
-        return None
-    try:
-        resp = safe_get(url, headers=_LISTING_HEADERS, retries=2, timeout=60, logger=logger)
-        if not resp or not resp.content:
-            logger.warning("Document download empty", url=url)
+    """
+    Download a document, upload to S3, return a document result entry or None.
+
+    Primary path (AP RERA): POST to the detail page with hdndocid=doc["doc_id"]
+    plus all ASP.NET hidden form fields (ViewState, EventValidation, …) captured
+    when the detail page was first fetched.  The server responds with the raw
+    file bytes (Content-Disposition: attachment).
+
+    Fallback: plain GET to doc["link"] for any doc that carries a direct URL
+    (rare on AP RERA but kept for robustness).
+    """
+    doc_id      = doc.get("doc_id")
+    direct_url  = doc.get("link") or doc.get("source_url") or doc.get("url")
+
+    resp = None
+    source_url: str = ""
+
+    if doc_id is not None and form_fields:
+        form_action = form_fields.get("_form_action", "")
+        if not form_action:
+            logger.warning("No form action — cannot POST for doc_id", doc_id=doc_id)
+        else:
+            post_data = {k: v for k, v in form_fields.items() if not k.startswith("_")}
+            post_data["hdndocid"]        = str(doc_id)
+            post_data["btndownload"]     = ""
+            post_data["__EVENTTARGET"]   = ""
+            post_data["__EVENTARGUMENT"] = ""
+            post_headers = {**_LISTING_HEADERS,
+                            "Content-Type": "application/x-www-form-urlencoded"}
+            try:
+                resp = safe_post(form_action, data=post_data, headers=post_headers,
+                                 retries=2, timeout=60, logger=logger)
+                if resp is not None:
+                    ct = resp.headers.get("content-type", "")
+                    if "html" in ct.lower():
+                        logger.warning("Document POST returned HTML — skipping",
+                                       doc_id=doc_id, content_type=ct)
+                        resp = None
+                    else:
+                        source_url = form_action
+            except Exception as exc:
+                logger.warning("Document POST error", doc_id=doc_id, error=str(exc))
+                resp = None
+
+    if resp is None and direct_url:
+        # Fallback: direct GET (e.g. rare projects with a plain PDF href)
+        try:
+            resp = safe_get(direct_url, headers=_LISTING_HEADERS,
+                            retries=2, timeout=60, logger=logger)
+            source_url = direct_url
+        except Exception as exc:
+            logger.warning("Document GET error", url=direct_url, error=str(exc))
             return None
-        data     = resp.content
+
+    if not resp or not resp.content:
+        logger.warning("Document download empty", doc_id=doc_id, url=source_url)
+        return None
+
+    try:
+        content  = resp.content
         filename = build_document_filename(doc)
-        s3_key   = upload_document(project_key, filename, data,
+        s3_key   = upload_document(project_key, filename, content,
                                    dry_run=getattr(settings, "DRY_RUN_S3", False))
         if s3_key is None:
             return None
         s3_url = get_s3_url(s3_key)
-        label = doc.get("type") or doc.get("label") or "document"
+        label  = doc.get("type") or doc.get("label") or "document"
         logger.info("Document uploaded", label=label, s3_key=s3_key, step="documents")
-        logger.log_document(label, url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
-        return document_result_entry({**doc, "source_url": url}, s3_url, filename)
+        logger.log_document(label, source_url, "uploaded",
+                            s3_key=s3_key, file_size_bytes=len(content))
+        return document_result_entry({**doc, "source_url": source_url}, s3_url, filename)
     except Exception as exc:
-        logger.warning("Document handling error", url=url, error=str(exc))
+        logger.warning("Document handling error", doc_id=doc_id,
+                       url=source_url, error=str(exc))
         return None
 
 
@@ -1199,6 +1294,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     counts["error_count"] += 1
                     continue
 
+                # Capture ASP.NET form fields for document POST downloads
+                form_fields = _extract_asp_form_fields(detail_soup, detail_url)
+
                 # Extract detail fields
                 detail_data = _scrape_detail_page(detail_soup, detail_url)
 
@@ -1272,7 +1370,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         config["state"], doc, doc_name_counts, domain=DOMAIN
                     )
                     if selected:
-                        result = _handle_document(project_key, selected, run_id, site_id, logger)
+                        result = _handle_document(project_key, selected, run_id, site_id, logger,
+                                                  form_fields=form_fields)
                         if result:
                             uploaded_results.append(result)
                             counts["documents_uploaded"] += 1
