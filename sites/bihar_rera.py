@@ -627,22 +627,24 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     fresh = dict(listing_row)
 
     # ── Step 2: Discover Filanprint detail URL via Playwright ─────────────────
-    # The Filanprint URL is discovered by clicking the project link (popup).
-    # We use _collect_detail_urls() which uses Playwright to click each listing
-    # link and capture the popup URL; then align with the listing row order.
-    logger.info(f"Sentinel: discovering Filanprint URLs via Playwright", step="sentinel")
+    # The sentinel project is always on page 1 of the listing (data_rows).
+    # Find its row index first so we only collect that many popup URLs instead
+    # of crawling all pages (which would take minutes / hours).
+    logger.info(f"Sentinel: discovering Filanprint URL via Playwright", step="sentinel")
     detail_url: str = ""
     try:
-        detail_url_list = _collect_detail_urls(logger, max_items=None)
-        # Align URLs with listing rows by index
-        for row_idx, row in enumerate(data_rows):
-            if row.get("project_registration_no", "").upper() == sentinel_reg.upper():
-                if row_idx < len(detail_url_list) and detail_url_list[row_idx]:
-                    detail_url = detail_url_list[row_idx]
-                break
+        sentinel_row_idx = next(
+            (i for i, r in enumerate(data_rows)
+             if r.get("project_registration_no", "").upper() == sentinel_reg.upper()),
+            0,  # fallback: use first row
+        )
+        # Collect only enough URLs to reach the sentinel row on page 1
+        sentinel_url_list = _collect_detail_urls(logger, max_items=sentinel_row_idx + 1)
+        if sentinel_row_idx < len(sentinel_url_list) and sentinel_url_list[sentinel_row_idx]:
+            detail_url = sentinel_url_list[sentinel_row_idx]
         if not detail_url:
             # Fallback: use any valid Filanprint URL collected
-            detail_url = next((u for u in detail_url_list if u and "Filanprint.aspx" in u), "")
+            detail_url = next((u for u in sentinel_url_list if u and "Filanprint.aspx" in u), "")
             if detail_url:
                 logger.warning("Sentinel: exact project not found, using first available Filanprint URL",
                                step="sentinel")
