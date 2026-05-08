@@ -890,7 +890,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     logger.info("Sentinel: checking search page accessibility",
                 url=SEARCH_URL, step="sentinel")
     try:
-        resp = safe_get(SEARCH_URL, retries=2, logger=logger)
+        resp = safe_get(SEARCH_URL, retries=2, logger=logger, verify=False)
         if not resp:
             logger.error("Sentinel: search page unreachable",
                          url=SEARCH_URL, step="sentinel")

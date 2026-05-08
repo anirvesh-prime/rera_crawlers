@@ -14,6 +14,7 @@ Strategy:
 """
 from __future__ import annotations
 
+import base64
 import re
 import datetime
 
@@ -417,23 +418,68 @@ def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> 
                     logger.error(f"Failed to load home page: {e}")
                     break
 
-                # Get captcha image via canvas → PNG.
-                # - PNG format required (solver rejects JPEG)
-                # - grayscale+contrast filter improves OCR and reduces PNG size
-                # - 90x28 target gives ~1250 bytes raw (~1750b JSON) — within solver limit
-                captcha_data = page.evaluate("""() => {
-                    const img = document.querySelector('img[src*="captcha"]');
-                    if (!img || !img.complete || img.naturalWidth === 0) return null;
-                    const c = document.createElement('canvas');
-                    c.width = 90; c.height = 28;
-                    const cx = c.getContext('2d');
-                    cx.filter = 'grayscale(1) contrast(2)';
-                    cx.drawImage(img, 0, 0, c.width, c.height);
-                    const url = c.toDataURL('image/png');
-                    return (url && url !== 'data:,') ? url : null;
-                }""")
+                # Capture captcha image and resize to 90×28 for the solver.
+                # Strategy:
+                #   1. element.screenshot() — captures the rendered element pixels
+                #      directly via Playwright; completely bypasses CORS/canvas-taint
+                #      issues that made the old JS canvas approach return blank PNGs.
+                #   2. Feed the screenshot bytes back as a data: URL and draw it on a
+                #      90×28 canvas (data: URLs are never cross-origin, so no taint).
+                #   3. The resulting PNG stays within the solver's ~1750-byte limit.
+                _CAPTCHA_SELECTORS = [
+                    'img[src*="captcha"]',
+                    'img[src*="Captcha"]',
+                    'img[src*="CAPTCHA"]',
+                    'img[id*="captcha" i]',
+                    'img[name*="captcha" i]',
+                    'img[alt*="captcha" i]',
+                ]
+                captcha_data = None
+                for _sel in _CAPTCHA_SELECTORS:
+                    try:
+                        captcha_el = page.wait_for_selector(_sel, state="visible", timeout=8000)
+                    except Exception:
+                        captcha_el = page.query_selector(_sel)
+                    if not captcha_el:
+                        continue
+                    try:
+                        png_bytes = captcha_el.screenshot()
+                    except Exception as _e:
+                        logger.warning(f"element.screenshot() failed for {_sel!r}: {_e}")
+                        continue
+                    if not png_bytes:
+                        continue
+                    # DEBUG: save raw screenshot to disk for visual inspection
+                    _dbg_path = f"/tmp/goa_captcha_raw_{captcha_attempt}.png"
+                    try:
+                        with open(_dbg_path, "wb") as _f:
+                            _f.write(png_bytes)
+                        logger.info(f"DEBUG: raw captcha screenshot saved to {_dbg_path} ({len(png_bytes)} bytes)")
+                    except Exception:
+                        pass
+                    full_data_url = "data:image/png;base64," + base64.b64encode(png_bytes).decode()
+                    # Resize to 90×28 inside the browser (data: URLs have no CORS restrictions)
+                    captcha_data = page.evaluate("""(dataUrl) => {
+                        return new Promise((resolve) => {
+                            const img = new Image();
+                            img.onload = () => {
+                                const c = document.createElement('canvas');
+                                c.width = 90; c.height = 28;
+                                const cx = c.getContext('2d');
+                                cx.filter = 'grayscale(1) contrast(2)';
+                                cx.drawImage(img, 0, 0, c.width, c.height);
+                                const url = c.toDataURL('image/png');
+                                resolve((url && url !== 'data:,') ? url : null);
+                            };
+                            img.onerror = () => resolve(null);
+                            img.src = dataUrl;
+                        });
+                    }""", full_data_url)
+                    if captcha_data:
+                        logger.info(f"DEBUG: resized data URL length={len(captcha_data)}")
+                        break
                 if not captcha_data or len(captcha_data) < 100:
-                    logger.warning(f"Canvas PNG extraction failed (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES})")
+                    logger.warning(f"Captcha element screenshot failed (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES})")
                     continue
 
                 try:
