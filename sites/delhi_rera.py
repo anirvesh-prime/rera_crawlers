@@ -389,6 +389,53 @@ def _parse_qpr_detail_node(html: str) -> dict:
     return {k: v for k, v in result.items() if v not in (None, "", [], {})}
 
 
+def _find_project_page_by_promoter_node(
+    promoter_node_id: int,
+    max_delta: int = 200,
+    logger: CrawlerLogger | None = None,
+) -> str | None:
+    """Scan project_page nodes to find the one linked to promoter_node_id.
+
+    For brand-new projects that have not yet submitted any QPRs, the QPR history
+    page has no all-submiited-qprs-public-view link, so the project node ID cannot
+    be derived from it.  However, the project_page Drupal node is always created a
+    small number of nodes after the promoter node (historically 1–110).  We scan
+    project_page/{promoter_node_id + N} for N in 1..max_delta and return the first
+    URL whose HTML contains a link back to promoter_page/{promoter_node_id},
+    confirming it is the correct project page.
+    """
+    target = f"promoter_page/{promoter_node_id}"
+    headers = {"User-Agent": settings.user_agents[0]}
+    try:
+        with httpx.Client(timeout=15.0, follow_redirects=True, verify=False) as client:
+            for delta in range(1, max_delta + 1):
+                node_id = promoter_node_id + delta
+                url = f"{BASE_URL}/project_page/{node_id}"
+                try:
+                    resp = client.get(url, headers=headers)
+                    if target in resp.text:
+                        if logger:
+                            logger.info(
+                                f"Found project_page/{node_id} via promoter scan"
+                                f" (promoter={promoter_node_id}, delta={delta})",
+                                step="project_page_scan",
+                            )
+                        return url
+                except Exception as exc:
+                    if logger:
+                        logger.warning(
+                            f"project_page/{node_id} fetch error: {exc}",
+                            step="project_page_scan",
+                        )
+    except Exception as exc:
+        if logger:
+            logger.warning(
+                f"Promoter-scan client error (promoter={promoter_node_id}): {exc}",
+                step="project_page_scan",
+            )
+    return None
+
+
 def _parse_project_page(html: str) -> dict:
     """Parse project_page/{project_node_id} — the rich project details page.
 
@@ -1348,6 +1395,29 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                             logger.info(
                                 f"Fetched {len(qpr_history)} QPR entries for {reg_no}",
                                 step="qpr_history",
+                            )
+                    random_delay(*delay_range)
+
+                # ── Fallback: scan project_page nodes near the promoter node ──
+                # Brand-new projects that have not yet started any QPR cycle have
+                # no all-submiited-qprs-public-view link in their QPR history page,
+                # so the node-ID derivation above yields nothing.  The project_page
+                # Drupal node is always created slightly after the promoter node
+                # (historically within 200 nodes).  Scan upward from
+                # promoter_node+1 looking for the first project_page page that
+                # links back to promoter_page/{promoter_node}, then use that URL.
+                if not proj_page_url and directors_url and settings.SCRAPE_DETAILS:
+                    m_promo = re.search(r"promoter_directors/(\d+)", directors_url)
+                    if m_promo:
+                        promoter_node_id = int(m_promo.group(1))
+                        proj_page_url = _find_project_page_by_promoter_node(
+                            promoter_node_id, logger=logger,
+                        )
+                        if proj_page_url:
+                            logger.info(
+                                f"project_page for {reg_no} discovered via promoter"
+                                f" scan: {proj_page_url}",
+                                step="project_page_scan",
                             )
                     random_delay(*delay_range)
 

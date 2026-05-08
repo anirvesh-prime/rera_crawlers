@@ -31,7 +31,6 @@ from pydantic import ValidationError
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.crawler_base import generate_project_key, random_delay, safe_get
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
-from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
 from core.project_normalizer import (
@@ -632,11 +631,21 @@ def _handle_document(
         return None
 
 
-def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
+def _sentinel_check(
+    config: dict,
+    run_id: int,
+    logger: CrawlerLogger,
+    *,
+    markers: list[dict],
+    qs_map: dict[str, str],
+    client: httpx.Client,
+) -> bool:
     """
     Data-quality sentinel for Himachal Pradesh RERA.
-    Full-flow check: fetches the listing to find the sentinel project's qs token,
-    then fetches ALL 6 detail sections (same as run()), merges them, and verifies
+
+    Accepts the already-fetched listing data (markers + qs_map) and the open
+    httpx.Client from run() so the ~19 MB listing is downloaded only once.
+    Fetches ALL 6 detail sections for the sentinel project and verifies
     ≥ 80% field coverage against the full baseline.
     """
     import json as _json
@@ -660,14 +669,8 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
                        path=sample_path, step="sentinel")
         return True
 
-    logger.info(f"Sentinel: fetching listing to find {sentinel_reg}", step="sentinel")
+    logger.info(f"Sentinel: using pre-fetched listing to find {sentinel_reg}", step="sentinel")
     try:
-        _timeout = httpx.Timeout(connect=15.0, read=120.0, write=10.0, pool=5.0)
-        with httpx.Client(timeout=_timeout, follow_redirects=True,
-                          headers={"User-Agent": _UA}) as client:
-            client.get(PUBLIC_DASHBOARD_URL)
-            markers, qs_map = _fetch_listing(client, logger)
-
         qs = qs_map.get(sentinel_reg, "")
         if not qs:
             logger.warning(f"Sentinel: {sentinel_reg!r} not found in listing qs_map — skipping",
@@ -692,16 +695,13 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
                     return str(v).strip()
             return ""
 
-        # Fetch ALL 6 sections (same as run())
-        with httpx.Client(timeout=_timeout, follow_redirects=True,
-                          headers={"User-Agent": _UA}) as client:
-            client.get(PUBLIC_DASHBOARD_URL)
-            proj_soup = _fetch_section(client, "ProjectDetails_PreviewPV",     qs, logger)
-            p_soup    = _fetch_section(client, "PromotorDetails_PreviewPV",    qs, logger)
-            bank_soup = _fetch_section(client, "BankDetails_PreviewPV",        qs, logger)
-            prof_soup = _fetch_section(client, "AssociatedVendors_PreviewPV",  qs, logger)
-            docs_soup = _fetch_section(client, "Documents_PreviewPV",          qs, logger)
-            inv_soup  = _fetch_section(client, "InventoryDetails_PreviewPV",   qs, logger)
+        # Fetch ALL 6 sections using the already-open client from run()
+        proj_soup = _fetch_section(client, "ProjectDetails_PreviewPV",     qs, logger)
+        p_soup    = _fetch_section(client, "PromotorDetails_PreviewPV",    qs, logger)
+        bank_soup = _fetch_section(client, "BankDetails_PreviewPV",        qs, logger)
+        prof_soup = _fetch_section(client, "AssociatedVendors_PreviewPV",  qs, logger)
+        docs_soup = _fetch_section(client, "Documents_PreviewPV",          qs, logger)
+        inv_soup  = _fetch_section(client, "InventoryDetails_PreviewPV",   qs, logger)
 
         proj_data    = _parse_project_details(proj_soup)  if proj_soup  else {}
         promoter     = _parse_promoter_details(p_soup)    if p_soup     else {}
@@ -804,12 +804,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     items_processed = 0
     machine_name, machine_ip = get_machine_context()
 
-    # ── Sentinel health check ────────────────────────────────────────────────
-    if not _sentinel_check(config, run_id, logger):
-        logger.error("Sentinel failed — aborting crawl", step="sentinel")
-        counts["error_count"] += 1
-        return counts
-
     checkpoint = load_checkpoint(site_id, mode) or {}
     resume_after_key = checkpoint.get("last_project_key")
     resume_pending = bool(resume_after_key)
@@ -824,6 +818,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
         # ── Phase 1: Fetch listing ────────────────────────────────────────────
         markers, qs_map = _fetch_listing(client, logger)
+
+        # ── Sentinel health check (uses already-fetched listing) ─────────────
+        if not _sentinel_check(config, run_id, logger,
+                               markers=markers, qs_map=qs_map, client=client):
+            logger.error("Sentinel failed — aborting crawl", step="sentinel")
+            counts["error_count"] += 1
+            return counts
 
         # Build marker lookup by registration number (try multiple key names)
         marker_by_reg: dict[str, dict] = {}
@@ -1063,46 +1064,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     counts["projects_skipped"] += 1
                 logger.info(f"DB result: {action}", step="db_upsert")
 
-                # Document handling
-                if docs:
-                    logger.info(f"Processing {len(docs)} documents", step="documents")
-                    uploaded_documents: list[dict] = []
-                    doc_name_counts: dict[str, int] = {}
-                    for doc in docs:
-                        doc_for_policy = {
-                            "url": doc.get("link"),
-                            "label": doc.get("type", "document"),
-                            **doc,
-                        }
-                        selected = select_document_for_download(
-                            config["state"], doc_for_policy, doc_name_counts, domain=DOMAIN,
-                        )
-                        if selected:
-                            uploaded = _handle_document(
-                                key, selected, run_id, site_id, logger, client=client
-                            )
-                            if uploaded:
-                                uploaded_documents.append(uploaded)
-                                counts["documents_uploaded"] += 1
-                                continue
-                        # Fallback: preserve link (if present) and updated flag;
-                        # omit link key entirely for placeholder docs (no link).
-                        fallback: dict = {"type": doc.get("type", "document")}
-                        if doc.get("link"):
-                            fallback["link"] = doc["link"]
-                        if doc.get("updated"):
-                            fallback["updated"] = doc["updated"]
-                        uploaded_documents.append(fallback)
-                    if uploaded_documents:
-                        upsert_project({
-                            "key": db_dict["key"],
-                            "url": db_dict["url"],
-                            "state": db_dict["state"],
-                            "domain": db_dict["domain"],
-                            "project_registration_no": db_dict["project_registration_no"],
-                            "uploaded_documents": uploaded_documents,
-                            "document_urls": build_document_urls(uploaded_documents),
-                        })
+                # Documents are not downloaded for HP RERA.
 
                 if i % 50 == 0:
                     save_checkpoint(site_id, mode, i, key, run_id)
