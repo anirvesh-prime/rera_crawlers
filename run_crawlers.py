@@ -51,7 +51,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="RERA Crawlers Orchestrator")
     parser.add_argument(
         "--mode",
-        choices=["daily_light", "weekly_deep"],
+        choices=["daily_light", "weekly_deep", "full", "single", "incremental", "listing"],
         default="weekly_deep",
         help="Crawl mode (default: weekly_deep)",
     )

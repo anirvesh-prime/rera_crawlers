@@ -476,7 +476,7 @@ def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> 
                     continue
 
                 try:
-                    candidate = captcha_to_text(captcha_data, default_captcha_source="eprocure")
+                    candidate = captcha_to_text(captcha_data, default_captcha_source="model_captcha")
                 except Exception as e:
                     logger.warning(f"Captcha solver exception (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES}): {e}")
                     continue
@@ -651,26 +651,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     cards = _fetch_project_listing(config, run_id, logger)
 
     if not cards:
-        sentinel_url = config.get("sentinel_project_url")
-        sentinel_reg = config.get("sentinel_registration_no")
-        if sentinel_url and sentinel_reg:
-            logger.warning(
-                "Captcha listing failed — falling back to sentinel_project_url for testing",
-                url=sentinel_url, step="listing_fallback",
-            )
-            cards = [{
-                "project_name":            None,
-                "project_registration_no": sentinel_reg,
-                "promoter_name":           None,
-                "promoter_type":           None,
-                "detail_url":              sentinel_url,
-            }]
-        else:
-            logger.error("No project listing obtained")
-            insert_crawl_error(run_id, site_id, "LISTING_FAILED",
-                               "Captcha solve failed and no project listing was obtained")
-            counts["error_count"] += 1
-            return counts
+        logger.error("No project listing obtained")
+        insert_crawl_error(run_id, site_id, "LISTING_FAILED",
+                           "Captcha solve failed and no project listing was obtained")
+        counts["error_count"] += 1
+        return counts
 
     if item_limit:
         cards = cards[:item_limit]

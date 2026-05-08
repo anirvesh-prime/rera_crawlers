@@ -18,7 +18,7 @@ def connect_client(host_used, server_time_out):
     return socket_client
 
 
-def captcha_to_text(source, host=default_host, default_captcha_source='eprocure', time_out=default_time_out):
+def captcha_to_text(source, host=default_host, default_captcha_source='model_captcha', time_out=default_time_out):
     temp_dict_source = dict()
     temp_dict_source['image_source'] = source
     temp_dict_source['captcha_source'] = default_captcha_source
@@ -193,7 +193,7 @@ def solve_captcha_from_page(
     *,
     logger: Any = None,
     selectors: list[str] | None = None,
-    captcha_source: str = 'eprocure',
+    captcha_source: str = 'model_captcha',
     host: str = default_host,
     time_out: int = default_time_out,
 ) -> str | None:

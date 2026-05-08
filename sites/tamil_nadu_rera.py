@@ -1346,6 +1346,58 @@ def _build_project_record(
     return {k: v for k, v in record.items() if v is not None and v != "" and v != {} and v != []}
 
 
+# ── Sentinel helpers ─────────────────────────────────────────────────────────
+
+def _fetch_sentinel_listing_row(reg_no: str, detail_url: str, logger: CrawlerLogger) -> dict | None:
+    """
+    Look up the sentinel project's listing row to retrieve fields that are only
+    available from the listing page (e.g. estimated_commencement_date, which comes
+    from the "dated DD-MM-YYYY" registration date field).
+
+    Steps:
+      1. Extract the project year from the tail of the registration number.
+      2. Determine the project type (Building / Normal_Layout / Regularisation_Layout)
+         from the detail URL.
+      3. Fetch and parse the corresponding year listing page(s).
+      4. Return the row whose project_registration_no matches reg_no.
+    """
+    year_m = re.search(r"/(\d{4})$", reg_no)
+    if not year_m:
+        logger.warning(
+            "Sentinel listing lookup: cannot extract year from reg_no",
+            reg=reg_no, step="sentinel",
+        )
+        return None
+    year = year_m.group(1)
+
+    # Determine listing URL(s) based on project type inferred from the detail URL.
+    if "layout" in detail_url.lower():
+        candidate_urls = [
+            f"{BASE_URL}/cms/reg_projects_tamilnadu/Normal_Layout/{year}.php",
+            f"{BASE_URL}/cms/reg_projects_tamilnadu/Regularisation_Layout/{year}.php",
+        ]
+    else:
+        candidate_urls = [
+            f"{BASE_URL}/cms/reg_projects_tamilnadu/Building/{year}.php",
+        ]
+
+    for listing_url in candidate_urls:
+        rows = _parse_year_listing(listing_url, logger)
+        for row in rows:
+            if row.get("project_registration_no", "").upper() == reg_no.upper():
+                logger.info(
+                    "Sentinel: found listing row",
+                    reg=reg_no, listing_url=listing_url, step="sentinel",
+                )
+                return row
+
+    logger.warning(
+        "Sentinel listing lookup: project not found in any candidate listing page",
+        reg=reg_no, year=year, step="sentinel",
+    )
+    return None
+
+
 # ── Main entry point ──────────────────────────────────────────────────────────
 
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
@@ -1432,6 +1484,20 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     if doc_links:
         fresh.setdefault("uploaded_documents", doc_links)
 
+    # estimated_commencement_date is seeded from the listing row's "dated DD-MM-YYYY"
+    # field in the full crawl — it is not present on the detail page for layout projects.
+    # If the baseline has it but the fresh scrape doesn't, fetch the listing row to
+    # replicate what the full crawl would do.
+    if not fresh.get("estimated_commencement_date") and baseline.get("estimated_commencement_date"):
+        listing_row = _fetch_sentinel_listing_row(sentinel_reg, detail_url, logger)
+        if listing_row and listing_row.get("estimated_commencement_date"):
+            fresh["estimated_commencement_date"] = listing_row["estimated_commencement_date"]
+            logger.info(
+                "Sentinel: seeded estimated_commencement_date from listing row",
+                value=listing_row["estimated_commencement_date"],
+                step="sentinel",
+            )
+
     # ── Coverage comparison ───────────────────────────────────────────────────
     if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
         insert_crawl_error(
@@ -1455,6 +1521,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         full        – crawl all years from scratch (ignores checkpoint)
         incremental – alias for daily_light; resumes from checkpoint
         single      – crawl only the current/most-recent year
+        listing     – crawl only the direct listing_url from config
+                      (e.g. https://rera.tn.gov.in/registered-building/tn)
     """
     site_id   = config.get("id", "tamil_nadu_rera")
     config_id = config.get("config_id", 14374)
@@ -1477,17 +1545,22 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         return counts
 
     # ── Checkpoint handling ──────────────────────────────────────────────────
-    checkpoint = (load_checkpoint(site_id, mode) if mode != "full" else {}) or {}
+    checkpoint = (load_checkpoint(site_id, mode) if mode not in ("full", "listing") else {}) or {}
     last_project_key: str | None = checkpoint.get("last_project_key")
     last_page = int(checkpoint.get("last_page", 0))
 
-    if mode == "full":
+    if mode in ("full", "listing"):
         reset_checkpoint(site_id, mode)
 
     # ── Discover year listing URLs ───────────────────────────────────────────
-    year_urls = _get_year_listing_urls(logger)
-    if mode == "single" and year_urls:
-        year_urls = year_urls[:1]   # only most-recent year
+    if mode == "listing":
+        listing_url = config.get("listing_url", f"{BASE_URL}/registered-building/tn")
+        year_urls = [listing_url]
+        logger.info("listing mode: crawling direct listing URL", url=listing_url)
+    else:
+        year_urls = _get_year_listing_urls(logger)
+        if mode == "single" and year_urls:
+            year_urls = year_urls[:1]   # only most-recent year
     logger.info(f"Will crawl {len(year_urls)} year listing(s)", mode=mode)
 
     machine_name, machine_ip = get_machine_context()

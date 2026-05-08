@@ -138,17 +138,16 @@ def _solve_captcha(page: Any, logger: CrawlerLogger) -> str | None:
     """
     Extract and solve the CAPTCHA from the search page.
 
-    Strategy (mirrors goa_rera.py):
-      1. element.screenshot() — captures the rendered pixels directly via
-         Playwright, completely bypassing CORS/canvas-taint issues that made
-         the old JS canvas approach (drawing #captchaImage onto an offscreen
-         canvas) return blank or unreadable PNGs.
-      2. Feed the screenshot bytes back as a data: URL and draw it onto a
-         90×28 canvas inside the browser.  data: URLs are never cross-origin,
-         so the canvas is never tainted and toDataURL() always succeeds.
-      3. No grayscale/contrast filter — testing showed the filter causes the
-         solver to return empty text; natural colours give better OCR results.
-      4. The resulting ~1250-byte PNG stays within the solver's size limit.
+    Strategy:
+      1. element.screenshot() — captures the rendered #captchaImage pixels
+         directly via Playwright, bypassing the CORS/canvas-taint issues that
+         made the old JS canvas approach return blank PNGs.
+      2. The PNG bytes are base64-encoded at native resolution (no resize) and
+         sent to the solver as raw base64 — mirroring the original
+         Selenium approach (element.screenshot_as_base64) that the solver
+         model was trained on.
+      3. captcha_source="maharera": Telangana uses the same CAPTCHA vendor as
+         MahaRERA; the maharera OCR model recognises this font/style.
     """
     try:
         # Wait for the CAPTCHA image to be present and fully loaded
@@ -170,41 +169,13 @@ def _solve_captcha(page: Any, logger: CrawlerLogger) -> str | None:
             logger.warning("CAPTCHA element screenshot returned empty", step="captcha")
             return None
 
-        # DEBUG: save raw screenshot so we can inspect what the solver receives
-        try:
-            import tempfile, os as _os
-            _dbg = _os.path.join(tempfile.gettempdir(), "telangana_captcha_debug.png")
-            with open(_dbg, "wb") as _f:
-                _f.write(png_bytes)
-            logger.info(f"DEBUG: captcha screenshot saved to {_dbg} ({len(png_bytes)} bytes)", step="captcha")
-        except Exception:
-            pass
-
-        full_data_url = "data:image/png;base64," + base64.b64encode(png_bytes).decode()
-
-        # Resize to 90×28 inside the browser using a data: URL (no canvas taint).
-        # No grayscale/contrast filter: natural colours yield better OCR results.
-        data_url: str | None = page.evaluate(
-            """(dataUrl) => new Promise((resolve) => {
-                const img = new Image();
-                img.onload = () => {
-                    const c = document.createElement('canvas');
-                    c.width = 90; c.height = 28;
-                    const ctx = c.getContext('2d');
-                    ctx.drawImage(img, 0, 0, c.width, c.height);
-                    const url = c.toDataURL('image/png');
-                    resolve((url && url !== 'data:,') ? url : null);
-                };
-                img.onerror = () => resolve(null);
-                img.src = dataUrl;
-            })""",
-            full_data_url,
-        )
-        if not data_url:
-            logger.warning("CAPTCHA canvas resize returned empty", step="captcha")
-            return None
-
-        solved = (captcha_to_text(data_url, default_captcha_source="eprocure") or "").strip()
+        # Send the native-resolution screenshot as raw base64 — no canvas resize.
+        # This mirrors the original Selenium approach (element.screenshot_as_base64)
+        # that the solver service was trained against.
+        # captcha_source="maharera": Telangana uses the same CAPTCHA vendor as
+        # MahaRERA; the maharera model recognises this font/style.
+        raw_b64 = base64.b64encode(png_bytes).decode()
+        solved = (captcha_to_text(raw_b64, default_captcha_source="maharera") or "").strip()
         if solved:
             return solved
         logger.warning("CAPTCHA solver returned empty text", step="captcha")
@@ -265,7 +236,7 @@ def _submit_search(page: Any, logger: CrawlerLogger) -> bool:
                     pass
 
             try:
-                page.wait_for_selector("table", timeout=30_000)
+                page.wait_for_selector("table", timeout=60_000)
                 logger.info("Search submitted successfully", step="search")
                 return True
             except Exception:
@@ -984,7 +955,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     if checkpoint:
         logger.info(f"Resuming from checkpoint page {start_page}")
 
-    with PlaywrightSession(headless=True) as browser:
+    with PlaywrightSession(headless=True, ignore_https_errors=True) as browser:
         # ── Open search page ─────────────────────────────────────────────────
         page = browser.new_page()
         try:

@@ -134,8 +134,9 @@ def safe_post(
 class PlaywrightSession:
     """Context manager that provides a reusable Playwright browser session."""
 
-    def __init__(self, headless: bool = True):
+    def __init__(self, headless: bool = True, ignore_https_errors: bool = False):
         self.headless = headless
+        self.ignore_https_errors = ignore_https_errors
         self._playwright = None
         self._browser: Browser | None = None
         self._context: BrowserContext | None = None
@@ -143,7 +144,10 @@ class PlaywrightSession:
     def __enter__(self) -> "PlaywrightSession":
         self._playwright = sync_playwright().start()
         self._browser = self._playwright.chromium.launch(headless=self.headless)
-        self._context = self._browser.new_context(user_agent=get_random_ua())
+        self._context = self._browser.new_context(
+            user_agent=get_random_ua(),
+            ignore_https_errors=self.ignore_https_errors,
+        )
         return self
 
     def __exit__(self, *args):

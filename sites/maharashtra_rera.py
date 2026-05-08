@@ -264,7 +264,7 @@ def _scrape_mh_detail_page(cert_id: str, logger: CrawlerLogger) -> dict:
                     continue
 
                 captcha_value = solve_captcha_from_page(
-                    page, logger=logger, selectors=["canvas"], captcha_source="eprocure",
+                    page, logger=logger, selectors=["canvas"], captcha_source="model_captcha",
                 )
                 if captcha_value:
                     logger.info(f"Captcha solved via OCR: {captcha_value!r}", step="captcha")

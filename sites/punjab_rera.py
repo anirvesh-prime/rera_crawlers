@@ -615,7 +615,7 @@ def _solve_search_captcha(page, logger: CrawlerLogger) -> str | None:
         if not image_source:
             logger.warning("Captcha image could not be converted to data URL", step="captcha")
             return None
-        solved = (captcha_to_text(image_source, default_captcha_source="eprocure") or "").strip()
+        solved = (captcha_to_text(image_source, default_captcha_source="model_captcha") or "").strip()
         if solved:
             logger.info(f"Captcha solved: {solved!r}", step="captcha")
             return solved
@@ -711,7 +711,7 @@ def _solve_listing_captcha(session: httpx.Client, logger: CrawlerLogger) -> tupl
         img_elapsed = time.monotonic() - t_img
         data_url = "data:image/png;base64," + base64.b64encode(img_resp.content).decode()
         t_solve = time.monotonic()
-        solved = (captcha_to_text(data_url, default_captcha_source="eprocure") or "").strip()
+        solved = (captcha_to_text(data_url, default_captcha_source="model_captcha") or "").strip()
         solve_elapsed = time.monotonic() - t_solve
         logger.info(
             f"Captcha timing: page={page_elapsed:.2f}s  img={img_elapsed:.2f}s  solver={solve_elapsed:.2f}s  total={page_elapsed+img_elapsed+solve_elapsed:.2f}s",
