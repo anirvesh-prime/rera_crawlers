@@ -76,6 +76,7 @@ def safe_get(
     """GET with retry/backoff.  Pass `client` to reuse an existing connection pool."""
     _headers = {"User-Agent": get_random_ua(), **(headers or {})}
     last_exc: Exception | None = None
+    attempt = 0
     for attempt in range(1, retries + 1):
         try:
             if client is not None:
@@ -85,6 +86,15 @@ def safe_get(
                     resp = c.get(url, headers=_headers, params=params)
             resp.raise_for_status()
             return resp
+        except httpx.HTTPStatusError as e:
+            last_exc = e
+            if logger:
+                logger.warning(f"GET attempt {attempt}/{retries} failed: {e}", url=url)
+            # 4xx errors are definitive client errors — no point retrying
+            if e.response.status_code < 500:
+                break
+            if attempt < retries:
+                time.sleep(delay * attempt)
         except Exception as e:
             last_exc = e
             if logger:
@@ -92,7 +102,7 @@ def safe_get(
             if attempt < retries:
                 time.sleep(delay * attempt)
     if logger and last_exc is not None:
-        logger.error(f"GET failed after {retries} attempts: {last_exc}", url=url)
+        logger.error(f"GET failed after {attempt} attempt(s): {last_exc}", url=url)
     return None
 
 
@@ -111,6 +121,7 @@ def safe_post(
     """POST with retry/backoff.  Pass `client` to reuse an existing connection pool."""
     _headers = {"User-Agent": get_random_ua(), **(headers or {})}
     last_exc: Exception | None = None
+    attempt = 0
     for attempt in range(1, retries + 1):
         try:
             if client is not None:
@@ -120,6 +131,15 @@ def safe_post(
                     resp = c.post(url, data=data, json=json_data, headers=_headers)
             resp.raise_for_status()
             return resp
+        except httpx.HTTPStatusError as e:
+            last_exc = e
+            if logger:
+                logger.warning(f"POST attempt {attempt}/{retries} failed: {e}", url=url)
+            # 4xx errors are definitive client errors — no point retrying
+            if e.response.status_code < 500:
+                break
+            if attempt < retries:
+                time.sleep(delay * attempt)
         except Exception as e:
             last_exc = e
             if logger:
@@ -127,7 +147,7 @@ def safe_post(
             if attempt < retries:
                 time.sleep(delay * attempt)
     if logger and last_exc is not None:
-        logger.error(f"POST failed after {retries} attempts: {last_exc}", url=url)
+        logger.error(f"POST failed after {attempt} attempt(s): {last_exc}", url=url)
     return None
 
 

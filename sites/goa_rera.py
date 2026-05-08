@@ -45,7 +45,8 @@ HOME_URL    = "https://rera.goa.gov.in/reraApp/home"
 SEARCH_URL  = "https://rera.goa.gov.in/reraApp/search"
 DOMAIN      = "rera.goa.gov.in"
 PAGE_SIZE          = 10   # rows per search-result page (approximate)
-_CAPTCHA_MAX_TRIES = 5    # maximum attempts to solve the captcha before giving up
+_CAPTCHA_MAX_TRIES    = 5   # solver attempts per captcha round (inner loop)
+_MAX_SERVER_REJECTS   = 10  # max server-side rejections before giving up entirely
 
 
 def _get(url: str, logger: CrawlerLogger, **kw):
@@ -450,18 +451,18 @@ def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> 
                     if not png_bytes:
                         continue
                     full_data_url = "data:image/png;base64," + base64.b64encode(png_bytes).decode()
-                    # Resize to 90×28 inside the browser.
+                    # Resize to 90×28 via an in-browser canvas.
                     # - data: URLs are never cross-origin → no canvas taint
-                    # - No grayscale/contrast filter: testing showed the filter causes
-                    #   the solver to return None; natural colors give far better OCR results
+                    # - 90×28 is the model's trained input size; larger sizes cause the
+                    #   model to return wrong text rather than None (false positives that
+                    #   waste server-rejection slots), so we only use this one size.
                     captcha_data = page.evaluate("""(dataUrl) => {
                         return new Promise((resolve) => {
                             const img = new Image();
                             img.onload = () => {
                                 const c = document.createElement('canvas');
                                 c.width = 90; c.height = 28;
-                                const cx = c.getContext('2d');
-                                cx.drawImage(img, 0, 0, c.width, c.height);
+                                c.getContext('2d').drawImage(img, 0, 0, 90, 28);
                                 const url = c.toDataURL('image/png');
                                 resolve((url && url !== 'data:,') ? url : null);
                             };
@@ -517,8 +518,8 @@ def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> 
             # Detect captcha rejection: server redirects back to home page (has captcha form again)
             if soup.find("input", {"name": "captcha"}) and not soup.find("div", class_=lambda c: c and "no_pad_lft" in c):
                 _server_rejections += 1
-                logger.warning(f"Captcha rejected by server (rejection #{_server_rejections}) — retrying")
-                if _server_rejections >= _CAPTCHA_MAX_TRIES:
+                logger.warning(f"Captcha rejected by server (rejection #{_server_rejections}/{_MAX_SERVER_REJECTS}) — retrying")
+                if _server_rejections >= _MAX_SERVER_REJECTS:
                     logger.error("Too many captcha rejections — stopping")
                     break
                 continue  # restart outer while True loop to re-attempt captcha
