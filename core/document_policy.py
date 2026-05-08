@@ -143,6 +143,7 @@ RERA_DOMAIN_TO_STATE: dict[str, str] = {
     "rera.kerala.gov.in": "kerala",
     "rera.rajasthan.gov.in": "rajasthan",
     "rera.odisha.gov.in": "odisha",
+    "rera.tn.gov.in": "tamil nadu",
 }
 
 

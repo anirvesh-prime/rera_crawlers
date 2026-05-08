@@ -1261,6 +1261,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     # ── Step 2: Checkpoint ───────────────────────────────────────────────────
     checkpoint     = load_checkpoint(site_id, mode) or {}
     last_proj_key  = checkpoint.get("last_project_key")
+    last_page      = checkpoint.get("last_page") or 0
+    # Safety net: if the saved page count >= total stubs the previous run
+    # completed in full — treat it as no checkpoint so we don't skip everything.
+    if last_page >= len(all_stubs):
+        logger.info("Checkpoint points past end of listing — ignoring (previous run completed)",
+                    last_page=last_page, total=len(all_stubs))
+        last_proj_key = None
     resume_pending = bool(last_proj_key and mode != "full")
     machine_name, machine_ip = get_machine_context()
 
