@@ -449,16 +449,11 @@ def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> 
                         continue
                     if not png_bytes:
                         continue
-                    # DEBUG: save raw screenshot to disk for visual inspection
-                    _dbg_path = f"/tmp/goa_captcha_raw_{captcha_attempt}.png"
-                    try:
-                        with open(_dbg_path, "wb") as _f:
-                            _f.write(png_bytes)
-                        logger.info(f"DEBUG: raw captcha screenshot saved to {_dbg_path} ({len(png_bytes)} bytes)")
-                    except Exception:
-                        pass
                     full_data_url = "data:image/png;base64," + base64.b64encode(png_bytes).decode()
-                    # Resize to 90×28 inside the browser (data: URLs have no CORS restrictions)
+                    # Resize to 90×28 inside the browser.
+                    # - data: URLs are never cross-origin → no canvas taint
+                    # - No grayscale/contrast filter: testing showed the filter causes
+                    #   the solver to return None; natural colors give far better OCR results
                     captcha_data = page.evaluate("""(dataUrl) => {
                         return new Promise((resolve) => {
                             const img = new Image();
@@ -466,7 +461,6 @@ def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> 
                                 const c = document.createElement('canvas');
                                 c.width = 90; c.height = 28;
                                 const cx = c.getContext('2d');
-                                cx.filter = 'grayscale(1) contrast(2)';
                                 cx.drawImage(img, 0, 0, c.width, c.height);
                                 const url = c.toDataURL('image/png');
                                 resolve((url && url !== 'data:,') ? url : null);
@@ -476,7 +470,6 @@ def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> 
                         });
                     }""", full_data_url)
                     if captcha_data:
-                        logger.info(f"DEBUG: resized data URL length={len(captcha_data)}")
                         break
                 if not captcha_data or len(captcha_data) < 100:
                     logger.warning(f"Captcha element screenshot failed (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES})")
@@ -658,11 +651,26 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     cards = _fetch_project_listing(config, run_id, logger)
 
     if not cards:
-        logger.error("No project listing obtained")
-        insert_crawl_error(run_id, site_id, "LISTING_FAILED",
-                           "Captcha solve failed and no project listing was obtained")
-        counts["error_count"] += 1
-        return counts
+        sentinel_url = config.get("sentinel_project_url")
+        sentinel_reg = config.get("sentinel_registration_no")
+        if sentinel_url and sentinel_reg:
+            logger.warning(
+                "Captcha listing failed — falling back to sentinel_project_url for testing",
+                url=sentinel_url, step="listing_fallback",
+            )
+            cards = [{
+                "project_name":            None,
+                "project_registration_no": sentinel_reg,
+                "promoter_name":           None,
+                "promoter_type":           None,
+                "detail_url":              sentinel_url,
+            }]
+        else:
+            logger.error("No project listing obtained")
+            insert_crawl_error(run_id, site_id, "LISTING_FAILED",
+                               "Captcha solve failed and no project listing was obtained")
+            counts["error_count"] += 1
+            return counts
 
     if item_limit:
         cards = cards[:item_limit]

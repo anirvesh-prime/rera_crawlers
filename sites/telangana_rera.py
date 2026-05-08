@@ -138,16 +138,21 @@ def _solve_captcha(page: Any, logger: CrawlerLogger) -> str | None:
     """
     Extract and solve the CAPTCHA from the search page.
 
-    Telangana's CAPTCHA is served as an <img id="captchaImage"> whose src is a
-    dynamic server endpoint (/SearchList/SearchCaptcha).  The generic
-    extract_captcha_source_from_page() returns that URL directly for <img>
-    elements, but the solver server cannot download a session-bound URL.
-
-    Instead we draw the rendered image onto a canvas inside the browser to get
-    a self-contained base64 data URL — identical to the Punjab approach.
+    Strategy (mirrors goa_rera.py):
+      1. element.screenshot() — captures the rendered pixels directly via
+         Playwright, completely bypassing CORS/canvas-taint issues that made
+         the old JS canvas approach (drawing #captchaImage onto an offscreen
+         canvas) return blank or unreadable PNGs.
+      2. Feed the screenshot bytes back as a data: URL and draw it onto a
+         90×28 canvas inside the browser.  data: URLs are never cross-origin,
+         so the canvas is never tainted and toDataURL() always succeeds.
+      3. No grayscale/contrast filter — testing showed the filter causes the
+         solver to return empty text; natural colours give better OCR results.
+      4. The resulting ~1250-byte PNG stays within the solver's size limit.
     """
     try:
-        # Wait for the CAPTCHA image to be fully loaded/rendered
+        # Wait for the CAPTCHA image to be present and fully loaded
+        page.wait_for_selector("#captchaImage", state="visible", timeout=15_000)
         page.wait_for_function(
             """() => {
                 const img = document.querySelector('#captchaImage');
@@ -155,27 +160,50 @@ def _solve_captcha(page: Any, logger: CrawlerLogger) -> str | None:
             }""",
             timeout=15_000,
         )
-        # Canvas → PNG with grayscale+contrast filter.
-        # - PNG format required (solver rejects JPEG)
-        # - grayscale+contrast improves OCR accuracy and reduces PNG size
-        # - 90x28 target gives ~1250 bytes raw — within solver's size limit
+        captcha_el = page.query_selector("#captchaImage")
+        if not captcha_el:
+            logger.warning("CAPTCHA image element not found", step="captcha")
+            return None
+
+        png_bytes = captcha_el.screenshot()
+        if not png_bytes or len(png_bytes) < 100:
+            logger.warning("CAPTCHA element screenshot returned empty", step="captcha")
+            return None
+
+        # DEBUG: save raw screenshot so we can inspect what the solver receives
+        try:
+            import tempfile, os as _os
+            _dbg = _os.path.join(tempfile.gettempdir(), "telangana_captcha_debug.png")
+            with open(_dbg, "wb") as _f:
+                _f.write(png_bytes)
+            logger.info(f"DEBUG: captcha screenshot saved to {_dbg} ({len(png_bytes)} bytes)", step="captcha")
+        except Exception:
+            pass
+
+        full_data_url = "data:image/png;base64," + base64.b64encode(png_bytes).decode()
+
+        # Resize to 90×28 inside the browser using a data: URL (no canvas taint).
+        # No grayscale/contrast filter: natural colours yield better OCR results.
         data_url: str | None = page.evaluate(
-            """() => {
-                const img = document.querySelector('#captchaImage');
-                if (!img) return null;
-                const canvas = document.createElement('canvas');
-                canvas.width  = 90;
-                canvas.height = 28;
-                const ctx = canvas.getContext('2d');
-                ctx.filter = 'grayscale(1) contrast(2)';
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                const url = canvas.toDataURL('image/png');
-                return (url && url !== 'data:,') ? url : null;
-            }"""
+            """(dataUrl) => new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const c = document.createElement('canvas');
+                    c.width = 90; c.height = 28;
+                    const ctx = c.getContext('2d');
+                    ctx.drawImage(img, 0, 0, c.width, c.height);
+                    const url = c.toDataURL('image/png');
+                    resolve((url && url !== 'data:,') ? url : null);
+                };
+                img.onerror = () => resolve(null);
+                img.src = dataUrl;
+            })""",
+            full_data_url,
         )
         if not data_url:
-            logger.warning("CAPTCHA canvas extraction returned empty", step="captcha")
+            logger.warning("CAPTCHA canvas resize returned empty", step="captcha")
             return None
+
         solved = (captcha_to_text(data_url, default_captcha_source="eprocure") or "").strip()
         if solved:
             return solved
