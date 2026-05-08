@@ -42,13 +42,19 @@ def random_delay(min_s: float = 1.0, max_s: float = 3.0) -> None:
 def get_legacy_ssl_context() -> ssl.SSLContext:
     """
     Returns an SSL context that accepts old government sites running TLS 1.0/1.1
-    with unsafe legacy renegotiation (e.g. WB HIRA, Telangana).
+    with unsafe legacy renegotiation (e.g. WB HIRA, Telangana, Uttarakhand).
+
+    ``ssl.OP_LEGACY_SERVER_CONNECT`` was only added in Python 3.12 / OpenSSL 3.x.
+    On older stacks (e.g. OpenSSL 1.1.1k) the constant is absent, so we fall back
+    to the raw OpenSSL bit ``SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION = 0x00040000``
+    which has the same effect on all 1.x releases.
     """
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
     ctx.set_ciphers("DEFAULT:@SECLEVEL=0")
-    ctx.options |= getattr(ssl, "OP_LEGACY_SERVER_CONNECT", 0)
+    # 0x00040000 == SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION (OpenSSL 1.1.1)
+    ctx.options |= getattr(ssl, "OP_LEGACY_SERVER_CONNECT", 0x00040000)
     return ctx
 
 
