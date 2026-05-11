@@ -3,8 +3,8 @@ Tamil Nadu RERA Crawler — rera.tn.gov.in
 Type: static (httpx + BeautifulSoup)
 
 Strategy:
-- Fetch CMS index page to discover year-based listing URLs (2017–present)
-- For each year page: parse the HTML table (9 columns) to collect project rows
+- Fetch the single master listing page: https://rera.tn.gov.in/registered-building/tn
+- Parse the HTML table to collect all registered building project rows
 - Each row yields: reg_no, promoter name, project name/description, expiry date,
   promoter-UUID (public-view1), project-UUID (public-view2), lat/lng, form-C URL
 - For each project: fetch public-view1 (promoter details) and
@@ -1383,50 +1383,22 @@ def _build_project_record(
 
 def _fetch_sentinel_listing_row(reg_no: str, detail_url: str, logger: CrawlerLogger) -> dict | None:
     """
-    Look up the sentinel project's listing row to retrieve fields that are only
-    available from the listing page (e.g. estimated_commencement_date, which comes
-    from the "dated DD-MM-YYYY" registration date field).
-
-    Steps:
-      1. Extract the project year from the tail of the registration number.
-      2. Determine the project type (Building / Normal_Layout / Regularisation_Layout)
-         from the detail URL.
-      3. Fetch and parse the corresponding year listing page(s).
-      4. Return the row whose project_registration_no matches reg_no.
+    Look up the sentinel project's listing row in the master listing page.
+    Used to retrieve fields only available from the listing (e.g. estimated_commencement_date).
     """
-    year_m = re.search(r"/(\d{4})$", reg_no)
-    if not year_m:
-        logger.warning(
-            "Sentinel listing lookup: cannot extract year from reg_no",
-            reg=reg_no, step="sentinel",
-        )
-        return None
-    year = year_m.group(1)
-
-    # Determine listing URL(s) based on project type inferred from the detail URL.
-    if "layout" in detail_url.lower():
-        candidate_urls = [
-            f"{BASE_URL}/cms/reg_projects_tamilnadu/Normal_Layout/{year}.php",
-            f"{BASE_URL}/cms/reg_projects_tamilnadu/Regularisation_Layout/{year}.php",
-        ]
-    else:
-        candidate_urls = [
-            f"{BASE_URL}/cms/reg_projects_tamilnadu/Building/{year}.php",
-        ]
-
-    for listing_url in candidate_urls:
-        rows = _parse_year_listing(listing_url, logger)
-        for row in rows:
-            if row.get("project_registration_no", "").upper() == reg_no.upper():
-                logger.info(
-                    "Sentinel: found listing row",
-                    reg=reg_no, listing_url=listing_url, step="sentinel",
-                )
-                return row
+    listing_url = f"{BASE_URL}/registered-building/tn"
+    rows = _parse_year_listing(listing_url, logger)
+    for row in rows:
+        if row.get("project_registration_no", "").upper() == reg_no.upper():
+            logger.info(
+                "Sentinel: found listing row",
+                reg=reg_no, listing_url=listing_url, step="sentinel",
+            )
+            return row
 
     logger.warning(
-        "Sentinel listing lookup: project not found in any candidate listing page",
-        reg=reg_no, year=year, step="sentinel",
+        "Sentinel listing lookup: project not found in master listing",
+        reg=reg_no, step="sentinel",
     )
     return None
 
@@ -1578,23 +1550,17 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         return counts
 
     # ── Checkpoint handling ──────────────────────────────────────────────────
-    checkpoint = (load_checkpoint(site_id, mode) if mode not in ("full", "listing") else {}) or {}
+    checkpoint = (load_checkpoint(site_id, mode) if mode != "full" else {}) or {}
     last_project_key: str | None = checkpoint.get("last_project_key")
     last_page = int(checkpoint.get("last_page", 0))
 
-    if mode in ("full", "listing"):
+    if mode == "full":
         reset_checkpoint(site_id, mode)
 
-    # ── Discover year listing URLs ───────────────────────────────────────────
-    if mode == "listing":
-        listing_url = config.get("listing_url", f"{BASE_URL}/registered-building/tn")
-        year_urls = [listing_url]
-        logger.info("listing mode: crawling direct listing URL", url=listing_url)
-    else:
-        year_urls = _get_year_listing_urls(logger)
-        if mode == "single" and year_urls:
-            year_urls = year_urls[:1]   # only most-recent year
-    logger.info(f"Will crawl {len(year_urls)} year listing(s)", mode=mode)
+    # ── Single master listing URL — the only source of truth ────────────────
+    listing_url = config.get("listing_url", f"{BASE_URL}/registered-building/tn")
+    year_urls = [listing_url]
+    logger.info("Crawling master listing", url=listing_url)
 
     machine_name, machine_ip = get_machine_context()
 

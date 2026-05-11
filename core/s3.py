@@ -34,6 +34,25 @@ def build_s3_key(project_key: str, filename: str) -> str:
     return f"{project_key}/{sanitize_filename(filename)}"
 
 
+_CONTENT_TYPES: dict[str, str] = {
+    ".pdf":  "application/pdf",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".xls":  "application/vnd.ms-excel",
+    ".doc":  "application/msword",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".jpg":  "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png":  "image/png",
+    ".zip":  "application/zip",
+}
+
+
+def _content_type_for(filename: str) -> str:
+    import os
+    ext = os.path.splitext(filename)[1].lower()
+    return _CONTENT_TYPES.get(ext, "application/octet-stream")
+
+
 def upload_document(project_key: str, filename: str, data: bytes, dry_run: bool = False) -> str | None:
     """Upload bytes to S3. Returns the S3 key on success, None on failure.
 
@@ -50,7 +69,7 @@ def upload_document(project_key: str, filename: str, data: bytes, dry_run: bool 
             Bucket=settings.S3_BUCKET_NAME,
             Key=s3_key,
             Body=data,
-            ContentType="application/pdf",
+            ContentType=_content_type_for(filename),
         )
         return s3_key
     except Exception as exc:

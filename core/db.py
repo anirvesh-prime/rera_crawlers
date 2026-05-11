@@ -803,14 +803,19 @@ def upsert_document(
             )
             return "uploaded"
 
-        if existing["md5_checksum"] != md5_checksum:
+        if (
+            existing["md5_checksum"] != md5_checksum
+            or existing["s3_key"] != s3_key
+            or existing["file_name"] != file_name
+        ):
             conn.execute(
                 """
                 UPDATE rera_project_documents
-                SET s3_key = %s, md5_checksum = %s, file_size_bytes = %s, uploaded_at = now()
+                SET s3_key = %s, file_name = %s, md5_checksum = %s,
+                    file_size_bytes = %s, uploaded_at = now()
                 WHERE id = %s
                 """,
-                (s3_key, md5_checksum, file_size_bytes, existing["id"]),
+                (s3_key, file_name, md5_checksum, file_size_bytes, existing["id"]),
             )
             return "updated"
 

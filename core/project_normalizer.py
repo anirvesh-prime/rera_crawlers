@@ -508,6 +508,12 @@ def document_identity_url(doc: dict[str, Any]) -> str | None:
     return clean_string(doc.get("identity_url") or doc.get("source_url") or doc.get("url"))
 
 
+_KNOWN_EXTENSIONS: frozenset[str] = frozenset({
+    ".pdf", ".xlsx", ".xls", ".doc", ".docx",
+    ".jpg", ".jpeg", ".png", ".gif", ".zip",
+})
+
+
 def build_document_filename(doc: dict[str, Any], default_ext: str = ".pdf") -> str:
     label = clean_string(doc.get("label") or doc.get("type")) or "document"
     slug = re.sub(r"[^a-z0-9]+", "_", label.lower()).strip("_") or "document"
@@ -526,7 +532,11 @@ def build_document_filename(doc: dict[str, Any], default_ext: str = ".pdf") -> s
     if not suffix and url:
         suffix = hashlib.sha1(url.encode("utf-8")).hexdigest()[:12]
 
-    ext = (default_ext or ".pdf").strip() or ".pdf"
+    # Infer file extension from URL path (e.g. .xlsx, .docx) when available;
+    # fall back to default_ext (typically .pdf) for opaque or extensionless URLs.
+    from pathlib import PurePosixPath
+    url_path_ext = PurePosixPath(parsed.path).suffix.lower() if parsed.path else ""
+    ext = url_path_ext if url_path_ext in _KNOWN_EXTENSIONS else ((default_ext or ".pdf").strip() or ".pdf")
     if not ext.startswith("."):
         ext = f".{ext}"
 

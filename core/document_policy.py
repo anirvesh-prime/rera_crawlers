@@ -25,6 +25,11 @@ STATE_DOC_DICT: dict[str, list[str]] = {
         "Structural Design Calculation", "Drawing for Structural Stability", "Design for Structural Stability",
         "Form C", "Work Progress", "Engineer", "ARCHITECT", "Occupation Certificate",
         "Occupancy Certificate",
+        # Additional document types served by the Tamil Nadu portal
+        "Building Permit", "Planning Permission", "Local Body Approval",
+        "Encumbrance Certificate", "Land Title", "Declaration",
+        "Patta", "Construction Agreement", "Stage of Construction",
+        "Site Photo", "GLV", "Survey Number",
     ],
     "kerala": [
         "Brochures", "RERA Certificate", "Registration Certificate", "RERA Registration", "Sanctioned Plan",
