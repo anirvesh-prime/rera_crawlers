@@ -7,7 +7,7 @@ from unittest import mock
 from bs4 import BeautifulSoup
 
 from core.project_normalizer import document_result_entry
-from sites import gujarat_rera
+from sites import gujarat_rera, himachal_pradesh_rera
 from sites.andhra_pradesh_rera import _scrape_detail_page as scrape_andhra_detail
 from sites.tamil_nadu_rera import _parse_listing_row as parse_tn_listing_row
 from sites.karnataka_rera import _parse_detail as parse_karnataka_detail, _sentinel_check
@@ -282,6 +282,63 @@ class CrawlerFormatRegressionTests(unittest.TestCase):
                             )
 
         self.assertEqual(result["s3_link"], "https://docs.primetenders.com/abc/file.pdf")
+
+    def test_himachal_extract_documents_keeps_every_pdf_with_distinct_labels(self):
+        html = """
+        <table>
+          <tr><th></th><th></th><th>Year 1</th><th>Year 2</th><th>Year 3</th></tr>
+          <tr>
+            <td>1.</td>
+            <td>Income Tax Return (ITR) Acknowledgement *</td>
+            <td><a href="/CommonControls/ViewOpenFile?path=itr-1">View</a> Uploaded on 01/01/2024</td>
+            <td><a href="/CommonControls/ViewOpenFile?path=itr-2">View</a> Uploaded on 01/01/2024</td>
+            <td><a href="/CommonControls/ViewOpenFile?path=itr-3">View</a> Uploaded on 01/01/2024</td>
+          </tr>
+          <tr>
+            <td>2.</td>
+            <td>Project Report</td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+        </table>
+        <table>
+          <tr>
+            <td>1.</td>
+            <td>Sanctioned Letter by TCP/ULB(s)/Local Authority *</td>
+            <td><a href="/CommonControls/ViewOpenFile?path=drawing-1">View</a> Uploaded on 13/12/2021 03:44 PM Drawing 1</td>
+          </tr>
+        </table>
+        """
+
+        docs = himachal_pradesh_rera._extract_documents(BeautifulSoup(html, "lxml"))
+
+        self.assertEqual(
+            docs,
+            [
+                {
+                    "type": "Income Tax Return (ITR) Acknowledgement * (Year 1)",
+                    "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=itr-1",
+                    "updated": True,
+                },
+                {
+                    "type": "Income Tax Return (ITR) Acknowledgement * (Year 2)",
+                    "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=itr-2",
+                    "updated": True,
+                },
+                {
+                    "type": "Income Tax Return (ITR) Acknowledgement * (Year 3)",
+                    "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=itr-3",
+                    "updated": True,
+                },
+                {"type": "Project Report"},
+                {
+                    "type": "Sanctioned Letter by TCP/ULB(s)/Local Authority *",
+                    "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=drawing-1",
+                    "updated": True,
+                },
+            ],
+        )
 
 
 class KarnatakaSentinelCheckTests(unittest.TestCase):

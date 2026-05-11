@@ -18,6 +18,7 @@ import re
 import time
 from datetime import datetime, timezone
 
+import httpx
 from bs4 import BeautifulSoup
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
@@ -48,11 +49,24 @@ _REG_RE   = re.compile(r"PCGRERA\w+")
 _DATE_FMT = "%d-%m-%Y"   # e.g. "30-04-2022"
 _DATE_FMT2 = "%d %b %Y"  # e.g. "20 Jun 2018"
 
+_LISTING_TIMEOUT = httpx.Timeout(connect=20.0, read=180.0, write=30.0, pool=30.0)
+_DETAIL_TIMEOUT = httpx.Timeout(connect=20.0, read=90.0, write=30.0, pool=30.0)
+_DOCUMENT_TIMEOUT = httpx.Timeout(connect=20.0, read=120.0, write=30.0, pool=30.0)
+
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
+def _timeout_for_url(url: str) -> httpx.Timeout:
+    if url == LISTING_URL:
+        return _LISTING_TIMEOUT
+    if "ProjectDocuments" in url:
+        return _DOCUMENT_TIMEOUT
+    return _DETAIL_TIMEOUT
+
+
 def _get(url: str, logger: CrawlerLogger | None = None, **kw):
-    return safe_get(url, verify=False, logger=logger, timeout=60.0, **kw)
+    kw.setdefault("timeout", _timeout_for_url(url))
+    return safe_get(url, verify=False, logger=logger, **kw)
 
 
 def _field(soup: BeautifulSoup, name: str) -> str:

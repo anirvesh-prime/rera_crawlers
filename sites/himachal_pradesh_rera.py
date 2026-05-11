@@ -509,40 +509,83 @@ def _extract_documents(soup: BeautifulSoup) -> list[dict]:
     entries (listed doc type but not yet uploaded — no link).
     """
     docs: list[dict] = []
-    seen_hrefs: set[str] = set()
-    seen_types: set[str] = set()
+    seen_doc_keys: set[tuple[str, str]] = set()
+    seen_placeholder_types: set[str] = set()
 
-    for tr in soup.find_all("tr"):
-        cells = tr.find_all("td")
-        if len(cells) < 2:
-            continue
+    def _doc_label(base: str, context: str, needs_context: bool) -> str:
+        context = _clean(context)
+        if needs_context and context:
+            return f"{base} ({context})"
+        return base
 
-        # Rows must start with a serial number cell ("1.", "2.", …) so that
-        # header / sub-heading rows are skipped automatically.
-        serial_text = _clean(cells[0].get_text())
-        if not re.match(r"^\d+\.?$", serial_text):
-            continue
+    def _cell_context(cell, header_label: str) -> str:
+        header_label = _clean(header_label)
+        if header_label:
+            return header_label
+        cell_text = _clean(cell.get_text(separator=" "))
+        drawing_match = re.search(r"\bDrawing\s+\d+\b", cell_text, re.I)
+        if drawing_match:
+            return drawing_match.group(0)
+        year_match = re.search(r"\bYear\s+\d+\b", cell_text, re.I)
+        if year_match:
+            return year_match.group(0)
+        return ""
 
-        # Doc type label is always in cells[1]
-        raw_label = _clean(cells[1].get_text(separator=" "))
-        doc_type = _clean_doc_label(raw_label) if raw_label else ""
-        if not doc_type:
-            continue
+    for table in soup.find_all("table"):
+        header_cells = table.find("tr")
+        header_labels: list[str] = []
+        if header_cells:
+            header_labels = [
+                _clean(cell.get_text(separator=" "))
+                for cell in header_cells.find_all(["th", "td"])
+            ]
 
-        link_tag = tr.find("a", href=re.compile(r"ViewOpenFile", re.I))
-        if link_tag:
-            href = link_tag.get("href", "").strip()
-            if not href or href in seen_hrefs:
+        for tr in table.find_all("tr"):
+            cells = tr.find_all("td")
+            if len(cells) < 2:
                 continue
-            seen_hrefs.add(href)
-            full_url = href if href.startswith("http") else BASE_URL + href
-            docs.append({"type": doc_type, "link": full_url, "updated": True})
-        else:
-            # Placeholder — document type listed but not yet uploaded to the portal
-            if doc_type in seen_types:
+
+            # Rows must start with a serial number cell ("1.", "2.", …) so that
+            # header / sub-heading rows are skipped automatically.
+            serial_text = _clean(cells[0].get_text())
+            if not re.match(r"^\d+\.?$", serial_text):
                 continue
-            seen_types.add(doc_type)
-            docs.append({"type": doc_type})
+
+            raw_label = _clean(cells[1].get_text(separator=" "))
+            doc_type = _clean_doc_label(raw_label) if raw_label else ""
+            if not doc_type:
+                continue
+
+            uploaded = False
+            doc_cells = cells[2:]
+            multi_slot_row = len(doc_cells) > 1
+            header_offset = max(0, len(cells) - len(header_labels))
+            for cell_idx, cell in enumerate(doc_cells, start=2):
+                header_idx = cell_idx - header_offset
+                header_label = header_labels[header_idx] if 0 <= header_idx < len(header_labels) else ""
+                cell_context = _cell_context(cell, header_label)
+                anchors = cell.find_all("a", href=re.compile(r"ViewOpenFile", re.I))
+                if not anchors:
+                    continue
+
+                uploaded = True
+                for anchor_idx, link_tag in enumerate(anchors, start=1):
+                    href = link_tag.get("href", "").strip()
+                    if not href:
+                        continue
+                    full_url = href if href.startswith("http") else BASE_URL + href
+                    label = _doc_label(doc_type, cell_context, multi_slot_row)
+                    if len(anchors) > 1:
+                        label = f"{label} #{anchor_idx}"
+                    doc_key = (label, full_url)
+                    if doc_key in seen_doc_keys:
+                        continue
+                    seen_doc_keys.add(doc_key)
+                    docs.append({"type": label, "link": full_url, "updated": True})
+
+            if not uploaded and doc_type not in seen_placeholder_types:
+                seen_placeholder_types.add(doc_type)
+                docs.append({"type": doc_type})
 
     return docs
 
