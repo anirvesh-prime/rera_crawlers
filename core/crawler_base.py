@@ -4,6 +4,7 @@ import logging
 import os
 import random
 import ssl
+import threading
 import time
 from typing import Any
 
@@ -149,6 +150,156 @@ def safe_post(
     if logger and last_exc is not None:
         logger.error(f"POST failed after {attempt} attempt(s): {last_exc}", url=url)
     return None
+
+
+def download_response(
+    url: str,
+    *,
+    method: str = "GET",
+    retries: int = 3,
+    delay: float = 3.0,
+    headers: dict | None = None,
+    params: dict | None = None,
+    data: Any = None,
+    json_data: Any = None,
+    logger: CrawlerLogger | None = None,
+    timeout: float | httpx.Timeout = 30.0,
+    total_timeout: float = 60.0,
+    max_bytes: int = 50 * 1024 * 1024,
+    verify: bool = True,
+    follow_redirects: bool = True,
+    client: httpx.Client | None = None,
+) -> httpx.Response | None:
+    """Download a response body with a hard wall-clock timeout and size cap."""
+    _headers = {"User-Agent": get_random_ua(), **(headers or {})}
+    last_exc: Exception | None = None
+    method = method.upper()
+    attempt = 0
+
+    for attempt in range(1, retries + 1):
+        try:
+            if client is not None:
+                response = _stream_download_response(
+                    client=client,
+                    method=method,
+                    url=url,
+                    headers=_headers,
+                    params=params,
+                    data=data,
+                    json_data=json_data,
+                    timeout=timeout,
+                    total_timeout=total_timeout,
+                    max_bytes=max_bytes,
+                    follow_redirects=follow_redirects,
+                )
+            else:
+                with httpx.Client(
+                    timeout=timeout,
+                    follow_redirects=follow_redirects,
+                    verify=verify,
+                ) as pooled_client:
+                    response = _stream_download_response(
+                        client=pooled_client,
+                        method=method,
+                        url=url,
+                        headers=_headers,
+                        params=params,
+                        data=data,
+                        json_data=json_data,
+                        timeout=timeout,
+                        total_timeout=total_timeout,
+                        max_bytes=max_bytes,
+                        follow_redirects=follow_redirects,
+                    )
+            return response
+        except httpx.HTTPStatusError as exc:
+            last_exc = exc
+            if logger:
+                logger.warning(
+                    f"{method} attempt {attempt}/{retries} failed: {exc}",
+                    url=url,
+                )
+            if exc.response.status_code < 500:
+                break
+            if attempt < retries:
+                time.sleep(delay * attempt)
+        except Exception as exc:
+            last_exc = exc
+            if logger:
+                logger.warning(
+                    f"{method} attempt {attempt}/{retries} failed: {exc}",
+                    url=url,
+                )
+            if attempt < retries:
+                time.sleep(delay * attempt)
+
+    if logger and last_exc is not None:
+        logger.error(f"{method} failed after {attempt} attempt(s): {last_exc}", url=url)
+    return None
+
+
+def _stream_download_response(
+    *,
+    client: httpx.Client,
+    method: str,
+    url: str,
+    headers: dict,
+    params: dict | None,
+    data: Any,
+    json_data: Any,
+    timeout: float | httpx.Timeout,
+    total_timeout: float,
+    max_bytes: int,
+    follow_redirects: bool,
+) -> httpx.Response:
+    deadline_hit = threading.Event()
+
+    with client.stream(
+        method,
+        url,
+        headers=headers,
+        params=params,
+        data=data,
+        json=json_data,
+        timeout=timeout,
+        follow_redirects=follow_redirects,
+    ) as response:
+        response.raise_for_status()
+
+        def _abort_on_deadline() -> None:
+            deadline_hit.set()
+            try:
+                response.close()
+            except Exception:
+                pass
+
+        timer = threading.Timer(total_timeout, _abort_on_deadline)
+        timer.start()
+        try:
+            chunks: list[bytes] = []
+            total_bytes = 0
+            for chunk in response.iter_bytes(chunk_size=65536):
+                if deadline_hit.is_set():
+                    raise TimeoutError(
+                        f"Download exceeded {total_timeout}s total limit"
+                    )
+                chunks.append(chunk)
+                total_bytes += len(chunk)
+                if total_bytes > max_bytes:
+                    raise ValueError(
+                        f"Document too large (>{max_bytes // (1024 * 1024)} MB)"
+                    )
+        finally:
+            timer.cancel()
+
+        return httpx.Response(
+            status_code=response.status_code,
+            headers=response.headers,
+            content=b"".join(chunks),
+            request=response.request,
+            history=response.history,
+            extensions=response.extensions,
+        )
 
 
 class PlaywrightSession:

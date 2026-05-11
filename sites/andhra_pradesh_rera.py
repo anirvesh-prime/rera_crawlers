@@ -30,7 +30,7 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import generate_project_key, random_delay, safe_get, safe_post
+from core.crawler_base import download_response, generate_project_key, random_delay, safe_get, safe_post
 from core.db import (
     get_project_by_key,
     upsert_project,
@@ -1121,8 +1121,16 @@ def _handle_document(
             try:
                 # Use the shared project_client so the ASP.NET_SessionId cookie
                 # accumulated during the detail-page GET is automatically sent.
-                resp = safe_post(form_action, data=post_data, headers=post_headers,
-                                 retries=2, timeout=60, logger=logger, client=client)
+                resp = download_response(
+                    form_action,
+                    method="POST",
+                    data=post_data,
+                    headers=post_headers,
+                    retries=2,
+                    timeout=60,
+                    logger=logger,
+                    client=client,
+                )
                 if resp is not None:
                     ct = resp.headers.get("content-type", "")
                     if "html" in ct.lower():
@@ -1138,8 +1146,14 @@ def _handle_document(
     if resp is None and direct_url:
         # Fallback: direct GET (e.g. rare projects with a plain PDF href)
         try:
-            resp = safe_get(direct_url, headers=_LISTING_HEADERS,
-                            retries=2, timeout=60, logger=logger, client=client)
+            resp = download_response(
+                direct_url,
+                headers=_LISTING_HEADERS,
+                retries=2,
+                timeout=60,
+                logger=logger,
+                client=client,
+            )
             source_url = direct_url
         except Exception as exc:
             logger.warning("Document GET error", url=direct_url, error=str(exc))

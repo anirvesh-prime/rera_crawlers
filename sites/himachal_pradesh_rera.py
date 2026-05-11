@@ -30,7 +30,7 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import generate_project_key, random_delay, safe_get
+from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -653,7 +653,7 @@ def _handle_document(
     doc_for_fn = {"url": url, "label": label, **doc}
     filename = build_document_filename(doc_for_fn)
     try:
-        resp = safe_get(url, logger=logger, timeout=30, client=client)
+        resp = download_response(url, logger=logger, timeout=30, client=client)
         if not resp or len(resp.content) < 100:
             return None
         content = resp.content

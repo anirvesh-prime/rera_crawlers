@@ -27,7 +27,7 @@ from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.config import settings
-from core.crawler_base import generate_project_key, random_delay, safe_get
+from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
 from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -1204,7 +1204,7 @@ def _process_documents(
         filename = f"{slug}.pdf"
 
         try:
-            resp = safe_get(url, logger=logger, timeout=60.0, verify=False)
+            resp = download_response(url, logger=logger, timeout=60.0, verify=False)
             if not resp or len(resp.content) < 100:
                 enriched.append(doc)
                 logger.warning(f"Document download failed or too small: {url}", step="documents")

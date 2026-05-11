@@ -41,7 +41,7 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import generate_project_key, random_delay, safe_get, safe_post
+from core.crawler_base import download_response, generate_project_key, random_delay, safe_get, safe_post
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -957,6 +957,7 @@ def _extract_documents(html: str, reg_no: str) -> list[dict]:
 
 _DOC_CONNECT_TIMEOUT = 10.0   # seconds to establish TCP connection
 _DOC_READ_TIMEOUT    = 20.0   # seconds between data chunks
+_DOC_TOTAL_TIMEOUT   = 60.0   # hard cap: total download time in seconds
 _DOC_MAX_BYTES       = 50 * 1024 * 1024  # 50 MB safety limit
 _MAX_DOC_WORKERS     = 5      # parallel document download threads
 
@@ -979,7 +980,19 @@ def _handle_document(
         return None
     filename = build_document_filename(doc)
     try:
-        resp = client.get(url)
+        doc_timeout = httpx.Timeout(
+            connect=_DOC_CONNECT_TIMEOUT,
+            read=_DOC_READ_TIMEOUT,
+            write=_DOC_READ_TIMEOUT,
+            pool=10.0,
+        )
+        resp = download_response(
+            url,
+            client=client,
+            timeout=doc_timeout,
+            total_timeout=_DOC_TOTAL_TIMEOUT,
+            max_bytes=_DOC_MAX_BYTES,
+        )
         if not resp or len(resp.content) < 100:
             logger.warning("Document download empty or failed", url=url, step="documents")
             return None

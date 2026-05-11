@@ -28,7 +28,7 @@ from playwright.sync_api import sync_playwright
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import generate_project_key, random_delay, safe_get
+from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -869,7 +869,7 @@ def _handle_document(
     if not url:
         return None
 
-    resp = safe_get(url, retries=2, timeout=30, logger=logger)
+    resp = download_response(url, retries=2, timeout=30, logger=logger)
     if not resp or not resp.content:
         logger.warning(f"Document download failed: {url}")
         insert_crawl_error(run_id, site_id, "HTTP_ERROR",
@@ -988,12 +988,14 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     resume_after_district = checkpoint.get("last_page", -1)
     resume_after_key = checkpoint.get("last_project_key")
     resume_pending = bool(resume_after_key)
+    item_limit = settings.CRAWL_ITEM_LIMIT or 0
 
     machine_name, machine_ip = get_machine_context()
 
     # ── Iterate districts ─────────────────────────────────────────────────────
     t0 = time.monotonic()
     first_district_logged = False
+    items_processed = 0
     for district_idx, district in enumerate(_UP_DISTRICTS):
         # Resume: skip districts already processed
         if resume_after_district >= 0 and district_idx < resume_after_district:
@@ -1009,6 +1011,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             first_district_logged = True
 
         for stub in stubs:
+            if item_limit and items_processed >= item_limit:
+                logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached", step="listing")
+                break
+
             reg_no = stub["reg_no"]
             project_key = generate_project_key(reg_no)
 
@@ -1024,6 +1030,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 counts["projects_skipped"] += 1
                 save_checkpoint(site_id, mode, district_idx, project_key, run_id)
                 continue
+
+            items_processed += 1
 
             # ── Deep crawl: fetch detail page ──────────────────────────────────
             logger.info(f"Deep crawling project {reg_no}", district=district)
@@ -1178,6 +1186,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
             save_checkpoint(site_id, mode, district_idx, project_key, run_id)
             random_delay(delay_min, delay_max)
+
+        if item_limit and items_processed >= item_limit:
+            break
 
     # ── Crawl complete ─────────────────────────────────────────────────────────
     reset_checkpoint(site_id, mode)

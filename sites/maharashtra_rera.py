@@ -40,7 +40,7 @@ from pydantic import ValidationError
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.captcha_solver import captcha_to_text, solve_captcha_from_page, wait_for_captcha_canvas
 from core.config import settings
-from core.crawler_base import generate_project_key, random_delay, safe_get
+from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -862,15 +862,17 @@ def _handle_mh_document(
         "Origin": DETAIL_BASE,
     }
     try:
-        with httpx.Client(timeout=60) as client:
-            r = client.post(
-                _MH_DMS_DOWNLOAD_URL,
-                json={"fileName": filename, "documentId": dms_ref},
-                headers=headers,
-            )
-        if r.status_code != 200 or len(r.content) < 100:
+        r = download_response(
+            _MH_DMS_DOWNLOAD_URL,
+            method="POST",
+            json_data={"fileName": filename, "documentId": dms_ref},
+            headers=headers,
+            timeout=60,
+        )
+        if not r or r.status_code != 200 or len(r.content) < 100:
             logger.warning(
-                f"Document download failed [{label}]: status={r.status_code} len={len(r.content)}",
+                f"Document download failed [{label}]: status={getattr(r, 'status_code', 'n/a')} "
+                f"len={len(r.content) if r else 0}",
                 step="docs",
             )
             return None

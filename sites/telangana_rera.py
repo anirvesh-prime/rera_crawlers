@@ -27,6 +27,7 @@ from core.captcha_solver import captcha_to_text
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.crawler_base import (
     PlaywrightSession,
+    download_response,
     generate_project_key,
     get_legacy_ssl_context,
     random_delay,
@@ -965,9 +966,20 @@ def _fetch_upid_document(
         with httpx.Client(
             timeout=60.0, follow_redirects=True, verify=False, cookies=cookies
         ) as client:
-            resp = client.post(post_url, json=payload, headers=headers)
-            if not resp.is_success:
-                logger.warning(f"UPID POST failed: status={resp.status_code}", step="documents")
+            resp = download_response(
+                post_url,
+                method="POST",
+                json_data=payload,
+                headers=headers,
+                timeout=60.0,
+                verify=False,
+                client=client,
+            )
+            if not resp or not resp.is_success:
+                logger.warning(
+                    f"UPID POST failed: status={getattr(resp, 'status_code', 'n/a')}",
+                    step="documents",
+                )
                 return None
 
             content_type = resp.headers.get("content-type", "")
@@ -990,8 +1002,14 @@ def _fetch_upid_document(
                 return None
 
             pdf_url = src if src.startswith("http") else urljoin(BASE_URL, src)
-            pdf_resp = client.get(pdf_url, headers={"User-Agent": "Mozilla/5.0", "Referer": BASE_URL})
-            if pdf_resp.is_success and len(pdf_resp.content) > 100:
+            pdf_resp = download_response(
+                pdf_url,
+                headers={"User-Agent": "Mozilla/5.0", "Referer": BASE_URL},
+                timeout=60.0,
+                verify=False,
+                client=client,
+            )
+            if pdf_resp and pdf_resp.is_success and len(pdf_resp.content) > 100:
                 return pdf_resp.content
 
     except Exception as exc:
@@ -1034,8 +1052,14 @@ def _handle_document(
                 verify=False,
                 cookies=cookies or {},
             ) as client:
-                resp = client.get(url, headers=headers)
-                if not resp.is_success or len(resp.content) < 100:
+                resp = download_response(
+                    url,
+                    headers=headers,
+                    timeout=60.0,
+                    verify=False,
+                    client=client,
+                )
+                if not resp or not resp.is_success or len(resp.content) < 100:
                     return None
                 data = resp.content
 

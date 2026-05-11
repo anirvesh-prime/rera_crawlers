@@ -23,7 +23,7 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import generate_project_key, random_delay, safe_get
+from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -556,7 +556,7 @@ def _handle_document(project_key: str, doc: dict, run_id: int,
     label = doc.get("label") or doc.get("type", "document")
     fname = build_document_filename(doc)
     try:
-        resp = _get(url, logger)
+        resp = download_response(url, logger=logger, timeout=60.0, verify=False)
         if not resp or len(resp.content) < 100:
             return None
         md5    = compute_md5(resp.content)

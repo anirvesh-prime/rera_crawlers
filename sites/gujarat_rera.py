@@ -25,7 +25,7 @@ from playwright.sync_api import sync_playwright
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import generate_project_key, get_legacy_ssl_context, random_delay, safe_get
+from core.crawler_base import download_response, generate_project_key, get_legacy_ssl_context, random_delay, safe_get
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -1009,7 +1009,7 @@ def _handle_document(
 
         # Fallback: plain httpx GET (works when VDMS allows non-browser access)
         if content is None:
-            resp = safe_get(url, retries=2, timeout=20, client=client)
+            resp = download_response(url, retries=2, timeout=20, client=client)
             content = resp.content if resp else None
 
         if not content or len(content) < 100:

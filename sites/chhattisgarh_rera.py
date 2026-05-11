@@ -22,7 +22,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
-from core.crawler_base import generate_project_key, random_delay, safe_get
+from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
 from core.db import get_project_by_key, insert_crawl_error, upsert_document, upsert_project
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -693,7 +693,12 @@ def _handle_document(project_key: str, doc: dict, run_id: int, site_id: str,
     label = doc["type"]
     fname = build_document_filename({"url": url, "label": label})
     try:
-        resp = _get(url, logger)
+        resp = download_response(
+            url,
+            logger=logger,
+            timeout=_timeout_for_url(url),
+            verify=False,
+        )
         if not resp or len(resp.content) < 100:
             return None
         md5    = compute_md5(resp.content)

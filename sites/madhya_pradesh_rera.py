@@ -21,7 +21,7 @@ from typing import Any
 from bs4 import BeautifulSoup, Tag
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
-from core.crawler_base import generate_project_key, random_delay, safe_get
+from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
 from core.db import get_project_by_key, insert_crawl_error, upsert_document, upsert_project
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -562,7 +562,7 @@ def _handle_document(
     for url in raw_urls:
         fname = build_document_filename({"url": url, "label": label})
         try:
-            resp = _get(url, logger)
+            resp = download_response(url, logger=logger, timeout=60.0, verify=False)
             if not resp or len(resp.content) < 100:
                 continue
             md5    = compute_md5(resp.content)
@@ -890,4 +890,3 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     logger.info(f"Madhya Pradesh RERA complete: {counts}")
     logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counts
-

@@ -34,6 +34,7 @@ from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
 from core.crawler_base import (
+    download_response,
     generate_project_key,
     get_legacy_ssl_context,
     get_random_ua,
@@ -726,7 +727,12 @@ def _handle_document(
     doc_for_fn = {"url": url, "label": label, **doc}
     filename = build_document_filename(doc_for_fn)
     try:
-        resp = client.get(url, headers={"Referer": LISTING_URL})
+        resp = download_response(
+            url,
+            client=client,
+            headers={"Referer": LISTING_URL},
+            timeout=client.timeout,
+        )
         if not resp or len(resp.content) < 100:
             return None
         content = resp.content
