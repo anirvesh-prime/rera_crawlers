@@ -21,6 +21,7 @@ Strategy:
 from __future__ import annotations
 
 import re
+import time
 from urllib.parse import urljoin
 from typing import Any
 
@@ -1246,12 +1247,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                      projects_skipped=0, documents_uploaded=0, error_count=0)
 
     machine_name, machine_ip = get_machine_context()
+    t_run = time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
+    t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
     # ── Checkpoint ────────────────────────────────────────────────────────────
     checkpoint  = load_checkpoint(site_id, mode) or {}
@@ -1259,6 +1263,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     item_limit  = getattr(settings, "CRAWL_ITEM_LIMIT", 0) or 0
 
     # ── Listing ───────────────────────────────────────────────────────────────
+    t0 = time.monotonic()
     logger.info("Fetching AP RERA listing page", url=LISTING_URL)
     soup = _fetch_listing(logger)
     if not soup:
@@ -1269,6 +1274,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     rows = _parse_listing_rows(soup)
     logger.info("Listing parsed", row_count=len(rows))
     counts["projects_found"] = len(rows)
+    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(rows)}", step="timing")
 
     if not rows:
         insert_crawl_error(run_id, site_id, "NO_PROJECTS",
@@ -1438,4 +1444,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     save_checkpoint(site_id, mode, len(rows), None, run_id)
     reset_checkpoint(site_id, mode)
     logger.info("AP RERA crawl complete", **counts)
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counts

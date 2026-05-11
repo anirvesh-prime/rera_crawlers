@@ -18,6 +18,7 @@ Strategy:
 from __future__ import annotations
 
 import re
+import time
 
 from bs4 import BeautifulSoup
 from pydantic import ValidationError
@@ -421,14 +422,18 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     checkpoint  = load_checkpoint(site_id, mode) or {}
     done_regs: set[str] = set(checkpoint.get("done_regs", []))
     item_limit = settings.CRAWL_ITEM_LIMIT or 0
+    t_run = time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
+    t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
     # Fetch listing page
+    t0 = time.monotonic()
     resp = _get(LISTING_URL, logger)
     if not resp:
         logger.error("Failed to load Pondicherry listing page")
@@ -450,6 +455,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             logger.info(f"Pondicherry: limiting to first {len(cards)} projects (max_pages={max_pages})")
     counts["projects_found"] = len(cards)
     logger.info(f"Pondicherry: {len(cards)} project cards found")
+    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(cards)}", step="timing")
 
     machine_name, machine_ip = get_machine_context()
 
@@ -588,4 +594,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(site_id, mode)
     logger.info(f"Pondicherry RERA complete: {counts}")
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counts

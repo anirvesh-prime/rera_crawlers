@@ -18,6 +18,7 @@ Strategy:
 from __future__ import annotations
 
 import re
+import time
 from urllib.parse import urljoin
 
 import httpx
@@ -1266,12 +1267,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     items_done   = 0
     delay_range  = config.get("rate_limit_delay", (2, 4))
     max_pages    = settings.MAX_PAGES
+    t_run = time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
+    t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counters["error_count"] += 1
         return counters
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
     # ── Resume from checkpoint ────────────────────────────────────────────────
     checkpoint = load_checkpoint(config["id"], mode)
@@ -1280,6 +1284,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         logger.info(f"Resuming from checkpoint: page {page}", step="checkpoint")
 
     # ── Pagination loop ───────────────────────────────────────────────────────
+    t0 = time.monotonic()
+    first_page_logged = False
     while True:
         page_url = f"{LISTING_URL}?page={page}"
         logger.info(f"Fetching listing page {page}", url=page_url, step="listing")
@@ -1302,6 +1308,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
         counters["projects_found"] += len(rows)
         logger.info(f"Page {page}: {len(rows)} rows", step="listing")
+        if not first_page_logged:
+            logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(rows)}", step="timing")
+            first_page_logged = True
 
         # ── Playwright fallback: click "View Project" for any rows missing the URL ──
         # The static HTML may not expose project_page/ links (class change / JS render).
@@ -1524,4 +1533,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Delhi RERA complete: {counters}", step="done")
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counters

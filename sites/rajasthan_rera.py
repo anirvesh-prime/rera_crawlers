@@ -17,6 +17,7 @@ Strategy:
 from __future__ import annotations
 
 import re
+import time
 from datetime import datetime, timezone, timedelta
 
 import httpx
@@ -1108,18 +1109,22 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     item_limit      = settings.CRAWL_ITEM_LIMIT or 0
     items_processed = 0
     machine_name, machine_ip = get_machine_context()
+    t_run = time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
+    t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
     checkpoint       = load_checkpoint(site_id, mode) or {}
     resume_after_key = checkpoint.get("last_project_key")
     resume_pending   = bool(resume_after_key)
 
     # Phase 1: collect project list via Playwright listing scrape
+    t0 = time.monotonic()
     listed_projects = _scrape_project_list_playwright(logger)
     if not listed_projects:
         return counts
@@ -1132,6 +1137,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             listed_projects = listed_projects[:max_pages * 50]
             logger.info(f"Rajasthan: limiting to {len(listed_projects)} projects (max_pages={max_pages})")
     counts["projects_found"] = len(listed_projects)
+    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(listed_projects)}", step="timing")
 
     # httpx session is used only for document downloads
     _timeout = httpx.Timeout(connect=10.0, read=30.0, write=10.0, pool=5.0)
@@ -1302,4 +1308,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     session.close()
     reset_checkpoint(site_id, mode)
     logger.info(f"Rajasthan RERA complete: {counts}")
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counts

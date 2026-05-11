@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import copy
 import re
+import time
 from urllib.parse import urlparse, parse_qs
 
 from bs4 import BeautifulSoup
@@ -1023,18 +1024,22 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     items_processed = 0
     max_pages: int | None = settings.MAX_PAGES
     machine_name, machine_ip = get_machine_context()
+    t_run = time.monotonic()
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(headless=True)
         page    = browser.new_page()
 
         # ── Sentinel health check ────────────────────────────────────────────
+        t0 = time.monotonic()
         if not _sentinel_check(config, run_id, logger, page):
             logger.error("Sentinel failed — aborting crawl", step="sentinel")
             counts["error_count"] += 1
             browser.close()
             return counts
+        logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
+        t0 = time.monotonic()
         page.goto(LISTING_URL, wait_until="networkidle", timeout=40000)
         page.wait_for_timeout(5000)
         _dismiss_modal(page)
@@ -1070,6 +1075,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             page.wait_for_timeout(400)
             cards = _parse_page_cards(page)
             counts["projects_found"] += len(cards)
+            if page_num == 1:
+                logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(cards)}", step="timing")
 
             for card in cards:
                 if item_limit and items_processed >= item_limit:
@@ -1402,4 +1409,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(site_id, mode)
     logger.info(f"Odisha RERA complete: {counts}")
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counts

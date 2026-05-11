@@ -1123,14 +1123,18 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     delay_range   = config.get("rate_limit_delay", (2, 4))
     item_limit    = settings.CRAWL_ITEM_LIMIT or 0   # 0 = unlimited
     scrape_detail = settings.SCRAPE_DETAILS
+    t_run = _time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
+    t0 = _time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counters["error_count"] += 1
         return counters
+    logger.warning(f"Step timing [sentinel]: {_time.monotonic()-t0:.2f}s", step="timing")
 
     # ── Determine total pages ────────────────────────────────────────────────
+    t0 = _time.monotonic()
     resp0 = safe_get(LISTING_URL, retries=3, logger=logger)
     if not resp0:
         logger.error("Could not fetch first listing page", step="listing")
@@ -1138,6 +1142,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     soup0       = BeautifulSoup(resp0.text, "lxml")
     total_pages = _get_total_pages(soup0)
+    logger.warning(f"Step timing [search]: {_time.monotonic()-t0:.2f}s  rows={len(_parse_cards(soup0))}", step="timing")
 
     checkpoint = load_checkpoint(config["id"], mode)
     start_page = (checkpoint["last_page"] + 1) if checkpoint else 0
@@ -1291,4 +1296,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Maharashtra RERA complete: {counters}", step="done")
+    logger.warning(f"Step timing [total_run]: {_time.monotonic()-t_run:.2f}s", step="timing")
     return counters

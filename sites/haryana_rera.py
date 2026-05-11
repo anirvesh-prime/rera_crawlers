@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import base64
 import re
+import time
 from typing import Any
 from urllib.parse import urljoin
 
@@ -1103,17 +1104,21 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         projects_skipped=0, documents_uploaded=0, error_count=0,
     )
     item_limit = settings.CRAWL_ITEM_LIMIT or 0
+    t_run = time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
+    t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
     # ── Step 1: Collect stubs from both listing pages ─────────────────────────
     listing_urls = LISTING_URLS
     logger.info("Starting Haryana RERA crawl", listing_count=len(listing_urls), mode=mode)
 
+    t0 = time.monotonic()
     all_stubs: list[dict] = []
     seen_reg_nos: set[str] = set()
 
@@ -1129,6 +1134,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     counts["projects_found"] = len(all_stubs)
     logger.info("Total unique projects found", count=len(all_stubs))
+    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(all_stubs)}", step="timing")
 
     if not all_stubs:
         logger.error("No projects found — aborting")
@@ -1274,4 +1280,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(site_id, mode)
     logger.info("Crawl complete", **counts)
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counts

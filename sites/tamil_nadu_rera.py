@@ -14,6 +14,7 @@ Strategy:
 from __future__ import annotations
 
 import re
+import time
 from datetime import timezone
 from typing import Any
 
@@ -1542,12 +1543,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         "error_count":       0,
     }
     item_limit = settings.CRAWL_ITEM_LIMIT or 0
+    t_run = time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
+    t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
     # ── Checkpoint handling ──────────────────────────────────────────────────
     checkpoint = (load_checkpoint(site_id, mode) if mode != "full" else {}) or {}
@@ -1564,6 +1568,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     machine_name, machine_ip = get_machine_context()
 
+    t0 = time.monotonic()
+    first_listing_logged = False
     for year_index, year_url in enumerate(year_urls):
         if year_index < last_page:
             continue
@@ -1576,6 +1582,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             logger.warning(f"No rows found for year {year_label}", url=year_url)
             continue
 
+        if not first_listing_logged:
+            logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(rows)}", step="timing")
+            first_listing_logged = True
         for row in rows:
             reg_no = row.get("project_registration_no")
             if not reg_no:
@@ -1716,4 +1725,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(site_id, mode)
     logger.info("Tamil Nadu RERA crawl complete", **counts)
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counts

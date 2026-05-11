@@ -989,19 +989,19 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     # ── Sentinel health check ────────────────────────────────────────────────
     t0 = time.monotonic()
     sentinel_ok = _sentinel_check(config, run_id, logger)
-    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
     if not sentinel_ok:
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counters["error_count"] += 1
         return counters
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
     site_id = config["id"]
 
     # ── Listing: try cache first, fall back to live fetch ────────────────────
     with httpx.Client(timeout=60.0, follow_redirects=True) as session:
+        t0 = time.monotonic()
         rows = _load_listing_cache(logger)
         if rows is None:
-            t0 = time.monotonic()
             rows = _search_projects(session, logger)
             logger.warning(
                 f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(rows)}",
@@ -1211,9 +1211,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     # Reset per-run checkpoint on successful completion (cache is kept until TTL expires)
     reset_checkpoint(site_id, mode)
-    logger.warning(
-        f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s",
-        step="timing",
-    )
     logger.info(f"Punjab RERA complete: {counters}", step="done")
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counters

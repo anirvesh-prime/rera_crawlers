@@ -29,6 +29,7 @@ Documents — download?DOC_ID=N links on the detail page.
 from __future__ import annotations
 
 import re
+import time
 
 import httpx
 from bs4 import BeautifulSoup
@@ -1072,6 +1073,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     max_pages     = settings.MAX_PAGES or 0
     items_processed = 0
     machine_name, machine_ip = get_machine_context()
+    t_run = time.monotonic()
     # Pass mode through config so _process_row can check daily_light
     config = {**config, "mode": mode}
 
@@ -1084,13 +1086,17 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             logger.warning(f"Session warm-up failed (non-fatal): {exc}", step="session")
 
         # ── Sentinel health check ────────────────────────────────────────────
+        t0 = time.monotonic()
         if not _sentinel_check(config, run_id, logger, client=client):
             logger.error("Sentinel failed — aborting crawl", step="sentinel")
             counts["error_count"] += 1
             return counts
+        logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
         # ── Phase 1: Primary listing — POST /search ──────────────────────────
         logger.info("Phase 1: POST /search (primary listing)", url=SEARCH_URL, step="listing")
+        t0 = time.monotonic()
+        first_page_logged = False
         start_from   = 0
         total_records = 1  # will be updated from first response
         search_page   = 0
@@ -1122,6 +1128,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
             logger.info(f"Search page {search_page + 1}: {len(rows)} rows (total={total_records})")
             counts["projects_found"] += len(rows)
+            if not first_page_logged:
+                logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(rows)}", step="timing")
+                first_page_logged = True
 
             for row in rows:
                 items_processed = _process_row(
@@ -1167,4 +1176,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(site_id, mode)
     logger.info(f"Tripura RERA complete: {counts}")
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counts

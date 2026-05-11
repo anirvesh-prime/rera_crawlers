@@ -19,6 +19,7 @@ Strategy:
 from __future__ import annotations
 
 import re
+import time
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
@@ -868,10 +869,6 @@ def _handle_document(
     if not url:
         return None
 
-    should_download = select_document_for_download(doc)
-    if not should_download:
-        return doc
-
     resp = safe_get(url, retries=2, timeout=30, logger=logger)
     if not resp or not resp.content:
         logger.warning(f"Document download failed: {url}")
@@ -977,10 +974,14 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         "error_count": 0,
     }
 
+    t_run = time.monotonic()
+
     # ── Sentinel check ─────────────────────────────────────────────────────────
+    t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting UP RERA crawl")
         return counts
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
     # ── Checkpoint / resume support ───────────────────────────────────────────
     checkpoint = load_checkpoint(site_id, mode) or {}
@@ -991,6 +992,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     machine_name, machine_ip = get_machine_context()
 
     # ── Iterate districts ─────────────────────────────────────────────────────
+    t0 = time.monotonic()
+    first_district_logged = False
     for district_idx, district in enumerate(_UP_DISTRICTS):
         # Resume: skip districts already processed
         if resume_after_district >= 0 and district_idx < resume_after_district:
@@ -1001,6 +1004,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         logger.info(f"Processing district: {district} ({district_idx + 1}/{len(_UP_DISTRICTS)})")
         stubs = _fetch_district_listing(district, logger)
         counts["projects_found"] += len(stubs)
+        if not first_district_logged:
+            logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(stubs)}", step="timing")
+            first_district_logged = True
 
         for stub in stubs:
             reg_no = stub["reg_no"]
@@ -1144,9 +1150,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 soup = BeautifulSoup(detail_html, "lxml")
                 docs = _extract_documents(soup, detail_url)
                 uploaded_docs: list[dict] = []
+                doc_name_counts: dict[str, int] = {}
                 for doc in docs:
+                    selected = select_document_for_download(
+                        STATE, doc, doc_name_counts, domain=DOMAIN
+                    )
+                    if not selected:
+                        continue
                     result = _handle_document(
-                        project_key, doc, run_id, site_id, logger
+                        project_key, selected, run_id, site_id, logger
                     )
                     if result:
                         uploaded_docs.append(result)
@@ -1170,4 +1182,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     # ── Crawl complete ─────────────────────────────────────────────────────────
     reset_checkpoint(site_id, mode)
     logger.info("UP RERA crawl complete", **counts)
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counts

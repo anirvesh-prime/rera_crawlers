@@ -14,6 +14,7 @@ Strategy:
 from __future__ import annotations
 
 import re
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -682,11 +683,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         projects_skipped=0, documents_uploaded=0, error_count=0,
     )
 
+    t_run = time.monotonic()
+
     # ── Sentinel check ─────────────────────────────────────────────────────────
+    t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
     checkpoint     = load_checkpoint(site_id, mode) or {}
     done_regs: set = set(checkpoint.get("done_regs", []))
@@ -694,6 +699,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     machine_name, machine_ip = get_machine_context()
 
     # ── Fetch listing ──────────────────────────────────────────────────────────
+    t0 = time.monotonic()
     logger.info("Fetching all-projects listing …")
     stubs = _fetch_listing(logger)
     if not stubs:
@@ -706,6 +712,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
     counts["projects_found"] = len(stubs)
     logger.info(f"Found {len(stubs)} project stubs in listing")
+    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(stubs)}", step="timing")
     items_processed = 0
 
     for stub in stubs:
@@ -881,5 +888,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
     reset_checkpoint(site_id, mode)
     logger.info(f"Madhya Pradesh RERA complete: {counts}")
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counts
 

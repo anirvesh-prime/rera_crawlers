@@ -32,6 +32,7 @@ How the portal works (observed from live HTML):
 from __future__ import annotations
 
 import re
+import time
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -1180,17 +1181,22 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     districts   = DISTRICTS
     items_processed = 0
     stop_all = False
+    t_run = time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
+    t0 = time.monotonic()
     sentinel_ok = _sentinel_check(config, run_id, logger)
     if not sentinel_ok:
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counters["error_count"] += 1
         return counters
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
     checkpoint = load_checkpoint(config["id"], mode) or {}
     start_district_idx = int(checkpoint.get("last_page", 0))
 
+    t0 = time.monotonic()
+    first_district_logged = False
     for district_idx, district in enumerate(districts):
         if stop_all:
             break
@@ -1234,6 +1240,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 break
 
             counters["projects_found"] += len(ack_nos)
+            if not first_district_logged:
+                logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(ack_nos)}", step="timing")
+                first_district_logged = True
 
             for listing_row in listing_rows:
                 ack_no = listing_row["acknowledgement_no"]
@@ -1380,4 +1389,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Karnataka RERA crawl complete: {counters}", step="done")
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counters

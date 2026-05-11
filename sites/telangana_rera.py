@@ -1181,12 +1181,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     items_done    = 0
     delay_min, delay_max = config.get("rate_limit_delay", (2, 4))
     machine_name, machine_ip = get_machine_context()
+    t_run = time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
+    t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
     checkpoint = load_checkpoint(site_id, mode)
     start_page = (checkpoint["last_page"] + 1) if checkpoint else 1
@@ -1196,6 +1199,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     with PlaywrightSession(headless=True, ignore_https_errors=True) as browser:
         # ── Open search page ─────────────────────────────────────────────────
         page = browser.new_page()
+        t0 = time.monotonic()
         try:
             logger.info("Navigating to Telangana RERA search page")
             page.goto(SEARCH_URL, wait_until="domcontentloaded", timeout=_NAV_TIMEOUT_MS)
@@ -1212,6 +1216,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
         # ── Determine total pages ────────────────────────────────────────────
         total_pages = _get_total_pages(page)
+        logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  pages={total_pages}", step="timing")
         max_pages   = settings.MAX_PAGES
         effective_end = (min(total_pages, start_page + max_pages - 1)
                          if max_pages else total_pages)
@@ -1422,4 +1427,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(site_id, mode)
     logger.info("Telangana RERA crawl finished", **counts)
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counts

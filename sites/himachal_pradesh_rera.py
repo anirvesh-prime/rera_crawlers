@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from datetime import datetime, timezone
 from urllib.parse import urlencode, quote
 
@@ -803,6 +804,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     item_limit = settings.CRAWL_ITEM_LIMIT or 0
     items_processed = 0
     machine_name, machine_ip = get_machine_context()
+    t_run = time.monotonic()
 
     checkpoint = load_checkpoint(site_id, mode) or {}
     resume_after_key = checkpoint.get("last_project_key")
@@ -817,14 +819,18 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         client.get(PUBLIC_DASHBOARD_URL)
 
         # ── Phase 1: Fetch listing ────────────────────────────────────────────
+        t0 = time.monotonic()
         markers, qs_map = _fetch_listing(client, logger)
+        logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(qs_map)}", step="timing")
 
         # ── Sentinel health check (uses already-fetched listing) ─────────────
+        t0 = time.monotonic()
         if not _sentinel_check(config, run_id, logger,
                                markers=markers, qs_map=qs_map, client=client):
             logger.error("Sentinel failed — aborting crawl", step="sentinel")
             counts["error_count"] += 1
             return counts
+        logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
         # Build marker lookup by registration number (try multiple key names)
         marker_by_reg: dict[str, dict] = {}
@@ -1084,4 +1090,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(site_id, mode)
     logger.info(f"HP RERA crawl complete: {counts}")
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counts

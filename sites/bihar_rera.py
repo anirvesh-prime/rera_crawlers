@@ -20,6 +20,7 @@ Strategy:
 from __future__ import annotations
 
 import re
+import time
 
 from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
@@ -842,14 +843,18 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     machine_name, machine_ip = get_machine_context()
     item_limit    = settings.CRAWL_ITEM_LIMIT or 0  # 0 = unlimited
     items_processed = 0
+    t_run = time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
+    t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counters["error_count"] += 1
         return counters
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
     # ── Step 1: Collect Filanprint popup URLs via Playwright ─────────────────
+    t0 = time.monotonic()
     logger.info(
         f"Collecting detail page URLs via Playwright (item_limit={item_limit or 'unlimited'})",
         step="detail_collect",
@@ -874,6 +879,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     current_page = 1
     soup         = BeautifulSoup(resp.text, "lxml")
     stop_all     = False
+    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(_parse_page_rows(soup))}", step="timing")
     # Global offset: tracks how many listing rows have been seen across all pages.
     # detail_url_list is a flat list of all detail URLs in listing order; within each
     # listing page the per-page row_idx restarts at 0, so we add this offset to
@@ -1045,4 +1051,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Bihar RERA complete: {counters}", step="done")
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counters

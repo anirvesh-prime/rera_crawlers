@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import base64
 import re
+import time
 from datetime import timezone, timedelta
 
 import httpx
@@ -1172,6 +1173,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                     projects_skipped=0, documents_uploaded=0, error_count=0)
     item_limit   = settings.CRAWL_ITEM_LIMIT or 0
     machine_name, machine_ip = get_machine_context()
+    t_run = time.monotonic()
 
     _timeout = httpx.Timeout(connect=10.0, read=30.0, write=10.0, pool=5.0)
     session  = httpx.Client(
@@ -1181,10 +1183,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     )
 
     # ── Sentinel health check ────────────────────────────────────────────────
+    t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
     checkpoint     = load_checkpoint(site_id, mode) or {}
     resume_proj_id = int(checkpoint.get("last_page", 0))
@@ -1204,6 +1208,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         # ── Phase 1: fetch all project IDs via the public map-locations API ───
         # The district-filter listing page UI was removed from the Angular app;
         # /maplocation/public/getAllLocations returns all ~16 k registered projects.
+        t0 = time.monotonic()
         page.goto(f"{BASE_URL}/#/home", timeout=30_000, wait_until="networkidle")
         page.wait_for_timeout(2_000)
         all_proj_ids = _fetch_all_project_ids(page, logger)
@@ -1215,6 +1220,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             return counts
 
         logger.info(f"Total project IDs to process: {len(all_proj_ids)}")
+        logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(all_proj_ids)}", step="timing")
 
         # ── Phase 2: scrape each detail page ──────────────────────────────────
         for proj_id in all_proj_ids:
@@ -1461,4 +1467,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     session.close()
     reset_checkpoint(site_id, mode)
     logger.info(f"Gujarat RERA complete: {counts}")
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counts

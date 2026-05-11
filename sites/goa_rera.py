@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import base64
 import re
+import time
 import datetime
 
 from bs4 import BeautifulSoup
@@ -643,14 +644,18 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     checkpoint  = load_checkpoint(site_id, mode) or {}
     done_regs: set[str] = set(checkpoint.get("done_regs", []))
     item_limit  = settings.CRAWL_ITEM_LIMIT or 0
+    t_run = time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
+    t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
     # ── Get project listing ───────────────────────────────────────────────────
+    t0 = time.monotonic()
     cards = _fetch_project_listing(config, run_id, logger)
 
     if not cards:
@@ -664,6 +669,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         cards = cards[:item_limit]
     counts["projects_found"] = len(cards)
     logger.info(f"Goa RERA: {len(cards)} projects to process")
+    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(cards)}", step="timing")
 
     machine_name, machine_ip = get_machine_context()
 
@@ -800,4 +806,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(site_id, mode)
     logger.info(f"Goa RERA complete: {counts}")
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counts

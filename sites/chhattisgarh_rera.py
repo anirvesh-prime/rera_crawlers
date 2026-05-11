@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from datetime import datetime, timezone
 
 from bs4 import BeautifulSoup
@@ -798,14 +799,18 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     done_regs: set  = set(checkpoint.get("done_regs", []))
     item_limit      = settings.CRAWL_ITEM_LIMIT or 0
     machine_name, machine_ip = get_machine_context()
+    t_run = time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
+    t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
     # ── Fetch listing page to get all project stubs ───────────────────────────
+    t0 = time.monotonic()
     logger.info("Fetching listing page …")
     resp = _get(LISTING_URL, logger)
     if not resp:
@@ -817,6 +822,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     project_stubs = _parse_listing_map_data(resp.text)
     logger.info(f"Found {len(project_stubs)} project stubs from listing map data")
     counts["projects_found"] = len(project_stubs)
+    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(project_stubs)}", step="timing")
 
     items_processed = 0
 
@@ -968,4 +974,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(site_id, mode)
     logger.info(f"Chhattisgarh RERA complete: {counts}")
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counts

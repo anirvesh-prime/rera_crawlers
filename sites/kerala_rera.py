@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import re
+import time
 import tempfile
 from datetime import timezone
 from typing import Any
@@ -1523,12 +1524,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     logger = CrawlerLogger(site_id, run_id)
     counts = {"projects_found": 0, "projects_new": 0, "projects_updated": 0,
               "projects_skipped": 0, "documents_uploaded": 0, "error_count": 0}
+    t_run = time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
+    t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
     item_limit = settings.CRAWL_ITEM_LIMIT or 0  # 0 = unlimited
     items_processed = 0
@@ -1543,6 +1547,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     delay_min, delay_max = config.get("rate_limit_delay", (2, 4))
 
     # Get total pages from page 1
+    t0 = time.monotonic()
     soup = _get_explore_page(1, logger)
     if not soup:
         insert_crawl_error(run_id, site_id, "HTTP_ERROR", "Could not fetch explore-projects page 1")
@@ -1557,6 +1562,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         f"Total listing pages: {total_pages} | crawling up to page {effective_end} "
         f"| item_limit={item_limit or 'unlimited'}",
     )
+    first_page_cards = _parse_explore_cards(soup)
+    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(first_page_cards)}", step="timing")
 
     machine_name, machine_ip = get_machine_context()
     stop_all = False
@@ -1703,4 +1710,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(site_id, mode)
     logger.info("Kerala RERA crawl finished", **counts)
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counts

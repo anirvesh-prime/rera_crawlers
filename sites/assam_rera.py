@@ -18,6 +18,7 @@ Strategy:
 from __future__ import annotations
 
 import re
+import time
 from typing import Any
 from urllib.parse import urljoin
 
@@ -1242,17 +1243,22 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         projects_skipped=0, documents_uploaded=0, error_count=0,
     )
     item_limit = settings.CRAWL_ITEM_LIMIT or 0
+    t_run = time.monotonic()
 
     # ── Step 0: Sentinel check (spec Section 10) ─────────────────────────────
     logger.info("Starting Assam RERA crawl", mode=mode, listing_url=LISTING_URL)
+    t0 = time.monotonic()
     if not _sentinel_check(config, logger, run_id):
         logger.error("Sentinel check failed — aborting Assam RERA crawl")
         return counts
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
     # ── Step 1: Fetch listing ────────────────────────────────────────────────
+    t0 = time.monotonic()
     all_stubs = _fetch_listing(logger)
     logger.info("Listing parsed", total=len(all_stubs))
     counts["projects_found"] = len(all_stubs)
+    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(all_stubs)}", step="timing")
 
     if not all_stubs:
         logger.error("No projects found — aborting")
@@ -1412,4 +1418,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     # resume_pending through every project (which would skip all 1211 again).
     reset_checkpoint(site_id, mode)
     logger.info("Crawl complete", **counts)
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counts

@@ -24,6 +24,7 @@ Strategy:
 from __future__ import annotations
 
 import re
+import time
 from datetime import datetime, timezone
 from urllib.parse import urljoin
 
@@ -878,11 +879,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         error_count=0,
     )
 
+    t_run = time.monotonic()
+
     # ── Sentinel health check ────────────────────────────────────────────────
+    t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
+    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
     # ── Checkpoint handling ──────────────────────────────────────────────────
     if mode == "full":
@@ -895,6 +900,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     machine_name, machine_ip = get_machine_context()
 
     # ── Fetch listing page ───────────────────────────────────────────────────
+    t0 = time.monotonic()
     logger.info("Fetching project listing", url=LISTING_URL, step="listing")
     listing_html = ""
     try:
@@ -938,6 +944,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         cards = cards[:item_limit]
     counts["projects_found"] = len(cards)
     logger.info(f"Uttarakhand RERA: {len(cards)} projects to process")
+    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(cards)}", step="timing")
 
     # ── Process each project ─────────────────────────────────────────────────
     with _make_client() as client:
@@ -1118,4 +1125,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     # ── Final checkpoint ─────────────────────────────────────────────────────
     save_checkpoint(site_id, mode, len(cards), None, run_id)
     logger.info("Crawl complete", **counts)
+    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
     return counts
