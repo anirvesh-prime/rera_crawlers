@@ -287,11 +287,12 @@ def _rajasthan(c):
 
 def _tamil_nadu(c):
     from sites.tamil_nadu_rera import _parse_year_listing, BASE_URL
-    # The portal now provides a unified single-page building listing that replaces
-    # the year-based CMS PHP pages (many of which now return 404).
-    UNIFIED_URL = f"{BASE_URL}/registered-building/tn"
-    rows = _parse_year_listing(UNIFIED_URL, LOG)
-    _record("ok" if rows else "fail", c, "unified building listing", len(rows))
+    for label, url in [
+        ("building listing", f"{BASE_URL}/registered-building/tn"),
+        ("layout listing",   f"{BASE_URL}/registered-layout/tn"),
+    ]:
+        rows = _parse_year_listing(url, LOG)
+        _record("ok" if rows else "fail", c, label, len(rows))
 
 def _telangana(c):
     # Telangana: Playwright + CAPTCHA solver → submit search → parse listing rows

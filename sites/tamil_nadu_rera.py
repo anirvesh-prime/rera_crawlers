@@ -430,7 +430,7 @@ def _parse_listing_row(tds) -> dict | None:
 
 def _parse_year_listing(url: str, logger: CrawlerLogger) -> list[dict]:
     """Fetch a single year listing page and return parsed row dicts."""
-    resp = safe_get(url, logger=logger, timeout=60.0)
+    resp = safe_get(url, logger=logger, timeout=120.0)
     if not resp:
         logger.warning("Year listing page fetch failed", url=url)
         return []
@@ -1561,10 +1561,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     if mode == "full":
         reset_checkpoint(site_id, mode)
 
-    # ── Single master listing URL — the only source of truth ────────────────
-    listing_url = config.get("listing_url", f"{BASE_URL}/registered-building/tn")
-    year_urls = [listing_url]
-    logger.info("Crawling master listing", url=listing_url)
+    # ── Two master listing URLs (building + layout) ──────────────────────────
+    year_urls = [
+        f"{BASE_URL}/registered-building/tn",
+        f"{BASE_URL}/registered-layout/tn",
+    ]
+    logger.info("Crawling master listings", urls=year_urls)
 
     machine_name, machine_ip = get_machine_context()
 
