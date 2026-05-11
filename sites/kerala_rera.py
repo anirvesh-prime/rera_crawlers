@@ -21,7 +21,7 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import PlaywrightSession, download_response, generate_project_key, random_delay, safe_get
+from core.crawler_base import PlaywrightSession, generate_project_key, random_delay, safe_get
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -1420,7 +1420,7 @@ def _handle_document(
         if browser_session is not None and page_cache is not None:
             data = _download_print_preview_document(browser_session, page_cache, doc, logger)
         if data is None:
-            resp = download_response(url, logger=logger, timeout=60.0)
+            resp = safe_get(url, logger=logger, timeout=60.0)
             if not resp or len(resp.content) < 100:
                 return None
             data = resp.content

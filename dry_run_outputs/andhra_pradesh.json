@@ -205,118 +205,40 @@
   ],
   "uploaded_documents": [
     {
-      "type": "1.Income Tax Return Acknowledgement of Preceding Year 1"
+      "type": "Site 2",
+      "link": "https://rera.ap.gov.in/RERA/Views/Project.aspx?%3fenc=mUX5JvffTObOCE+6xFBEFYNlOY9rZAIWYtui8DImy1jxjUXIYJ6TFwVt5NjWR+bmiwu48T+Q9THxFMQzzEaYeFnq3C9GWR9UoJQ34220U+vLzKA+IKsbohg+kkm%2fq2SH",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
-      "type": "2. Income Tax Return Acknowledgement of Preceding Year 2"
+      "type": "the plan and proceedings issued by the competent Authority for approval of plans 1",
+      "link": "https://rera.ap.gov.in/RERA/Views/Project.aspx?%3fenc=mUX5JvffTObOCE+6xFBEFYNlOY9rZAIWYtui8DImy1jxjUXIYJ6TFwVt5NjWR+bmiwu48T+Q9THxFMQzzEaYeFnq3C9GWR9UoJQ34220U+vLzKA+IKsbohg+kkm%2fq2SH",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
-      "type": "3.Income Tax Return Acknowledgement of Preceding Year 3"
+      "type": "Site 3",
+      "link": "https://rera.ap.gov.in/RERA/Views/Project.aspx?%3fenc=mUX5JvffTObOCE+6xFBEFYNlOY9rZAIWYtui8DImy1jxjUXIYJ6TFwVt5NjWR+bmiwu48T+Q9THxFMQzzEaYeFnq3C9GWR9UoJQ34220U+vLzKA+IKsbohg+kkm%2fq2SH",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
-      "type": "4.Balance Sheet"
+      "type": "technical specifications 1",
+      "link": "https://rera.ap.gov.in/RERA/Views/Project.aspx?%3fenc=mUX5JvffTObOCE+6xFBEFYNlOY9rZAIWYtui8DImy1jxjUXIYJ6TFwVt5NjWR+bmiwu48T+Q9THxFMQzzEaYeFnq3C9GWR9UoJQ34220U+vLzKA+IKsbohg+kkm%2fq2SH",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
-      "type": "5. Architect Certificate (Form 1)"
+      "type": "Approved plan 1",
+      "link": "https://rera.ap.gov.in/RERA/Views/Project.aspx?%3fenc=mUX5JvffTObOCE+6xFBEFYNlOY9rZAIWYtui8DImy1jxjUXIYJ6TFwVt5NjWR+bmiwu48T+Q9THxFMQzzEaYeFnq3C9GWR9UoJQ34220U+vLzKA+IKsbohg+kkm%2fq2SH",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
-      "type": "6. Engineer Certificate (Form 2)"
-    },
-    {
-      "type": "7. CA Certificate (Form 3)"
-    },
-    {
-      "type": "8. Copies of the registered ownership documents / Copies of the pattadar pass books issued by the Revenue department"
-    },
-    {
-      "type": "9. Copies of the field sketches duly marking the proposed site with measurements along with combined field sketch"
-    },
-    {
-      "type": "10. Detailed site plan showing the measurements as on ground including diagonals, Latitude and Longitude at end points of the project site"
-    },
-    {
-      "type": "11. Commencement Certificate for previous completed projects"
-    },
-    {
-      "type": "12. Copy of the registered development agreement between the Owner of the land and the Promoter along with the link documents / Authorisation letter given by the Land owner to undertake the construction of the building by the promoter"
-    },
-    {
-      "type": "13. Land Title search Report from an Advocate(include Advocate Enrolment Number) having experience of at least ten years in land related matters"
-    },
-    {
-      "type": "14.Latest (by 30 days) Encumbrance certificate (for entire period of document) issued by the Registration and Stamps department"
-    },
-    {
-      "type": "15. Details of the cases pending before the Authorities or in Courts of Law and their current status along with the copies of the orders issued"
-    },
-    {
-      "type": "16. Copy of the plan and proceedings issued by the competent Authority for approval of plans"
-    },
-    {
-      "type": "17. Approved plan / list of amenities proposed in the site"
-    },
-    {
-      "type": "18. NOC's issued by Authority"
-    },
-    {
-      "type": "19. Detailed technical specifications of the construction if the buildings and facilities proposed in the project including brand specifications details of fixtures and fittings"
-    },
-    {
-      "type": "20. Full address of the proposed development project along with the land mark nearby and a location plan/ Topo plan drawn to a scale"
-    },
-    {
-      "type": "21. Licenses/Enrolment form of Civil Contractors, or turnkey contractor, or EPC Contractors."
-    },
-    {
-      "type": "22. Licenses/Enrolment form of Structural Engineer of the project"
-    },
-    {
-      "type": "23. Licenses/Enrolment form of Architect or firm or company"
-    },
-    {
-      "type": "24.Licenses/Enrolment form of Engineer or firm or company"
-    },
-    {
-      "type": "25.Licenses/Enrolment form of Chartered Accountant or firm or company"
-    },
-    {
-      "type": "26.Detailed estimate of the expenditure for construction of the building"
-    },
-    {
-      "type": "27. Statement of source of funds for construction of project"
-    },
-    {
-      "type": "28. Details of financial agreement made with any bank or other financial institution recognised by the Reserve Bank of India and of legal safeguards taken, if any, for the construction of building, or transfer of building by sale, gift or mortgage or otherwise"
-    },
-    {
-      "type": "29.Proforma of the Allotment Letter proposed to be signed with the Allottee"
-    },
-    {
-      "type": "30.Proforma of the Agreement for Sale proposed to be signed with the Allottee"
-    },
-    {
-      "type": "31.Proforma of the Conveyance Deed proposed to be signed with the Allottee"
-    },
-    {
-      "type": "32.Structural Stability Certificate duly issued by Certified Structural Consultant/Engineer along with the details of parameters followed for verification of structural stability *"
-    },
-    {
-      "type": "34. FORM - B, Declaration, supported by an affidavit, which shall be signed by the promoter or any person authorized by the promoter under Rule 3-B(2) (a) to 0f AP Real Estate Rules-2017*"
-    },
-    {
-      "type": "35. Brochure of Current Project"
-    },
-    {
-      "type": "36. Existing Layout Plan"
-    },
-    {
-      "type": "37.Change of Land Use"
-    },
-    {
-      "type": "38. Latest Project/ Site/ Building Photo"
-    },
-    {
-      "type": "APRERA CERTIFICATE"
+      "type": "Structural Stability Certificate 1",
+      "link": "https://rera.ap.gov.in/RERA/Views/Project.aspx?%3fenc=mUX5JvffTObOCE+6xFBEFYNlOY9rZAIWYtui8DImy1jxjUXIYJ6TFwVt5NjWR+bmiwu48T+Q9THxFMQzzEaYeFnq3C9GWR9UoJQ34220U+vLzKA+IKsbohg+kkm%2fq2SH",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     }
   ],
   "authorised_signatory_details": {
@@ -594,6 +516,32 @@
   "checked_updates": false,
   "rera_housing_found": false,
   "is_live": false,
+  "document_urls": [
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Site 2"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "the plan and proceedings issued by the competent Authority for approval of plans 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Site 3"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "technical specifications 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Approved plan 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Structural Stability Certificate 1"
+    }
+  ],
   "project_city": null,
   "submitted_date": null,
   "last_modified": null,
@@ -608,7 +556,6 @@
   "development_agreement_detail": null,
   "construction_progress": null,
   "land_detail": null,
-  "document_urls": null,
   "retrieved_on": null,
   "last_updated": null,
   "updated_fields": null,

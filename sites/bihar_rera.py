@@ -596,7 +596,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
         return True
 
     # ── Step 1: Verify listing page is reachable and has expected structure ────
-    resp = safe_get(LISTING_URL, retries=2, logger=logger)
+    resp = safe_get(LISTING_URL, retries=2, logger=logger, verify=False)
     if not resp:
         logger.error("Sentinel: listing page unreachable", step="sentinel")
         insert_crawl_error(run_id, config["id"], "SENTINEL_FAILED",
@@ -656,7 +656,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
         logger.info(f"Sentinel: fetching Filanprint detail for {sentinel_reg}",
                     url=detail_url, step="sentinel")
         try:
-            detail_resp = safe_get(detail_url, retries=2, logger=logger)
+            detail_resp = safe_get(detail_url, retries=2, logger=logger, verify=False)
             if detail_resp:
                 detail_extra = _parse_detail_page(detail_resp.text)
                 if detail_extra:
@@ -828,7 +828,7 @@ def _fetch_page(page: int, form_fields: dict, logger: CrawlerLogger) -> Beautifu
         "__EVENTTARGET":   _GRID_TARGET,
         "__EVENTARGUMENT": f"Page${page}",
     }
-    resp = safe_post(LISTING_URL, data=payload, retries=3, logger=logger)
+    resp = safe_post(LISTING_URL, data=payload, retries=3, logger=logger, verify=False)
     if not resp:
         return None
     return BeautifulSoup(resp.text, "lxml")
@@ -867,7 +867,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     # ── Step 2: Fetch listing HTML via httpx ─────────────────────────────────
     logger.info("Fetching listing page 1", step="listing")
-    resp = safe_get(LISTING_URL, retries=config.get("max_retries", 3), logger=logger)
+    resp = safe_get(LISTING_URL, retries=config.get("max_retries", 3), logger=logger, verify=False)
     if not resp:
         logger.error("Failed to fetch listing page", step="listing")
         insert_crawl_error(run_id, config["id"], "HTTP_ERROR", "listing page unreachable", LISTING_URL)
@@ -927,7 +927,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 # matches the listing row at (listing_page, row_idx).
                 detail_extra: dict = {}
                 if detail_url:
-                    detail_resp = safe_get(detail_url, retries=2, logger=logger)
+                    detail_resp = safe_get(detail_url, retries=2, logger=logger, verify=False)
                     if detail_resp and "Invalid Project ID" not in detail_resp.text:
                         detail_extra = _parse_detail_page(detail_resp.text)
                         logger.info(f"Detail parsed for {reg_no!r}", step="detail")

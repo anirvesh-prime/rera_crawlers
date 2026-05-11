@@ -43,13 +43,33 @@
   },
   "uploaded_documents": [
     {
-      "type": "Income Tax Return (ITR) Acknowledgement *",
+      "type": "Income Tax Return (ITR) Acknowledgement * (Year 1)",
       "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUys6fW2%2FDbBBU5DiO8tXnvRrdOKQW3EYnjZQME%2BMwu35YNGmOMdFPIAhiGcL7hGbWgpYCOnUQXButHkPToDVT7AuZfvFexWrrvjiC0N04SqsA5ZBQj1KD1mu",
       "updated": true
     },
     {
-      "type": "Audited Profit & Loss Statement/Balance Sheet/Cashflow Statement/Director's Report/Auditor's Report *",
+      "type": "Income Tax Return (ITR) Acknowledgement * (Year 2)",
+      "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUys6fW2%2FDbBBU5DiO8tXnvRrdOKQW3EYnjZQME%2BMwu35YNGmOMdFPIAhiGcL7hGbWgpYCOnUQXButHkPToDVT7AuDMomFfX7HYFR1eIV0DL4%2B%2BCzju%2BTNa7D",
+      "updated": true
+    },
+    {
+      "type": "Income Tax Return (ITR) Acknowledgement * (Year 3)",
+      "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUys6fW2%2FDbBBU5DiO8tXnvRrdOKQW3EYnjZQME%2BMwu35YNGmOMdFPIAhiGcL7hGbWgpYCOnUQXButHkPToDVT7AuGfKGK9Pmp1jlrHEj7PIeRLre%2F%2BwuDfys",
+      "updated": true
+    },
+    {
+      "type": "Audited Profit & Loss Statement/Balance Sheet/Cashflow Statement/Director's Report/Auditor's Report * (Year 1)",
       "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUys6fW2%2FDbBBU5DiO8tXnvRrdOKQW3EYnjZQME%2BMwu35YNGmOMdFPIAhiGcL7hGbWgpYCOnUQXButHkPToDVT7AuZfvFexWrrvhhdECjXKrIj4YT3jpGbNkx",
+      "updated": true
+    },
+    {
+      "type": "Audited Profit & Loss Statement/Balance Sheet/Cashflow Statement/Director's Report/Auditor's Report * (Year 2)",
+      "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUys6fW2%2FDbBBU5DiO8tXnvRrdOKQW3EYnjZQME%2BMwu35YNGmOMdFPIAhiGcL7hGbWgpYCOnUQXButHkPToDVT7AuDMomFfX7HYEdCeFn8MtDcfxOJdMY8uf%2B",
+      "updated": true
+    },
+    {
+      "type": "Audited Profit & Loss Statement/Balance Sheet/Cashflow Statement/Director's Report/Auditor's Report * (Year 3)",
+      "link": "https://hprera.nic.in/CommonControls/ViewOpenFile?path=0V6wXPUoUys6fW2%2FDbBBU5DiO8tXnvRrdOKQW3EYnjZQME%2BMwu35YNGmOMdFPIAhiGcL7hGbWgpYCOnUQXButHkPToDVT7AuGfKGK9Pmp1j7Ib982GX279ZxdOiD3PbU",
       "updated": true
     },
     {
@@ -187,7 +207,7 @@
   },
   "data": {
     "govt_type": "state",
-    "arrived_date": "2026-05-07T07:43:36.287593+00:00",
+    "arrived_date": "2026-05-11T07:24:52.908313+00:00",
     "completion_year": "6",
     "completion_month": "0",
     "flats": "52"
@@ -215,7 +235,6 @@
   "checked_updates": false,
   "rera_housing_found": false,
   "is_live": false,
-  "document_urls": null,
   "acknowledgement_no": null,
   "project_pin_code": null,
   "project_city": null,
@@ -234,6 +253,7 @@
   "provided_faciltiy": null,
   "development_agreement_detail": null,
   "construction_progress": null,
+  "document_urls": null,
   "members_details": null,
   "retrieved_on": null,
   "last_updated": null,

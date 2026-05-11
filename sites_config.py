@@ -338,7 +338,7 @@ SITES: list[dict] = [
         "listing_url": "https://rerait.telangana.gov.in/SearchList/Search",
         "crawler_module": "sites.telangana_rera",
         "crawler_type": "playwright",
-        "enabled": False,
+        "enabled": True,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
         "sentinel_registration_no": "",

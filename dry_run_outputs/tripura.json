@@ -1,81 +1,72 @@
 {
-  "key": "1731382315881895046",
-  "project_registration_no": "PRTR03240386",
-  "url": "https://reraonline.tripura.gov.in/viewProjectDetailPage?projectID=386",
+  "key": "3418471902044696667",
+  "project_registration_no": "PRTR10240438",
+  "url": "https://reraonline.tripura.gov.in/viewProjectDetailPage?projectID=438",
   "state": "tripura",
   "domain": "reraonline.tripura.gov.in",
-  "project_name": "Roodraksh Pearl",
-  "project_type": "Mixed Development",
-  "promoter_name": "Roodraksh Realtors",
-  "status_of_the_project": "New Project Launch",
+  "project_name": "Surosabitri",
+  "project_type": "Residential/Group Housing",
+  "promoter_name": "Asit Baran Saha",
+  "status_of_the_project": "Ongoing",
   "project_state": "Tripura",
-  "project_description": "B+G+9 Building ,3BHK=57 Nos ,2BHK=39 Nos ,1BHK=9 nos and 2 Nos commercial Space",
+  "project_description": "G + 4 residencial Building",
   "crawl_machine_ip": "127.0.0.1",
   "machine_name": "Anirveshs-MacBook-Air.local",
   "project_location_raw": {
-    "raw_address": "S.D.O Chowmuhani ,Chanmari",
+    "raw_address": "Kerc Coumuhani ,Agartala",
     "district": "Tripura",
-    "taluk": "West Tripura",
     "has_same_data": true
   },
   "promoter_contact_details": {
-    "email": "rajeev@prozone.in",
-    "phone": "9862184953"
+    "email": "asitbaransahakerchoumuhani@gmail.com",
+    "phone": "9436710490"
   },
   "professional_information": [
     {
       "role": "Architects",
-      "name": "Sanyam Surana",
-      "email": "Sanyam.surana@outlook.com",
-      "address": "Surana Bhawan, Tokobari Road,Guwahati,Kamrup Metropolitan,Assam",
+      "name": "Debajyoti Dam",
+      "email": "ar.debajyoti2000@gmail.com",
+      "address": "Jogendranagar,Bankumari,West Tripura,Tripura",
       "has_same_data": true
     },
     {
       "role": "Structural Engineers",
-      "name": "Er. Amarjit Sau",
-      "email": "virajee.agt@gmail.com",
-      "address": "M.G. Bazar,Near V2 mall,Ramthakur Sangha,Agartala,West Tripura,Tripura",
+      "name": "Goutam Banik",
+      "email": "er.goutambanik@gmail.com",
+      "address": "Banamalipur,Agartala,West Tripura,Tripura",
       "has_same_data": true
     }
   ],
   "members_details": [
     {
-      "name": "Rajeev Sanchet",
-      "position": "Board Member",
-      "phone": "9401411111",
-      "email": "rajeev@prozone.in",
-      "has_same_data": true
-    },
-    {
-      "name": "Sanjay Chhabra",
-      "position": "Board Member",
-      "phone": "9435012011",
-      "email": "chhbrasanjay2000@gmail.com",
+      "name": "Asit Baran Saha",
+      "email": "asitbaransahakerchoumuhani@gmail.com",
+      "phone": "9436710490",
       "has_same_data": true
     }
   ],
   "data": {
     "govt_type": "state",
-    "raw_address": "S.D.O Chowmuhani ,Chanmari",
+    "raw_address": "Kerc Coumuhani ,Agartala",
     "land_area_unit": "sq Mtr",
-    "construction_area_unit": "Sq Mtr"
+    "construction_area_unit": "sq Mtr"
   },
   "promoters_details": {
-    "name": "Roodraksh Realtors"
+    "name": "Asit Baran Saha"
   },
   "land_area_details": {
-    "land_area": "3856.97",
+    "land_area": "453.0",
     "land_area_unit": "sq Mtr",
-    "construction_area": "14210.69",
-    "construction_area_unit": "Sq Mtr"
+    "construction_area": "1572.0",
+    "construction_area_unit": "sq Mtr"
   },
-  "submitted_date": "2024-03-16 17:38:42+00:00",
-  "estimated_commencement_date": "2023-12-20 00:00:00+00:00",
-  "estimated_finish_date": "2026-12-28 00:00:00+00:00",
-  "number_of_residential_units": 105,
+  "submitted_date": "2024-10-25 18:03:11+00:00",
+  "estimated_commencement_date": "2024-07-19 00:00:00+00:00",
+  "estimated_finish_date": "2027-01-31 00:00:00+00:00",
+  "number_of_residential_units": 16,
   "config_id": 11807,
-  "land_area": 3856.97,
-  "construction_area": 14210.69,
+  "land_area": 453.0,
+  "construction_area": 1572.0,
   "is_updated": false,
   "is_duplicate": false,
   "iw_processed": false,
@@ -83,20 +74,8 @@
   "rera_housing_found": false,
   "is_live": true,
   "project_images": [
-    "https://reraonline.tripura.gov.in/reraimage?IMG_ID=11487",
-    "https://reraonline.tripura.gov.in/reraimage?IMG_ID=11514"
+    "https://reraonline.tripura.gov.in/reraimage?IMG_ID=13006"
   ],
-  "uploaded_documents": [
-    {
-      "link": "https://reraonline.tripura.gov.in/download?DOC_ID=11489",
-      "type": "Rajeev San..jpeg"
-    },
-    {
-      "link": "https://reraonline.tripura.gov.in/download?DOC_ID=11490",
-      "type": "Sanjay K. Chhabra.jpeg"
-    }
-  ],
-  "document_urls": null,
   "acknowledgement_no": null,
   "project_pin_code": null,
   "project_city": null,
@@ -113,12 +92,14 @@
   "number_of_commercial_units": null,
   "building_details": null,
   "complaints_litigation_details": null,
+  "uploaded_documents": null,
   "authorised_signatory_details": null,
   "co_promoter_details": null,
   "provided_faciltiy": null,
   "development_agreement_detail": null,
   "construction_progress": null,
   "land_detail": null,
+  "document_urls": null,
   "retrieved_on": null,
   "last_updated": null,
   "updated_fields": null,

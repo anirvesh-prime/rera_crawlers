@@ -11,7 +11,7 @@
   "project_pin_code": "680101",
   "project_city": null,
   "project_state": "KERALA",
-  "crawl_machine_ip": "10.20.81.103",
+  "crawl_machine_ip": "127.0.0.1",
   "machine_name": "Anirveshs-MacBook-Air.local",
   "project_location_raw": [
     {
@@ -173,9 +173,9 @@
     {
       "amenity_detail": [
         {
-          "name": "Water conservation, Rain water harvesting :",
+          "name": "Electrical meter room, Sub-station, Receiving station :",
           "percent_completed": "0",
-          "remarks": "Only rain water harvesting"
+          "remarks": "Only electric meter box"
         },
         {
           "name": "Sewerage (Chamber, Lines, Septic tank, STP) :",
@@ -187,9 +187,9 @@
           "percent_completed": "0"
         },
         {
-          "name": "Electrical meter room, Sub-station, Receiving station :",
+          "name": "Water conservation, Rain water harvesting :",
           "percent_completed": "0",
-          "remarks": "Only electric meter box"
+          "remarks": "Only rain water harvesting"
         },
         {
           "name": "Landscaping & Tree planting :",

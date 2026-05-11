@@ -49,40 +49,58 @@
   },
   "uploaded_documents": [
     {
+      "type": "Form C",
       "link": "https://rera.tn.gov.in/formcqr/3c2c3140-ca91-11f0-be7a-49ff3448b535",
-      "type": "Form C"
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
+      "type": "Site Photos With all four Sides",
       "link": "https://rera.tn.gov.in/public/storage/upload/DsSykbCLv6aXefqY45RpljYqNVkbVqbus3HF0oRT.pdf",
-      "type": "Site Photos With all four Sides"
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
+      "type": "Approved Plan 1",
       "link": "https://rera.tn.gov.in/public/storage/upload/OCTHuNOcComVfar1Ha5UFSOChAG7vSIbbimqdK6y.pdf",
-      "type": "Planning Permission Approval Letter"
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
+      "type": "Approved Plan 2",
       "link": "https://rera.tn.gov.in/public/storage/upload/ctXCKYmJYyLdKLF1dB36b2AqNXvaFh4mDhHjh4VD.pdf",
-      "type": "Approval Plan with Local Body Seal"
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
+      "type": "Local Body Approval Letter",
       "link": "https://rera.tn.gov.in/public/storage/upload/QmGv52o52tXGn35qR82OT0TyYw8hbfrVcTHnKu48.pdf",
-      "type": "Local Body Approval Letter"
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
+      "type": "GLV value should be mentioned for all the survey numbers covered in the project*",
       "link": "https://rera.tn.gov.in/public/storage/upload/cCoXxXRNLH2DaOXdtLNJrc5tWYbPpkvypoSSvmuV.pdf",
-      "type": "GLV value should be mentioned for all the survey numbers covered in the project*"
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
+      "type": "Approved Plan 3",
       "link": "https://rera.tn.gov.in/public/storage/upload/kB8kKKwj20zPPbXGdBex7VuvKP8KY1ltsQzmKXPx.pdf",
-      "type": "Encumbrance Certificate from the date of approval of planning permission to RERA submission date"
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
+      "type": "Land Title Deed/Document, GPA with Sale Power, JVDA/JDA",
       "link": "https://rera.tn.gov.in/public/storage/upload/5CUGUQFHlnrUOo2bL8VFSQQsnxabdzAh5G768v3O.pdf",
-      "type": "Land Title Deed/Document, GPA with Sale Power, JVDA/JDA"
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
+      "type": "Declaration(Form B)",
       "link": "https://rera.tn.gov.in/public/storage/upload/iAlFta0OJ8rR4fclazzB70ixsuXujlX5ATa900Ft.pdf",
-      "type": "Declaration(Form B)"
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     }
   ],
   "professional_information": [
@@ -128,7 +146,44 @@
   "checked_updates": false,
   "rera_housing_found": false,
   "is_live": true,
-  "document_urls": null,
+  "document_urls": [
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Form C"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Site Photos With all four Sides"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Approved Plan 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Approved Plan 2"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Local Body Approval Letter"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "GLV value should be mentioned for all the survey numbers covered in the project*"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Approved Plan 3"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Land Title Deed/Document, GPA with Sale Power, JVDA/JDA"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Declaration(Form B)"
+    }
+  ],
   "project_type": null,
   "acknowledgement_no": null,
   "submitted_date": null,

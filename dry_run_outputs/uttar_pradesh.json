@@ -3418,6 +3418,60 @@
   "data": {
     "district": "Gautam Buddha Nagar"
   },
+  "uploaded_documents": [
+    {
+      "type": "ARCHITECT Certificate 1",
+      "link": "https://www.up-rera.in/finalcertificates/finalcertificates/Form%20REG%201%20(Architect%20Certificate).xlsx",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "ENGINEER Certificate 1",
+      "link": "https://www.up-rera.in/finalcertificates/finalcertificates/Form%20REG%202%20(Engineer%20Certificate).xlsx",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "ARCHITECT Certificate 2",
+      "link": "https://www.up-rera.in/finalcertificates/finalcertificates/Form%20REG%204%20(Architect%20Certificate).docx",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "ARCHITECT Certificate 3",
+      "link": "https://www.up-rera.in/finalcertificates/finalcertificates/Form%20REG%204A%20(Architect%20Certificate).docx",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "ARCHITECT Certificate 4",
+      "link": "https://www.up-rera.in/pdf/Order for CA,Architect,Engineer Certificate.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    }
+  ],
+  "document_urls": [
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "ARCHITECT Certificate 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "ENGINEER Certificate 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "ARCHITECT Certificate 2"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "ARCHITECT Certificate 3"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "ARCHITECT Certificate 4"
+    }
+  ],
   "acknowledgement_no": null,
   "project_pin_code": null,
   "project_city": null,
@@ -3430,14 +3484,12 @@
   "construction_area": null,
   "total_floor_area_under_commercial_or_other_uses": null,
   "total_floor_area_under_residential": null,
-  "uploaded_documents": null,
   "authorised_signatory_details": null,
   "co_promoter_details": null,
   "project_description": null,
   "provided_faciltiy": null,
   "development_agreement_detail": null,
   "construction_progress": null,
-  "document_urls": null,
   "members_details": null,
   "retrieved_on": null,
   "is_updated": null,

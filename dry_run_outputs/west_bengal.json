@@ -1,327 +1,135 @@
 {
-  "key": "1677663601985826711",
-  "project_registration_no": "WBRERA/P/ALI/2023/000353",
-  "url": "https://rera.wb.gov.in/project_details.php?procode=11382000000019",
+  "key": "9591605317190160457",
+  "project_registration_no": "WBRERA/P/NOR/2025/002592",
+  "url": "https://rera.wb.gov.in/project_details.php?procode=16792000000025",
   "state": "west bengal",
   "domain": "rera.wb.gov.in",
-  "project_name": "ARADHANA APARTMENT",
+  "project_name": "Crown",
   "project_type": "Residential",
-  "promoter_name": "Dubra Banerjee",
+  "promoter_name": "AARIKA CONSTRUCTION LLP",
   "status_of_the_project": "Not Started",
-  "acknowledgement_no": "WBRERA/NPR-000629",
+  "acknowledgement_no": "WBRERA/NPR-003432",
   "project_state": "west bengal",
   "crawl_machine_ip": "127.0.0.1",
   "machine_name": "Anirveshs-MacBook-Air.local",
   "project_location_raw": {
-    "raw_address": "JAGADHATRI GALI WARD NO -6 , ALIPURDUAR Alipurduar PS. Alipurduar Dist. Alipurduar Pin 736121"
+    "raw_address": "Mahish Bathan, RS DAG NO - 489, 490, 491, 492, 549, 550, 551, 552, 553, 554, 555, 560, 561, 562, 542, 544, 545, 548, 546, Mouza Thakdari - 852,918,929. Ward No - 28, Provisional Holding No - 001, Bidhannagar Municipal Corporation, Kolkata, West Bengal NA Bidhannagar Municipal Corporation PS. Bidhannagar (North) Dist. North 24-Parganas Pin 700059"
   },
   "promoter_address_raw": {
-    "district": "Alipurduar",
-    "pin_code": "736121",
-    "raw_address": "2 Newtown, Durga Bari Road, Alipurduar, Pin 736121",
-    "registered_address": "DOOARSWINDS PROJECTS PRIVATE LIMITED Company Type : Company / LLP Address : New Town Durgabari Road New Town, Alipurduar, Ward No - 2 Tehsil : NA Police Station : NA Pincode : 736121 District : Alipurduar Registration No.:"
+    "registered_address": "Aarika Construction LLP Company Type : Company / LLP Address : 7B, Pretoria Street, Middleton Row, Kolkata - 700071 Tehsil : Kolkata Police Station : Shakespeare Sarani Pincode : 700071 District : Kolkata Registration No.: AAI-9729 Education: B.Com Work Experience: NA Website: NA",
+    "district": "Kolkata",
+    "pin_code": "700071",
+    "raw_address": "7B, Dr Harendra Coomer Mukherjee Sarani,Middleton Row, Kolkata - 700071"
   },
   "promoter_contact_details": {
-    "email": "sbanerjee.dmrc@gmail.com sbanerjee.dmrc@gmail.com"
+    "email": "NA"
   },
-  "provided_faciltiy": [
+  "uploaded_documents": [
     {
-      "facility": "Fire Fighting Facility",
-      "has_same_data": true
+      "type": "Rera Registration Certificate 1",
+      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/upcer/nproj/PDF/16792000000025.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
-      "facility": "Emergency Evacuation Services",
-      "has_same_data": true
+      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/16792000000025/axp_gridattach_12/Pan Card.PDF",
+      "type": "1 Authenticated copy of the PAN card of the promoter"
     },
     {
-      "facility": "Water Facility",
-      "has_same_data": true
+      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/16792000000025/axp_gridattach_12/ITR AY 2022-23.pdf",
+      "type": "2 Audited balance sheet of the promoter for the preceding financial year and income tax returns of the promoter for three preceding financial years"
     },
     {
-      "facility": "Rain Water Harvesting System",
-      "has_same_data": true
+      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/16792000000025/axp_gridattach_12/ITR AY 2023-24.pdf",
+      "type": "2 Audited balance sheet of the promoter for the preceding financial year and income tax returns of the promoter for three preceding financial years"
     },
     {
-      "facility": "Power Backup",
-      "has_same_data": true
+      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/16792000000025/axp_gridattach_12/ITR AY 2024-25.pdf",
+      "type": "2 Audited balance sheet of the promoter for the preceding financial year and income tax returns of the promoter for three preceding financial years"
     },
     {
-      "facility": "Electric Car Charging Point at Parking",
-      "has_same_data": true
+      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/16792000000025/axp_gridattach_12/Audited Balance Sheet 2024.PDF",
+      "type": "2 Audited balance sheet of the promoter for the preceding financial year and income tax returns of the promoter for three preceding financial years"
     },
     {
-      "facility": "Yoga & Meditation Lounge",
-      "has_same_data": true
+      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/16792000000025/axp_gridattach_12/No Encumbrance Declaration.pdf",
+      "type": "3 The details of encumbrances on the land on which development is proposed including any rights, title, interest or name of any party in or over such land along with details"
+    },
+    {
+      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/16792000000025/axp_gridattach_12/Airport NOC.pdf",
+      "type": "4 An authenticated copy of the approvals and commencement certificate from the competent authority obtained in accordance with the laws as may be applicable for the for the real estate project mentioned in the application, and where the project is proposed to be developed in phases, an authenticated copy of the approvals and commencement certificate from the competent authority for each of such phases"
+    },
+    {
+      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/16792000000025/axp_gridattach_12/Fire NOC.pdf",
+      "type": "4 An authenticated copy of the approvals and commencement certificate from the competent authority obtained in accordance with the laws as may be applicable for the for the real estate project mentioned in the application, and where the project is proposed to be developed in phases, an authenticated copy of the approvals and commencement certificate from the competent authority for each of such phases"
+    },
+    {
+      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/16792000000025/axp_gridattach_12/Sanction Letter.pdf",
+      "type": "4 An authenticated copy of the approvals and commencement certificate from the competent authority obtained in accordance with the laws as may be applicable for the for the real estate project mentioned in the application, and where the project is proposed to be developed in phases, an authenticated copy of the approvals and commencement certificate from the competent authority for each of such phases"
+    },
+    {
+      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/16792000000025/axp_gridattach_12/Location Plan.pdf",
+      "type": "5 The location details of the project, with clear demarcation of land dedicated for the project along with its boundaries including the latitude and longitude of the end points of the project"
+    },
+    {
+      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/16792000000025/axp_gridattach_12/Allotment Letter.pdf",
+      "type": "6 Proforma of the allotment letter, agreement for sale, and the conveyance deed proposed to be signed with the allottees"
+    },
+    {
+      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/16792000000025/axp_gridattach_12/AGREEMENT FOR SALE.pdf",
+      "type": "6 Proforma of the allotment letter, agreement for sale, and the conveyance deed proposed to be signed with the allottees"
+    },
+    {
+      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/16792000000025/axp_gridattach_12/Deed of Conveyance.pdf",
+      "type": "6 Proforma of the allotment letter, agreement for sale, and the conveyance deed proposed to be signed with the allottees"
     }
   ],
   "professional_information": [
     {
-      "name": "Sourav Mitra",
+      "name": "SANON SEN & ASSOCIATES",
       "role": "Architect",
-      "address": "Alipurduar"
-    },
-    {
-      "name": "Krishnendu Paul",
-      "role": "Structural Engineer",
-      "address": "Alipurduar"
-    },
-    {
-      "name": "Gotam Sarkar",
-      "role": "Other",
-      "address": "Alipurduar"
+      "address": "5, Russel Street, Kolkata 700071, India"
     }
   ],
   "data": {
     "govt_type": "state",
-    "has_same_data": false,
-    "temp_promoter": "DOOARSWINDS PROJECTS PRIVATE LIMITED",
     "land_area_unit": "sq.mtr.",
     "construction_area_unit": "sq.mtr.",
+    "temp_promoter": "AARIKA CONSTRUCTION LLP",
     "complete_html_url": [
-      "https://rera.wb.gov.in/project_details.php?procode=11382000000019"
+      "https://rera.wb.gov.in/project_details.php?procode=16792000000025"
     ]
   },
   "promoters_details": {
-    "name": "DOOARSWINDS PROJECTS PRIVATE LIMITED",
-    "pan_card": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/Encum.pdf,http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/FORM%20B.pdf",
+    "name": "AARIKA CONSTRUCTION LLP",
     "type_of_firm": "Company / LLP",
-    "experience_state": "00"
+    "registration_no": "AAI-9729"
   },
   "land_area_details": {
-    "land_area": "1021",
+    "land_area": "35819",
     "land_area_unit": "sq.mtr.",
-    "construction_area": 2629.0,
+    "construction_area": 64273.0,
     "construction_area_unit": "sq.mtr."
   },
-  "estimated_finish_date": "2026-05-31 00:00:00+00:00",
-  "actual_finish_date": "2026-05-31 00:00:00+00:00",
-  "approved_on_date": "2023-08-02 00:00:00+00:00",
-  "number_of_residential_units": 31,
+  "estimated_finish_date": "2034-12-31 00:00:00+00:00",
+  "actual_finish_date": "2034-12-31 00:00:00+00:00",
+  "approved_on_date": "2025-03-11 00:00:00+00:00",
+  "number_of_residential_units": 528,
   "config_id": 11815,
-  "land_area": 1021.0,
-  "construction_area": 2629.0,
-  "total_floor_area_under_residential": 1021.0,
+  "land_area": 35819.0,
+  "construction_area": 64273.0,
   "is_updated": false,
   "is_duplicate": false,
   "iw_processed": false,
   "checked_updates": false,
   "rera_housing_found": false,
   "is_live": true,
-  "uploaded_documents": [
+  "document_urls": [
     {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/upcer/17282000000001/axp_gridattach_2/WBRERA-P-ALI-2023-000353.pdf",
+      "link": "https://s3.example.com/dry-run",
       "type": "Rera Registration Certificate 1"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/PAN.pdf",
-      "type": "1 Authenticated copy of the PAN card of the promoter"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/ITR%20sbanerjee%2021-22.pdf",
-      "type": "2 Audited balance sheet of the promoter for the preceding financial year and income tax returns of the promoter for three preceding financial years"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/ITR%20Sbanerjee%20AY%2019-20.pdf",
-      "type": "2 Audited balance sheet of the promoter for the preceding financial year and income tax returns of the promoter for three preceding financial years"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/itr%20sbanerjee%20ay%2020-21.pdf",
-      "type": "2 Audited balance sheet of the promoter for the preceding financial year and income tax returns of the promoter for three preceding financial years"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/computation%20SUDIPTO%20BANERJEE%20ay%202019-20.pdf",
-      "type": "2 Audited balance sheet of the promoter for the preceding financial year and income tax returns of the promoter for three preceding financial years"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/S%20Banerjee%20COMPUTATION%20AY20-21.pdf",
-      "type": "2 Audited balance sheet of the promoter for the preceding financial year and income tax returns of the promoter for three preceding financial years"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/S%20Banerjee%20COMPUTATION%20AY21-22.pdf",
-      "type": "2 Audited balance sheet of the promoter for the preceding financial year and income tax returns of the promoter for three preceding financial years"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/itr%20dbanerjee%20AY%2020-21.pdf",
-      "type": "2 Audited balance sheet of the promoter for the preceding financial year and income tax returns of the promoter for three preceding financial years"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/itr%20dbanerjee%20AY%2021-22.pdf",
-      "type": "2 Audited balance sheet of the promoter for the preceding financial year and income tax returns of the promoter for three preceding financial years"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/COMPUTATION%20%20(Durba%20BanerjeeAY%20201920.pdf",
-      "type": "2 Audited balance sheet of the promoter for the preceding financial year and income tax returns of the promoter for three preceding financial years"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/COMPUTATION%20(Durba%20BanerjeeAY%202020-21.pdf",
-      "type": "2 Audited balance sheet of the promoter for the preceding financial year and income tax returns of the promoter for three preceding financial years"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/COMPUTATION%20(Durba%20BanerjeeAY%202021-22.pdf",
-      "type": "2 Audited balance sheet of the promoter for the preceding financial year and income tax returns of the promoter for three preceding financial years"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/NO%20COMPANY%20ITR.pdf",
-      "type": "2 Audited balance sheet of the promoter for the preceding financial year and income tax returns of the promoter for three preceding financial years"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/Encum.pdf",
-      "type": "3 The details of encumbrances on the land on which development is proposed including any rights, title, interest or name of any party in or over such land along with details"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/FORM%20B.pdf",
-      "type": "3 The details of encumbrances on the land on which development is proposed including any rights, title, interest or name of any party in or over such land along with details"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/AAI%20DW.pdf",
-      "type": "4 An authenticated copy of the approvals and commencement certificate from the competent authority obtained in accordance with the laws as may be applicable for the for the real estate project mentioned in the application, and where the project is proposed to be developed in phases, an authenticated copy of the approvals and commencement certificate from the competent authority for each of such phases"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/Fire%20DW.pdf",
-      "type": "4 An authenticated copy of the approvals and commencement certificate from the competent authority obtained in accordance with the laws as may be applicable for the for the real estate project mentioned in the application, and where the project is proposed to be developed in phases, an authenticated copy of the approvals and commencement certificate from the competent authority for each of such phases"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/No%20Booking%20DW.pdf",
-      "type": "4 An authenticated copy of the approvals and commencement certificate from the competent authority obtained in accordance with the laws as may be applicable for the for the real estate project mentioned in the application, and where the project is proposed to be developed in phases, an authenticated copy of the approvals and commencement certificate from the competent authority for each of such phases"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/No%20Commencement%20DW.pdf",
-      "type": "4 An authenticated copy of the approvals and commencement certificate from the competent authority obtained in accordance with the laws as may be applicable for the for the real estate project mentioned in the application, and where the project is proposed to be developed in phases, an authenticated copy of the approvals and commencement certificate from the competent authority for each of such phases"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/location.pdf",
-      "type": "5 The location details of the project, with clear demarcation of land dedicated for the project along with its boundaries including the latitude and longitude of the end points of the project"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/allottment%20letter.pdf",
-      "type": "6 Proforma of the allotment letter, agreement for sale, and the conveyance deed proposed to be signed with the allottees"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/Draft%20Deed%20of%20Conveyance%20DW.pdf",
-      "type": "6 Proforma of the allotment letter, agreement for sale, and the conveyance deed proposed to be signed with the allottees"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/Draft%20Agreement%20for%20Sale.pdf",
-      "type": "6 Proforma of the allotment letter, agreement for sale, and the conveyance deed proposed to be signed with the allottees"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/last%20five%20years%20no%20project%20DW.pdf",
-      "type": "7 The number, type and the carpet area of apartments for sale in the project along with the area of the exclusive balcony or verandah areas and the exclusive open terrace areas apartment with the apartment, if any"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/CARPET%20AREA.pdf",
-      "type": "7 The number, type and the carpet area of apartments for sale in the project along with the area of the exclusive balcony or verandah areas and the exclusive open terrace areas apartment with the apartment, if any"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/Development%20Agreement.pdf",
-      "type": "8 Where the promoter is not the owner of the land on which development is proposed details of the consent of the owner of the land along with a copy of the collaboration agreement, development agreement, joint development agreement or any other agreement, as the case may be, entered into between the promoter and such owner and copies of title and other documents reflecting the title of such owner on the land proposed to be developed;"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/Development%20Power%20of%20Attorney%202.pdf",
-      "type": "8 Where the promoter is not the owner of the land on which development is proposed details of the consent of the owner of the land along with a copy of the collaboration agreement, development agreement, joint development agreement or any other agreement, as the case may be, entered into between the promoter and such owner and copies of title and other documents reflecting the title of such owner on the land proposed to be developed;"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/Facilities%20DW.pdf",
-      "type": "Plan of Development 1"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/renewale%20energy%20DW.pdf",
-      "type": "Plan of Development 2"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/covred%20parking%20DW.pdf",
-      "type": "10 The number and areas of garage for sale in the project;"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/open%20parking%20DW.pdf",
-      "type": "11 The number of parking areas available in the real estate project;"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/Concern%20Person%20DW.pdf",
-      "type": "12 The names and addresses of the contractors, architect, structural engineer, if any and other persons concerned with the development of the proposed project;"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/affidavit%20acum%20declaration%20DW.pdf",
-      "type": "13 A declaration in FORM ‘B'. DECLARATION, SUPPORTED BY AN AFFIDAVIT, WHICH SHALL BE SIGNED BY THE PROMOTER OR ANY PERSON AUTHORIZED BY THE PROMOTER"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/FORM%20B%20DW.pdf",
-      "type": "13 A declaration in FORM ‘B'. DECLARATION, SUPPORTED BY AN AFFIDAVIT, WHICH SHALL BE SIGNED BY THE PROMOTER OR ANY PERSON AUTHORIZED BY THE PROMOTER"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_12/to%20whomsoever%20DW.pdf",
-      "type": "13 A declaration in FORM ‘B'. DECLARATION, SUPPORTED BY AN AFFIDAVIT, WHICH SHALL BE SIGNED BY THE PROMOTER OR ANY PERSON AUTHORIZED BY THE PROMOTER"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_14/scrutiny%20dwg.pdf",
-      "type": "1 Plan Architectural Plan"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_14/structural%20doc%20signed.pdf",
-      "type": "2 Structural Plan"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_14/Approved%20Building%20Plan.pdf",
-      "type": "3 Approval Letter"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_13/Development%20Agreement.pdf",
-      "type": "1 Development Agreement"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_13/Development%20Power%20of%20Attorney%202.pdf",
-      "type": "2 Development Power of Attorney"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_13/Holding%20Tax.pdf",
-      "type": "3 Holding Tax"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_13/%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0_%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0%20-%201_%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0_603_2%20(1).pdf",
-      "type": "4 Khatiyan"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_13/%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0_%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0%20-%201_%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0_606_2%20(1).pdf",
-      "type": "4 Khatiyan"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_13/%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0_%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0%20-%201_%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0_7730_2%20(1).pdf",
-      "type": "4 Khatiyan"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_13/%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0_%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0%20-%201_%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0_7731_2%20(1).pdf",
-      "type": "4 Khatiyan"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_13/%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0_%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0%20-%201_%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0_7732_2%20(1).pdf",
-      "type": "4 Khatiyan"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_13/%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0_%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0%20-%201_%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0_7733_2%20(1).pdf",
-      "type": "4 Khatiyan"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_13/%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0_%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0%20-%201_%E0%A6%86%E0%A6%B2%E0%A6%BF%E0%A6%AA%E0%A7%81%E0%A6%B0%E0%A6%A6%E0%A7%81%E0%A7%9F%E0%A6%BE%E0%A6%B0_7734_2%20(1).pdf",
-      "type": "4 Khatiyan"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_13/Title%20Deed.pdf",
-      "type": "5 Title Deed"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/nproj/11382000000019/axp_gridattach_13/Legal%20Heir.pdf",
-      "type": "6 Legal Heir Certificate against Title Deed"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/aproj/11382000000019/axp_gridattach_12/Approved%20Building%20Plan.pdf",
-      "type": "Sanction Plan 1"
-    },
-    {
-      "link": "http://doc.repository.semtwb.in/attachments/GridAttach/rera/aproj/11382000000019/axp_gridattach_12/structural%20doc%20signed.pdf",
-      "type": "Sanction Plan 2"
     }
   ],
-  "document_urls": null,
   "project_pin_code": null,
   "project_city": null,
   "submitted_date": null,
@@ -331,6 +139,7 @@
   "past_experience_of_promoter": null,
   "bank_details": null,
   "total_floor_area_under_commercial_or_other_uses": null,
+  "total_floor_area_under_residential": null,
   "project_cost_detail": null,
   "number_of_commercial_units": null,
   "building_details": null,
@@ -338,6 +147,7 @@
   "authorised_signatory_details": null,
   "co_promoter_details": null,
   "project_description": null,
+  "provided_faciltiy": null,
   "development_agreement_detail": null,
   "construction_progress": null,
   "land_detail": null,

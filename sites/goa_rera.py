@@ -46,8 +46,8 @@ HOME_URL    = "https://rera.goa.gov.in/reraApp/home"
 SEARCH_URL  = "https://rera.goa.gov.in/reraApp/search"
 DOMAIN      = "rera.goa.gov.in"
 PAGE_SIZE          = 10   # rows per search-result page (approximate)
-_CAPTCHA_MAX_TRIES    = 5   # solver attempts per captcha round (inner loop)
-_MAX_SERVER_REJECTS   = 10  # max server-side rejections before giving up entirely
+_CAPTCHA_MAX_TRIES    = 10  # solver attempts per captcha round (inner loop)
+_MAX_SERVER_REJECTS   = 20  # max server-side rejections before giving up entirely
 
 
 def _get(url: str, logger: CrawlerLogger, **kw):

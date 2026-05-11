@@ -51,628 +51,434 @@
   },
   "building_details": [
     {
-      "flat_type": "ODD",
-      "total_area": "642"
+      "flat_type": "Plots 9 X ODD",
+      "total_area": "2252"
     },
     {
       "flat_type": "Plots 9 X 12",
       "total_area": "1188"
     },
     {
-      "flat_type": "Plots 9 X ODD",
-      "total_area": "2252"
+      "flat_type": "ODD",
+      "total_area": "642"
     }
   ],
   "uploaded_documents": [
     {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=yuHjmnMP%2BprKvpe5MhimUQ%3D%3D",
-      "type": "D LALITHA TRADE LICENSE.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=%2FS3ofjgzNyfEaLzqqh70yQ%3D%3D",
-      "type": "D LALITHA PAN.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=aL23knhTKkt9PheBVl15Dg%3D%3D",
-      "type": "D LALITHA AADHAR.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=GeOAa7GZEqmy4zQmXVrZ2w%3D%3D",
-      "type": "Authorised Signatory.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=rhhQjVALH8hftRSaJNEgtQ%3D%3D",
-      "type": "D LALITHA PAN.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=vYv3vZ5p06KZNPA9tJohfg%3D%3D",
-      "type": "CA Certificate.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=cLI41Dwwv4RFEMZp%2BLb96A%3D%3D",
       "type": "Engineers Certificate.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=SVBZx18qtKEEiEEolVITxQ%3D%3D",
-      "type": "Project Chartered Accountant",
+      "label": "Engineers Certificate.pdf",
+      "source_label": "Engineers Certificate.pdf",
+      "matched_category": "Engineer",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=xepYOVJjK%2Fo0QuXAQRimVg%3D%3D",
-      "type": "Project Engineer",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=3jBPfpVSt%2BRNdTlTYJLvnw%3D%3D",
-      "type": "Land Survey Details",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=DHLifA6Oar8b1353MoE%2BDQ%3D%3D",
-      "type": "Land Survey Details",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=Hix1qum3S4qf3z5yqdNODA%3D%3D",
-      "type": "Land Survey Details",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=56zqSrDfJqr8ceRghHhoVg%3D%3D",
-      "type": "Land Survey Details",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=jpXlGf5tkpHMySMlhKuN%2Bg%3D%3D",
-      "type": "Land Survey Details",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=TWyDLad528UeMJ4qd2HnwQ%3D%3D",
-      "type": "Land Survey Details",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=jaCBnEfLlfPjPAAHfzsjmw%3D%3D",
-      "type": "Non Litigation.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=IfD9OcBMvtw32RujdzaBdw%3D%3D",
-      "type": "CA Certificate.pdf",
+      "type": "Engineer Certificate 1",
+      "label": "Engineer Certificate 1",
+      "source_label": "Project Engineer",
+      "matched_category": "Engineer",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=83oKDaBcUzb2ox%2BuvxSXAw%3D%3D",
       "type": "Architect Certificate.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=X8%2FyUJD0hKP7k%2B8EL4rCZA%3D%3D",
-      "type": "Balance Sheet",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=up6OjAKrKJzHIDjSu4838A%3D%3D",
-      "type": "Balance Sheet",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=IrOTfWlyN%2F7SP%2F3HWCiiRw%3D%3D",
-      "type": "Balance Sheet",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=UYvALEp0R51g6z%2BB7CYWIg%3D%3D",
-      "type": "Audited Profit and Loss Statement",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=Rywb4g6wvkMRsnBERvTeXQ%3D%3D",
-      "type": "Audited Profit and Loss Statement",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=H7q40HvY3C8H3tdykXY0RQ%3D%3D",
-      "type": "Audited Profit and Loss Statement",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=146GOv%2Bql7rx1wK4WmmNsQ%3D%3D",
-      "type": "Director's Report",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=1vS8fTk2W7EmzPZvMZSKyA%3D%3D",
-      "type": "Director's Report",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=su6wIoH2Nux0nnCQRmiUfA%3D%3D",
-      "type": "Director's Report",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=lFVXyytuCvfESyif9MKTWA%3D%3D",
-      "type": "Cash Flow Statement",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=pgihv8N5arizTGfXfv8Z5A%3D%3D",
-      "type": "Cash Flow Statement",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=wx3NftlQ%2FcLD2nFFTICXew%3D%3D",
-      "type": "Auditor's Report",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=0NFXsbbRVwLe0x60Na7viQ%3D%3D",
-      "type": "Auditor's Report",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=2SCF1q%2Bqs5edRdZGG%2BTNYw%3D%3D",
-      "type": "Auditor's Report",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=W8xonHGpbW%2B4p8bhkBK%2FFw%3D%3D",
-      "type": "Income Tax Return Acknowledgement",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=bl09JVa0zK6S0uTrPUyiGg%3D%3D",
-      "type": "Income Tax Return Acknowledgement",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=C3XTfT73uIm9Z8Inrugwrw%3D%3D",
-      "type": "Income Tax Return Acknowledgement",
+      "label": "Architect Certificate.pdf",
+      "source_label": "Architect Certificate.pdf",
+      "matched_category": "ARCHITECT",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=WHq5YjS5zi89XUSbs6zhZA%3D%3D",
       "type": "Commencement Certificate",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=AoHZibdDseUP23%2FG%2Fjk%2BZQ%3D%3D",
-      "type": "Electricity Permission Letter",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=lta8L5fq9lHcVwzBCvGg0A%3D%3D",
-      "type": "Water Permission Letter",
+      "label": "Commencement Certificate",
+      "source_label": "Commencement Certificate",
+      "matched_category": "Commencement Certificate",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=U9%2Ba82i%2Fjqgf75jVpaycTQ%3D%3D",
-      "type": "Approved Layout Plan",
+      "type": "Layout Plan 1",
+      "label": "Layout Plan 1",
+      "source_label": "Approved Layout Plan",
+      "matched_category": "Layout Plan",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=AFPRWVS2AY%2FEdrB5qYtAmw%3D%3D",
       "type": "Approved Building/Plotting Plan",
+      "label": "Approved Building/Plotting Plan",
+      "source_label": "Approved Building/Plotting Plan",
+      "matched_category": "Approved Building",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=uXY0mLl9cegEf5BX%2FXFNmg%3D%3D",
-      "type": "Existing Layout Plan",
+      "type": "Layout Plan 2",
+      "label": "Layout Plan 2",
+      "source_label": "Existing Layout Plan",
+      "matched_category": "Layout Plan",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=lRVEtOJQPESY5PIwdBzhiA%3D%3D",
-      "type": "Existing Section Plan and Specification",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=JJ8xTs0%2FbCrOIY7DuQeVgw%3D%3D",
-      "type": "Sectional Drawing of the apartments",
+      "type": "Section Plan 1",
+      "label": "Section Plan 1",
+      "source_label": "Existing Section Plan and Specification",
+      "matched_category": "Section Plan",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=eT3GP1Hun4zP6jFqqOzrVQ%3D%3D",
       "type": "Project Specifications",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=gCRR6N2fhz%2F7cv0ytm8xqQ%3D%3D",
-      "type": "Approved Section Of Building/Infrastructure Plan of Plotting",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=E53wtU7OzFGr2DNiUI4jwg%3D%3D",
-      "type": "Area Development Plan Of Project Area",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=VnvPMuqrLn7xYcx5qXiUpg%3D%3D",
-      "type": "Certificate from Registered Engineer indicating the structural safety of the building",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=RLLeh4j0A3t8BH7wbOJDog%3D%3D",
-      "type": "Advocate Search Report",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=DSAvis1wDPsX8N5Ek7b%2FMg%3D%3D",
-      "type": "Urban Land Ceiling",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=oV0DPjQNzQmZM4lwiIZHqQ%3D%3D",
-      "type": "Collaboration Agreement/Development Agreement/Joint Development Agreement/Other Agreement",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=0NWxmR61DwugVsHjMrsnvQ%3D%3D",
-      "type": "Change of Land Use",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=fi%2FDZXo6LwX%2BJF7gIaLy3Q%3D%3D",
-      "type": "District Magistrate",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=8xupj%2FPyuEyqhnLNqiEFkw%3D%3D",
-      "type": "Conversion Certificate under section 95 of the KLR Act 1964",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=9HW7orXIkrYrFCzfVQx1jw%3D%3D",
-      "type": "Any other document (Rights/Title/Interest/Name)",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=arTC9OwnLomUbR6kugPu8Q%3D%3D",
-      "type": "Proforma of Agreement for Sale",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=V8GqE2qZma5NQiTZ9d2QWw%3D%3D",
-      "type": "Proforma of Allotment Letter",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=wHQJgeq%2Bky44wT%2B69EDwcg%3D%3D",
-      "type": "Brochure",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=6yA4I3nEqA60oMWJ32oDtQ%3D%3D",
-      "type": "Declaration (Form B)",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=nNC73CLFDsvprHF%2BiiKRZw%3D%3D",
-      "type": "Section 3(1) Notarized Affidavit",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=D53xh2s85UbSH9yNBNtThg%3D%3D",
-      "type": "JD AFFIDAVIT CUM DECLARATION",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=saNwvy1d%2FP2cOLl1x8amEw%3D%3D",
-      "type": "ESCOM/Electricity",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=zWj8VU1gBn67Emx7RZp0Lw%3D%3D",
-      "type": "KWSSB/Water",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=o0eR7oMYUaN6jLTopljBSA%3D%3D",
-      "type": "Approval/NOC under section 109 of KLR Act 1961",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=IYahmaAHP%2F9efQjGXiRWqQ%3D%3D",
-      "type": "Approval/NOC under section 14 of the KTCP Act",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=EGLVTS1cUbH65yQuQ4rkAQ%3D%3D",
-      "type": "Fire Force Department",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=MSUJZjFVUZXaXLZVURqd%2Fg%3D%3D",
-      "type": "Airport Authority of India",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=2Ll%2Bke5RxpBDIwaBM9JYMw%3D%3D",
-      "type": "KSPCB",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=foc%2F9czxrhHxufDMLCQWJw%3D%3D",
-      "type": "SEIAA",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=Ps96Rox%2Buggjar9BpMn7YQ%3D%3D",
-      "type": "BSNL",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=rL%2FA8W67h2cKjdoDAK27Gw%3D%3D",
-      "type": "Lift Authorities",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=nbHQTql4E8RIErz8kWKDSA%3D%3D",
-      "type": "BMRCL",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=jMQikmcjP7cUOt6srGhtMA%3D%3D",
-      "type": "NOC in case of building proposals abutting to neighbouring properties",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=mMsBJ6dKGZh4hUCFcSqkCQ%3D%3D",
-      "type": "Bangalore Urban Arts Commission",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=3m5gLmSwFlTZP5653APthQ%3D%3D",
-      "type": "Inspector Of Factories Controller Of Explosives Railways",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=iqYywffDgXbHLiz7zJvXng%3D%3D",
-      "type": "Coastal Regulation Zone Authority",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=JlabbWxaB7O8jDDRv5DKoQ%3D%3D",
-      "type": "Utilisation certificate",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=i1RcpDPYvT9bZ1U0RpRmOg%3D%3D",
-      "type": "Transfer of development rights certificate",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=3KbyibSyBcWk1MlVYV3CIA%3D%3D",
-      "type": "Relinquishment Deed",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=nZXK5KJKWq4%2BOXT8956zPQ%3D%3D",
-      "type": "CDP.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=slB4y%2FcfIBQcUvTZ6T9y3w%3D%3D",
-      "type": "GPA.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=nYa8DLYYlUFFG2Cnr%2FhPcQ%3D%3D",
-      "type": "Guidance Value.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=L%2F5Fdl1rtO%2B5CSg0fxtfJg%3D%3D",
-      "type": "Modified Conversion Order.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=H%2FKIVctSroAQDW6LUJQm7w%3D%3D",
-      "type": "UGD Demarcation.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=WCqHiuAIy4O7zqrb%2FTCCgA%3D%3D",
-      "type": "Balance Sheet 2020",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=xPuBGlfAYwNtYgX59FFR2A%3D%3D",
-      "type": "Balance Sheet 2021",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=rUSfedNl5%2BXUqCu%2BEgNzDg%3D%3D",
-      "type": "Balance Sheet 2022",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=8N%2Bc7udi0Hqvr03sZY6vIw%3D%3D",
-      "type": "Profit and Loss Account 2020",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=kNNCMR5iO6wzj2Ej2viz7Q%3D%3D",
-      "type": "Profit and Loss Account 2021",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=y31o14KbDV5yFcG3ryMVWw%3D%3D",
-      "type": "Profit and Loss Account 2022",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=Cdk1W54kpXmiw36iUtf9KA%3D%3D",
-      "type": "Means of Finance",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=PqVayCmaN0asfjeKSdjN%2Bw%3D%3D",
-      "type": "EC",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=pJJ9NGLzJIVpPspy8uEF2Q%3D%3D",
-      "type": "Civil Works Order",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=hV185aKUcXT7VLOtwxPRhg%3D%3D",
-      "type": "Village Map",
+      "label": "Project Specifications",
+      "source_label": "Project Specifications",
+      "matched_category": "Project Specification",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=phBAU2S1qFpAWaY2yss8zg%3D%3D",
       "type": "Engineers License",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=rnBPiqkmlBBPwi5L%2BwhFxw%3D%3D",
-      "type": "Letter showing Engg license need not be renewed every year",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=yKfoBLl6UyDmEsUBMCuXug%3D%3D",
-      "type": "Proforma Allotment Letter",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=vAalcpm79bJs16%2Bd%2B2eBqg%3D%3D",
-      "type": "Estimated Cost of Construction",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=iP2%2FMbOXwtPa5Qz0Fjlhmg%3D%3D",
-      "type": "Affidavit 3(1)",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=MMR3a0T%2Bj0t115p%2B0zxGPA%3D%3D",
-      "type": "Encumbrance Certificate",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=6FBsw2%2BirfFvblrj81mj3g%3D%3D",
-      "type": "Brief Estimated Cost of Construction",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=RI0LPJrhesFRrU%2BVGmjUuQ%3D%3D",
-      "type": "Divya Layout.xlsx",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=xiTdA%2Bga4l%2BxYfldRcGUvA%3D%3D",
-      "type": "100% Release Order.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=DY6e3JYViITg3m0YmCuJ4Q%3D%3D",
-      "type": "Approved Plan.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=5cNByyW5xeoWhYrP7NMsAw%3D%3D",
-      "type": "Completion Certificate.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=ZgD7EAGFpUa37TdJCYM5yA%3D%3D",
-      "type": "100% Release Order.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=cpvDJW%2BbHP1oGwr2fY4GHQ%3D%3D",
-      "type": "Relinquishment Deed.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=WX12KtlVxKgxl3KKtL6gRg%3D%3D",
-      "type": "NA.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=MAS%2FHs2X7Gu1HgnzyudViA%3D%3D",
-      "type": "Water NOC with Fees Paid.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=wuuLbxs8dWhbIdm5LIyLUg%3D%3D",
-      "type": "GESCOM NOC with Fee Paid.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=1mUm0IpqKNxUGydKN4kJiw%3D%3D",
-      "type": "NA.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=dcQnR79FnTDqtOhpAzV4TA%3D%3D",
-      "type": "NA.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=hZSwGueqRQpWvZ2xuVZbdw%3D%3D",
-      "type": "Water NOC with Fees Paid.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=EqLOTE35x2rTee1zc5R8SQ%3D%3D",
-      "type": "GESCOM NOC with Fee Paid.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=jxQduRIAa7GqT5i7f9%2F1AA%3D%3D",
-      "type": "Form 4 CA CC.pdf",
+      "label": "Engineers License",
+      "source_label": "Engineers License",
+      "matched_category": "Engineer",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=OAG1cw%2B01CuKkI%2Fp7WMhxg%3D%3D",
-      "type": "Form 5 Architect CC.pdf",
+      "type": "ARCHITECT Certificate 1",
+      "label": "ARCHITECT Certificate 1",
+      "source_label": "Form 5 Architect CC.pdf",
+      "matched_category": "ARCHITECT",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=g4RCdPjqYNdTjK18%2FvxnpA%3D%3D",
-      "type": "Form 6 Engineer.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=6n2D%2BqvatNPyVyOFJ2GdHg%3D%3D",
-      "type": "Completion Affidavit.pdf",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=PQqmvYwzkB5rGQlZwSTmZQ%3D%3D",
-      "type": "Photo 1.jpeg",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=QvR%2FoPzo%2F1%2BLxeBaa0EIfw%3D%3D",
-      "type": "Photo 2.jpeg",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=mXvFd%2FdOOHRvNKgPUtVdxQ%3D%3D",
-      "type": "Photo 3.jpeg",
-      "s3_link": "https://s3.example.com/dry-run"
-    },
-    {
-      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=eU5nIFhjUpLEvogjiirCJg%3D%3D",
-      "type": "Photo 4.jpeg",
+      "type": "Engineer Certificate 2",
+      "label": "Engineer Certificate 2",
+      "source_label": "Form 6 Engineer.pdf",
+      "matched_category": "Engineer",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/certificate?CER_NO=PRM/KA/RERA/1248/469/PR/050723/006033",
       "type": "Rera Registration Certificate 1",
+      "label": "Rera Registration Certificate 1",
+      "source_label": "Rera Registration Certificate 1",
+      "matched_category": "Rera Registration Certificate",
       "s3_link": "https://s3.example.com/dry-run"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=yuHjmnMP%2BprKvpe5MhimUQ%3D%3D",
+      "type": "D LALITHA TRADE LICENSE.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=%2FS3ofjgzNyfEaLzqqh70yQ%3D%3D",
+      "type": "D LALITHA PAN.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=aL23knhTKkt9PheBVl15Dg%3D%3D",
+      "type": "D LALITHA AADHAR.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=GeOAa7GZEqmy4zQmXVrZ2w%3D%3D",
+      "type": "Authorised Signatory.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=rhhQjVALH8hftRSaJNEgtQ%3D%3D",
+      "type": "D LALITHA PAN.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=vYv3vZ5p06KZNPA9tJohfg%3D%3D",
+      "type": "CA Certificate.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=SVBZx18qtKEEiEEolVITxQ%3D%3D",
+      "type": "Project Chartered Accountant"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=3jBPfpVSt%2BRNdTlTYJLvnw%3D%3D",
+      "type": "Land Survey Details"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=DHLifA6Oar8b1353MoE%2BDQ%3D%3D",
+      "type": "Land Survey Details"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=Hix1qum3S4qf3z5yqdNODA%3D%3D",
+      "type": "Land Survey Details"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=56zqSrDfJqr8ceRghHhoVg%3D%3D",
+      "type": "Land Survey Details"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=jpXlGf5tkpHMySMlhKuN%2Bg%3D%3D",
+      "type": "Land Survey Details"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=TWyDLad528UeMJ4qd2HnwQ%3D%3D",
+      "type": "Land Survey Details"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=jaCBnEfLlfPjPAAHfzsjmw%3D%3D",
+      "type": "Non Litigation.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=IfD9OcBMvtw32RujdzaBdw%3D%3D",
+      "type": "CA Certificate.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=X8%2FyUJD0hKP7k%2B8EL4rCZA%3D%3D",
+      "type": "Balance Sheet"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=up6OjAKrKJzHIDjSu4838A%3D%3D",
+      "type": "Balance Sheet"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=IrOTfWlyN%2F7SP%2F3HWCiiRw%3D%3D",
+      "type": "Balance Sheet"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=UYvALEp0R51g6z%2BB7CYWIg%3D%3D",
+      "type": "Audited Profit and Loss Statement"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=Rywb4g6wvkMRsnBERvTeXQ%3D%3D",
+      "type": "Audited Profit and Loss Statement"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=H7q40HvY3C8H3tdykXY0RQ%3D%3D",
+      "type": "Audited Profit and Loss Statement"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=lFVXyytuCvfESyif9MKTWA%3D%3D",
+      "type": "Cash Flow Statement"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=pgihv8N5arizTGfXfv8Z5A%3D%3D",
+      "type": "Cash Flow Statement"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=W8xonHGpbW%2B4p8bhkBK%2FFw%3D%3D",
+      "type": "Income Tax Return Acknowledgement"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=bl09JVa0zK6S0uTrPUyiGg%3D%3D",
+      "type": "Income Tax Return Acknowledgement"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=C3XTfT73uIm9Z8Inrugwrw%3D%3D",
+      "type": "Income Tax Return Acknowledgement"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=AoHZibdDseUP23%2FG%2Fjk%2BZQ%3D%3D",
+      "type": "Electricity Permission Letter"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=lta8L5fq9lHcVwzBCvGg0A%3D%3D",
+      "type": "Water Permission Letter"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=RLLeh4j0A3t8BH7wbOJDog%3D%3D",
+      "type": "Advocate Search Report"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=0NWxmR61DwugVsHjMrsnvQ%3D%3D",
+      "type": "Change of Land Use"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=8xupj%2FPyuEyqhnLNqiEFkw%3D%3D",
+      "type": "Conversion Certificate under section 95 of the KLR Act 1964"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=arTC9OwnLomUbR6kugPu8Q%3D%3D",
+      "type": "Proforma of Agreement for Sale"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=V8GqE2qZma5NQiTZ9d2QWw%3D%3D",
+      "type": "Proforma of Allotment Letter"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=6yA4I3nEqA60oMWJ32oDtQ%3D%3D",
+      "type": "Declaration (Form B)"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=nNC73CLFDsvprHF%2BiiKRZw%3D%3D",
+      "type": "Section 3(1) Notarized Affidavit"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=saNwvy1d%2FP2cOLl1x8amEw%3D%3D",
+      "type": "ESCOM/Electricity"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=zWj8VU1gBn67Emx7RZp0Lw%3D%3D",
+      "type": "KWSSB/Water"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=3KbyibSyBcWk1MlVYV3CIA%3D%3D",
+      "type": "Relinquishment Deed"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=nZXK5KJKWq4%2BOXT8956zPQ%3D%3D",
+      "type": "CDP.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=slB4y%2FcfIBQcUvTZ6T9y3w%3D%3D",
+      "type": "GPA.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=nYa8DLYYlUFFG2Cnr%2FhPcQ%3D%3D",
+      "type": "Guidance Value.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=L%2F5Fdl1rtO%2B5CSg0fxtfJg%3D%3D",
+      "type": "Modified Conversion Order.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=H%2FKIVctSroAQDW6LUJQm7w%3D%3D",
+      "type": "UGD Demarcation.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=WCqHiuAIy4O7zqrb%2FTCCgA%3D%3D",
+      "type": "Balance Sheet 2020"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=xPuBGlfAYwNtYgX59FFR2A%3D%3D",
+      "type": "Balance Sheet 2021"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=rUSfedNl5%2BXUqCu%2BEgNzDg%3D%3D",
+      "type": "Balance Sheet 2022"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=8N%2Bc7udi0Hqvr03sZY6vIw%3D%3D",
+      "type": "Profit and Loss Account 2020"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=kNNCMR5iO6wzj2Ej2viz7Q%3D%3D",
+      "type": "Profit and Loss Account 2021"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=y31o14KbDV5yFcG3ryMVWw%3D%3D",
+      "type": "Profit and Loss Account 2022"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=Cdk1W54kpXmiw36iUtf9KA%3D%3D",
+      "type": "Means of Finance"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=PqVayCmaN0asfjeKSdjN%2Bw%3D%3D",
+      "type": "EC"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=pJJ9NGLzJIVpPspy8uEF2Q%3D%3D",
+      "type": "Civil Works Order"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=hV185aKUcXT7VLOtwxPRhg%3D%3D",
+      "type": "Village Map"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=rnBPiqkmlBBPwi5L%2BwhFxw%3D%3D",
+      "type": "Letter showing Engg license need not be renewed every year"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=yKfoBLl6UyDmEsUBMCuXug%3D%3D",
+      "type": "Proforma Allotment Letter"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=vAalcpm79bJs16%2Bd%2B2eBqg%3D%3D",
+      "type": "Estimated Cost of Construction"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=iP2%2FMbOXwtPa5Qz0Fjlhmg%3D%3D",
+      "type": "Affidavit 3(1)"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=MMR3a0T%2Bj0t115p%2B0zxGPA%3D%3D",
+      "type": "Encumbrance Certificate"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=6FBsw2%2BirfFvblrj81mj3g%3D%3D",
+      "type": "Brief Estimated Cost of Construction"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=RI0LPJrhesFRrU%2BVGmjUuQ%3D%3D",
+      "type": "Divya Layout.xlsx"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=xiTdA%2Bga4l%2BxYfldRcGUvA%3D%3D",
+      "type": "100% Release Order.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=DY6e3JYViITg3m0YmCuJ4Q%3D%3D",
+      "type": "Approved Plan.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=5cNByyW5xeoWhYrP7NMsAw%3D%3D",
+      "type": "Completion Certificate.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=ZgD7EAGFpUa37TdJCYM5yA%3D%3D",
+      "type": "100% Release Order.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=cpvDJW%2BbHP1oGwr2fY4GHQ%3D%3D",
+      "type": "Relinquishment Deed.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=WX12KtlVxKgxl3KKtL6gRg%3D%3D",
+      "type": "NA.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=MAS%2FHs2X7Gu1HgnzyudViA%3D%3D",
+      "type": "Water NOC with Fees Paid.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=wuuLbxs8dWhbIdm5LIyLUg%3D%3D",
+      "type": "GESCOM NOC with Fee Paid.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=1mUm0IpqKNxUGydKN4kJiw%3D%3D",
+      "type": "NA.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=dcQnR79FnTDqtOhpAzV4TA%3D%3D",
+      "type": "NA.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=hZSwGueqRQpWvZ2xuVZbdw%3D%3D",
+      "type": "Water NOC with Fees Paid.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=EqLOTE35x2rTee1zc5R8SQ%3D%3D",
+      "type": "GESCOM NOC with Fee Paid.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=jxQduRIAa7GqT5i7f9%2F1AA%3D%3D",
+      "type": "Form 4 CA CC.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=6n2D%2BqvatNPyVyOFJ2GdHg%3D%3D",
+      "type": "Completion Affidavit.pdf"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=PQqmvYwzkB5rGQlZwSTmZQ%3D%3D",
+      "type": "Photo 1.jpeg"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=QvR%2FoPzo%2F1%2BLxeBaa0EIfw%3D%3D",
+      "type": "Photo 2.jpeg"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=mXvFd%2FdOOHRvNKgPUtVdxQ%3D%3D",
+      "type": "Photo 3.jpeg"
+    },
+    {
+      "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=eU5nIFhjUpLEvogjiirCJg%3D%3D",
+      "type": "Photo 4.jpeg"
     }
   ],
   "authorised_signatory_details": {
@@ -812,43 +618,11 @@
   "document_urls": [
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "D LALITHA TRADE LICENSE.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "D LALITHA PAN.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "D LALITHA AADHAR.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Authorised Signatory.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "CA Certificate.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
       "type": "Engineers Certificate.pdf"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Project Chartered Accountant"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Project Engineer"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Land Survey Details"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Non Litigation.pdf"
+      "type": "Engineer Certificate 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
@@ -856,43 +630,11 @@
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Balance Sheet"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Audited Profit and Loss Statement"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Director's Report"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Cash Flow Statement"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Auditor's Report"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Income Tax Return Acknowledgement"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
       "type": "Commencement Certificate"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Electricity Permission Letter"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Water Permission Letter"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Approved Layout Plan"
+      "type": "Layout Plan 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
@@ -900,15 +642,11 @@
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Existing Layout Plan"
+      "type": "Layout Plan 2"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Existing Section Plan and Specification"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Sectional Drawing of the apartments"
+      "type": "Section Plan 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
@@ -916,291 +654,15 @@
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Approved Section Of Building/Infrastructure Plan of Plotting"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Area Development Plan Of Project Area"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Certificate from Registered Engineer indicating the structural safety of the building"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Advocate Search Report"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Urban Land Ceiling"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Collaboration Agreement/Development Agreement/Joint Development Agreement/Other Agreement"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Change of Land Use"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "District Magistrate"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Conversion Certificate under section 95 of the KLR Act 1964"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Any other document (Rights/Title/Interest/Name)"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Proforma of Agreement for Sale"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Proforma of Allotment Letter"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Brochure"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Declaration (Form B)"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Section 3(1) Notarized Affidavit"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "JD AFFIDAVIT CUM DECLARATION"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "ESCOM/Electricity"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "KWSSB/Water"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Approval/NOC under section 109 of KLR Act 1961"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Approval/NOC under section 14 of the KTCP Act"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Fire Force Department"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Airport Authority of India"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "KSPCB"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "SEIAA"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "BSNL"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Lift Authorities"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "BMRCL"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "NOC in case of building proposals abutting to neighbouring properties"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Bangalore Urban Arts Commission"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Inspector Of Factories Controller Of Explosives Railways"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Coastal Regulation Zone Authority"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Utilisation certificate"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Transfer of development rights certificate"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Relinquishment Deed"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "CDP.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "GPA.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Guidance Value.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Modified Conversion Order.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "UGD Demarcation.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Balance Sheet 2020"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Balance Sheet 2021"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Balance Sheet 2022"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Profit and Loss Account 2020"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Profit and Loss Account 2021"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Profit and Loss Account 2022"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Means of Finance"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "EC"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Civil Works Order"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Village Map"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
       "type": "Engineers License"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Letter showing Engg license need not be renewed every year"
+      "type": "ARCHITECT Certificate 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Proforma Allotment Letter"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Estimated Cost of Construction"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Affidavit 3(1)"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Encumbrance Certificate"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Brief Estimated Cost of Construction"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Divya Layout.xlsx"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "100% Release Order.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Approved Plan.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Completion Certificate.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Relinquishment Deed.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "NA.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Water NOC with Fees Paid.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "GESCOM NOC with Fee Paid.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Form 4 CA CC.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Form 5 Architect CC.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Form 6 Engineer.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Completion Affidavit.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Photo 1.jpeg"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Photo 2.jpeg"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Photo 3.jpeg"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Photo 4.jpeg"
+      "type": "Engineer Certificate 2"
     },
     {
       "link": "https://s3.example.com/dry-run",

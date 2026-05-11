@@ -67,6 +67,24 @@
       "updated": true
     },
     {
+      "type": "Architects Certificate (Form 1)",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20200108Architects_Certificate_(Form_1)845c2387-1a11-44c0-95c3-a3b7b8387aa0.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Engineers Certificate (Form 2)",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20200108Engineers_Certificate_(Form_2)c1b17a04-a033-4ad0-a2e4-854672745061.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "type": "Advertisement and Brochure/ Prospectus",
+      "link": "https://rera.punjab.gov.in/rera/readwriteProjectPhoto/11075/20191126AdvProspectusca67b7aa-b33d-497c-a446-15a492af5c3e.pdf",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
       "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126Pro_forma_Agreement_of_Sale_to_be_signed_with_allotteesec79894c-d7a2-49ff-9674-e598f11ea195.pdf",
       "type": "Pro forma Agreement of Sale to be signed with allottees"
     },
@@ -79,24 +97,12 @@
       "type": "Pro forma of Conveyance Deed to be signed with allottees"
     },
     {
-      "type": "Architects Certificate (Form 1)",
-      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20200108Architects_Certificate_(Form_1)845c2387-1a11-44c0-95c3-a3b7b8387aa0.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
-    },
-    {
       "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126Authenticated_Copy_of_Form_B65a84207-143e-4dc8-89d8-de380edb98eb.pdf",
       "type": "Authenticated Copy of Form B"
     },
     {
       "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126CA_Certificate_(Form_3)6182e8d4-0d45-49ec-a614-28439eb12e9a.pdf",
       "type": "CA Certificate (Form 3)"
-    },
-    {
-      "type": "Engineers Certificate (Form 2)",
-      "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20200108Engineers_Certificate_(Form_2)c1b17a04-a033-4ad0-a2e4-854672745061.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
     },
     {
       "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126CLU_Certificate6ac18aa2-e197-4c21-a756-14f8d5bb9290.pdf",
@@ -137,12 +143,6 @@
     {
       "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126Project_Land_Khasra_Report_or_Plancabafff8-d3a3-4235-96b0-8d7464484a83.pdf",
       "type": "Project Land Khasra Report or Plan"
-    },
-    {
-      "type": "Advertisement and Brochure/ Prospectus",
-      "link": "https://rera.punjab.gov.in/rera/readwriteProjectPhoto/11075/20191126AdvProspectusca67b7aa-b33d-497c-a446-15a492af5c3e.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
     }
   ],
   "co_promoter_details": {
