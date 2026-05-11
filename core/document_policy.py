@@ -25,11 +25,6 @@ STATE_DOC_DICT: dict[str, list[str]] = {
         "Structural Design Calculation", "Drawing for Structural Stability", "Design for Structural Stability",
         "Form C", "Work Progress", "Engineer", "ARCHITECT", "Occupation Certificate",
         "Occupancy Certificate",
-        # Additional document types served by the Tamil Nadu portal
-        "Building Permit", "Planning Permission", "Local Body Approval",
-        "Encumbrance Certificate", "Land Title", "Declaration",
-        "Patta", "Construction Agreement", "Stage of Construction",
-        "Site Photo", "GLV", "Survey Number",
     ],
     "kerala": [
         "Brochures", "RERA Certificate", "Registration Certificate", "RERA Registration", "Sanctioned Plan",
@@ -106,15 +101,13 @@ STATE_DOC_DICT: dict[str, list[str]] = {
     ],
     "assam": [
         "RERA REGISTRATION CERTIFICATE",
-        "CARPET AREA AND PARKING AREA DETAILS",
         "CARPET AREA",
+        "PARKING AREA DETAILS",
         "PLAN OF DEVELOPMENT WORKS",
-        "APPROVED DRAWING FROM COMPETENT AUTHORITY",
         "APPROVED DRAWING",
-        "ARCHITECT, STRUCTURAL ENGINEER AND CONTRACTOR DETAILS WITH NAME AND ADDRESS AS THE CASE MAY BE",
-        "ARCHITECT, STRUCTURAL ENGINEER AND CONTRACTOR DETAILS",
         "Project Specifications", "CERTIFICATE OF THE REGISTERED ARCHITECT",
         "CERTIFICATE OF THE REGISTERED ENGINEER",
+        "ARCHITECT, STRUCTURAL ENGINEER AND CONTRACTOR DETAILS",
         "Occupation Certificate", "Occupancy Certificate",
     ],
     "jharkhand": [
@@ -141,6 +134,10 @@ STATE_DOC_DICT: dict[str, list[str]] = {
         "Project Specifications", "Building Plan", "Layout Plan", "Engineer", "ARCHITECT",
         "Development work plan", "Development team details", "Brochure", "Common Area facilities",
         "Occupation Certificate", "Occupancy Certificate",
+    ],
+    "puducherry": [
+        "Form B",
+        "Registration Certificate",
     ],
 }
 

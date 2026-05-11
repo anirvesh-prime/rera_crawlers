@@ -723,7 +723,7 @@ def _process_documents(
         filename = f"{slug}.pdf"
 
         try:
-            resp = download_response(url, logger=logger, timeout=60.0)
+            resp = download_response(url, logger=logger, timeout=60.0, verify=False)
             if not resp or len(resp.content) < 100:
                 enriched.append(doc)
                 logger.warning(f"Document download failed or too small: {url}", step="documents")

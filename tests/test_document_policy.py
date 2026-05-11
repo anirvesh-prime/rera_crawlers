@@ -56,6 +56,48 @@ class DocumentPolicyTests(unittest.TestCase):
         )
         self.assertIsNone(selected)
 
+    def test_puducherry_declaration_form_b_allowed(self):
+        # The crawler normalises the raw link text to "Declaration (Form B)";
+        # "Form B" in STATE_DOC_DICT matches because "formb" ⊆ "declarationformb".
+        selected = select_document_for_download(
+            "puducherry",
+            {
+                "label": "Declaration (Form B)",
+                "url": "https://prera.py.gov.in/reraAppOffice/getdocument?DOC_ID=12329",
+            },
+            {},
+        )
+        self.assertIsNotNone(selected)
+        assert selected is not None
+        self.assertEqual(selected["matched_category"], "Form B")
+
+    def test_puducherry_registration_certificate_allowed(self):
+        # "Registration Certificate" in STATE_DOC_DICT matches the crawler's
+        # canonical label "Project Registration Certificate" via substring match.
+        selected = select_document_for_download(
+            "puducherry",
+            {
+                "label": "Project Registration Certificate",
+                "url": "https://prera.py.gov.in/reraAppOffice/getdocument?DOC_ID=12383",
+            },
+            {},
+        )
+        self.assertIsNotNone(selected)
+        assert selected is not None
+        self.assertEqual(selected["matched_category"], "Registration Certificate")
+
+    def test_puducherry_unknown_doc_skipped(self):
+        """Documents not in the Puducherry allowlist should be blocked."""
+        selected = select_document_for_download(
+            "puducherry",
+            {
+                "label": "some random document",
+                "url": "https://prera.py.gov.in/reraAppOffice/getdocument?DOC_ID=99999",
+            },
+            {},
+        )
+        self.assertIsNone(selected)
+
 
 if __name__ == "__main__":
     unittest.main()
