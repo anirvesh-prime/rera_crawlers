@@ -695,7 +695,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
-    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    logger.timing("sentinel", time.monotonic() - t0)
 
     checkpoint     = load_checkpoint(site_id, mode) or {}
     done_regs: set = set(checkpoint.get("done_regs", []))
@@ -735,7 +735,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     stubs = active_stubs
 
     logger.info(f"Found {len(stubs)} active project stubs in listing")
-    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(stubs)}", step="timing")
+    logger.timing("search", time.monotonic() - t0, rows=len(stubs))
     items_processed = 0
 
     for stub in stubs:
@@ -911,5 +911,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
     reset_checkpoint(site_id, mode)
     logger.info(f"Madhya Pradesh RERA complete: {counts}")
-    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", time.monotonic() - t_run)
     return counts

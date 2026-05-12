@@ -919,7 +919,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counters["error_count"] += 1
         return counters
-    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    logger.timing("sentinel", time.monotonic() - t0)
 
     max_pages    = settings.MAX_PAGES
     delay_range  = config.get("rate_limit_delay", (2, 4))
@@ -1104,5 +1104,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Bihar RERA complete: {counters}", step="done")
-    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", time.monotonic() - t_run)
     return counters

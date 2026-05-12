@@ -837,7 +837,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
-    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    logger.timing("sentinel", time.monotonic() - t0)
 
     # ── Fetch listing page to get all project stubs ───────────────────────────
     t0 = time.monotonic()
@@ -852,7 +852,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     project_stubs = _parse_listing_map_data(resp.text)
     logger.info(f"Found {len(project_stubs)} project stubs from listing map data")
     counts["projects_found"] = len(project_stubs)
-    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(project_stubs)}", step="timing")
+    logger.timing("search", time.monotonic() - t0, rows=len(project_stubs))
 
     items_processed = 0
 
@@ -1005,5 +1005,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(site_id, mode)
     logger.info(f"Chhattisgarh RERA complete: {counts}")
-    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", time.monotonic() - t_run)
     return counts

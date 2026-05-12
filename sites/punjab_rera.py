@@ -993,7 +993,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counters["error_count"] += 1
         return counters
-    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    logger.timing("sentinel", time.monotonic() - t0)
 
     site_id = config["id"]
 
@@ -1003,15 +1003,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         rows = _load_listing_cache(logger)
         if rows is None:
             rows = _search_projects(session, logger)
-            logger.warning(
-                f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(rows)}",
-                step="timing",
-            )
+            logger.timing("search", time.monotonic() - t0, rows=len(rows))
             if not rows:
                 return counters
             _save_listing_cache(rows, logger)
         else:
-            logger.warning("Step timing [search]: 0.00s  (cache hit)", step="timing")
+            logger.timing("search", 0.0, cache_hit=True)
 
         # ── Resume: skip rows already processed in a previous (interrupted) run
         checkpoint = load_checkpoint(site_id, mode) or {}
@@ -1212,5 +1209,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     # Reset per-run checkpoint on successful completion (cache is kept until TTL expires)
     reset_checkpoint(site_id, mode)
     logger.info(f"Punjab RERA complete: {counters}", step="done")
-    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", time.monotonic() - t_run)
     return counters

@@ -981,7 +981,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting UP RERA crawl")
         return counts
-    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    logger.timing("sentinel", time.monotonic() - t0)
 
     # ── Checkpoint / resume support ───────────────────────────────────────────
     checkpoint = load_checkpoint(site_id, mode) or {}
@@ -1007,7 +1007,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         stubs = _fetch_district_listing(district, logger)
         counts["projects_found"] += len(stubs)
         if not first_district_logged:
-            logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(stubs)}", step="timing")
+            logger.timing("search", time.monotonic() - t0, rows=len(stubs))
             first_district_logged = True
 
         for stub in stubs:
@@ -1193,5 +1193,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     # ── Crawl complete ─────────────────────────────────────────────────────────
     reset_checkpoint(site_id, mode)
     logger.info("UP RERA crawl complete", **counts)
-    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", time.monotonic() - t_run)
     return counts

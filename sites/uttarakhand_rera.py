@@ -893,7 +893,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
-    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    logger.timing("sentinel", time.monotonic() - t0)
 
     # ── Checkpoint handling ──────────────────────────────────────────────────
     if mode == "full":
@@ -950,7 +950,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         cards = cards[:item_limit]
     counts["projects_found"] = len(cards)
     logger.info(f"Uttarakhand RERA: {len(cards)} projects to process")
-    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(cards)}", step="timing")
+    logger.timing("search", time.monotonic() - t0, rows=len(cards))
 
     # ── Process each project ─────────────────────────────────────────────────
     with _make_client() as client:
@@ -1131,5 +1131,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     # ── Final checkpoint ─────────────────────────────────────────────────────
     save_checkpoint(site_id, mode, len(cards), None, run_id)
     logger.info("Crawl complete", **counts)
-    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", time.monotonic() - t_run)
     return counts

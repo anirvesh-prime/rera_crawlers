@@ -1197,7 +1197,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
-    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    logger.timing("sentinel", time.monotonic() - t0)
 
     checkpoint     = load_checkpoint(site_id, mode) or {}
     resume_proj_id = int(checkpoint.get("last_page", 0))
@@ -1229,7 +1229,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             return counts
 
         logger.info(f"Total project IDs to process: {len(all_proj_ids)}")
-        logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(all_proj_ids)}", step="timing")
+        logger.timing("search", time.monotonic() - t0, rows=len(all_proj_ids))
 
         # ── Phase 2: scrape each detail page ──────────────────────────────────
         for proj_id in all_proj_ids:
@@ -1476,5 +1476,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     session.close()
     reset_checkpoint(site_id, mode)
     logger.info(f"Gujarat RERA complete: {counts}")
-    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", time.monotonic() - t_run)
     return counts

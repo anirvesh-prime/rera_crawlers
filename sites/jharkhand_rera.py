@@ -798,7 +798,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counters["error_count"] += 1
         return counters
-    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    logger.timing("sentinel", time.monotonic() - t0)
 
     item_limit    = settings.CRAWL_ITEM_LIMIT or 0
     items_processed = 0
@@ -825,7 +825,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         counters["projects_found"] += len(rows)
         logger.info(f"Page {current_page}: {len(rows)} projects", step="listing")
         if not first_page_logged:
-            logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(rows)}", step="timing")
+            logger.timing("search", time.monotonic() - t0, rows=len(rows))
             first_page_logged = True
 
         if not rows:
@@ -957,5 +957,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Jharkhand RERA complete: {counters}", step="done")
-    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", time.monotonic() - t_run)
     return counters

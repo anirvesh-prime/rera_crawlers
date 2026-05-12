@@ -1257,14 +1257,14 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     if not _sentinel_check(config, logger, run_id):
         logger.error("Sentinel check failed — aborting Assam RERA crawl")
         return counts
-    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    logger.timing("sentinel", time.monotonic() - t0)
 
     # ── Step 1: Fetch listing ────────────────────────────────────────────────
     t0 = time.monotonic()
     all_stubs = _fetch_listing(logger)
     logger.info("Listing parsed", total=len(all_stubs))
     counts["projects_found"] = len(all_stubs)
-    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(all_stubs)}", step="timing")
+    logger.timing("search", time.monotonic() - t0, rows=len(all_stubs))
 
     if not all_stubs:
         logger.error("No projects found — aborting")
@@ -1424,5 +1424,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     # resume_pending through every project (which would skip all 1211 again).
     reset_checkpoint(site_id, mode)
     logger.info("Crawl complete", **counts)
-    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", time.monotonic() - t_run)
     return counts

@@ -233,11 +233,36 @@ def _fetch_db():
                 "totals": totals,
             }
 
+            # 7. Per-site phase timing from timing logs (step='timing').
+            #    Builds: { site_id: { phase: elapsed_s } }
+            #    Phases emitted by crawlers: 'sentinel', 'search', 'total_run'.
+            #    Later rows for the same phase overwrite earlier ones so we always
+            #    display the most-recent measurement (relevant when a run retried).
+            timing_by_site: dict = {}
+            if recent_ids:
+                cur.execute(
+                    """
+                    SELECT site_id, extra
+                    FROM crawl_logs
+                    WHERE step = 'timing' AND run_id = ANY(%s)
+                    ORDER BY site_id, logged_at ASC
+                    """,
+                    (recent_ids,),
+                )
+                for row in cur.fetchall():
+                    sid = row["site_id"]
+                    extra = row.get("extra") or {}
+                    phase   = extra.get("phase")
+                    elapsed = extra.get("elapsed_s")
+                    if phase and elapsed is not None:
+                        timing_by_site.setdefault(sid, {})[phase] = elapsed
+
         return {
             "latest_runs": latest_runs,
             "sentinel_data": sentinel_data,
             "errors_by_site": errors_by_site,
             "orch_info": orch_info,
+            "timing_by_site": timing_by_site,
             "source": "database",
         }
     except Exception:
@@ -563,6 +588,12 @@ _TEMPLATE = """<!DOCTYPE html>
               {% if r_elapsed is not none and r_elapsed is number %}
                 {{ '%dm %ds'|format((r_elapsed//60)|int, (r_elapsed%60)|int) }}
               {% else %}—{% endif %}
+              {%- if sid in timing_by_site %}{% set t = timing_by_site[sid] %}
+              <div style="font-size:.58rem;color:#484f58;margin-top:2px;line-height:1.5;white-space:nowrap;">
+                {%- if t.get('sentinel') is not none %}<span title="sentinel check">🔍 {{ '%.1f'|format(t.sentinel) }}s</span>{% endif %}
+                {%- if t.get('search') is not none %} <span title="listing fetch">🔎 {{ '%.1f'|format(t.search) }}s</span>{% endif %}
+              </div>
+              {%- endif %}
             </td>
             <td style="font-size:.75rem;color:#8b949e;white-space:nowrap;">
               {% if r.started_at %}
@@ -605,6 +636,7 @@ def index():
         sentinel_data=data.get("sentinel_data", {}),
         errors_by_site=data.get("errors_by_site", {}),
         orch_info=data.get("orch_info", {}),
+        timing_by_site=data.get("timing_by_site", {}),
         data_source=data.get("source", "unknown"),
         now=datetime.now(timezone.utc),
     )

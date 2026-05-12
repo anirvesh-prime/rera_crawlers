@@ -1557,7 +1557,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
-    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    logger.timing("sentinel", time.monotonic() - t0)
 
     # ── Checkpoint handling ──────────────────────────────────────────────────
     checkpoint = (load_checkpoint(site_id, mode) if mode != "full" else {}) or {}
@@ -1591,7 +1591,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             continue
 
         if not first_listing_logged:
-            logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(rows)}", step="timing")
+            logger.timing("search", time.monotonic() - t0, rows=len(rows))
             first_listing_logged = True
         for row in rows:
             reg_no = row.get("project_registration_no")
@@ -1733,5 +1733,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(site_id, mode)
     logger.info("Tamil Nadu RERA crawl complete", **counts)
-    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", time.monotonic() - t_run)
     return counts

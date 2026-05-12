@@ -1037,7 +1037,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             counts["error_count"] += 1
             browser.close()
             return counts
-        logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+        logger.timing("sentinel", time.monotonic() - t0)
 
         t0 = time.monotonic()
         page.goto(LISTING_URL, wait_until="networkidle", timeout=40000)
@@ -1076,7 +1076,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             cards = _parse_page_cards(page)
             counts["projects_found"] += len(cards)
             if page_num == 1:
-                logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(cards)}", step="timing")
+                logger.timing("search", time.monotonic() - t0, rows=len(cards))
 
             for card in cards:
                 if item_limit and items_processed >= item_limit:
@@ -1409,5 +1409,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(site_id, mode)
     logger.info(f"Odisha RERA complete: {counts}")
-    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", time.monotonic() - t_run)
     return counts

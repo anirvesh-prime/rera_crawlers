@@ -1282,7 +1282,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
-    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    logger.timing("sentinel", time.monotonic() - t0)
 
     # ── Checkpoint ────────────────────────────────────────────────────────────
     checkpoint  = load_checkpoint(site_id, mode) or {}
@@ -1301,7 +1301,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     rows = _parse_listing_rows(soup)
     logger.info("Listing parsed", row_count=len(rows))
     counts["projects_found"] = len(rows)
-    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(rows)}", step="timing")
+    logger.timing("search", time.monotonic() - t0, rows=len(rows))
 
     if not rows:
         insert_crawl_error(run_id, site_id, "NO_PROJECTS",
@@ -1471,5 +1471,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     save_checkpoint(site_id, mode, len(rows), None, run_id)
     reset_checkpoint(site_id, mode)
     logger.info("AP RERA crawl complete", **counts)
-    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", time.monotonic() - t_run)
     return counts

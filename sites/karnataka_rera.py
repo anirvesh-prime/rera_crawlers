@@ -1209,7 +1209,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counters["error_count"] += 1
         return counters
-    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    logger.timing("sentinel", time.monotonic() - t0)
 
     checkpoint = load_checkpoint(config["id"], mode) or {}
     start_district_idx = int(checkpoint.get("last_page", 0))
@@ -1260,7 +1260,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
             counters["projects_found"] += len(ack_nos)
             if not first_district_logged:
-                logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(ack_nos)}", step="timing")
+                logger.timing("search", time.monotonic() - t0, rows=len(ack_nos))
                 first_district_logged = True
 
             for listing_row in listing_rows:
@@ -1408,5 +1408,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Karnataka RERA crawl complete: {counters}", step="done")
-    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", time.monotonic() - t_run)
     return counters

@@ -1296,7 +1296,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counters["error_count"] += 1
         return counters
-    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    logger.timing("sentinel", time.monotonic() - t0)
 
     # ── Resume from checkpoint ────────────────────────────────────────────────
     checkpoint = load_checkpoint(config["id"], mode)
@@ -1330,7 +1330,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         counters["projects_found"] += len(rows)
         logger.info(f"Page {page}: {len(rows)} rows", step="listing")
         if not first_page_logged:
-            logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(rows)}", step="timing")
+            logger.timing("search", time.monotonic() - t0, rows=len(rows))
             first_page_logged = True
 
         # ── Playwright fallback: click "View Project" for any rows missing the URL ──
@@ -1554,5 +1554,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Delhi RERA complete: {counters}", step="done")
-    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", time.monotonic() - t_run)
     return counters

@@ -1262,7 +1262,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
-    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    logger.timing("sentinel", time.monotonic() - t0)
 
     checkpoint = load_checkpoint(site_id, mode)
     start_page = (checkpoint["last_page"] + 1) if checkpoint else 1
@@ -1289,7 +1289,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
         # ── Determine total pages ────────────────────────────────────────────
         total_pages = _get_total_pages(page)
-        logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  pages={total_pages}", step="timing")
+        logger.timing("search", time.monotonic() - t0, pages=total_pages)
         max_pages   = settings.MAX_PAGES
         effective_end = (min(total_pages, start_page + max_pages - 1)
                          if max_pages else total_pages)
@@ -1500,5 +1500,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(site_id, mode)
     logger.info("Telangana RERA crawl finished", **counts)
-    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", time.monotonic() - t_run)
     return counts

@@ -221,14 +221,34 @@ def main():
     parallel = not args.sequential and len(sites) > 1
 
     started = datetime.now(timezone.utc)
+    host = socket.gethostname()
+    site_ids = [s["id"] for s in sites]
+
+    # ── Orchestrator-level structured logger ─────────────────────────────────
+    # Writes to the same DB / JSONL infrastructure as per-site crawlers.
+    # site_id="orchestrator", run_id=None — allows operators to query
+    # orchestrator events independently from individual crawler runs.
+    orch_logger = CrawlerLogger("orchestrator")
+    t_orch_start = time.monotonic()
+    orch_logger.info(
+        "Orchestrator started",
+        step="startup",
+        mode=args.mode,
+        sites=site_ids,
+        site_count=len(sites),
+        parallel=parallel,
+        item_limit=item_limit or "unlimited",
+        host=host,
+    )
+
     print(f"\n{_SEP}")
     print(f"  RERA Crawler Orchestrator")
     print(f"  Mode      : {args.mode}")
     print(f"  Execution : {'parallel' if parallel else 'sequential'}")
     print(f"  Workers   : {len(sites)}")
     print(f"  Item Limit: {item_limit or 'unlimited'}")
-    print(f"  Host      : {socket.gethostname()}")
-    print(f"  States    : {', '.join(s['id'] for s in sites)}")
+    print(f"  Host      : {host}")
+    print(f"  States    : {', '.join(site_ids)}")
     print(f"  Started   : {started.strftime('%Y-%m-%d %H:%M:%S UTC')}")
     if disabled_sites:
         print(f"  Disabled  : {', '.join(disabled_sites)} (explicitly selected)")
@@ -255,6 +275,19 @@ def main():
                     summary.append(result)
                     print(f"✓ [{site_id}] finished")
                     print(f"{_fmt_row(result)}\n")
+                    orch_logger.info(
+                        f"Site completed: {site_id}",
+                        step="site_done",
+                        site=site_id,
+                        run_id=result.get("run_id"),
+                        elapsed_s=result.get("elapsed_s"),
+                        projects_found=result.get("projects_found", 0),
+                        projects_new=result.get("projects_new", 0),
+                        projects_updated=result.get("projects_updated", 0),
+                        projects_skipped=result.get("projects_skipped", 0),
+                        documents_uploaded=result.get("documents_uploaded", 0),
+                        error_count=result.get("error_count", 0),
+                    )
                 except Exception as exc:
                     # Worker process itself crashed (e.g. OOM, segfault in C
                     # extension).  Record a sentinel entry so the summary file
@@ -273,12 +306,31 @@ def main():
                     }
                     summary.append(crashed_result)
                     print(f"✗ [{site_id}] worker process crashed: {exc}\n")
+                    orch_logger.error(
+                        f"Site worker crashed: {site_id} — {exc}",
+                        step="site_crash",
+                        site=site_id,
+                        crash_reason=str(exc),
+                    )
     else:
         for site_cfg in sites:
             print(f"→ [{site_cfg['id']}]  {site_cfg['name']}")
             result = run_site(site_cfg, args.mode)
             summary.append(result)
             print(f"{_fmt_row(result)}\n")
+            orch_logger.info(
+                f"Site completed: {site_cfg['id']}",
+                step="site_done",
+                site=site_cfg["id"],
+                run_id=result.get("run_id"),
+                elapsed_s=result.get("elapsed_s"),
+                projects_found=result.get("projects_found", 0),
+                projects_new=result.get("projects_new", 0),
+                projects_updated=result.get("projects_updated", 0),
+                projects_skipped=result.get("projects_skipped", 0),
+                documents_uploaded=result.get("documents_uploaded", 0),
+                error_count=result.get("error_count", 0),
+            )
 
     # Totals
     totals = {k: sum(r.get(k, 0) for r in summary)
@@ -287,6 +339,16 @@ def main():
 
     print(f"{_SEP}")
     print(f"  TOTALS  {_fmt_row({'site_id': 'all', 'run_id': 0, **totals})}")
+
+    orch_logger.info(
+        "Orchestrator completed",
+        step="done",
+        mode=args.mode,
+        site_count=len(sites),
+        **totals,
+    )
+    orch_logger.timing("total_run", time.monotonic() - t_orch_start, site_count=len(sites))
+    orch_logger.close()
 
     # Write summary JSON to disk only when local logging is enabled.
     if settings.LOG_LOCAL:

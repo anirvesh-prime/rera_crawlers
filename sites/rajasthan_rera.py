@@ -886,20 +886,20 @@ def _fetch_viewproject_html(page, logger: CrawlerLogger) -> str | None:
     }""")
 
     if not viewproject_url:
-        logger.warning("ViewProject link not found on detail page", step="detail_scrape")
+        logger.warning("ViewProject link not found on detail page", step="detail")
         return None
 
-    logger.info(f"Fetching ViewProject page: {viewproject_url}", step="detail_scrape")
+    logger.info(f"Fetching ViewProject page: {viewproject_url}", step="detail")
     try:
         popup_page = page.context.new_page()
         popup_page.goto(viewproject_url, timeout=60_000, wait_until="networkidle")
         popup_page.wait_for_timeout(2_000)
         html = popup_page.content()
         popup_page.close()
-        logger.info("ViewProject page scraped", step="detail_scrape")
+        logger.info("ViewProject page scraped", step="detail")
         return html
     except Exception as exc:
-        logger.warning(f"ViewProject page fetch failed: {exc}", step="detail_scrape")
+        logger.warning(f"ViewProject page fetch failed: {exc}", step="detail")
         return None
 
 
@@ -934,11 +934,11 @@ def _scrape_detail_playwright(
 
         logger.info(
             f"Detail page scraped: {len(data)} fields, {len(docs)} docs",
-            step="detail_scrape",
+            step="detail",
         )
         return data, docs
     except Exception as exc:
-        logger.error(f"Detail page scrape failed: {exc}", step="detail_scrape")
+        logger.error(f"Detail page scrape failed: {exc}", step="detail")
         return {}, []
 
 
@@ -1179,7 +1179,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
-    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    logger.timing("sentinel", time.monotonic() - t0)
 
     checkpoint       = load_checkpoint(site_id, mode) or {}
     resume_after_key = checkpoint.get("last_project_key")
@@ -1199,7 +1199,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             listed_projects = listed_projects[:max_pages * 50]
             logger.info(f"Rajasthan: limiting to {len(listed_projects)} projects (max_pages={max_pages})")
     counts["projects_found"] = len(listed_projects)
-    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(listed_projects)}", step="timing")
+    logger.timing("search", time.monotonic() - t0, rows=len(listed_projects))
 
     # httpx session is used only for document downloads
     _timeout = httpx.Timeout(connect=10.0, read=30.0, write=10.0, pool=5.0)
@@ -1370,5 +1370,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     session.close()
     reset_checkpoint(site_id, mode)
     logger.info(f"Rajasthan RERA complete: {counts}")
-    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", time.monotonic() - t_run)
     return counts

@@ -12,8 +12,10 @@ from core.config import settings
 _FLUSH_SIZE = 25  # flush to DB after this many buffered entries
 _DOCUMENT_EVENT_FLUSH_SIZE = 50  # flush document-event buffer after this many entries
 
-# Steps that represent a successful DB write — shown on the console at INFO level
-_WRITE_STEPS = frozenset({"db_upsert", "upsert"})
+# Steps whose INFO-level messages are surfaced on the console.
+#   db_upsert / upsert  — successful DB writes (core crawl output)
+#   timing              — phase elapsed-time measurements (performance observability)
+_WRITE_STEPS = frozenset({"db_upsert", "upsert", "timing"})
 
 
 class _WriteStepFilter(logging.Filter):
@@ -27,7 +29,7 @@ class _WriteStepFilter(logging.Filter):
 
 _CONTEXT_ALIASES = {
     "project_key": ("project_key", "key"),
-    "registration_no": ("registration_no", "reg_no"),
+    "registration_no": ("registration_no", "reg_no", "reg"),
     "url": ("url",),
     "page": ("page",),
 }
@@ -309,6 +311,27 @@ class CrawlerLogger:
             step=step,
             traceback=trace,
             extra={"error_type": type(exc).__name__, "error_detail": str(exc), **(kwargs or {})},
+        )
+
+    def timing(self, phase: str, elapsed_s: float, **kwargs):
+        """Log a phase elapsed-time measurement at INFO level (step='timing').
+
+        Timing events are shown on the console (they appear in ``_WRITE_STEPS``)
+        and are persisted to the DB / JSONL file alongside all other structured
+        log entries.  Using a dedicated method keeps timing out of WARNING-level
+        noise while still making it visible during a live run.
+
+        Args:
+            phase:     Short label for the measured phase, e.g. ``"sentinel"``,
+                       ``"search"``, ``"total_run"``.
+            elapsed_s: Wall-clock seconds for the phase (``time.monotonic()`` delta).
+            **kwargs:  Optional extra fields (e.g. ``rows=1000``, ``cache_hit=True``).
+        """
+        self._log(
+            logging.INFO,
+            f"Timing [{phase}]: {elapsed_s:.2f}s",
+            step="timing",
+            extra={"phase": phase, "elapsed_s": round(elapsed_s, 3), **kwargs},
         )
 
     def log_document(

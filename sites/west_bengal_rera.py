@@ -1088,7 +1088,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
-    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    logger.timing("sentinel", time.monotonic() - t0)
 
     # Use Playwright to fetch all rows via the DataTables JS API.
     # Direct httpx is blocked by the site (Connection reset by peer).
@@ -1103,7 +1103,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     counts["projects_found"] = len(rows)
     logger.info(f"Listing page: {len(rows)} projects found")
-    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(rows)}", step="timing")
+    logger.timing("search", time.monotonic() - t0, rows=len(rows))
     items_processed = 0
 
     for row in rows:
@@ -1248,5 +1248,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(site_id, mode)
     logger.info(f"West Bengal RERA complete: {counts}")
-    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", time.monotonic() - t_run)
     return counts

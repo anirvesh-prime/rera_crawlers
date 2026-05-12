@@ -1112,7 +1112,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counts["error_count"] += 1
         return counts
-    logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
+    logger.timing("sentinel", time.monotonic() - t0)
 
     # ── Step 1: Collect stubs from both listing pages ─────────────────────────
     listing_urls = LISTING_URLS
@@ -1134,7 +1134,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     counts["projects_found"] = len(all_stubs)
     logger.info("Total unique projects found", count=len(all_stubs))
-    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(all_stubs)}", step="timing")
+    logger.timing("search", time.monotonic() - t0, rows=len(all_stubs))
 
     if not all_stubs:
         logger.error("No projects found — aborting")
@@ -1280,5 +1280,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(site_id, mode)
     logger.info("Crawl complete", **counts)
-    logger.warning(f"Step timing [total_run]: {time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", time.monotonic() - t_run)
     return counts

@@ -818,7 +818,7 @@ def _fetch_mh_api_docs(cert_id: str, auth_token: str, logger: CrawlerLogger) -> 
                         seen_refs.add(dms_ref)
                         docs.append({"type": doc_name, "filename": filename, "dms_ref": dms_ref})
             except Exception as exc:
-                logger.warning(f"getMigratedDocuments: {exc}", step="docs")
+                logger.warning(f"getMigratedDocuments: {exc}", step="documents")
 
             # getUploadedDocuments — per section/type combinationstype
             for payload_extra in _MH_UPLOADED_DOC_PAYLOADS:
@@ -840,11 +840,11 @@ def _fetch_mh_api_docs(cert_id: str, auth_token: str, logger: CrawlerLogger) -> 
                                 "dms_ref": dms_ref,
                             })
                 except Exception as exc:
-                    logger.warning(f"getUploadedDocuments: {exc}", step="docs")
+                    logger.warning(f"getUploadedDocuments: {exc}", step="documents")
     except Exception as exc:
-        logger.warning(f"Document API fetch failed: {exc}", step="docs")
+        logger.warning(f"Document API fetch failed: {exc}", step="documents")
 
-    logger.info(f"Document API: {len(docs)} docs found", cert_id=cert_id, step="docs")
+    logger.info(f"Document API: {len(docs)} docs found", cert_id=cert_id, step="documents")
     return docs
 
 
@@ -873,7 +873,7 @@ def _handle_mh_document(
         project_key, {"type": label, "url": identity_url}
     )
     if reused:
-        logger.info(f"Document reused [{label}]", s3_key=existing_s3_key, step="docs")
+        logger.info(f"Document reused [{label}]", s3_key=existing_s3_key, step="documents")
         logger.log_document(label, identity_url, "reused", s3_key=existing_s3_key)
         return reused
     fname = build_document_filename({"url": identity_url, "label": label})
@@ -896,7 +896,7 @@ def _handle_mh_document(
             logger.warning(
                 f"Document download failed [{label}]: status={getattr(r, 'status_code', 'n/a')} "
                 f"len={len(r.content) if r else 0}",
-                step="docs",
+                step="documents",
             )
             return None
 
@@ -916,11 +916,11 @@ def _handle_mh_document(
             md5_checksum=md5,
             file_size_bytes=len(data),
         )
-        logger.info(f"Document uploaded [{label}]", s3_key=s3_key, step="docs")
+        logger.info(f"Document uploaded [{label}]", s3_key=s3_key, step="documents")
         logger.log_document(label, identity_url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
         return document_result_entry({"type": label, "url": identity_url}, s3_url, fname)
     except Exception as exc:
-        logger.error(f"Document failed [{label}]: {exc}", step="docs")
+        logger.error(f"Document failed [{label}]: {exc}", step="documents")
         insert_crawl_error(run_id, site_id, "S3_UPLOAD_FAILED", str(exc),
                            project_key=project_key, url=identity_url)
         return None
@@ -1070,11 +1070,11 @@ def _extract_mh_html_fields(page, cert_id: str, logger: CrawlerLogger) -> dict:
     api_docs = _fetch_mh_api_docs(cert_id, auth_token, logger) if auth_token else []
     if api_docs:
         out["uploaded_documents"] = api_docs
-        logger.info(f"Using API docs: {len(api_docs)} found", step="docs")
+        logger.info(f"Using API docs: {len(api_docs)} found", step="documents")
     else:
         # Fallback: scrape doc type + filename from rendered HTML tables
         _parse_mh_documents_tab(soup, out)
-        logger.info("Falling back to HTML doc scrape", step="docs")
+        logger.info("Falling back to HTML doc scrape", step="documents")
 
     # Stash auth token in data so run() can download documents after upsert
     existing_data = dict(out.get("data") or {})
@@ -1181,7 +1181,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
         counters["error_count"] += 1
         return counters
-    logger.warning(f"Step timing [sentinel]: {_time.monotonic()-t0:.2f}s", step="timing")
+    logger.timing("sentinel", _time.monotonic() - t0)
 
     # ── Determine total pages ────────────────────────────────────────────────
     t0 = _time.monotonic()
@@ -1192,7 +1192,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     soup0       = BeautifulSoup(resp0.text, "lxml")
     total_pages = _get_total_pages(soup0)
-    logger.warning(f"Step timing [search]: {_time.monotonic()-t0:.2f}s  rows={len(_parse_cards(soup0))}", step="timing")
+    logger.timing("search", _time.monotonic() - t0, rows=len(_parse_cards(soup0)))
 
     checkpoint = load_checkpoint(config["id"], mode)
     start_page = (checkpoint["last_page"] + 1) if checkpoint else 0
@@ -1316,7 +1316,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     if auth_token and api_docs:
                         logger.info(
                             f"Downloading {len(api_docs)} document(s) for {reg_no}",
-                            step="docs",
+                            step="documents",
                         )
                         doc_name_counts: dict[str, int] = {}
                         selected_pairs: list[tuple[dict, dict]] = []
@@ -1378,5 +1378,5 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Maharashtra RERA complete: {counters}", step="done")
-    logger.warning(f"Step timing [total_run]: {_time.monotonic()-t_run:.2f}s", step="timing")
+    logger.timing("total_run", _time.monotonic() - t_run)
     return counters
