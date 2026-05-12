@@ -615,6 +615,42 @@ def _parse_viewproject_html(soup: BeautifulSoup) -> dict:  # noqa: C901
                 out["project_cost_detail"] = cost
             break
 
+    # ── Construction progress ─────────────────────────────────────────────────
+    # The "Updates as of" ViewProject page has a table whose header row contains
+    # both a "title" column and a "percentage" (or "%") column.
+    for tbl in soup.find_all("table"):
+        rows = tbl.find_all("tr")
+        if not rows:
+            continue
+        hdrs = [_clean(c.get_text()).lower() for c in rows[0].find_all(["td", "th"])]
+        has_title = any("title" in h for h in hdrs)
+        has_pct   = any("%" in h or "percentage" in h for h in hdrs)
+        if not (has_title and has_pct):
+            continue
+        title_i = next((i for i, h in enumerate(hdrs) if "title" in h), None)
+        pct_i   = next((i for i, h in enumerate(hdrs) if "%" in h or "percentage" in h), None)
+        date_i  = next((i for i, h in enumerate(hdrs) if "date" in h), None)
+        rem_i   = next((i for i, h in enumerate(hdrs) if "remark" in h), None)
+        progress: list[dict] = []
+        for tr in rows[1:]:
+            cells = [_clean(td.get_text()) for td in tr.find_all(["td", "th"])]
+            if not cells:
+                continue
+            entry: dict = {}
+            if title_i is not None and title_i < len(cells) and cells[title_i]:
+                entry["title"] = cells[title_i]
+            if pct_i is not None and pct_i < len(cells) and cells[pct_i]:
+                entry["progress_percentage"] = cells[pct_i]
+            if date_i is not None and date_i < len(cells) and cells[date_i]:
+                entry["date_of_reporting"] = cells[date_i]
+            if rem_i is not None and rem_i < len(cells) and cells[rem_i]:
+                entry["remarks"] = cells[rem_i]
+            if entry.get("title"):
+                progress.append(entry)
+        if progress:
+            out["construction_progress"] = progress
+        break
+
     # ── Building / apartment details ──────────────────────────────────────────
     bldg_tbl = _find_table("building details")
     if bldg_tbl:
