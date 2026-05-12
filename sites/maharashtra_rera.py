@@ -816,10 +816,11 @@ def _fetch_mh_api_docs(cert_id: str, auth_token: str, logger: CrawlerLogger) -> 
                     for item in (r.json().get("responseObject") or []):
                         dms_ref  = item.get("documentDmsRefNo", "")
                         filename = item.get("documentFileName", "")
+                        doc_name = item.get("documentDescription") or filename or "Document"
                         if dms_ref and dms_ref not in seen_refs:
                             seen_refs.add(dms_ref)
                             docs.append({
-                                "type": filename or "Document",
+                                "type": doc_name,
                                 "filename": filename,
                                 "dms_ref": dms_ref,
                             })
@@ -1270,10 +1271,25 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                             f"Downloading {len(api_docs)} document(s) for {reg_no}",
                             step="docs",
                         )
+                        doc_name_counts: dict[str, int] = {}
+                        selected_pairs: list[tuple[dict, dict]] = []
+                        skipped_docs: list[dict] = []
                         for doc in api_docs:
+                            selected = select_document_for_download(
+                                config["state"], doc, doc_name_counts, domain=DOMAIN,
+                            )
+                            if selected:
+                                selected_pairs.append((doc, selected))
+                            else:
+                                skipped_docs.append({
+                                    "type": doc.get("type") or "Document",
+                                })
+
+                        uploaded_documents: list[dict] = []
+                        for original_doc, selected_doc in selected_pairs:
                             result = _handle_mh_document(
                                 project_key=key,
-                                doc=doc,
+                                doc=selected_doc,
                                 run_id=run_id,
                                 site_id=config["id"],
                                 logger=logger,
@@ -1281,6 +1297,23 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                             )
                             if result:
                                 counters["documents_uploaded"] += 1
+                                uploaded_documents.append(result)
+                            else:
+                                uploaded_documents.append({
+                                    "type": original_doc.get("type") or "Document",
+                                })
+
+                        uploaded_documents.extend(skipped_docs)
+                        if uploaded_documents:
+                            upsert_project({
+                                "key": key,
+                                "url": db_dict["url"],
+                                "state": db_dict["state"],
+                                "domain": db_dict["domain"],
+                                "project_registration_no": db_dict["project_registration_no"],
+                                "uploaded_documents": uploaded_documents,
+                                "document_urls": build_document_urls(uploaded_documents),
+                            })
 
                 except ValidationError as exc:
                     counters["error_count"] += 1

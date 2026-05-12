@@ -24,9 +24,11 @@ from core.checkpoint import reset_checkpoint
 from core.config import settings
 from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
 from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error
+from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
 from core.project_normalizer import (
+    build_document_filename,
     build_document_urls,
     get_machine_context,
     merge_data_sections,
@@ -715,22 +717,27 @@ def _process_documents(
     """Download, MD5-check, and upload each document to S3."""
     enriched: list[dict] = []
     upload_count = 0
+    doc_name_counts: dict[str, int] = {}
 
     for doc in documents:
-        url = doc.get("link", "")
-        doc_type = doc.get("type", "document")
-        if not url or url.endswith("/FirstLevel/ViewDocument"):
-            # No real document ID — record as-is
+        selected = select_document_for_download("jharkhand", doc, doc_name_counts, domain=DOMAIN)
+        if not selected:
             enriched.append(doc)
             continue
 
-        slug = re.sub(r"[^a-z0-9]+", "_", doc_type.lower()).strip("_") or "document"
-        filename = f"{slug}.pdf"
+        url = selected.get("link") or selected.get("url") or ""
+        doc_type = selected.get("type", "document")
+        if not url or url.endswith("/FirstLevel/ViewDocument"):
+            # No real document ID — record as-is
+            enriched.append(selected)
+            continue
+
+        filename = build_document_filename(selected)
 
         try:
             resp = download_response(url, logger=logger, timeout=60.0)
             if not resp or len(resp.content) < 100:
-                enriched.append(doc)
+                enriched.append(selected)
                 logger.warning(f"Document download failed or too small: {url}", step="documents")
                 continue
 
@@ -738,7 +745,7 @@ def _process_documents(
             md5 = compute_md5(data)
             s3_key = upload_document(project_key, filename, data, dry_run=settings.DRY_RUN_S3)
             if s3_key is None:
-                enriched.append(doc)
+                enriched.append(selected)
                 continue
 
             s3_url = get_s3_url(s3_key)
@@ -752,13 +759,13 @@ def _process_documents(
                 md5_checksum=md5,
                 file_size_bytes=len(data),
             )
-            enriched.append({**doc, "s3_link": s3_url})
+            enriched.append({**selected, "link": url, "s3_link": s3_url, "updated": True})
             upload_count += 1
             logger.info(f"Document uploaded: {doc_type!r}", s3_key=s3_key, step="documents")
             logger.log_document(doc_type, url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
 
         except Exception as exc:
-            enriched.append(doc)
+            enriched.append(selected)
             logger.error(f"Document error: {exc}", url=url, step="documents")
             insert_crawl_error(run_id, site_id, "S3_UPLOAD_FAILED", str(exc),
                                url=url, project_key=project_key)

@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import copy
-import hashlib
 import re
 import socket
 from datetime import datetime, timezone
 
 UTC = timezone.utc
 from typing import Any
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import urlparse
 
 from core.crawler_base import generate_project_key
 from core.project_schema import (
@@ -520,28 +519,16 @@ def build_document_filename(doc: dict[str, Any], default_ext: str = ".pdf") -> s
 
     url = clean_string(doc.get("source_url") or doc.get("url")) or ""
     parsed = urlparse(url)
-    query = parse_qs(parsed.query)
-
-    suffix = None
-    for key in ("fileId", "fileid", "DOC_ID", "doc_id", "id"):
-        values = query.get(key)
-        if values and values[0]:
-            suffix = re.sub(r"[^a-z0-9]+", "_", values[0].lower()).strip("_")
-            break
-
-    if not suffix and url:
-        suffix = hashlib.sha1(url.encode("utf-8")).hexdigest()[:12]
 
     # Infer file extension from URL path (e.g. .xlsx, .docx) when available;
     # fall back to default_ext (typically .pdf) for opaque or extensionless URLs.
+    # Old naming policy intentionally uses only the normalized logical label.
     from pathlib import PurePosixPath
     url_path_ext = PurePosixPath(parsed.path).suffix.lower() if parsed.path else ""
     ext = url_path_ext if url_path_ext in _KNOWN_EXTENSIONS else ((default_ext or ".pdf").strip() or ".pdf")
     if not ext.startswith("."):
         ext = f".{ext}"
 
-    if suffix:
-        return f"{slug}_{suffix}{ext}"
     return f"{slug}{ext}"
 
 

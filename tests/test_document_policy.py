@@ -7,6 +7,7 @@ from core.document_policy import (
     rename_document_category,
     select_document_for_download,
 )
+from core.project_normalizer import build_document_filename
 
 
 class DocumentPolicyTests(unittest.TestCase):
@@ -30,6 +31,21 @@ class DocumentPolicyTests(unittest.TestCase):
         self.assertEqual(selected["label"], "Approved layout 1")
         self.assertEqual(selected["type"], "Approved layout 1")
         self.assertEqual(selected["matched_category"], "Approved layout")
+
+    def test_select_document_falls_back_to_doc_filename_field(self):
+        selected = select_document_for_download(
+            "maharashtra",
+            {
+                "label": "miscellaneous document",
+                "filename": "Architect Certificate.pdf",
+            },
+            {},
+        )
+        self.assertIsNotNone(selected)
+        assert selected is not None
+        self.assertEqual(selected["label"], "Architect Certificate 1")
+        self.assertEqual(selected["type"], "Architect Certificate 1")
+        self.assertEqual(selected["matched_category"], "Architect")
 
     def test_repeated_architect_docs_are_numbered(self):
         counters: dict[str, int] = {}
@@ -97,6 +113,24 @@ class DocumentPolicyTests(unittest.TestCase):
             {},
         )
         self.assertIsNone(selected)
+
+    def test_build_document_filename_uses_old_label_only_naming(self):
+        filename = build_document_filename(
+            {
+                "label": "Structural drawings 1",
+                "url": "https://example.com/getdocument?DOC_ID=12345",
+            }
+        )
+        self.assertEqual(filename, "structural_drawings_1.pdf")
+
+    def test_build_document_filename_keeps_known_extension(self):
+        filename = build_document_filename(
+            {
+                "label": "Project Specification 2",
+                "url": "https://example.com/files/specification.docx",
+            }
+        )
+        self.assertEqual(filename, "project_specification_2.docx")
 
 
 if __name__ == "__main__":

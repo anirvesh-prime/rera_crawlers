@@ -192,26 +192,7 @@ def rename_document_category(
     matched_name: str | None,
     counters: dict[str, int],
 ) -> str:
-    original = clean_string(original_name) or ""
     renamed = clean_string(matched_name) or clean_string(original_name) or "document"
-
-    # When the original document name starts with the matched category name, prefer the
-    # original (more descriptive) name over the shorter matched category name.
-    # e.g. "APPROVED DRAWING FROM COMPETENT AUTHORITY" should NOT be shortened to
-    # "APPROVED DRAWING 1"; it should be kept as-is (or "... 2" if truly duplicated).
-    if original and original.upper().startswith(renamed.upper()):
-        parts = original.split()
-        if parts:
-            try:
-                int(parts[-1])
-                # Already ends with a number (e.g. "RERA REGISTRATION CERTIFICATE 1") — keep as-is
-                return original
-            except ValueError:
-                pass
-        # Use the full original name as the deduplication key
-        counters[original] = counters.get(original, 0) + 1
-        n = counters[original]
-        return original if n == 1 else f"{original} {n}"
 
     if "architect" in renamed.lower() and "certificate" not in renamed.lower():
         renamed += " Certificate"
@@ -233,7 +214,10 @@ def select_document_for_download(
     allowed, matched_name = decide_download_rera(state, label, domain=domain)
 
     if not allowed:
-        file_name = _url_filename(clean_string(doc.get("url") or doc.get("link") or doc.get("source_url")))
+        file_name = (
+            clean_string(doc.get("filename"))
+            or _url_filename(clean_string(doc.get("url") or doc.get("link") or doc.get("source_url")))
+        )
         allowed, matched_name = decide_download_rera(state, file_name, domain=domain)
 
     if not allowed or not matched_name:
