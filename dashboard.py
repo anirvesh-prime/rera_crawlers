@@ -13,31 +13,21 @@ On your local machine (SSH tunnel):
 from __future__ import annotations
 
 import argparse
-import json
-import os
 import re
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from dotenv import load_dotenv
 from flask import Flask, render_template_string
 
 load_dotenv()
 
-# ── psycopg v3 (already in requirements.txt) ──────────────────────────────────
-try:
-    import psycopg
-    from psycopg.rows import dict_row as _dict_row
-    _HAS_DB = True
-except ImportError:
-    _HAS_DB = False
+import psycopg
+from psycopg.rows import dict_row as _dict_row
 
-# ── Sites list ────────────────────────────────────────────────────────────────
+from core.config import settings
 from sites_config import SITES  # noqa: E402
 
 _SITES = [{"id": s["id"], "name": s["name"]} for s in SITES]
-_SITE_IDS = {s["id"] for s in SITES}
-_LOG_DIR = Path(os.getenv("LOG_DIR", "logs"))
 
 app = Flask(__name__)
 
@@ -56,18 +46,8 @@ def _clean_msg(msg: str) -> str:
 # ── DB helpers ────────────────────────────────────────────────────────────────
 
 def _db_conn():
-    if not _HAS_DB:
-        return None
     try:
-        return psycopg.connect(
-            host=os.getenv("POSTGRES_HOST", "localhost"),
-            port=int(os.getenv("POSTGRES_PORT", "5432")),
-            dbname=os.getenv("POSTGRES_DB", "rera_crawlers"),
-            user=os.getenv("POSTGRES_USER", ""),
-            password=os.getenv("POSTGRES_PASSWORD", ""),
-            connect_timeout=5,
-            row_factory=_dict_row,
-        )
+        return psycopg.connect(settings.postgres_dsn, connect_timeout=5, row_factory=_dict_row)
     except Exception:
         return None
 
@@ -107,10 +87,18 @@ def _fetch_db():
             recent_ids = [r["id"] for r in cur.fetchall()]
 
             # 3. Sentinel log entries for that window.
-            #    crawl_runs.sentinel_passed is not reliably set by crawlers, so
-            #    derive the pass/fail outcome from the log entry's level:
-            #      ERROR  → sentinel failed
-            #      INFO/WARNING → sentinel passed (with possible field warnings)
+            #
+            # A single sentinel check emits several log rows with step='sentinel':
+            #   INFO  "Sentinel coverage: 16/18 fields"  → extra has covered/expected
+            #   INFO  "Sentinel check passed"             → extra has reg only
+            #   ERROR "Sentinel coverage too low …"       → extra has missing_fields/coverage_ratio
+            #
+            # Reading only the most-recent row per site loses the coverage numbers on
+            # passing runs.  Instead, collect ALL sentinel rows for a run and merge:
+            #   passed          = no ERROR row exists for that site
+            #   covered/expected = from whichever row carries those keys (the coverage INFO row)
+            #   missing_fields  = from the ERROR row (if any)
+            #   message         = from the ERROR row, or the final INFO row
             sentinel_data: dict = {}
             if recent_ids:
                 cur.execute(
@@ -118,35 +106,49 @@ def _fetch_db():
                     SELECT cl.site_id, cl.level, cl.extra, cl.message
                     FROM crawl_logs cl
                     WHERE cl.step = 'sentinel' AND cl.run_id = ANY(%s)
-                    ORDER BY cl.logged_at DESC
+                    ORDER BY cl.logged_at ASC
                     """,
                     (recent_ids,),
                 )
+                # Accumulator: one bucket per site, filled in as we scan rows
+                buckets: dict[str, dict] = {}
                 for row in cur.fetchall():
                     sid = row["site_id"]
-                    if sid in sentinel_data:
-                        continue
                     extra = row.get("extra") or {}
                     level = (row.get("level") or "").upper()
-                    # First ERROR entry → failed; any INFO/WARNING → passed
+                    msg   = _clean_msg(row.get("message") or "")
+
+                    if sid not in buckets:
+                        buckets[sid] = {
+                            "has_error": False,
+                            "covered": None, "expected": None,
+                            "missing_fields": [], "coverage_ratio": None,
+                            "message": "",
+                        }
+                    b = buckets[sid]
                     if level == "ERROR":
-                        sentinel_data[sid] = {
-                            "passed": False,
-                            "covered": extra.get("covered"),
-                            "expected": extra.get("expected"),
-                            "missing_fields": extra.get("missing_fields") or [],
-                            "coverage_ratio": extra.get("coverage_ratio"),
-                            "message": _clean_msg(row.get("message") or ""),
-                        }
-                    else:
-                        sentinel_data[sid] = {
-                            "passed": True,
-                            "covered": extra.get("covered"),
-                            "expected": extra.get("expected"),
-                            "missing_fields": extra.get("missing_fields") or [],
-                            "coverage_ratio": extra.get("coverage_ratio"),
-                            "message": _clean_msg(row.get("message") or ""),
-                        }
+                        b["has_error"] = True
+                        b["message"] = msg  # error message takes priority
+                    elif not b["has_error"]:
+                        b["message"] = msg  # keep last non-error message
+                    # Merge coverage numbers from whichever row has them
+                    if extra.get("covered") is not None:
+                        b["covered"]  = extra["covered"]
+                        b["expected"] = extra.get("expected")
+                    if extra.get("missing_fields"):
+                        b["missing_fields"] = extra["missing_fields"]
+                    if extra.get("coverage_ratio") is not None:
+                        b["coverage_ratio"] = extra["coverage_ratio"]
+
+                for sid, b in buckets.items():
+                    sentinel_data[sid] = {
+                        "passed": not b["has_error"],
+                        "covered": b["covered"],
+                        "expected": b["expected"],
+                        "missing_fields": b["missing_fields"],
+                        "coverage_ratio": b["coverage_ratio"],
+                        "message": b["message"],
+                    }
             # Backfill sentinel_passed from crawl_runs for sites with no log entry
             for sid, run in latest_runs.items():
                 if sid not in sentinel_data and run.get("sentinel_passed") is not None:
@@ -244,153 +246,8 @@ def _fetch_db():
         conn.close()
 
 
-# ── Log-file fallback ─────────────────────────────────────────────────────────
-
-def _iter_site_jsonl_files():
-    """Yield (site_id, Path) for the most-recent .jsonl file per site.
-
-    Handles two layouts:
-      New:    logs/{site_id}/{timestamp}.jsonl
-      Legacy: logs/{timestamp}_{site_id}.jsonl  (flat root dir)
-    """
-    seen: set = set()
-    # New layout — subdirectories named after site IDs
-    if _LOG_DIR.exists():
-        for site_dir in _LOG_DIR.iterdir():
-            if not site_dir.is_dir() or site_dir.name == "orchestrator":
-                continue
-            if site_dir.name not in _SITE_IDS:
-                continue
-            files = sorted(site_dir.glob("*.jsonl"), reverse=True)
-            if files:
-                yield site_dir.name, files[0]
-                seen.add(site_dir.name)
-        # Legacy flat layout — root-level .jsonl files named {ts}_{site_id}.jsonl
-        for f in sorted(_LOG_DIR.glob("*.jsonl"), reverse=True):
-            matched = next(
-                (sid for sid in _SITE_IDS if sid not in seen and f"_{sid}" in f.stem),
-                None,
-            )
-            if matched:
-                yield matched, f
-                seen.add(matched)
-
-
-def _fetch_logs():
-    """Fallback data source: read orchestrator summary JSON + per-site .jsonl files."""
-    latest_runs: dict = {}
-    sentinel_data: dict = {}
-    errors_by_site: dict = {}
-    orch_info: dict = {}
-
-    # ── Orchestrator summary: new path (logs/orchestrator/) ──────────────────
-    orch_dir = _LOG_DIR / "orchestrator"
-    if orch_dir.exists():
-        summaries = sorted(orch_dir.glob("*.json"), reverse=True)
-        if summaries:
-            try:
-                data = json.loads(summaries[0].read_text())
-                orch_info = {
-                    "mode": data.get("mode", "unknown"),
-                    "started": data.get("started"),
-                    "totals": data.get("totals", {}),
-                }
-                for site in data.get("sites", []):
-                    _add_summary_run(latest_runs, site, data.get("mode", "unknown"), data.get("started"))
-            except Exception:
-                pass
-
-    # ── Orchestrator summary: legacy path (logs/*_orchestrator_summary.json) ─
-    if not orch_info and _LOG_DIR.exists():
-        flat = sorted(_LOG_DIR.glob("*orchestrator_summary.json"), reverse=True)
-        if flat:
-            try:
-                data = json.loads(flat[0].read_text())
-                orch_info = {
-                    "mode": data.get("mode", "unknown"),
-                    "started": data.get("started"),
-                    "totals": data.get("totals", {}),
-                }
-                for site in data.get("sites", []):
-                    _add_summary_run(latest_runs, site, data.get("mode", "unknown"), data.get("started"))
-            except Exception:
-                pass
-
-    # ── Per-site .jsonl files: extract sentinel + error entries ──────────────
-    for sid, jsonl_path in _iter_site_jsonl_files():
-        try:
-            lines = jsonl_path.read_text().strip().splitlines()
-            for line in reversed(lines):
-                if not line.strip():
-                    continue
-                entry = json.loads(line)
-                if entry.get("step") == "sentinel" and sid not in sentinel_data:
-                    extra = entry.get("extra") or {}
-                    covered = extra.get("covered")
-                    expected = extra.get("expected")
-                    passed: bool | None = None
-                    if covered is not None and expected and expected > 0:
-                        passed = (covered / expected) >= 0.80
-                    sentinel_data[sid] = {
-                        "covered": covered,
-                        "expected": expected,
-                        "passed": passed,
-                        "missing_fields": extra.get("missing_fields") or [],
-                        "coverage_ratio": extra.get("coverage_ratio"),
-                        "message": entry.get("message") or "",
-                    }
-                if entry.get("level") == "ERROR" and sid not in errors_by_site:
-                    err_extra = entry.get("extra") or {}
-                    errors_by_site[sid] = {
-                        "message": _clean_msg(entry.get("message", "")),
-                        "step": entry.get("step") or "",
-                        "extra": err_extra,
-                        "traceback": entry.get("traceback") or "",
-                    }
-                if sid in sentinel_data and sid in errors_by_site:
-                    break
-        except Exception:
-            pass
-
-    return {
-        "latest_runs": latest_runs,
-        "sentinel_data": sentinel_data,
-        "errors_by_site": errors_by_site,
-        "orch_info": orch_info,
-        "source": "log files",
-    }
-
-
-def _add_summary_run(runs: dict, site: dict, mode: str, started: str | None) -> None:
-    """Parse one site entry from an orchestrator summary JSON into a run dict."""
-    sid = site.get("site_id")
-    if not sid:
-        return
-    elapsed = site.get("elapsed_s")
-    runs[sid] = {
-        "site_id": sid,
-        "run_type": mode,
-        "started_at": started,
-        "finished_at": None,
-        "elapsed_s": elapsed,
-        # A run is only "failed" if it never completed; errors within a completed
-        # run keep status="completed" — the dashboard flags them separately.
-        "status": "completed",
-        "projects_found": site.get("projects_found", 0),
-        "projects_new": site.get("projects_new", 0),
-        "projects_updated": site.get("projects_updated", 0),
-        "projects_skipped": site.get("projects_skipped", 0),
-        "documents_uploaded": site.get("documents_uploaded", 0),
-        "error_count": site.get("error_count", 0),
-        "sentinel_passed": None,
-    }
-
-
 def _get_data() -> dict:
-    result = _fetch_db()
-    if result is None:
-        result = _fetch_logs()
-    return result or {}
+    return _fetch_db() or {}
 
 
 # ── HTML template ─────────────────────────────────────────────────────────────
@@ -526,14 +383,6 @@ _TEMPLATE = """<!DOCTYPE html>
           {{ t.get('error_count',0) }}</div>
         <div class="stat-lbl">Total Errors</div>
       </div>
-      {% set total_elapsed = t.get('elapsed_s') %}
-      {% if total_elapsed %}
-      <div class="stat-box ps-3">
-        <div class="stat-val" style="font-size:1rem;color:#8b949e;">
-          {{ '%dm %ds' | format((total_elapsed // 60)|int, (total_elapsed % 60)|int) }}</div>
-        <div class="stat-lbl">Total Duration</div>
-      </div>
-      {% endif %}
       {% endif %}
     </div>
   </div>
