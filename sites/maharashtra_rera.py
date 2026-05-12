@@ -616,13 +616,23 @@ def _parse_mh_promoter_tab(soup: BeautifulSoup, out: dict) -> None:
 
 
 def _parse_mh_building_tab(soup: BeautifulSoup, out: dict) -> None:
-    """Extract land area and building unit details."""
+    """Extract land area, construction cost, and building unit details."""
     # Land area from white-box label.form-label (not col-4) containers
     _LAND_LABELS = {
         "total land area of approved layout (sq. mts.)",
         "land area for project applied for this registration (sq. mts)",
         "total land area",
         "land area",
+    }
+    # Construction / project cost labels seen on MH RERA Angular pages
+    _COST_LABELS = {
+        "estimated cost of construction",
+        "estimated construction cost",
+        "total construction cost",
+        "construction cost",
+        "total project cost",
+        "estimated project cost",
+        "project cost",
     }
     for lbl_el in soup.select("label.form-label:not(.col-4)"):
         parent = lbl_el.find_parent()
@@ -640,7 +650,12 @@ def _parse_mh_building_tab(soup: BeautifulSoup, out: dict) -> None:
                     out["data"] = existing_data
                 except (ValueError, TypeError):
                     pass
-                break
+            elif label in _COST_LABELS and value and "project_cost_detail" not in out:
+                try:
+                    cost = float(value.replace(",", ""))
+                    out["project_cost_detail"] = {"estimated_construction_cost": cost}
+                except (ValueError, TypeError):
+                    out["project_cost_detail"] = {"estimated_construction_cost": value}
 
     # Building unit details from wing/unit summary table
     for table in soup.select("table"):
@@ -1024,13 +1039,29 @@ def _extract_mh_html_fields(page, cert_id: str, logger: CrawlerLogger) -> dict:
         )
         return {}
 
+    # Second networkidle pass — Angular often fires additional XHR calls (professional
+    # info, bank details, partner tables) after the registration number appears.
+    # A short extra wait lets those requests complete before we snapshot the HTML.
+    try:
+        page.wait_for_load_state("networkidle", timeout=10_000)
+    except Exception:
+        pass  # non-fatal; proceed with whatever is rendered
+
     soup = BeautifulSoup(page.content(), "lxml")
 
     _parse_mh_overview_tab(soup, out)      # Registration, status, project type, dates
     _parse_mh_promoter_tab(soup, out)      # Project address, promoter details & address
-    _parse_mh_building_tab(soup, out)      # Land area, building units
+    _parse_mh_building_tab(soup, out)      # Land area, construction cost, building units
     _parse_mh_bank_details(soup, out)      # Bank account details
     _parse_mh_partner_tables(soup, out)    # Designated partners, signatories, professionals
+
+    # project_state: copy the state extracted from the project address section.
+    # _parse_mh_promoter_tab maps "state/ut" → project_location_raw.state.
+    if not out.get("project_state"):
+        loc = out.get("project_location_raw") or {}
+        state_val = loc.get("state") if isinstance(loc, dict) else None
+        if state_val:
+            out["project_state"] = state_val
 
     # ── Document fetching: API-first, HTML fallback ───────────────────────────
     # After CAPTCHA is solved, the Angular app has a session token in sessionStorage.
@@ -1103,6 +1134,15 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     try:
         fresh = _scrape_mh_detail_page(cert_id, logger) or {}
     except Exception as exc:
+        exc_str = str(exc)
+        # Playwright / network timeout → transient; skip rather than abort crawl
+        if "timeout" in exc_str.lower() or "net::" in exc_str.lower():
+            logger.warning(
+                f"Sentinel: Playwright timeout (likely transient) — {exc}; "
+                "skipping coverage check this run",
+                step="sentinel",
+            )
+            return True
         logger.error(f"Sentinel: scrape error — {exc}", step="sentinel")
         return False
 

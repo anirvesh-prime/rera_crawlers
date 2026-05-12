@@ -99,7 +99,7 @@ def _fetch_db():
             if recent_ids:
                 cur.execute(
                     """
-                    SELECT cl.site_id, cl.extra, cr.sentinel_passed
+                    SELECT cl.site_id, cl.extra, cl.message, cr.sentinel_passed
                     FROM crawl_logs cl
                     JOIN crawl_runs cr ON cl.run_id = cr.id
                     WHERE cl.step = 'sentinel' AND cl.run_id = ANY(%s)
@@ -116,6 +116,9 @@ def _fetch_db():
                         "passed": row["sentinel_passed"],
                         "covered": extra.get("covered"),
                         "expected": extra.get("expected"),
+                        "missing_fields": extra.get("missing_fields") or [],
+                        "coverage_ratio": extra.get("coverage_ratio"),
+                        "message": row.get("message") or "",
                     }
             # Backfill sentinel_passed from crawl_runs for sites with no log entry
             for sid, run in latest_runs.items():
@@ -123,14 +126,15 @@ def _fetch_db():
                     sentinel_data[sid] = {
                         "passed": run["sentinel_passed"],
                         "covered": None, "expected": None,
+                        "missing_fields": [], "coverage_ratio": None, "message": "",
                     }
 
-            # 4. Latest error message per site (within the same window)
+            # 4. Latest error per site with step + extra context
             errors_by_site: dict = {}
             if recent_ids:
                 cur.execute(
                     """
-                    SELECT DISTINCT ON (site_id) site_id, message
+                    SELECT DISTINCT ON (site_id) site_id, message, step, extra, traceback
                     FROM crawl_logs
                     WHERE level = 'ERROR' AND run_id = ANY(%s)
                     ORDER BY site_id, logged_at DESC
@@ -138,9 +142,28 @@ def _fetch_db():
                     (recent_ids,),
                 )
                 for row in cur.fetchall():
-                    errors_by_site[row["site_id"]] = row["message"]
+                    sid = row["site_id"]
+                    errors_by_site[sid] = {
+                        "message": row["message"] or "",
+                        "step": row.get("step") or "",
+                        "extra": row.get("extra") or {},
+                        "traceback": row.get("traceback") or "",
+                    }
 
-            # 5. Orchestrator-level summary (aggregate of the window)
+            # 5. Compute elapsed_s for each run from started_at / finished_at;
+            #    always set the key so the template never hits UndefinedError.
+            for run in latest_runs.values():
+                run.setdefault("elapsed_s", None)
+                if run["elapsed_s"] is None:
+                    sa = run.get("started_at")
+                    fa = run.get("finished_at")
+                    if sa and fa:
+                        try:
+                            run["elapsed_s"] = (fa - sa).total_seconds()
+                        except Exception:
+                            pass
+
+            # 6. Orchestrator-level summary (aggregate of the window)
             totals_keys = (
                 "projects_found", "projects_new", "projects_updated",
                 "projects_skipped", "documents_uploaded", "error_count",
@@ -253,9 +276,22 @@ def _fetch_logs():
                     passed: bool | None = None
                     if covered is not None and expected and expected > 0:
                         passed = (covered / expected) >= 0.80
-                    sentinel_data[sid] = {"covered": covered, "expected": expected, "passed": passed}
+                    sentinel_data[sid] = {
+                        "covered": covered,
+                        "expected": expected,
+                        "passed": passed,
+                        "missing_fields": extra.get("missing_fields") or [],
+                        "coverage_ratio": extra.get("coverage_ratio"),
+                        "message": entry.get("message") or "",
+                    }
                 if entry.get("level") == "ERROR" and sid not in errors_by_site:
-                    errors_by_site[sid] = entry.get("message", "")
+                    err_extra = entry.get("extra") or {}
+                    errors_by_site[sid] = {
+                        "message": entry.get("message", ""),
+                        "step": entry.get("step") or "",
+                        "extra": err_extra,
+                        "traceback": entry.get("traceback") or "",
+                    }
                 if sid in sentinel_data and sid in errors_by_site:
                     break
         except Exception:
@@ -275,12 +311,16 @@ def _add_summary_run(runs: dict, site: dict, mode: str, started: str | None) -> 
     sid = site.get("site_id")
     if not sid:
         return
+    elapsed = site.get("elapsed_s")
     runs[sid] = {
         "site_id": sid,
         "run_type": mode,
         "started_at": started,
         "finished_at": None,
-        "status": "failed" if site.get("error_count", 0) > 0 else "completed",
+        "elapsed_s": elapsed,
+        # A run is only "failed" if it never completed; errors within a completed
+        # run keep status="completed" — the dashboard flags them separately.
+        "status": "completed",
         "projects_found": site.get("projects_found", 0),
         "projects_new": site.get("projects_new", 0),
         "projects_updated": site.get("projects_updated", 0),
@@ -311,37 +351,73 @@ _TEMPLATE = """<!DOCTYPE html>
   <style>
     body { background:#0d1117; color:#e6edf3; font-family:system-ui,sans-serif; }
     .card { background:#161b22; border:1px solid #30363d; border-radius:8px; }
+    .card-danger { border-color:#6e2424!important; }
     .table { color:#e6edf3; margin-bottom:0; }
-    .table th { background:#21262d; color:#8b949e; font-size:.75rem;
+    .table th { background:#21262d; color:#8b949e; font-size:.72rem;
                 text-transform:uppercase; letter-spacing:.06em; border-color:#30363d; }
-    .table td { border-color:#30363d; vertical-align:middle; }
-    .table-hover tbody tr:hover td { background:rgba(255,255,255,.03); }
-    .badge { font-size:.7rem; font-weight:600; padding:3px 8px; border-radius:4px; }
-    .bg-pass { background:#1f6335!important; color:#3fb950; }
-    .bg-fail { background:#4a1212!important; color:#f85149; }
-    .bg-run  { background:#3d2e00!important; color:#d29922; }
-    .bg-done { background:#1f6335!important; color:#3fb950; }
-    .bg-none { background:#21262d!important; color:#8b949e; }
+    .table td { border-color:#30363d; vertical-align:middle; padding:.4rem .5rem; }
+    .table-hover tbody tr:hover td { background:rgba(255,255,255,.04); }
+    .badge { font-size:.68rem; font-weight:600; padding:3px 7px; border-radius:4px; }
+    .bg-pass  { background:#1f6335!important; color:#3fb950; }
+    .bg-fail  { background:#4a1212!important; color:#f85149; }
+    .bg-warn  { background:#5c3800!important; color:#d29922; }
+    .bg-run   { background:#3d2e00!important; color:#d29922; }
+    .bg-done  { background:#1f6335!important; color:#3fb950; }
+    .bg-none  { background:#21262d!important; color:#8b949e; }
+    .row-err  td { background:rgba(248,81,73,.07)!important; }
+    .row-fail td { background:rgba(248,81,73,.13)!important; }
+    .row-warn td { background:rgba(210,153,34,.05)!important; }
     .sec-title { color:#58a6ff; font-size:.8rem; font-weight:700;
                  text-transform:uppercase; letter-spacing:.1em; }
-    .bar-wrap { width:70px; height:5px; background:#30363d;
+    .bar-wrap { width:60px; height:5px; background:#30363d;
                 border-radius:3px; display:inline-block; vertical-align:middle; }
     .bar-fill { height:5px; border-radius:3px; }
-    .err-msg  { font-size:.7rem; color:#f85149; opacity:.85; margin-top:2px; }
-    .stat-box { border-right:1px solid #30363d; padding:0 1.5rem; }
+    .err-msg  { font-size:.68rem; color:#f85149; opacity:.9; margin-top:3px; line-height:1.3; word-break:break-word; }
+    .err-step { font-size:.62rem; color:#8b949e; font-family:monospace;
+                background:#21262d; border-radius:3px; padding:1px 4px; margin-bottom:2px; display:inline-block; }
+    .stat-box { border-right:1px solid #30363d; padding:0 1.4rem; }
     .stat-box:last-child { border-right:none; }
-    .stat-val { font-size:1.4rem; font-weight:700; line-height:1; }
-    .stat-lbl { font-size:.7rem; color:#8b949e; text-transform:uppercase; letter-spacing:.05em; }
-    .hdr { background:#161b22; border-bottom:1px solid #30363d; padding:12px 24px; margin-bottom:24px; }
+    .stat-val { font-size:1.35rem; font-weight:700; line-height:1; }
+    .stat-lbl { font-size:.68rem; color:#8b949e; text-transform:uppercase; letter-spacing:.05em; }
+    .hdr { background:#161b22; border-bottom:1px solid #30363d; padding:12px 24px; margin-bottom:20px; }
+    .diag-block { background:#1c1010; border:1px solid #6e2424; border-radius:6px;
+                  padding:.6rem .9rem; margin-bottom:.5rem; }
+    .diag-site  { font-size:.82rem; font-weight:600; color:#f85149; }
+    .diag-meta  { font-size:.7rem; color:#8b949e; margin-top:2px; }
+    .diag-msg   { font-size:.75rem; color:#e6edf3; margin-top:4px; word-break:break-word;
+                  background:#110d0d; border-left:3px solid #6e2424; padding:4px 8px;
+                  border-radius:0 4px 4px 0; font-family:monospace; line-height:1.4; }
+    .missing-pill { display:inline-block; font-size:.6rem; background:#3d2300; color:#d29922;
+                    border-radius:3px; padding:1px 5px; margin:1px; }
+    .sentinel-msg { font-size:.68rem; color:#d29922; margin-top:3px; font-style:italic; }
+    .dur { font-size:.75rem; color:#8b949e; white-space:nowrap; }
+    a.expand-toggle { font-size:.65rem; color:#58a6ff; text-decoration:none; cursor:pointer; }
   </style>
 </head>
 <body>
+{# ── compute summary counts used throughout the page ──────────────────── #}
+{% set sites_with_errors = [] %}
+{% for site in sites %}{% set sid = site.id %}
+  {% if sid in latest_runs %}{% set r = latest_runs[sid] %}
+    {% if (r.error_count or 0) > 0 %}{% if sites_with_errors.append(site) %}{% endif %}{% endif %}
+  {% endif %}
+{% endfor %}
+{% set n_sites = latest_runs | length %}
+{% set n_errs  = sites_with_errors | length %}
+{% set n_ok    = n_sites - n_errs %}
+
 <div class="hdr d-flex justify-content-between align-items-center">
   <div>
     <span style="font-size:1.1rem;font-weight:700;">🏗️ RERA Crawlers Dashboard</span>
     <span class="ms-3" style="font-size:.8rem;color:#8b949e;">
       Source: <span class="text-warning">{{ data_source }}</span> &nbsp;·&nbsp; auto-refresh 60s
     </span>
+    {% if n_sites %}
+    <span class="ms-3">
+      <span class="badge bg-done">{{ n_ok }} OK</span>
+      {% if n_errs %}<span class="badge bg-fail ms-1">{{ n_errs }} w/ errors</span>{% endif %}
+    </span>
+    {% endif %}
   </div>
   <div style="font-size:.8rem;color:#8b949e;">
     Refreshed {{ now.strftime('%Y-%m-%d %H:%M:%S') }} UTC
@@ -352,8 +428,8 @@ _TEMPLATE = """<!DOCTYPE html>
 
   {# ── Orchestrator run summary ──────────────────────────────────────────── #}
   {% if orch_info %}
-  <div class="card p-3 mb-4">
-    <div class="sec-title mb-3">Most Recent Orchestrator Run</div>
+  <div class="card p-3 mb-3">
+    <div class="sec-title mb-3">⚙️ Most Recent Orchestrator Run</div>
     <div class="d-flex flex-wrap align-items-center gap-0">
       <div class="stat-box">
         <div class="stat-val">{{ (orch_info.mode or 'unknown') | replace('_',' ') | title }}</div>
@@ -383,53 +459,142 @@ _TEMPLATE = """<!DOCTYPE html>
         <div class="stat-lbl">Updated</div>
       </div>
       <div class="stat-box ps-3">
+        <div class="stat-val" style="color:#8b949e;">{{ t.get('projects_skipped',0) }}</div>
+        <div class="stat-lbl">Skipped</div>
+      </div>
+      <div class="stat-box ps-3">
+        <div class="stat-val" style="color:#8b949e;">{{ t.get('documents_uploaded',0) }}</div>
+        <div class="stat-lbl">Docs</div>
+      </div>
+      <div class="stat-box ps-3">
         <div class="stat-val {% if t.get('error_count',0) > 0 %}text-danger{% endif %}">
           {{ t.get('error_count',0) }}</div>
-        <div class="stat-lbl">Errors</div>
+        <div class="stat-lbl">Total Errors</div>
       </div>
+      {% set total_elapsed = t.get('elapsed_s') %}
+      {% if total_elapsed %}
+      <div class="stat-box ps-3">
+        <div class="stat-val" style="font-size:1rem;color:#8b949e;">
+          {{ '%dm %ds' | format((total_elapsed // 60)|int, (total_elapsed % 60)|int) }}</div>
+        <div class="stat-lbl">Total Duration</div>
+      </div>
+      {% endif %}
       {% endif %}
     </div>
   </div>
   {% endif %}
 
-  <div class="row g-4">
+  {# ── Failures & Diagnostics ────────────────────────────────────────────── #}
+  {% if sites_with_errors %}
+  <div class="card card-danger p-3 mb-3">
+    <div class="sec-title mb-3" style="color:#f85149;">🚨 Failures &amp; Diagnostics ({{ sites_with_errors|length }} site{{ 's' if sites_with_errors|length != 1 }})</div>
+    {% for site in sites_with_errors %}{% set sid = site.id %}{% set r = latest_runs[sid] %}
+    <div class="diag-block">
+      <div class="d-flex justify-content-between align-items-start flex-wrap gap-1">
+        <div>
+          <span class="diag-site">{{ site.name }}</span>
+          <span class="ms-2" style="font-size:.7rem;color:#8b949e;">
+            {{ (r.run_type or '') | replace('_',' ') | upper }}
+            {% if r.started_at %}&nbsp;·&nbsp;
+              {% if r.started_at is string %}{{ r.started_at[:16]|replace('T',' ') }}
+              {% else %}{{ r.started_at.strftime('%Y-%m-%d %H:%M') }}{% endif %} UTC
+            {% endif %}
+          </span>
+        </div>
+        <div>
+          {% set errs = r.error_count or 0 %}
+          <span class="badge bg-fail">{{ errs }} error{{ 's' if errs != 1 }}</span>
+          {% set st = (r.status or '')|lower %}
+          {% if st == 'running' %}<span class="badge bg-run ms-1">⟳ running</span>{% endif %}
+        </div>
+      </div>
+      <div class="diag-meta mt-1">
+        Found: {{ r.projects_found or 0 }} &nbsp;·&nbsp;
+        New: {{ r.projects_new or 0 }} &nbsp;·&nbsp;
+        Updated: {{ r.projects_updated or 0 }} &nbsp;·&nbsp;
+        Skipped: {{ r.projects_skipped or 0 }} &nbsp;·&nbsp;
+        Docs: {{ r.documents_uploaded or 0 }}
+        {% set r_elapsed = r.get('elapsed_s') %}{% if r_elapsed %}&nbsp;·&nbsp; Duration: {{ '%dm %ds'|format((r_elapsed//60)|int, (r_elapsed%60)|int) }}{% endif %}
+      </div>
+      {% if sid in errors_by_site %}{% set e = errors_by_site[sid] %}
+      <div class="mt-2">
+        {% if e.step %}<span class="err-step">step: {{ e.step }}</span><br>{% endif %}
+        <div class="diag-msg">{{ e.message }}</div>
+        {% if e.traceback %}
+        <details style="margin-top:4px;">
+          <summary style="font-size:.65rem;color:#8b949e;cursor:pointer;">▶ traceback</summary>
+          <pre style="font-size:.62rem;color:#8b949e;background:#0d1117;padding:6px;border-radius:4px;overflow-x:auto;margin-top:4px;white-space:pre-wrap;">{{ e.traceback[:1200] }}{% if e.traceback|length > 1200 %}\n… (truncated){% endif %}</pre>
+        </details>
+        {% endif %}
+      </div>
+      {% endif %}
+      {% if sid in sentinel_data %}{% set s = sentinel_data[sid] %}
+        {% if s.passed == false %}
+        <div class="mt-1" style="font-size:.7rem;color:#d29922;">
+          ⚠ Sentinel FAIL
+          {% if s.covered is not none and s.expected %}— coverage {{ s.covered }}/{{ s.expected }}
+            ({{ ((s.covered/s.expected*100)|int) }}%)
+          {% endif %}
+          {% if s.missing_fields %}&nbsp;· Missing: {% for f in s.missing_fields %}<span class="missing-pill">{{ f }}</span>{% endfor %}{% endif %}
+        </div>
+        {% endif %}
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
 
-    {# ── Sentinel health ───────────────────────────────────────────────────── #}
+  <div class="row g-3">
+
+    {# ── Sentinel health — all states always listed ────────────────────────── #}
     <div class="col-12 col-xl-4">
       <div class="card p-3 h-100">
         <div class="sec-title mb-3">🔍 Sentinel Health (Most Recent Run)</div>
-        {% if sentinel_data %}
         <div class="table-responsive">
         <table class="table table-sm table-hover">
-          <thead><tr><th>State</th><th>Status</th><th>Coverage</th></tr></thead>
+          <thead><tr><th>State</th><th>Status</th><th>Coverage</th><th>Issue</th></tr></thead>
           <tbody>
-          {% for site in sites %}{% set sid = site.id %}{% if sid in sentinel_data %}
-          {% set s = sentinel_data[sid] %}
-          {% set cov = s.covered %}{% set exp = s.expected %}
-          {% set pct = ((cov / exp * 100)|int) if (cov is not none and exp and exp > 0) else none %}
-          <tr>
-            <td style="font-size:.82rem;">{{ site.name }}</td>
-            <td>
-              {% if s.passed == true %}<span class="badge bg-pass">✓ PASS</span>
-              {% elif s.passed == false %}<span class="badge bg-fail">✗ FAIL</span>
-              {% else %}<span class="badge bg-none">— N/A</span>{% endif %}
-            </td>
-            <td>
-              {% if pct is not none %}
-                <span class="me-1" style="font-size:.78rem;">{{ cov }}/{{ exp }}</span>
-                <div class="bar-wrap"><div class="bar-fill" style="width:{{ pct }}%;background:
-                  {% if pct >= 80 %}#3fb950{% elif pct >= 60 %}#d29922{% else %}#f85149{% endif %};"></div></div>
-                <span class="ms-1" style="font-size:.78rem;color:#8b949e;">{{ pct }}%</span>
-              {% else %}<span style="color:#8b949e;">—</span>{% endif %}
-            </td>
-          </tr>
-          {% endif %}{% endfor %}
+          {% for site in sites %}{% set sid = site.id %}
+          {% if sid in sentinel_data %}{% set s = sentinel_data[sid] %}
+            {% set cov = s.covered %}{% set exp = s.expected %}
+            {% set pct = ((cov / exp * 100)|int) if (cov is not none and exp and exp > 0) else none %}
+            <tr class="{% if s.passed == false %}row-fail{% elif s.passed == true %}{% endif %}">
+              <td style="font-size:.8rem;white-space:nowrap;">{{ site.name }}</td>
+              <td>
+                {% if s.passed == true %}<span class="badge bg-pass">✓ PASS</span>
+                {% elif s.passed == false %}<span class="badge bg-fail">✗ FAIL</span>
+                {% else %}<span class="badge bg-none">— N/A</span>{% endif %}
+              </td>
+              <td>
+                {% if pct is not none %}
+                  <div class="d-flex align-items-center gap-1">
+                    <span style="font-size:.72rem;">{{ cov }}/{{ exp }}</span>
+                    <div class="bar-wrap"><div class="bar-fill" style="width:{{ [pct,100]|min }}%;background:
+                      {% if pct >= 80 %}#3fb950{% elif pct >= 60 %}#d29922{% else %}#f85149{% endif %};"></div></div>
+                    <span style="font-size:.72rem;color:#8b949e;">{{ pct }}%</span>
+                  </div>
+                {% else %}<span style="color:#8b949e;font-size:.8rem;">—</span>{% endif %}
+              </td>
+              <td>
+                {% if s.missing_fields %}
+                  {% for f in s.missing_fields[:4] %}<span class="missing-pill">{{ f }}</span>{% endfor %}
+                  {% if s.missing_fields|length > 4 %}<span class="missing-pill">+{{ s.missing_fields|length - 4 }} more</span>{% endif %}
+                {% elif s.message %}
+                  <span class="sentinel-msg">{{ s.message[:60] }}{% if s.message|length > 60 %}…{% endif %}</span>
+                {% else %}<span style="color:#8b949e;font-size:.75rem;">—</span>{% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr style="opacity:.45;">
+              <td style="font-size:.8rem;white-space:nowrap;">{{ site.name }}</td>
+              <td><span class="badge bg-none">— not checked</span></td>
+              <td colspan="2" style="font-size:.75rem;color:#8b949e;">No sentinel log entry</td>
+            </tr>
+          {% endif %}
+          {% endfor %}
           </tbody>
         </table>
         </div>
-        {% else %}
-        <p style="color:#8b949e;font-size:.85rem;">No sentinel data for the most recent run.</p>
-        {% endif %}
       </div>
     </div>
 
@@ -441,35 +606,61 @@ _TEMPLATE = """<!DOCTYPE html>
         <div class="table-responsive">
         <table class="table table-sm table-hover">
           <thead>
-            <tr><th>State</th><th>Status</th><th>Found</th><th>New</th>
-                <th>Updated</th><th>Docs</th><th>Errors</th><th>Last Run</th></tr>
+            <tr>
+              <th>State</th><th>Status</th><th>Sentinel</th>
+              <th>Found</th><th>New</th><th>Upd</th><th>Skip</th><th>Docs</th>
+              <th>Errors / Reason</th><th>Duration</th><th>Last Run</th>
+            </tr>
           </thead>
           <tbody>
           {% for site in sites %}{% set sid = site.id %}
           {% if sid in latest_runs %}{% set r = latest_runs[sid] %}
           {% set st = (r.status or 'unknown')|lower %}
-          <tr>
-            <td style="font-size:.82rem;white-space:nowrap;">{{ site.name }}</td>
+          {% set errs = (r.error_count or 0) %}
+          {% set is_failed = (st == 'failed') %}
+          {% set has_errors = (errs > 0) %}
+          <tr class="{% if is_failed %}row-fail{% elif has_errors %}row-err{% elif st == 'running' %}row-warn{% endif %}">
+            <td style="font-size:.8rem;white-space:nowrap;font-weight:{% if has_errors or is_failed %}600{% else %}400{% endif %};">
+              {{ site.name }}
+            </td>
             <td>
-              {% if st == 'completed' %}<span class="badge bg-done">✓ done</span>
+              {% if is_failed %}<span class="badge bg-fail">✗ failed</span>
+              {% elif st == 'completed' and has_errors %}<span class="badge bg-warn">⚠ done</span>
+              {% elif st == 'completed' %}<span class="badge bg-done">✓ done</span>
               {% elif st == 'running' %}<span class="badge bg-run">⟳ running</span>
-              {% elif st == 'failed' %}<span class="badge bg-fail">✗ failed</span>
               {% else %}<span class="badge bg-none">{{ st }}</span>{% endif %}
             </td>
-            <td style="font-size:.82rem;">{{ r.projects_found if r.projects_found is not none else '—' }}</td>
-            <td class="text-success" style="font-size:.82rem;">{% if r.projects_new %}+{{ r.projects_new }}{% else %}—{% endif %}</td>
-            <td style="font-size:.82rem;color:#58a6ff;">{% if r.projects_updated %}~{{ r.projects_updated }}{% else %}—{% endif %}</td>
-            <td style="font-size:.82rem;color:#8b949e;">{{ r.documents_uploaded if r.documents_uploaded else '—' }}</td>
             <td>
-              {% set errs = (r.error_count or 0) %}
-              {% if errs > 0 %}
-                <span class="text-danger fw-bold" style="font-size:.82rem;">{{ errs }}</span>
-                {% if sid in errors_by_site %}
-                <div class="err-msg">{{ errors_by_site[sid][:90] }}{% if errors_by_site[sid]|length > 90 %}…{% endif %}</div>
-                {% endif %}
-              {% else %}<span style="color:#8b949e;font-size:.82rem;">0</span>{% endif %}
+              {% if sid in sentinel_data %}{% set s = sentinel_data[sid] %}
+                {% if s.passed == true %}<span class="badge bg-pass" title="Sentinel passed">✓</span>
+                {% elif s.passed == false %}
+                  {% set cov = s.covered %}{% set exp = s.expected %}
+                  {% set pct = ((cov / exp * 100)|int) if (cov is not none and exp and exp > 0) else none %}
+                  <span class="badge bg-fail" title="{{ s.message or 'Sentinel failed' }}">✗{% if pct is not none %} {{ pct }}%{% endif %}</span>
+                {% else %}<span class="badge bg-none" title="Sentinel result unknown">—</span>{% endif %}
+              {% else %}<span style="color:#484f58;font-size:.75rem;">—</span>{% endif %}
             </td>
-            <td style="font-size:.78rem;color:#8b949e;white-space:nowrap;">
+            <td style="font-size:.8rem;">{{ r.projects_found if r.projects_found is not none else '—' }}</td>
+            <td class="text-success" style="font-size:.8rem;">{% if r.projects_new %}+{{ r.projects_new }}{% else %}<span style="color:#484f58;">—</span>{% endif %}</td>
+            <td style="font-size:.8rem;color:#58a6ff;">{% if r.projects_updated %}~{{ r.projects_updated }}{% else %}<span style="color:#484f58;">—</span>{% endif %}</td>
+            <td style="font-size:.8rem;color:#8b949e;">{{ r.projects_skipped or '—' }}</td>
+            <td style="font-size:.8rem;color:#8b949e;">{{ r.documents_uploaded or '—' }}</td>
+            <td style="max-width:220px;">
+              {% if has_errors %}
+                <span class="text-danger fw-bold" style="font-size:.8rem;">{{ errs }} error{{ 's' if errs != 1 }}</span>
+                {% if sid in errors_by_site %}{% set e = errors_by_site[sid] %}
+                  {% if e.step %}<br><span class="err-step">{{ e.step }}</span>{% endif %}
+                  <div class="err-msg">{{ e.message[:120] }}{% if e.message|length > 120 %}…{% endif %}</div>
+                {% endif %}
+              {% else %}<span style="color:#484f58;font-size:.8rem;">—</span>{% endif %}
+            </td>
+            <td class="dur">
+              {% set r_elapsed = r.get('elapsed_s') %}
+              {% if r_elapsed is not none and r_elapsed is number %}
+                {{ '%dm %ds'|format((r_elapsed//60)|int, (r_elapsed%60)|int) }}
+              {% else %}—{% endif %}
+            </td>
+            <td style="font-size:.75rem;color:#8b949e;white-space:nowrap;">
               {% if r.started_at %}
                 {% if r.started_at is string %}{{ r.started_at[:16]|replace('T',' ') }}
                 {% else %}{{ r.started_at.strftime('%m-%d %H:%M') }}{% endif %}
@@ -477,9 +668,9 @@ _TEMPLATE = """<!DOCTYPE html>
             </td>
           </tr>
           {% else %}
-          <tr style="opacity:.4;">
-            <td style="font-size:.82rem;">{{ site.name }}</td>
-            <td colspan="7" style="font-size:.78rem;color:#8b949e;">No data yet</td>
+          <tr style="opacity:.35;">
+            <td style="font-size:.8rem;">{{ site.name }}</td>
+            <td colspan="10" style="font-size:.75rem;color:#8b949e;">No data yet</td>
           </tr>
           {% endif %}
           {% endfor %}

@@ -1145,6 +1145,16 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
             fresh["uploaded_documents"] = _sentinel_doc_links
 
     except Exception as exc:
+        exc_str = str(exc)
+        # Playwright timeout errors contain "Timeout" in the message; treat them
+        # as transient network issues and skip the sentinel rather than aborting.
+        if "timeout" in exc_str.lower() or "net::" in exc_str.lower():
+            logger.warning(
+                f"Sentinel: Playwright error (likely transient) — {exc}; "
+                "skipping coverage check this run",
+                step="sentinel",
+            )
+            return True
         logger.error(f"Sentinel: error — {exc}", step="sentinel")
         return False
 

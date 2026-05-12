@@ -33,7 +33,7 @@ from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.captcha_solver import captcha_to_text
-from core.crawler_base import generate_project_key, random_delay
+from core.crawler_base import generate_project_key, random_delay, safe_get
 from core.config import settings
 from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error
 from core.document_policy import select_document_for_download

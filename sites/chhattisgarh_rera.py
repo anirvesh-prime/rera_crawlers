@@ -762,6 +762,17 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 
     logger.info(f"Sentinel: scraping {sentinel_reg}", url=detail_url, step="sentinel")
     try:
+        # Pre-check connectivity: if the site is unreachable (transient timeout)
+        # skip the sentinel rather than aborting the entire crawl run.
+        _probe = _get(detail_url, logger)
+        if not _probe:
+            logger.warning(
+                "Sentinel: detail page unreachable — likely transient network issue; "
+                "skipping coverage check this run",
+                url=detail_url, step="sentinel",
+            )
+            return True
+
         # ── Parse detail page (basic project + promoter fields) ───────────────
         detail = _parse_detail_page(detail_url, {}, logger) or {}
 

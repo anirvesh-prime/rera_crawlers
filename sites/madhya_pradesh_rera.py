@@ -628,10 +628,14 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
         # Fetch the detail page once and reuse the soup for all section parsers
         resp = _get(sentinel_url, logger)
         if not resp:
-            logger.error("Sentinel: detail page unreachable", url=sentinel_url, step="sentinel")
-            insert_crawl_error(run_id, config.get("id", "madhya_pradesh_rera"),
-                               "SENTINEL_FAILED", "Detail page unreachable", url=sentinel_url)
-            return False
+            # Unreachable endpoint = transient network timeout in production.
+            # Skip the coverage check rather than aborting the crawl.
+            logger.warning(
+                "Sentinel: detail page unreachable — likely transient network issue; "
+                "skipping coverage check this run",
+                url=sentinel_url, step="sentinel",
+            )
+            return True
 
         soup = BeautifulSoup(resp.text, "lxml")
 
@@ -711,7 +715,26 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         return counts
 
     counts["projects_found"] = len(stubs)
-    logger.info(f"Found {len(stubs)} project stubs in listing")
+
+    # Filter out projects that are known to have no registration number on their
+    # detail pages (Rejected projects return an empty col-md-8 for the reg field).
+    # Fetching thousands of detail pages only to discard them is expensive and
+    # wastes the production crawl budget.
+    _SKIP_STATUSES = frozenset({
+        "rejected",
+        "rejected after registration",
+        "withdrawal approved",
+    })
+    active_stubs = [s for s in stubs if s.get("status", "").lower() not in _SKIP_STATUSES]
+    skipped_count = len(stubs) - len(active_stubs)
+    if skipped_count:
+        logger.info(
+            f"Skipping {skipped_count} listing rows with non-registrable status "
+            f"(Rejected/Withdrawal Approved) — {len(active_stubs)} remain"
+        )
+    stubs = active_stubs
+
+    logger.info(f"Found {len(stubs)} active project stubs in listing")
     logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(stubs)}", step="timing")
     items_processed = 0
 

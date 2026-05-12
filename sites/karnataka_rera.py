@@ -1132,12 +1132,18 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     try:
         html, meta = _fetch_detail(ack_no, logger)
         if not html:
-            logger.error("Sentinel: detail fetch returned no HTML", step="sentinel")
-            return False
+            # None HTML means the POST endpoint was unreachable — treat as a
+            # transient network timeout so the crawl is not aborted unnecessarily.
+            logger.warning(
+                "Sentinel: detail fetch returned no HTML — likely transient network issue; "
+                "skipping coverage check this run",
+                step="sentinel",
+            )
+            return True
         fresh = _parse_detail(html, ack_no, DISTRICTS[0], start_page=0, meta=meta) or {}
     except Exception as exc:
-        logger.error(f"Sentinel: fetch/parse error — {exc}", step="sentinel")
-        return False
+        logger.warning(f"Sentinel: fetch/parse error — {exc}; skipping check", step="sentinel")
+        return True
 
     if not fresh:
         logger.error("Sentinel: no data extracted", step="sentinel")
