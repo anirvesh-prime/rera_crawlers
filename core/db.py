@@ -704,34 +704,37 @@ def bulk_insert_logs(entries: list[dict]) -> None:
     cannot kill the crawler.  Uses a nested transaction (savepoint) so it
     is safe to call even when the persistent connection already has an open
     transaction (e.g. inside upsert_project).
+
+    Note: psycopg3 Connection has no executemany() — use an explicit cursor.
     """
     if not entries:
         return
     try:
         conn = get_connection()
         with conn.transaction():
-            conn.executemany(
-                """
-                INSERT INTO crawl_logs
-                    (run_id, site_id, level, message, project_key,
-                     registration_no, step, traceback, extra)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                [
-                    (
-                        e.get("run_id"),
-                        e.get("site_id"),
-                        e.get("level"),
-                        e.get("message"),
-                        e.get("project_key"),
-                        e.get("registration_no"),
-                        e.get("step"),
-                        e.get("traceback"),
-                        json.dumps(e.get("extra") or {}),
-                    )
-                    for e in entries
-                ],
-            )
+            with conn.cursor() as cur:
+                cur.executemany(
+                    """
+                    INSERT INTO crawl_logs
+                        (run_id, site_id, level, message, project_key,
+                         registration_no, step, traceback, extra)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    [
+                        (
+                            e.get("run_id"),
+                            e.get("site_id"),
+                            e.get("level"),
+                            e.get("message"),
+                            e.get("project_key"),
+                            e.get("registration_no"),
+                            e.get("step"),
+                            e.get("traceback"),
+                            json.dumps(e.get("extra") or {}),
+                        )
+                        for e in entries
+                    ],
+                )
     except Exception:
         pass  # never let logging break the crawler
 
@@ -742,6 +745,8 @@ def bulk_insert_document_events(entries: list[dict]) -> None:
     Uses a nested transaction so it is safe to call from inside an existing
     transaction (e.g. during upsert_project). Never raises — a DB hiccup must
     not kill the crawler.
+
+    Note: psycopg3 Connection has no executemany() — use an explicit cursor.
     """
     if not entries:
         return
@@ -749,24 +754,25 @@ def bulk_insert_document_events(entries: list[dict]) -> None:
     try:
         conn = get_connection()
         with conn.transaction():
-            conn.executemany(
-                """
-                INSERT INTO crawl_document_events
-                    (run_id, site_id, project_key, document_type,
-                     original_url, s3_key, file_size_bytes, status, extra)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                [
-                    (
-                        e.get("run_id"), e.get("site_id"),
-                        e.get("project_key"), e.get("document_type"),
-                        e.get("original_url"), e.get("s3_key"),
-                        e.get("file_size_bytes"), e.get("status"),
-                        json.dumps(e.get("extra") or {}),
-                    )
-                    for e in entries
-                ],
-            )
+            with conn.cursor() as cur:
+                cur.executemany(
+                    """
+                    INSERT INTO crawl_document_events
+                        (run_id, site_id, project_key, document_type,
+                         original_url, s3_key, file_size_bytes, status, extra)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    [
+                        (
+                            e.get("run_id"), e.get("site_id"),
+                            e.get("project_key"), e.get("document_type"),
+                            e.get("original_url"), e.get("s3_key"),
+                            e.get("file_size_bytes"), e.get("status"),
+                            json.dumps(e.get("extra") or {}),
+                        )
+                        for e in entries
+                    ],
+                )
     except Exception:
         pass  # never let logging break the crawler
 

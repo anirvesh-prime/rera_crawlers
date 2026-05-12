@@ -106,14 +106,17 @@ def _fetch_db():
             )
             recent_ids = [r["id"] for r in cur.fetchall()]
 
-            # 3. Sentinel log entries for that window
+            # 3. Sentinel log entries for that window.
+            #    crawl_runs.sentinel_passed is not reliably set by crawlers, so
+            #    derive the pass/fail outcome from the log entry's level:
+            #      ERROR  → sentinel failed
+            #      INFO/WARNING → sentinel passed (with possible field warnings)
             sentinel_data: dict = {}
             if recent_ids:
                 cur.execute(
                     """
-                    SELECT cl.site_id, cl.extra, cl.message, cr.sentinel_passed
+                    SELECT cl.site_id, cl.level, cl.extra, cl.message
                     FROM crawl_logs cl
-                    JOIN crawl_runs cr ON cl.run_id = cr.id
                     WHERE cl.step = 'sentinel' AND cl.run_id = ANY(%s)
                     ORDER BY cl.logged_at DESC
                     """,
@@ -124,14 +127,26 @@ def _fetch_db():
                     if sid in sentinel_data:
                         continue
                     extra = row.get("extra") or {}
-                    sentinel_data[sid] = {
-                        "passed": row["sentinel_passed"],
-                        "covered": extra.get("covered"),
-                        "expected": extra.get("expected"),
-                        "missing_fields": extra.get("missing_fields") or [],
-                        "coverage_ratio": extra.get("coverage_ratio"),
-                        "message": row.get("message") or "",
-                    }
+                    level = (row.get("level") or "").upper()
+                    # First ERROR entry → failed; any INFO/WARNING → passed
+                    if level == "ERROR":
+                        sentinel_data[sid] = {
+                            "passed": False,
+                            "covered": extra.get("covered"),
+                            "expected": extra.get("expected"),
+                            "missing_fields": extra.get("missing_fields") or [],
+                            "coverage_ratio": extra.get("coverage_ratio"),
+                            "message": _clean_msg(row.get("message") or ""),
+                        }
+                    else:
+                        sentinel_data[sid] = {
+                            "passed": True,
+                            "covered": extra.get("covered"),
+                            "expected": extra.get("expected"),
+                            "missing_fields": extra.get("missing_fields") or [],
+                            "coverage_ratio": extra.get("coverage_ratio"),
+                            "message": _clean_msg(row.get("message") or ""),
+                        }
             # Backfill sentinel_passed from crawl_runs for sites with no log entry
             for sid, run in latest_runs.items():
                 if sid not in sentinel_data and run.get("sentinel_passed") is not None:

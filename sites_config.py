@@ -276,7 +276,7 @@ SITES: list[dict] = [
         "listing_url": "https://rera.cgstate.gov.in/Approved_project_List.aspx",
         "crawler_module": "sites.chhattisgarh_rera",
         "crawler_type": "static",
-        "enabled": True,
+        "enabled": False,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
         "sentinel_registration_no": "PCGRERA200618000247",
@@ -409,7 +409,7 @@ SITES: list[dict] = [
         "detail_base_url": "https://www.rera.mp.gov.in/view_project_details.php",
         "crawler_module": "sites.madhya_pradesh_rera",
         "crawler_type": "static",
-        "enabled": True,
+        "enabled": False,
         "rate_limit_delay": (1, 3),
         "max_retries": 3,
         # P-BPL-24-4939 (RESIDENTIAL CUM COMMERCIAL PROJECT AT ALAM NAGAR - BHOPAL)
