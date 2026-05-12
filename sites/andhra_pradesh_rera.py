@@ -43,6 +43,7 @@ from core.project_normalizer import (
     build_document_filename,
     build_document_urls,
     document_result_entry,
+    existing_uploaded_document_entry,
     get_machine_context,
     merge_data_sections,
     normalize_project_payload,
@@ -1096,6 +1097,18 @@ def _handle_document(
     """
     doc_id      = doc.get("doc_id")
     direct_url  = doc.get("link") or doc.get("source_url") or doc.get("url")
+    existing_doc = {**doc, "source_url": direct_url} if direct_url else dict(doc)
+    reused, existing_s3_key = existing_uploaded_document_entry(project_key, existing_doc)
+    if reused:
+        logger.info(
+            "Document reused",
+            doc_type=doc.get("type") or doc.get("label") or "document",
+            s3_key=existing_s3_key,
+            step="documents",
+        )
+        if direct_url:
+            logger.log_document(doc.get("type") or doc.get("label") or "document", direct_url, "reused", s3_key=existing_s3_key)
+        return reused
 
     resp = None
     source_url: str = ""

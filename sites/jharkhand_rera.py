@@ -30,6 +30,7 @@ from core.models import ProjectRecord
 from core.project_normalizer import (
     build_document_filename,
     build_document_urls,
+    existing_uploaded_document_entry,
     get_machine_context,
     merge_data_sections,
     normalize_project_payload,
@@ -730,6 +731,15 @@ def _process_documents(
         if not url or url.endswith("/FirstLevel/ViewDocument"):
             # No real document ID — record as-is
             enriched.append(selected)
+            continue
+
+        reused, existing_s3_key = existing_uploaded_document_entry(
+            project_key, {**selected, "link": url}
+        )
+        if reused:
+            logger.info(f"Document reused: {doc_type!r}", s3_key=existing_s3_key, step="documents")
+            logger.log_document(doc_type, url, "reused", s3_key=existing_s3_key)
+            enriched.append(reused)
             continue
 
         filename = build_document_filename(selected)

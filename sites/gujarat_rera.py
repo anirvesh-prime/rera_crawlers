@@ -42,7 +42,7 @@ from core.project_normalizer import (
 from core.s3 import compute_md5, upload_document, get_s3_url
 from core.config import settings
 
-BASE_URL       = "gujrera.gujarat.gov.in"
+BASE_URL       = "https://gujrera.gujarat.gov.in"
 VDMS_BASE      = f"{BASE_URL}/vdms/download"
 VDMS_VIEW_DOC  = f"{BASE_URL}/vdms/view-doc"
 DOMAIN         = "gujrera.gujarat.gov.in"

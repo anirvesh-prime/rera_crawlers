@@ -35,6 +35,7 @@ from core.models import ProjectRecord
 from core.project_normalizer import (
     build_document_filename,
     build_document_urls,
+    existing_uploaded_document_entry,
     get_machine_context,
     normalize_project_payload,
 )
@@ -1210,6 +1211,15 @@ def _process_documents(
         doc_type = selected.get("type", "document")
         if not url or not url.lower().endswith(".pdf"):
             enriched.append(selected)
+            continue
+
+        reused, existing_s3_key = existing_uploaded_document_entry(
+            project_key, {**selected, "link": url}
+        )
+        if reused:
+            logger.info(f"Document reused: {doc_type!r}", s3_key=existing_s3_key, step="documents")
+            logger.log_document(doc_type, url, "reused", s3_key=existing_s3_key)
+            enriched.append(reused)
             continue
 
         filename = build_document_filename(selected)

@@ -27,3 +27,12 @@ python run_crawlers.py --no-item-limit --site kerala_rera
 ```
 
 `--item-limit` overrides `CRAWL_ITEM_LIMIT` for the current run. `--no-item-limit` clears any configured item cap for that run.
+
+Speed up a run by reducing the built-in random throttling delays:
+
+```bash
+python run_crawlers.py --delay-scale 0.5
+python run_crawlers.py --delay-scale 0 --site kerala_rera
+```
+
+`--delay-scale 1.0` keeps current behavior. Lower values reduce per-project sleeps across all crawlers for that run.

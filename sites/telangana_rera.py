@@ -327,15 +327,59 @@ def _goto_next_page(page: Any) -> bool:
     Returns True if a next-page link was found and clicked.
     """
     try:
-        # Common ASP.NET pager patterns: a link with text '>' or 'Next'
-        next_link = page.query_selector("a:text-matches('^>$|^Next$|^»$', 'i')")
+        current_page = _get_current_page(page)
+        next_link = page.query_selector(
+            "#btnNext:not([disabled]), "
+            "button[name='Command'][value='Next']:not([disabled]), "
+            "input[name='Command'][value='Next']:not([disabled]), "
+            "a:text-matches('^>$|^Next$|^»$', 'i')"
+        )
         if not next_link:
             return False
         next_link.click()
-        page.wait_for_load_state("networkidle", timeout=30_000)
-        return True
+        try:
+            page.wait_for_load_state("domcontentloaded", timeout=30_000)
+        except Exception:
+            pass
+        try:
+            page.wait_for_load_state("networkidle", timeout=30_000)
+        except Exception:
+            pass
+        try:
+            page.wait_for_function(
+                """(prev) => {
+                    const el = document.querySelector('#CurrentPage');
+                    if (!el) return false;
+                    const current = parseInt(el.value || el.textContent || '0', 10);
+                    return Number.isFinite(current) && current > prev;
+                }""",
+                current_page,
+                timeout=30_000,
+            )
+        except Exception:
+            pass
+        return _get_current_page(page) > current_page
     except Exception:
         return False
+
+
+def _get_current_page(page: Any) -> int:
+    """Return the current Telangana search results page number."""
+    try:
+        html = page.content()
+        soup = BeautifulSoup(html, "lxml")
+        current = soup.find(attrs={"id": "CurrentPage"})
+        if current:
+            raw = current.get("value") or current.get_text(strip=True)
+            if raw and raw.isdigit():
+                return int(raw)
+        text = soup.get_text(" ", strip=True)
+        m = re.search(r"\bPage\s*:?\s*(\d+)\s+of\s+\d+\b", text, re.I)
+        if m:
+            return int(m.group(1))
+    except Exception:
+        pass
+    return 1
 
 
 def _get_total_pages(page: Any) -> int:
@@ -343,6 +387,11 @@ def _get_total_pages(page: Any) -> int:
     try:
         html = page.content()
         soup = BeautifulSoup(html, "lxml")
+        total = soup.find(attrs={"id": "TotalPages"})
+        if total:
+            raw = total.get("value") or total.get_text(strip=True)
+            if raw and raw.isdigit():
+                return int(raw)
         pager = soup.find(lambda t: t.name in ("tr", "td", "div")
                           and re.search(r"\bPage\b.*\bof\b", t.get_text(), re.I))
         if pager:

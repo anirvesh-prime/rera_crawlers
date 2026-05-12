@@ -132,13 +132,27 @@ def _listing_patches_kerala(module, sample_url: str, reg_no: str, sample: dict) 
 
 
 def _listing_patches_rajasthan(module, sample_url: str, reg_no: str, sample: dict) -> list:
-    """Patch the API listing to return just the sample project (by enc_id from URL)."""
-    qs     = parse_qs(urlparse(sample_url).query)
-    enc_id = (qs.get("id") or qs.get("Id") or [""])[0]
+    """Patch the Playwright listing scraper to return just the sample project row,
+    and bypass the Angular search navigation by going directly to the sample URL."""
+    row = {
+        "reg_no":         reg_no,
+        "project_name":   sample.get("project_name", ""),
+        "promoter_name":  sample.get("promoter_name", ""),
+        "project_type":   sample.get("project_type", ""),
+        "district":       (sample.get("project_location_raw") or {}).get("district", ""),
+        "application_no": sample.get("acknowledgement_no", ""),
+        "approved_on":    sample.get("approved_on_date", ""),
+        "status":         sample.get("status_of_the_project", ""),
+    }
+
+    def _fake_navigate(page, rn, logger):
+        page.goto(sample_url, timeout=60_000)
+        page.wait_for_load_state("networkidle", timeout=30_000)
+        return sample_url
+
     return [
-        patch.object(module, "_fetch_all_projects", return_value=[
-            {"Id": "1", "EncryptedProjectId": enc_id, "REGISTRATIONNO": reg_no}
-        ]),
+        patch.object(module, "_scrape_project_list_playwright", return_value=[row]),
+        patch.object(module, "_navigate_to_project_detail", side_effect=_fake_navigate),
     ]
 
 

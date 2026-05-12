@@ -33,6 +33,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from core.config import settings
+from core.crawler_base import close_shared_http_clients
 from core.db import insert_crawl_run, update_crawl_run, insert_crawl_error
 from core.logger import CrawlerLogger
 from sites_config import select_sites
@@ -44,6 +45,13 @@ def _positive_int(value: str) -> int:
     parsed = int(value)
     if parsed <= 0:
         raise argparse.ArgumentTypeError("item limit must be greater than 0")
+    return parsed
+
+
+def _non_negative_float(value: str) -> float:
+    parsed = float(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("delay scale must be non-negative")
     return parsed
 
 
@@ -78,6 +86,15 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         default=False,
         help="Ignore CRAWL_ITEM_LIMIT from env/config and run without an item limit for this run.",
+    )
+    parser.add_argument(
+        "--delay-scale",
+        type=_non_negative_float,
+        default=None,
+        help=(
+            "Scale per-crawler random throttling delays for this run. "
+            "Use 1.0 for current behavior, 0.5 for roughly half the wait, or 0 to disable it."
+        ),
     )
     parser.add_argument(
         "--sequential",
@@ -126,6 +143,7 @@ def run_site(site_cfg: dict, mode: str) -> dict:
                            raw_data={"traceback": trace})
         logger.error(f"Crawl failed: {exc}")
     finally:
+        close_shared_http_clients()
         logger.log_run_key_summary(limit=10)
         logger.close()
 
@@ -168,6 +186,11 @@ def ensure_playwright_browsers(sites: list[dict]) -> None:
 
 def apply_runtime_overrides(args: argparse.Namespace) -> int:
     """Apply CLI overrides to runtime settings and child worker environment."""
+    delay_scale = getattr(args, "delay_scale", None)
+    if delay_scale is not None:
+        os.environ["CRAWL_DELAY_SCALE"] = str(delay_scale)
+        settings.CRAWL_DELAY_SCALE = delay_scale
+
     if args.no_item_limit:
         os.environ.pop("CRAWL_ITEM_LIMIT", None)
         settings.CRAWL_ITEM_LIMIT = 0

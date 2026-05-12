@@ -52,7 +52,7 @@ SITES: list[dict] = [
         "state_code": "OD",
         "state": "odisha",
         "domain": "rera.odisha.gov.in",
-        "listing_url": "c",
+        "listing_url": "https://rera.odisha.gov.in/projects/project-list",
         "crawler_module": "sites.odisha_rera",
         "crawler_type": "playwright",
         "enabled": True,
@@ -73,7 +73,9 @@ SITES: list[dict] = [
         "enabled": True,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
-        "sentinel_registration_no": "",
+        # PROPOSED RESIDENTIAL LAYOUT (PRPY133450) — matches
+        # state_projects_sample/puducherry.json.
+        "sentinel_registration_no": "PRPY133450",
         "config_id": 4,
     },
     {
@@ -104,7 +106,9 @@ SITES: list[dict] = [
         "enabled": True,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
-        "sentinel_registration_no": "",
+        # GARDEN HOMES (PBRERA-LDH44-PR0597) — matches
+        # state_projects_sample/punjab.json.
+        "sentinel_registration_no": "PBRERA-LDH44-PR0597",
         "config_id": 6,
     },
     {
@@ -119,7 +123,9 @@ SITES: list[dict] = [
         "enabled": True,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
-        "sentinel_registration_no": "",
+        # VISION CITY 3 (PP1190002502346 / cert_id=61699) — matches
+        # state_projects_sample/maharashtra.json.
+        "sentinel_registration_no": "PP1190002502346",
         # dry-run comparison: start at page 4700 to hit recent, well-populated projects
         # (page 0 has cert_id=1, an old sparse project with no bank/SPOC/inventory data)
         "dry_run_compare_start_page": 4700,

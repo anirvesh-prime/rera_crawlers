@@ -17,6 +17,8 @@ from core.logger import CrawlerLogger
 
 
 _UINT64_MASK = (1 << 64) - 1
+_HTTP_CLIENTS_LOCK = threading.Lock()
+_HTTP_CLIENTS: dict[tuple[bool | int, ...], httpx.Client] = {}
 
 
 def _project_hash_seed() -> bytes:
@@ -37,7 +39,20 @@ def generate_project_key(registration_number: str) -> str:
 
 
 def random_delay(min_s: float = 1.0, max_s: float = 3.0) -> None:
-    time.sleep(random.uniform(min_s, max_s))
+    scaled_min, scaled_max = get_scaled_delay_range(min_s, max_s)
+    if scaled_max <= 0:
+        return
+    time.sleep(random.uniform(scaled_min, scaled_max))
+
+
+def get_scaled_delay_range(min_s: float, max_s: float) -> tuple[float, float]:
+    """Apply the global crawl delay scale while preserving a valid range."""
+    scale = max(settings.CRAWL_DELAY_SCALE, 0.0)
+    scaled_min = max(min_s * scale, 0.0)
+    scaled_max = max(max_s * scale, 0.0)
+    if scaled_min > scaled_max:
+        scaled_min, scaled_max = scaled_max, scaled_min
+    return scaled_min, scaled_max
 
 
 def get_legacy_ssl_context() -> ssl.SSLContext:
@@ -63,6 +78,41 @@ def get_random_ua() -> str:
     return random.choice(settings.user_agents)
 
 
+def _verify_cache_key(verify: bool | ssl.SSLContext) -> bool | int:
+    if isinstance(verify, ssl.SSLContext):
+        return id(verify)
+    return verify
+
+
+def _get_shared_http_client(*, verify: bool | ssl.SSLContext) -> httpx.Client:
+    key = (_verify_cache_key(verify),)
+    with _HTTP_CLIENTS_LOCK:
+        client = _HTTP_CLIENTS.get(key)
+        if client is not None and not client.is_closed:
+            return client
+
+        client = httpx.Client(
+            verify=verify,
+            limits=httpx.Limits(
+                max_connections=settings.HTTP_MAX_CONNECTIONS,
+                max_keepalive_connections=settings.HTTP_MAX_KEEPALIVE_CONNECTIONS,
+            ),
+        )
+        _HTTP_CLIENTS[key] = client
+        return client
+
+
+def close_shared_http_clients() -> None:
+    with _HTTP_CLIENTS_LOCK:
+        clients = list(_HTTP_CLIENTS.values())
+        _HTTP_CLIENTS.clear()
+    for client in clients:
+        try:
+            client.close()
+        except Exception:
+            pass
+
+
 def safe_get(
     url: str,
     retries: int = 3,
@@ -81,10 +131,16 @@ def safe_get(
     for attempt in range(1, retries + 1):
         try:
             if client is not None:
-                resp = client.get(url, headers=_headers, params=params)
+                resp = client.get(url, headers=_headers, params=params, timeout=timeout)
             else:
-                with httpx.Client(timeout=timeout, follow_redirects=True, verify=verify) as c:
-                    resp = c.get(url, headers=_headers, params=params)
+                pooled_client = _get_shared_http_client(verify=verify)
+                resp = pooled_client.get(
+                    url,
+                    headers=_headers,
+                    params=params,
+                    timeout=timeout,
+                    follow_redirects=True,
+                )
             resp.raise_for_status()
             return resp
         except httpx.HTTPStatusError as e:
@@ -126,10 +182,23 @@ def safe_post(
     for attempt in range(1, retries + 1):
         try:
             if client is not None:
-                resp = client.post(url, data=data, json=json_data, headers=_headers)
+                resp = client.post(
+                    url,
+                    data=data,
+                    json=json_data,
+                    headers=_headers,
+                    timeout=timeout,
+                )
             else:
-                with httpx.Client(timeout=timeout, follow_redirects=True, verify=verify) as c:
-                    resp = c.post(url, data=data, json=json_data, headers=_headers)
+                pooled_client = _get_shared_http_client(verify=verify)
+                resp = pooled_client.post(
+                    url,
+                    data=data,
+                    json=json_data,
+                    headers=_headers,
+                    timeout=timeout,
+                    follow_redirects=True,
+                )
             resp.raise_for_status()
             return resp
         except httpx.HTTPStatusError as e:
@@ -193,24 +262,20 @@ def download_response(
                     follow_redirects=follow_redirects,
                 )
             else:
-                with httpx.Client(
+                pooled_client = _get_shared_http_client(verify=verify)
+                response = _stream_download_response(
+                    client=pooled_client,
+                    method=method,
+                    url=url,
+                    headers=_headers,
+                    params=params,
+                    data=data,
+                    json_data=json_data,
                     timeout=timeout,
+                    total_timeout=total_timeout,
+                    max_bytes=max_bytes,
                     follow_redirects=follow_redirects,
-                    verify=verify,
-                ) as pooled_client:
-                    response = _stream_download_response(
-                        client=pooled_client,
-                        method=method,
-                        url=url,
-                        headers=_headers,
-                        params=params,
-                        data=data,
-                        json_data=json_data,
-                        timeout=timeout,
-                        total_timeout=total_timeout,
-                        max_bytes=max_bytes,
-                        follow_redirects=follow_redirects,
-                    )
+                )
             return response
         except httpx.HTTPStatusError as exc:
             last_exc = exc

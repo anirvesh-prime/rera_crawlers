@@ -550,6 +550,26 @@ def document_result_entry(
     return clean_json(entry) or entry
 
 
+def existing_uploaded_document_entry(
+    project_key: str,
+    doc: dict[str, Any],
+) -> tuple[dict[str, Any] | None, str | None]:
+    doc_type = clean_string(doc.get("type") or doc.get("label"))
+    if not project_key or not doc_type:
+        return None, None
+
+    from core.db import get_document_by_type
+    from core.s3 import get_s3_url
+
+    existing = get_document_by_type(project_key, doc_type)
+    s3_key = clean_string(existing.get("s3_key")) if existing else None
+    if not existing or not s3_key:
+        return None, None
+
+    s3_url = get_s3_url(s3_key)
+    return document_result_entry(doc, s3_url, existing.get("file_name")), s3_key
+
+
 def merge_data_sections(*sections: Any) -> dict[str, Any] | None:
     merged: dict[str, Any] = {}
     for section in sections:

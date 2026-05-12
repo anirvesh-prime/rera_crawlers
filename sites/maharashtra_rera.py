@@ -47,7 +47,7 @@ from core.logger import CrawlerLogger
 from core.models import ProjectRecord
 from core.project_normalizer import (
     build_document_filename, build_document_urls, document_identity_url,
-    document_result_entry, get_machine_context, merge_data_sections,
+    document_result_entry, existing_uploaded_document_entry, get_machine_context, merge_data_sections,
     normalize_project_payload,
 )
 from core.s3 import compute_md5, get_s3_url, upload_document
@@ -854,6 +854,13 @@ def _handle_mh_document(
 
     # Use a stable identity URL encoding the DMS ref (no auth needed at DB level)
     identity_url = f"{_MH_DMS_DOWNLOAD_URL}?documentId={dms_ref}"
+    reused, existing_s3_key = existing_uploaded_document_entry(
+        project_key, {"type": label, "url": identity_url}
+    )
+    if reused:
+        logger.info(f"Document reused [{label}]", s3_key=existing_s3_key, step="docs")
+        logger.log_document(label, identity_url, "reused", s3_key=existing_s3_key)
+        return reused
     fname = build_document_filename({"url": identity_url, "label": label})
 
     headers = {

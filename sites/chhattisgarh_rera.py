@@ -960,7 +960,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     config["state"], doc_for_policy, doc_name_counts, domain=DOMAIN,
                 )
                 if selected:
-                    uploaded = _handle_document(db_dict["key"], doc, run_id, site_id, logger)
+                    doc_to_upload = {**doc, "type": selected.get("type", doc["type"])}
+                    uploaded = _handle_document(db_dict["key"], doc_to_upload, run_id, site_id, logger)
                     if uploaded:
                         uploaded_documents.append(uploaded)
                         counts["documents_uploaded"] += 1

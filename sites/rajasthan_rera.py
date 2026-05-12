@@ -38,6 +38,7 @@ from core.project_normalizer import (
     build_document_urls,
     document_identity_url,
     document_result_entry,
+    existing_uploaded_document_entry,
     get_machine_context,
     merge_data_sections,
     normalize_project_payload,
@@ -1112,6 +1113,11 @@ def _handle_document(project_key: str, doc: dict, run_id: int,
     label = doc.get("label", "document")
     if not url:
         return None
+    reused, existing_s3_key = existing_uploaded_document_entry(project_key, {**doc, "url": url, "type": label})
+    if reused:
+        logger.info("Document reused", label=label, s3_key=existing_s3_key, step="documents")
+        logger.log_document(label, url, "reused", s3_key=existing_s3_key)
+        return reused
     filename = build_document_filename(doc)
     try:
         resp = download_response(url, logger=logger, timeout=15, client=client)

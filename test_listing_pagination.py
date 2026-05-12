@@ -69,15 +69,17 @@ def _assam(c):
 
 def _bihar(c):
     # Bihar listing is HTTP-reachable; Playwright is needed for detail popup URLs only
-    from sites.bihar_rera import LISTING_URL, _parse_page_rows, _has_next_page
-    resp = safe_get(LISTING_URL, retries=2, logger=LOG)
-    if not resp:
-        return _record("fail", c, "listing fetch", note="HTTP error")
-    soup = BeautifulSoup(resp.text, "lxml")
-    rows = _parse_page_rows(soup)
+    from sites.bihar_rera import _collect_listing_pages
+    pages = _collect_listing_pages(LOG, max_pages=2, capture_detail_urls=False)
+    if not pages:
+        return _record("fail", c, "listing fetch", note="Playwright pagination failed")
+    rows = pages[0]["rows"]
     _record("ok" if rows else "fail", c, "listing page 1", len(rows))
-    has_next = _has_next_page(soup, 1)
+    has_next = len(pages) > 1
     _record("ok" if has_next else "warn", c, "pagination (has page 2)", note="" if has_next else "no next-page link")
+    if has_next:
+        rows2 = pages[1]["rows"]
+        _record("ok" if rows2 else "fail", c, "listing page 2", len(rows2))
 
 def _chhattisgarh(c):
     from sites.chhattisgarh_rera import LISTING_URL, _parse_listing_map_data, _get
@@ -286,17 +288,25 @@ def _rajasthan(c):
         _record("fail", c, "Playwright listing", note=str(exc)[:120])
 
 def _tamil_nadu(c):
-    from sites.tamil_nadu_rera import _parse_year_listing, BASE_URL
-    for label, url in [
-        ("building listing", f"{BASE_URL}/registered-building/tn"),
-        ("layout listing",   f"{BASE_URL}/registered-layout/tn"),
+    from sites.tamil_nadu_rera import _get_year_listing_urls, _parse_year_listing
+    year_urls = _get_year_listing_urls(LOG)
+    for label, urls in [
+        ("building listing", [u for u in year_urls if "/Building/" in u]),
+        ("layout listing", [u for u in year_urls if "/Normal_Layout/" in u or "/Regularisation_Layout/" in u]),
     ]:
-        rows = _parse_year_listing(url, LOG)
+        if not urls:
+            _record("fail", c, label, note="no year-listing URL discovered")
+            continue
+        rows = []
+        for url in urls:
+            rows = _parse_year_listing(url, LOG)
+            if rows:
+                break
         _record("ok" if rows else "fail", c, label, len(rows))
 
 def _telangana(c):
     # Telangana: Playwright + CAPTCHA solver → submit search → parse listing rows
-    from sites.telangana_rera import SEARCH_URL, _NAV_TIMEOUT_MS, _submit_search, _parse_listing_rows, _goto_next_page
+    from sites.telangana_rera import SEARCH_URL, _NAV_TIMEOUT_MS, _submit_search, _parse_listing_rows, _goto_next_page, _get_total_pages
     from playwright.sync_api import sync_playwright
     try:
         with sync_playwright() as pw:
@@ -314,7 +324,10 @@ def _telangana(c):
                                note="eprocure OCR cannot decode Telangana captcha style")
             rows1 = _parse_listing_rows(page.content())
             _record("ok" if rows1 else "fail", c, "listing page 1", len(rows1))
-            if _goto_next_page(page):
+            total_pages = _get_total_pages(page)
+            if total_pages <= 1:
+                _record("ok", c, "pagination", note="single-page result set on this run")
+            elif _goto_next_page(page):
                 rows2 = _parse_listing_rows(page.content())
                 _record("ok" if rows2 else "fail", c, "listing page 2", len(rows2))
             else:
@@ -339,20 +352,24 @@ def _uttarakhand(c):
     _record("ok" if cards else "fail", c, "listing page (Playwright)", len(cards))
 
 def _tripura(c):
-    from sites.tripura_rera import LISTING_URL, _parse_listing_rows, _has_next_page, _get
-    resp = _get(LISTING_URL, LOG, params={"startFrom": "0"})
-    if not resp:
-        return _record("fail", c, "listing fetch startFrom=0", note="HTTP error")
-    soup = BeautifulSoup(resp.text, "lxml")
-    rows = _parse_listing_rows(soup)
-    _record("ok" if rows else "fail", c, "listing startFrom=0", len(rows))
-    has_next = _has_next_page(soup, 0)
-    _record("ok" if has_next else "warn", c, "pagination (has next page)", note="" if has_next else "no next-page link")
-    if has_next:
-        page_size = len(rows) if rows else 10
-        resp2 = _get(LISTING_URL, LOG, params={"startFrom": str(page_size)})
-        rows2 = _parse_listing_rows(BeautifulSoup(resp2.text, "lxml")) if resp2 else []
-        _record("ok" if rows2 else "fail", c, f"listing startFrom={page_size}", len(rows2))
+    from sites.tripura_rera import HOME_URL, SEARCH_PAGE_SIZE, SEARCH_URL, _make_client, _parse_search_rows, _post
+    with _make_client() as client:
+        try:
+            client.get(HOME_URL)
+        except Exception:
+            pass
+        resp = _post(SEARCH_URL, {"searchTxt": "", "startFrom": "0"}, LOG, client)
+        if not resp:
+            return _record("fail", c, "listing fetch startFrom=0", note="HTTP error")
+        soup = BeautifulSoup(resp.text, "lxml")
+        rows, total_records = _parse_search_rows(soup)
+        _record("ok" if rows else "fail", c, "listing startFrom=0", len(rows))
+        has_next = total_records > len(rows)
+        _record("ok" if has_next else "warn", c, "pagination (has next page)", note="" if has_next else "single-page result set")
+        if has_next:
+            resp2 = _post(SEARCH_URL, {"searchTxt": "", "startFrom": str(SEARCH_PAGE_SIZE)}, LOG, client)
+            rows2, _ = _parse_search_rows(BeautifulSoup(resp2.text, "lxml")) if resp2 else ([], 0)
+            _record("ok" if rows2 else "fail", c, f"listing startFrom={SEARCH_PAGE_SIZE}", len(rows2))
 
 def _west_bengal(c):
     # WB RERA blocks httpx (Connection reset); the real crawler uses Playwright + DataTables API.

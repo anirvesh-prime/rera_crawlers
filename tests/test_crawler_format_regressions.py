@@ -149,137 +149,37 @@ class CrawlerFormatRegressionTests(unittest.TestCase):
         self.assertEqual(parsed["latitude"], "12.770558")
         self.assertEqual(parsed["longitude"], "80.186468")
 
-    def test_gujarat_extract_fields_maps_dev_sections(self):
-        basic = {
-            "projRegNo": "PR/GJ/TEST/0001",
-            "projectName": "Silent Scape",
-            "projectType": "Residential/Group Housing",
-            "promoterName": "J EKLERA REALTY LLP",
-            "projectAckNo": "ACK-1",
-            "promoterType": "LIMITED LIABILITY PARTNERSHIP FIRM",
-            "promoterEmailId": "silentresidency@gmail.com",
-            "promoterMobileNo": "9510620036",
-            "promoterId": 19955,
-        }
-        detail = {
-            "projectDetail": {
-                "projectStatus": "New",
-                "projectAddress": "TPS 58",
-                "projectAddress2": "VALAK",
-                "distName": "Surat",
-                "subDistName": "Choryasi",
-                "stateName": "Gujarat",
-                "pinCode": "395013",
-                "moje": "Valak",
-                "totAreaOfLand": None,
-                "totAreaOfLandLayout": 5472,
-                "totLandAreaForProjectUnderReg": 5472,
-                "totCarpetAreaForProjectUnderReg": 18213.44,
-                "totCoverdArea": 1817.74,
-                "projectDesc": "Residential scheme",
-                "startDate": "2026-01-12T00:00:00.000+0530",
-                "completionDate": "2031-12-31T00:00:00.000+0530",
-                "totalProjectCost": None,
-                "estimatedCost": None,
-            },
-            "dev": [
-                {
-                    "externalDev": {
-                        "roadSysetmDevBy": "Self Development",
-                        "waterSupplyBy": "Self Development",
-                    },
-                    "internalDev": [
-                        {
-                            "typeOfInventory": "Residential",
-                            "noOfInventory": 280,
-                            "carpetArea": 85.14,
-                            "areaOfExclusive": 8.74,
-                            "areaOfExclusiveOpenTerrace": 0.0,
-                        }
-                    ],
-                }
-            ],
-        }
-        qpr = {
-            "totalProjectCost": "850899091.00",
-            "internalDevDetails": [{"noOfInventory": 280}],
-        }
-        promoter_profile = {
-            "address": "Shop No. G/1",
-            "address2": "Magob",
-            "districtName": "Surat",
-            "stateName": "GUJARAT",
-            "pinCode": "395010",
-            "companyRegistrationNumber": "ABA3614",
-            "panNo": "AARFJ9663M",
-            "authorizedSignatoryList": [
-                {
-                    "authsignFirstName": "MANISHBHAI",
-                    "authsignMiddleName": "NAGJIBHAI",
-                    "authsignLastName": "SAVASAVIYA",
-                    "authsignEmailId": "silentresidency@gmail.com",
-                    "authsignMobileNumber": "9510620036",
-                    "authsignPhotUId": "PHOTO-UID",
-                }
-            ],
-            "assosiateList": [
-                {
-                    "associateFirstName": "JAYANTIBHAI",
-                    "associateMiddleName": "VIRJIBHAI",
-                    "associateLastName": "BABARIYA",
-                    "assocaiteEmailId": "ekleragroup@gmail.com",
-                    "assocaiteMobileNumber": "9714050300",
-                }
-            ],
-        }
+    # NOTE: test_gujarat_extract_fields_maps_dev_sections was removed because
+    # _extract_fields(basic, detail, qpr, promoter_profile) no longer exists —
+    # Gujarat was rewritten from JSON-API scraping to Playwright HTML scraping
+    # (_extract_html_fields, _parse_overview_card, etc.).
 
-        parsed = gujarat_rera._extract_fields(basic, detail, qpr, promoter_profile)
-
-        self.assertEqual(parsed["land_area"], 5472.0)
-        self.assertEqual(parsed["construction_area"], 18213.44)
-        self.assertEqual(parsed["number_of_residential_units"], 280)
-        self.assertEqual(parsed["project_cost_detail"]["total_project_cost"], "850899091.00")
-        self.assertEqual(parsed["building_details"][0]["flat_type"], "Residential")
-        self.assertEqual(parsed["building_details"][0]["no_of_units"], "280")
-        self.assertEqual(parsed["provided_faciltiy"][0]["facility"], "Road System")
-        self.assertEqual(parsed["authorised_signatory_details"][0]["name"], "MANISHBHAI NAGJIBHAI SAVASAVIYA")
-        self.assertEqual(
-            parsed["authorised_signatory_details"][0]["photo"],
-            f"{gujarat_rera.VDMS_BASE}/PHOTO-UID",
-        )
-        self.assertEqual(parsed["co_promoter_details"][0]["name"], "JAYANTIBHAI VIRJIBHAI BABARIYA")
-        self.assertTrue(parsed["status_update"][0]["updated"])
-        self.assertIn("building_details", parsed["status_update"][0])
-        self.assertIn("amenity_detail", parsed["status_update"][0])
-
-    def test_gujarat_handle_document_falls_back_to_curl_bytes(self):
-        with mock.patch.object(gujarat_rera, "safe_get", return_value=None):
+    def test_gujarat_handle_document_falls_back_to_download_response(self):
+        # _curl_bytes was removed; the fallback is now download_response().
+        fake_resp = mock.MagicMock()
+        fake_resp.content = b"%PDF-1.4 test bytes enough" * 10
+        with mock.patch.object(gujarat_rera, "download_response", return_value=fake_resp):
             with mock.patch.object(
-                gujarat_rera,
-                "_curl_bytes",
-                return_value=b"%PDF-1.4 test bytes enough" * 10,
+                gujarat_rera, "upload_document", return_value="abc/file.pdf"
             ):
                 with mock.patch.object(
-                    gujarat_rera, "upload_document", return_value="abc/file.pdf"
+                    gujarat_rera,
+                    "get_s3_url",
+                    return_value="https://docs.primetenders.com/abc/file.pdf",
                 ):
-                    with mock.patch.object(
-                        gujarat_rera,
-                        "get_s3_url",
-                        return_value="https://docs.primetenders.com/abc/file.pdf",
-                    ):
-                        with mock.patch.object(gujarat_rera, "upsert_document"):
-                            result = gujarat_rera._handle_document(
-                                "abc",
-                                {
-                                    "label": "Rera Registration Certificate 1",
-                                    "type": "Rera Registration Certificate 1",
-                                    "url": "https://example.com/doc.pdf",
-                                },
-                                1,
-                                "gujarat_rera",
-                                mock.MagicMock(),
-                                mock.MagicMock(),
-                            )
+                    with mock.patch.object(gujarat_rera, "upsert_document"):
+                        result = gujarat_rera._handle_document(
+                            "abc",
+                            {
+                                "label": "Rera Registration Certificate 1",
+                                "type": "Rera Registration Certificate 1",
+                                "url": "https://example.com/doc.pdf",
+                            },
+                            1,
+                            "gujarat_rera",
+                            mock.MagicMock(),
+                            mock.MagicMock(),
+                        )
 
         self.assertEqual(result["s3_link"], "https://docs.primetenders.com/abc/file.pdf")
 

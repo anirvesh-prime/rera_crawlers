@@ -3,11 +3,13 @@ Bihar RERA Crawler — rera.bihar.gov.in/RegisteredPP.aspx
 Type: httpx listing + Playwright detail (popup capture)
 
 Strategy:
-- The listing page is a server-side ASP.NET GridView (~10 total projects; small state).
+- The listing page is a server-side ASP.NET GridView paginated via ASP.NET postbacks.
+- Listing pagination is driven with Playwright because direct httpx page-turn POSTs
+  intermittently fail with server-side ViewState / cluster mismatches.
 - Each project name is a link that triggers __doPostBack('...', 'PrintIndicator$N'),
   which opens a popup window at Filanprint.aspx?id=RERAP...
-- Direct httpx postbacks fail (ViewState MAC cluster mismatch); Playwright is used to
-  click each link and capture the popup URL via context.expect_page().
+- Playwright clicks each listing row and captures the popup URL via
+  context.expect_page().
 - The Filanprint detail page is a plain GET request, parsed with httpx + BeautifulSoup.
 - Fields from listing: project_name, project_registration_no, promoter_name,
     project_location_raw (address), submitted_date.
@@ -35,6 +37,7 @@ from core.logger import CrawlerLogger
 from core.models import ProjectRecord
 from core.project_normalizer import (
     build_document_filename,
+    existing_uploaded_document_entry,
     get_machine_context,
     merge_data_sections,
     normalize_project_payload,
@@ -52,13 +55,18 @@ _GRID_TARGET = "ctl00$ContentPlaceHolder1$GV_Building"
 
 # ── Playwright: collect Filanprint popup URLs ──────────────────────────────────
 
-def _collect_detail_urls(logger: CrawlerLogger, max_items: int | None = None) -> list[str | None]:
+def _collect_listing_pages(
+    logger: CrawlerLogger,
+    max_items: int | None = None,
+    max_pages: int | None = None,
+    capture_detail_urls: bool = True,
+) -> list[dict]:
     """
-    Use Playwright to click every project link across ALL listing pages.
-    Each click opens a popup window at Filanprint.aspx?id=RERAP...-N
+    Use Playwright to traverse listing pages and capture aligned detail popup URLs.
 
     Strategy:
     - Maintain a single persistent listing page and navigate it forward page by page.
+    - Parse each listing page's row data from the rendered HTML.
     - Within each listing page, click projects sequentially without reloading:
       the __doPostBack postback that opens the popup reloads the listing in-place
       while preserving the current page number in ViewState, so subsequent project
@@ -66,13 +74,15 @@ def _collect_detail_urls(logger: CrawlerLogger, max_items: int | None = None) ->
     - To advance to the next listing page, find the Page$N pager link (or the
       "..." overflow link) and click it.
 
-    Returns a flat list of Filanprint URLs aligned with listing row order across
-    ALL pages.  None means the popup was not captured for that row.
+    Returns a list of page payloads:
+      {"page": <page_no>, "rows": [...], "detail_urls": [...]}
+    where detail_urls is positionally aligned with rows.
 
     max_items: if set, stop after collecting this many URLs (for CRAWL_ITEM_LIMIT).
     """
     links_sel = f"table#{_GRID_ID} tr td:first-child a"
-    detail_urls: list[str | None] = []
+    pages: list[dict] = []
+    items_seen = 0
 
     try:
         with sync_playwright() as pw:
@@ -83,6 +93,21 @@ def _collect_detail_urls(logger: CrawlerLogger, max_items: int | None = None) ->
             current_listing_pg = 1
 
             while True:
+                soup = BeautifulSoup(listing_page.content(), "lxml")
+                rows = _parse_page_rows(soup)
+                if not rows:
+                    logger.info(
+                        f"Playwright: listing page {current_listing_pg} has no parsed rows — stopping",
+                        step="detail_collect",
+                    )
+                    break
+
+                if max_items:
+                    remaining = max_items - items_seen
+                    rows = rows[:remaining]
+                if not rows:
+                    break
+
                 # ── Identify project links on this listing page ───────────────
                 link_texts: list[str] = listing_page.eval_on_selector_all(
                     links_sel, "els => els.map(e => e.innerText.trim())"
@@ -93,6 +118,7 @@ def _collect_detail_urls(logger: CrawlerLogger, max_items: int | None = None) ->
                     and t not in ("...", "Next", "Prev", "Previous", "First", "Last")
                 ]
 
+                project_indices = project_indices[:len(rows)]
                 if not project_indices:
                     logger.info(
                         f"Playwright: listing page {current_listing_pg} has no project links — stopping",
@@ -100,53 +126,73 @@ def _collect_detail_urls(logger: CrawlerLogger, max_items: int | None = None) ->
                     )
                     break
 
-                # Cap at remaining item budget for this page
-                if max_items:
-                    remaining = max_items - len(detail_urls)
-                    project_indices = project_indices[:remaining]
-
-                logger.info(
-                    f"Playwright: listing page {current_listing_pg},"
-                    f" collecting {len(project_indices)} detail URLs",
-                    step="detail_collect",
-                )
-
-                # ── Click each project; listing page stays alive between clicks ─
-                for rank, idx in enumerate(project_indices):
-                    name = link_texts[idx]
-                    try:
-                        with ctx.expect_page(timeout=15_000) as popup_info:
-                            listing_page.eval_on_selector_all(
-                                links_sel, f"els => els[{idx}].click()"
-                            )
-                        popup = popup_info.value
-                        popup.wait_for_load_state("domcontentloaded", timeout=15_000)
-                        url = popup.url
-                        popup.close()
-                        # Postback already reloaded the listing page in-place;
-                        # wait for it to settle before the next click.
-                        listing_page.wait_for_load_state("domcontentloaded", timeout=15_000)
-
-                        if "Filanprint.aspx" in url:
-                            detail_urls.append(url)
-                            logger.info(
-                                f"  [pg{current_listing_pg}:{rank}] {name!r} → {url}",
-                                step="detail_collect",
-                            )
-                        else:
-                            detail_urls.append(None)
-                            logger.warning(
-                                f"  [pg{current_listing_pg}:{rank}] {name!r}: unexpected URL {url}",
-                                step="detail_collect",
-                            )
-                    except Exception as e:
-                        detail_urls.append(None)
+                detail_urls: list[str | None]
+                if capture_detail_urls:
+                    logger.info(
+                        f"Playwright: listing page {current_listing_pg},"
+                        f" collecting {len(project_indices)} detail URLs for {len(rows)} rows",
+                        step="detail_collect",
+                    )
+                    if len(project_indices) != len(rows):
                         logger.warning(
-                            f"  [pg{current_listing_pg}:{rank}] {name!r}: popup failed — {e}",
+                            f"Playwright: row/link mismatch on page {current_listing_pg}:"
+                            f" rows={len(rows)} links={len(project_indices)}",
                             step="detail_collect",
                         )
 
-                if max_items and len(detail_urls) >= max_items:
+                    # ── Click each project; listing page stays alive between clicks ─
+                    detail_urls = []
+                    for rank, idx in enumerate(project_indices):
+                        name = link_texts[idx]
+                        try:
+                            with ctx.expect_page(timeout=15_000) as popup_info:
+                                listing_page.eval_on_selector_all(
+                                    links_sel, f"els => els[{idx}].click()"
+                                )
+                            popup = popup_info.value
+                            popup.wait_for_load_state("domcontentloaded", timeout=15_000)
+                            url = popup.url
+                            popup.close()
+                            # Postback already reloaded the listing page in-place;
+                            # wait for it to settle before the next click.
+                            listing_page.wait_for_load_state("domcontentloaded", timeout=15_000)
+
+                            if "Filanprint.aspx" in url:
+                                detail_urls.append(url)
+                                logger.info(
+                                    f"  [pg{current_listing_pg}:{rank}] {name!r} → {url}",
+                                    step="detail_collect",
+                                )
+                            else:
+                                detail_urls.append(None)
+                                logger.warning(
+                                    f"  [pg{current_listing_pg}:{rank}] {name!r}: unexpected URL {url}",
+                                    step="detail_collect",
+                                )
+                        except Exception as e:
+                            detail_urls.append(None)
+                            logger.warning(
+                                f"  [pg{current_listing_pg}:{rank}] {name!r}: popup failed — {e}",
+                                step="detail_collect",
+                            )
+
+                    if len(detail_urls) < len(rows):
+                        detail_urls.extend([None] * (len(rows) - len(detail_urls)))
+                else:
+                    logger.info(
+                        f"Playwright: listing page {current_listing_pg}, parsed {len(rows)} rows",
+                        step="detail_collect",
+                    )
+                    detail_urls = [None] * len(rows)
+
+                pages.append({
+                    "page": current_listing_pg,
+                    "rows": rows,
+                    "detail_urls": detail_urls,
+                })
+                items_seen += len(rows)
+
+                if (max_items and items_seen >= max_items) or (max_pages and current_listing_pg >= max_pages):
                     break
 
                 # ── Navigate to the next listing page ─────────────────────────
@@ -187,7 +233,13 @@ def _collect_detail_urls(logger: CrawlerLogger, max_items: int | None = None) ->
             browser.close()
     except Exception as e:
         logger.error(f"Playwright detail-url collection failed: {e}", step="detail_collect")
-    return detail_urls
+    return pages
+
+
+def _collect_detail_urls(logger: CrawlerLogger, max_items: int | None = None) -> list[str | None]:
+    """Backward-compatible wrapper that flattens Playwright listing page payloads."""
+    pages = _collect_listing_pages(logger, max_items=max_items)
+    return [url for payload in pages for url in payload["detail_urls"]]
 
 
 # ── Detail page parser ────────────────────────────────────────────────────────
@@ -726,6 +778,15 @@ def _process_documents(
             enriched.append(selected)
             continue
 
+        reused, existing_s3_key = existing_uploaded_document_entry(
+            project_key, {**selected, "link": url}
+        )
+        if reused:
+            logger.info(f"Document reused: {doc_type!r}", s3_key=existing_s3_key, step="documents")
+            logger.log_document(doc_type, url, "reused", s3_key=existing_s3_key)
+            enriched.append(reused)
+            continue
+
         filename = build_document_filename(selected)
 
         try:
@@ -800,12 +861,13 @@ def _has_next_page(soup: BeautifulSoup, current_page: int) -> bool:
 def _parse_page_rows(soup: BeautifulSoup) -> list[dict]:
     """Extract project rows from a single listing page (skips header and pager rows).
 
-    Uses CSS selector for direct tbody children only, so the nested <table>
-    inside the ASP.NET GridView pager row is never traversed.
+    Handles both source variants seen on Bihar RERA:
+    - direct <table> > <tr> rows in raw HTTP responses
+    - <table> > <tbody> > <tr> rows in browser-rendered DOM snapshots
+    The selector remains scoped to direct children so the nested pager table is
+    never traversed.
     """
-    # Only select <tr> that are direct children of the GridView <table> (no <tbody>).
-    # This prevents picking up nested pager table rows.
-    rows = soup.select(f"table#{_GRID_ID} > tr")
+    rows = soup.select(f"table#{_GRID_ID} > tr, table#{_GRID_ID} > tbody > tr")
     if not rows:
         return []
     projects = []
@@ -859,43 +921,47 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         return counters
     logger.warning(f"Step timing [sentinel]: {time.monotonic()-t0:.2f}s", step="timing")
 
-    # ── Step 1: Collect Filanprint popup URLs via Playwright ─────────────────
+    max_pages    = settings.MAX_PAGES
+    delay_range  = config.get("rate_limit_delay", (2, 4))
+
+    # ── Step 1: Collect paginated listing rows + popup URLs via Playwright ──
     t0 = time.monotonic()
     logger.info(
-        f"Collecting detail page URLs via Playwright (item_limit={item_limit or 'unlimited'})",
+        f"Collecting paginated listing data via Playwright"
+        f" (item_limit={item_limit or 'unlimited'}, max_pages={max_pages or 'unlimited'})",
         step="detail_collect",
     )
-    detail_url_list = _collect_detail_urls(logger, max_items=item_limit or None)
+    listing_pages = _collect_listing_pages(
+        logger,
+        max_items=item_limit or None,
+        max_pages=max_pages or None,
+    )
     logger.info(
-        f"Collected {sum(1 for u in detail_url_list if u)} detail URLs ({len(detail_url_list)} total)",
+        f"Collected {sum(len(p['rows']) for p in listing_pages)} listing rows across"
+        f" {len(listing_pages)} page(s);"
+        f" {sum(1 for p in listing_pages for u in p['detail_urls'] if u)} detail URLs captured",
         step="detail_collect",
     )
-
-    # ── Step 2: Fetch listing HTML via httpx ─────────────────────────────────
-    logger.info("Fetching listing page 1", step="listing")
-    resp = safe_get(LISTING_URL, retries=config.get("max_retries", 3), logger=logger, verify=False)
-    if not resp:
-        logger.error("Failed to fetch listing page", step="listing")
-        insert_crawl_error(run_id, config["id"], "HTTP_ERROR", "listing page unreachable", LISTING_URL)
+    if not listing_pages:
+        logger.error("Failed to collect any listing pages", step="listing")
+        insert_crawl_error(run_id, config["id"], "HTTP_ERROR", "listing pagination failed", LISTING_URL)
         counters["error_count"] += 1
         return counters
 
-    max_pages    = settings.MAX_PAGES
-    delay_range  = config.get("rate_limit_delay", (2, 4))
-    current_page = 1
-    soup         = BeautifulSoup(resp.text, "lxml")
     stop_all     = False
-    logger.warning(f"Step timing [search]: {time.monotonic()-t0:.2f}s  rows={len(_parse_page_rows(soup))}", step="timing")
-    # Global offset: tracks how many listing rows have been seen across all pages.
-    # detail_url_list is a flat list of all detail URLs in listing order; within each
-    # listing page the per-page row_idx restarts at 0, so we add this offset to
-    # convert it to a global index into detail_url_list.
-    global_row_offset = 0
+    logger.warning(
+        f"Step timing [search]: {time.monotonic()-t0:.2f}s"
+        f"  pages={len(listing_pages)}"
+        f"  rows={sum(len(p['rows']) for p in listing_pages)}",
+        step="timing",
+    )
 
-    while True:
+    for payload in listing_pages:
         if stop_all:
             break
-        rows = _parse_page_rows(soup)
+        current_page = payload["page"]
+        rows = payload["rows"]
+        detail_urls = payload["detail_urls"]
         counters["projects_found"] += len(rows)
         logger.info(f"Page {current_page}: {len(rows)} projects", step="listing")
 
@@ -911,9 +977,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
             key = generate_project_key(reg_no)
             detail_url: str = ""
-            global_idx = global_row_offset + row_idx
-            if global_idx < len(detail_url_list) and detail_url_list[global_idx]:
-                detail_url = detail_url_list[global_idx]
+            if row_idx < len(detail_urls) and detail_urls[row_idx]:
+                detail_url = detail_urls[row_idx]
 
             # ── daily_light: skip projects already in the DB ──────────────────
             if mode == "daily_light" and get_project_by_key(key):
@@ -1036,24 +1101,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 logger.clear_project()
 
             random_delay(*delay_range)
-
-        # ── Advance global offset and move to next listing page ──────────────
-        global_row_offset += len(rows)
-
-        if max_pages and current_page >= max_pages:
-            logger.info(f"Reached max_pages={max_pages}, stopping", step="listing")
-            break
-        if not _has_next_page(soup, current_page):
-            logger.info("No more pages", step="listing")
-            break
-        current_page += 1
-        form_fields = _extract_form_fields(soup)
-        soup = _fetch_page(current_page, form_fields, logger)
-        if soup is None:
-            logger.error(f"Failed to fetch page {current_page}", step="listing")
-            insert_crawl_error(run_id, config["id"], "HTTP_ERROR", f"page {current_page} failed", url=LISTING_URL)
-            break
-        random_delay(*delay_range)
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Bihar RERA complete: {counters}", step="done")

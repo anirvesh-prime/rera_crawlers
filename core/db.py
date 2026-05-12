@@ -529,6 +529,21 @@ def get_project_by_key(key: str) -> dict | None:
         return conn.execute("SELECT * FROM rera_projects WHERE key = %s", (key,)).fetchone()
 
 
+def get_document_by_type(project_key: str, document_type: str) -> dict | None:
+    with get_connection() as conn:
+        return conn.execute(
+            """
+            SELECT *
+            FROM rera_project_documents
+            WHERE project_key = %s
+              AND lower(document_type) = lower(%s)
+            ORDER BY uploaded_at DESC NULLS LAST, id DESC
+            LIMIT 1
+            """,
+            (project_key, document_type),
+        ).fetchone()
+
+
 def upsert_project(data: dict[str, Any]) -> str:
     """
     Insert or update a project using production DataComparator logic:
