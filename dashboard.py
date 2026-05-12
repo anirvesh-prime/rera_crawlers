@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -39,6 +40,17 @@ _SITE_IDS = {s["id"] for s in SITES}
 _LOG_DIR = Path(os.getenv("LOG_DIR", "logs"))
 
 app = Flask(__name__)
+
+
+# ── Message helpers ───────────────────────────────────────────────────────────
+
+# Logger prepends "[site_id] [step] [reg=X] [key=X]" to every message.
+# We strip those bracket-prefixes so the dashboard shows the clean reason.
+_PREFIX_RE = re.compile(r"^(?:\[[^\]]*\]\s*)+")
+
+def _clean_msg(msg: str) -> str:
+    """Strip leading [tag] prefixes added by CrawlerLogger from a log message."""
+    return _PREFIX_RE.sub("", msg).strip() if msg else msg
 
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
@@ -144,10 +156,38 @@ def _fetch_db():
                 for row in cur.fetchall():
                     sid = row["site_id"]
                     errors_by_site[sid] = {
-                        "message": row["message"] or "",
+                        "message": _clean_msg(row["message"] or ""),
                         "step": row.get("step") or "",
                         "extra": row.get("extra") or {},
                         "traceback": row.get("traceback") or "",
+                    }
+
+            # 4b. Fallback: for sites whose error_count > 0 but have no crawl_logs
+            #     ERROR row (e.g. process crashed before the buffer could flush),
+            #     pull the detail from crawl_errors — which is committed immediately.
+            need_error = [
+                sid for sid, r in latest_runs.items()
+                if (r.get("error_count") or 0) > 0 and sid not in errors_by_site
+            ]
+            if need_error and recent_ids:
+                cur.execute(
+                    """
+                    SELECT DISTINCT ON (site_id)
+                        site_id, error_message, error_type, raw_data
+                    FROM crawl_errors
+                    WHERE site_id = ANY(%s) AND run_id = ANY(%s)
+                    ORDER BY site_id, occurred_at DESC
+                    """,
+                    (need_error, recent_ids),
+                )
+                for row in cur.fetchall():
+                    sid = row["site_id"]
+                    raw = row.get("raw_data") or {}
+                    errors_by_site[sid] = {
+                        "message": row.get("error_message") or "",
+                        "step": row.get("error_type") or "",
+                        "extra": {},
+                        "traceback": raw.get("traceback") or "",
                     }
 
             # 5. Compute elapsed_s for each run from started_at / finished_at;
@@ -287,7 +327,7 @@ def _fetch_logs():
                 if entry.get("level") == "ERROR" and sid not in errors_by_site:
                     err_extra = entry.get("extra") or {}
                     errors_by_site[sid] = {
-                        "message": entry.get("message", ""),
+                        "message": _clean_msg(entry.get("message", "")),
                         "step": entry.get("step") or "",
                         "extra": err_extra,
                         "traceback": entry.get("traceback") or "",

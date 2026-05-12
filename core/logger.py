@@ -67,7 +67,9 @@ class DbLogHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         self._buffer.append(self._make_entry(record))
-        if len(self._buffer) >= _FLUSH_SIZE:
+        # Flush immediately for ERROR+ so that failure details are always
+        # committed to the DB even when the process crashes shortly after.
+        if len(self._buffer) >= _FLUSH_SIZE or record.levelno >= logging.ERROR:
             self.flush()
 
     def flush(self) -> None:

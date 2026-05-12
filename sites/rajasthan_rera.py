@@ -853,15 +853,35 @@ def _fetch_viewproject_html(page, logger: CrawlerLogger) -> str | None:
     # Wait for Angular to finish rendering the detail divs
     page.wait_for_timeout(3_000)
 
-    # Use JS to find the ViewProject href — element.href is already fully encoded
+    # Use JS to find the ViewProject href — element.href is already fully encoded.
+    # When multiple "Updated project" links exist (one per periodic update), pick
+    # the one whose surrounding text has the latest "as of DD/MM/YYYY" date.
     viewproject_url: str | None = page.evaluate("""() => {
         const links = Array.from(document.querySelectorAll('a[href*="ViewProject"]'));
-        // Prefer link whose surrounding text mentions "Updated"; fall back to any
-        const updated = links.find(a => {
+
+        // Collect all "Updated project" links and parse their "as of" date.
+        const DATE_RE = /as\\s+of\\s+(\\d{1,2})[\\/-](\\d{1,2})[\\/-](\\d{4})/i;
+        let bestLink = null;
+        let bestVal  = -1;
+
+        for (const a of links) {
             const p = a.closest('div.details');
-            return p && p.textContent.includes('Updated project');
-        });
-        const chosen = updated || links[0];
+            if (!p || !p.textContent.includes('Updated project')) continue;
+            const m = DATE_RE.exec(p.textContent);
+            if (m) {
+                // Build a numeric YYYYMMDD so we can compare without Date parsing.
+                const val = parseInt(m[3]) * 10000
+                          + parseInt(m[2]) * 100
+                          + parseInt(m[1]);
+                if (val > bestVal) { bestVal = val; bestLink = a; }
+            } else if (!bestLink) {
+                // No date found — keep as a fallback candidate.
+                bestLink = a;
+            }
+        }
+
+        // If no "Updated project" links at all, fall back to the first ViewProject link.
+        const chosen = bestLink || links[0];
         return chosen ? chosen.href : null;
     }""")
 

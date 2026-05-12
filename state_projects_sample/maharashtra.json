@@ -1,19 +1,24 @@
 {
   "key": "562150798505701966",
-  "project_registration_no": "PP1190002502346",
-  "url": "https://maharerait.maharashtra.gov.in/public/project/view/61699",
   "state": "MAHARASHTRA",
+  "iw_processed": false,
+  "config_id": 7,
+  "rera_housing_found": false,
+  "is_live": false,
   "domain": "maharera.maharashtra.gov.in",
-  "project_name": "VISION CITY 3",
-  "project_type": "Plotted",
-  "promoter_name": "VISION INFRA",
-  "status_of_the_project": "Active",
-  "acknowledgement_no": "ACK16122505429",
-  "project_pin_code": "441204",
-  "project_city": "Nagpur",
-  "project_state": "MAHARASHTRA",
-  "crawl_machine_ip": "127.0.0.1",
+  "checked_updates": false,
   "machine_name": "Anirveshs-MacBook-Air.local",
+  "is_duplicate": false,
+  "url": "https://maharerait.maharashtra.gov.in/public/project/view/61699",
+  "is_updated": false,
+  "last_modified": "2026-02-13 00:00:00+00:00",
+  "crawl_machine_ip": "127.0.0.1",
+  "project_registration_no": "PP1190002502346",
+  "project_type": "Plotted",
+  "project_name": "VISION CITY 3",
+  "estimated_finish_date": "31/12/2030",
+  "approved_on_date": "13/02/2026",
+  "status_of_the_project": "Active",
   "project_location_raw": {
     "street_name": "UMRER ROAD",
     "locality": "MOUZA UMARGAON",
@@ -25,6 +30,13 @@
     "longitude": 79.17896805402802,
     "latitude": 21.07312106246724
   },
+  "project_city": "Nagpur",
+  "project_pin_code": "441204",
+  "promoter_name": "VISION INFRA",
+  "promoters_details": {
+    "name": "VISION INFRA",
+    "type_of_firm": "Partnership"
+  },
   "promoter_address_raw": {
     "house_no_building_name": "SHOP NO F/7",
     "building_name": "SHIVDARSHAN APARTMENT NO 1",
@@ -32,107 +44,28 @@
     "locality": "DIGHORI",
     "landmark": "SHIVDARSHAN APARTMENT",
     "state": "MAHARASHTRA",
+    "district": "Nagpur",
     "taluk": "Nagpur (Urban)",
     "village": "Nagpur (M Corp.)",
-    "district": "Nagpur",
     "pin_code": "440034"
   },
-  "promoter_contact_details": {
-    "phone": "9822234954",
-    "email": "sakharkar.girish@gmail.com"
+  "data": {
+    "state_promo": "MAHARASHTRA",
+    "district_promo": "Nagpur",
+    "pin_code_promo": 440034,
+    "land_area_unit": "sq mt",
+    "project_id": "61699"
+  },
+  "land_area": 10864.97,
+  "land_area_details": {
+    "land_area": 10864.97,
+    "land_area_unit": "sq mt"
   },
   "bank_details": {
     "bank_name": "ICICI BANK LIMITED",
     "IFSC": "ICIC0007398",
     "address": "ICICI Bank Ltd., NMC House 3285, Kirti Nagar, Narsala Road, Nagpur, Narsala.440034, Maharashtra"
   },
-  "project_cost_detail": {
-    "estimated_construction_cost": 85352219.0
-  },
-  "uploaded_documents": [
-    {
-      "type": "Withdrawal Update Form 1",
-      "filename": "FORM 1 Architect Cert.pdf"
-    },
-    {
-      "type": "Withdrawal Update Form 2",
-      "filename": "FORM 2.pdf"
-    },
-    {
-      "type": "Legal Title report",
-      "filename": "LEGAL_REPORT.pdf"
-    },
-    {
-      "type": "Land Ownership Document",
-      "filename": "Sale deed_11zon.pdf"
-    },
-    {
-      "type": "Declaration Form B",
-      "filename": "Affidavit Form B.pdf"
-    },
-    {
-      "type": "Others",
-      "filename": "SATBARA.pdf"
-    },
-    {
-      "type": "Others",
-      "filename": "DISCLOSURE_INTEREST_PARTNERS.pdf"
-    },
-    {
-      "type": "Others",
-      "filename": "Partnershipdeed_11zon.pdf"
-    },
-    {
-      "type": "Others",
-      "filename": "NMRDA_EMAIL_VERIFICATION.pdf"
-    },
-    {
-      "type": "Building Plan Approval",
-      "filename": "UMARGAON 102-5 FINAL CERTIFICATE.pdf"
-    },
-    {
-      "type": "NA Order for Plotted Development",
-      "filename": "NA_ORDER.pdf"
-    },
-    {
-      "type": "Annexure-A as per order 50/2024",
-      "filename": "ANNEXURE A COMMENCE DECLARATION.pdf"
-    },
-    {
-      "type": "Layout Approval",
-      "filename": "MAP.pdf"
-    },
-    {
-      "type": "Others",
-      "filename": "FORM 2 ENGG.pdf"
-    },
-    {
-      "type": "Others",
-      "filename": "CERSAI_For_Asset_Based.pdf"
-    },
-    {
-      "type": "Others",
-      "filename": "CERSAI_For_Debtor_Based.pdf"
-    },
-    {
-      "type": "Others",
-      "filename": "Undertaking about Cersai Report .pdf"
-    },
-    {
-      "type": "Others",
-      "filename": "Clarification_letter_11zon.pdf"
-    }
-  ],
-  "authorised_signatory_details": [
-    {
-      "name": "GIRISH YADAORAO SAKHARKAR",
-      "role": "PARTNER"
-    },
-    {
-      "name": "GIRISH YADAORAO SAKHARKAR",
-      "role": "PARTNER"
-    }
-  ],
   "co_promoter_details": [
     {
       "name": "GIRISH YADAORAO SAKHARKAR",
@@ -155,62 +88,117 @@
       "role": "Partner"
     }
   ],
-  "professional_information": [
+  "project_state": "MAHARASHTRA",
+  "uploaded_documents": [
     {
-      "name": "PAWAN RAVIPRASAD GUPTA",
-      "role": "Professional",
-      "email": "pawanrgupta@gmail.com",
-      "phone": "9923432949",
-      "address": "SADAR Nagpur"
+      "type": "Withdrawal Update Form 1",
+      "filename": "FORM 1 Architect Cert.pdf",
+      "dms_ref": "bda2f887-44e5-4860-b844-6168977ec4f3;0.1"
     },
     {
-      "name": "KAUSTUBH BHUMRAO NIMBARTE",
-      "role": "Professional",
-      "email": "arkaustubhnimbarte@gmail.com",
-      "phone": "9175177562",
-      "address": "GOPAL NAGAR Nagpur"
+      "type": "Withdrawal Update Form 2",
+      "filename": "FORM 2.pdf",
+      "dms_ref": "5c8a4a1c-5de2-4a5f-a1de-ac44d62913ca;0.1"
     },
     {
-      "name": "HUZAIFA S SANAWADWALA",
-      "role": "Professional",
-      "email": "ca.huzaifa@gmail.com",
-      "phone": "9881109925",
-      "address": "ITWARI Nagpur"
+      "type": "Withdrawal Update Form 3",
+      "filename": "FORM 3.pdf",
+      "dms_ref": "1e895245-f0d1-40e9-af78-d7dd9c09739b;0.1"
     },
     {
-      "name": "MURTAZA ILYAS HUSSAIN",
-      "role": "Professional",
-      "email": "eoffice.mhussain@gmail.com",
-      "phone": "8275789294",
-      "address": "Itwari Nagpur"
+      "type": "UMARGAON 102-5 FINAL CERTIFICATE.pdf",
+      "filename": "UMARGAON 102-5 FINAL CERTIFICATE.pdf",
+      "dms_ref": "20ffb371-543f-47e5-8871-8c1c2cb87e45;0.1"
+    },
+    {
+      "type": "NA_ORDER.pdf",
+      "filename": "NA_ORDER.pdf",
+      "dms_ref": "1fb99491-3a93-4275-8d80-f59fac922e08;0.1"
+    },
+    {
+      "type": "ANNEXURE A COMMENCE DECLARATION.pdf",
+      "filename": "ANNEXURE A COMMENCE DECLARATION.pdf",
+      "dms_ref": "b521f4ec-39ec-4a48-8059-3f443048e9fd;0.1"
+    },
+    {
+      "type": "MAP.pdf",
+      "filename": "MAP.pdf",
+      "dms_ref": "3cf48982-cfae-4dcb-b839-c2e179c124ee;0.1"
+    },
+    {
+      "type": "FORM 1 Architect Cert.pdf",
+      "filename": "FORM 1 Architect Cert.pdf",
+      "dms_ref": "dd553393-4bf7-4459-89d9-8ee2be38d83f;0.1"
+    },
+    {
+      "type": "FORM 2 ENGG.pdf",
+      "filename": "FORM 2 ENGG.pdf",
+      "dms_ref": "fcc3ed02-1fae-4205-a431-857ef3e75859;0.1"
+    },
+    {
+      "type": "SATBARA.pdf",
+      "filename": "SATBARA.pdf",
+      "dms_ref": "58857bd9-f44e-4e28-9dc2-7d9b41060467;0.1"
+    },
+    {
+      "type": "DISCLOSURE_INTEREST_PARTNERS.pdf",
+      "filename": "DISCLOSURE_INTEREST_PARTNERS.pdf",
+      "dms_ref": "a2d05238-6f11-45c4-b6b8-079513eb9de5;0.1"
+    },
+    {
+      "type": "Partnershipdeed_11zon.pdf",
+      "filename": "Partnershipdeed_11zon.pdf",
+      "dms_ref": "8dfd581a-8ccf-4bc8-947d-83734b07b4e9;0.1"
+    },
+    {
+      "type": "DISCLOSURE_INTEREST_PARTNERS.pdf",
+      "filename": "DISCLOSURE_INTEREST_PARTNERS.pdf",
+      "dms_ref": "364fa3fe-d708-431b-a4b6-f21dc0c11faa;0.1"
+    },
+    {
+      "type": "NMRDA_EMAIL_VERIFICATION.pdf",
+      "filename": "NMRDA_EMAIL_VERIFICATION.pdf",
+      "dms_ref": "8f740648-2f02-42fe-a88e-475b5014613f;0.1"
+    },
+    {
+      "type": "VISIONPAN.pdf",
+      "filename": "VISIONPAN.pdf",
+      "dms_ref": "4ae8ee2f-75e5-4b8b-b16c-0391af5f0572;0.1"
+    },
+    {
+      "type": "CERSAI_For_Asset_Based.pdf",
+      "filename": "CERSAI_For_Asset_Based.pdf",
+      "dms_ref": "ed3d124c-2111-4fe3-a6aa-e70563716882;0.1"
+    },
+    {
+      "type": "CERSAI_For_Debtor_Based.pdf",
+      "filename": "CERSAI_For_Debtor_Based.pdf",
+      "dms_ref": "752cbe8b-66ca-413a-a901-56c7de1a975f;0.1"
+    },
+    {
+      "type": "Undertaking about Cersai Report .pdf",
+      "filename": "Undertaking about Cersai Report .pdf",
+      "dms_ref": "76800563-34b3-4caa-bf7a-83b3a7f2a9fe;0.1"
+    },
+    {
+      "type": "Clarification_letter_11zon.pdf",
+      "filename": "Clarification_letter_11zon.pdf",
+      "dms_ref": "c2b38523-90cd-4daa-b718-04564962030f;0.1"
+    },
+    {
+      "type": "Declaration Form B",
+      "filename": "LEGAL_REPORT.pdf",
+      "dms_ref": "db3059e3-6b71-44dd-987f-b3b082368d41;0.1"
+    },
+    {
+      "type": "Declaration Form B",
+      "filename": "Sale deed_11zon.pdf",
+      "dms_ref": "aa8c633f-96cd-4ada-ab70-c9f344ae203c;0.1"
+    },
+    {
+      "type": "Declaration Form B",
+      "filename": "Affidavit Form B.pdf",
+      "dms_ref": "46250063-39d7-4c18-9581-a078c40e6907;0.1"
     }
-  ],
-  "data": {
-    "project_id": "61699",
-    "land_area_unit": "sq mt",
-    "estimated_construction_cost": "85352219.0",
-    "state_promo": "MAHARASHTRA",
-    "district_promo": "Nagpur",
-    "pin_code_promo": 440034
-  },
-  "promoters_details": {
-    "name": "VISION INFRA",
-    "type_of_firm": "Partnership"
-  },
-  "land_area_details": {
-    "land_area": 10864.97,
-    "land_area_unit": "sq mt"
-  },
-  "submitted_date": "2025-12-18 00:00:00+00:00",
-  "last_modified": "2026-02-13 00:00:00+00:00",
-  "estimated_finish_date": "2030-12-31 00:00:00+00:00",
-  "approved_on_date": "2026-02-13 00:00:00+00:00",
-  "config_id": 7,
-  "land_area": 10864.97,
-  "is_updated": false,
-  "is_duplicate": false,
-  "iw_processed": false,
-  "checked_updates": false,
-  "rera_housing_found": false,
-  "is_live": false
+  ]
 }
