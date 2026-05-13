@@ -157,7 +157,7 @@ def _fetch_db():
             if recent_ids:
                 cur.execute(
                     """
-                    SELECT DISTINCT ON (site_id) site_id, message, step, extra, traceback
+                    SELECT DISTINCT ON (site_id) site_id, message, step, extra, traceback, registration_no
                     FROM crawl_logs
                     WHERE level = 'ERROR' AND run_id = ANY(%s)
                     ORDER BY site_id, logged_at DESC
@@ -171,6 +171,7 @@ def _fetch_db():
                         "step": row.get("step") or "",
                         "extra": row.get("extra") or {},
                         "traceback": row.get("traceback") or "",
+                        "registration_no": row.get("registration_no") or "",
                     }
 
             # 4b. Fallback: for sites whose error_count > 0 but have no crawl_logs
@@ -441,7 +442,7 @@ _TEMPLATE = """<!DOCTYPE html>
       </div>
       {% if sid in errors_by_site %}{% set e = errors_by_site[sid] %}
       <div class="mt-2">
-        {% if e.step %}<span class="err-step">step: {{ e.step }}</span><br>{% endif %}
+        {% if e.step %}<span class="err-step">step: {{ e.step }}</span>{% if e.registration_no and e.step == 'detail' %}&nbsp;<span class="err-step" style="color:#f0883e;">reg: {{ e.registration_no }}</span>{% endif %}<br>{% endif %}
         <div class="diag-msg">{{ e.message }}</div>
         {% if e.traceback %}
         <details style="margin-top:4px;">
@@ -572,7 +573,7 @@ _TEMPLATE = """<!DOCTYPE html>
               {% if has_errors %}
                 <span class="text-danger fw-bold" style="font-size:.8rem;">{{ errs }} error{{ 's' if errs != 1 }}</span>
                 {% if sid in errors_by_site %}{% set e = errors_by_site[sid] %}
-                  {% if e.step %}<br><span class="err-step">{{ e.step }}</span>{% endif %}
+                  {% if e.step %}<br><span class="err-step">{{ e.step }}</span>{% if e.registration_no and e.step == 'detail' %}&nbsp;<span class="err-step" style="color:#f0883e;">{{ e.registration_no }}</span>{% endif %}{% endif %}
                   <div class="err-msg">{{ e.message[:120] }}{% if e.message|length > 120 %}…{% endif %}</div>
                 {% endif %}
               {% else %}<span style="color:#484f58;font-size:.8rem;">—</span>{% endif %}

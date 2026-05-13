@@ -272,6 +272,15 @@ def _parse_project_details(soup: BeautifulSoup) -> dict:
 
     out: dict = {}
 
+    # Project name — HP RERA detail page often carries this as "Project Name"
+    pname = (
+        norm.get("project name")
+        or norm.get("name of project")
+        or norm.get("name of the project")
+    )
+    if pname and pname not in ("-NA-", "NA", "N/A", "-"):
+        out["project_name"] = pname
+
     # Status
     status = norm.get("project status") or norm.get("status")
     if status:
@@ -1079,6 +1088,22 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                             )
                     except Exception:
                         pass
+
+                # Skip projects where no name could be found in either the
+                # listing marker or the detail page — a name-less record is not
+                # useful and would fail required-field validation anyway.
+                if not payload.get("project_name"):
+                    logger.warning(
+                        "project_name missing — skipping project",
+                        reg_no=reg_no, step="normalize",
+                    )
+                    insert_crawl_error(
+                        run_id, site_id, "VALIDATION_FAILED",
+                        "Missing required project fields after normalization: project_name",
+                        project_key=key, url=detail_url, raw_data=payload,
+                    )
+                    counts["error_count"] += 1
+                    continue
 
                 # Normalize and validate
                 logger.info("Normalizing and validating", step="normalize")
