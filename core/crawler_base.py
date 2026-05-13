@@ -120,7 +120,7 @@ def safe_get(
     headers: dict | None = None,
     params: dict | None = None,
     logger: CrawlerLogger | None = None,
-    timeout: float = 30.0,
+    timeout: float | httpx.Timeout = 30.0,
     verify: bool = True,
     client: httpx.Client | None = None,
 ) -> httpx.Response | None:
@@ -134,7 +134,7 @@ def safe_get(
     last_exc: Exception | None = None
     attempt = 0
     for attempt in range(1, retries + 1):
-        attempt_timeout = timeout * attempt
+        attempt_timeout = timeout * attempt if isinstance(timeout, (int, float)) else timeout
         try:
             if client is not None:
                 resp = client.get(url, headers=_headers, params=params, timeout=attempt_timeout)
@@ -183,7 +183,7 @@ def safe_post(
     delay: float = 3.0,
     headers: dict | None = None,
     logger: CrawlerLogger | None = None,
-    timeout: float = 30.0,
+    timeout: float | httpx.Timeout = 30.0,
     verify: bool = True,
     client: httpx.Client | None = None,
 ) -> httpx.Response | None:
@@ -197,7 +197,7 @@ def safe_post(
     last_exc: Exception | None = None
     attempt = 0
     for attempt in range(1, retries + 1):
-        attempt_timeout = timeout * attempt
+        attempt_timeout = timeout * attempt if isinstance(timeout, (int, float)) else timeout
         try:
             if client is not None:
                 resp = client.post(
