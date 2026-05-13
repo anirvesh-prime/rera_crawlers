@@ -3,8 +3,15 @@ Tamil Nadu RERA Crawler — rera.tn.gov.in
 Type: static (httpx + BeautifulSoup)
 
 Strategy:
-- Fetch the single master listing page: https://rera.tn.gov.in/registered-building/tn
-- Parse the HTML table to collect all registered building project rows
+- Building projects are split across two sources:
+    1. Master listing page (https://rera.tn.gov.in/registered-building/tn) — holds
+       the current year's (e.g. 2026) projects not yet archived to CMS year pages.
+    2. CMS year-specific pages (https://rera.tn.gov.in/cms/reg_projects_tamilnadu/
+       Building/<YYYY>.php) — discovered via the building CMS index; holds all
+       archived projects from 2017 to the most recent completed year (2025).
+       These pages are fetched in weekly_deep / full / incremental modes.
+- Layout projects are on the master layout listing only
+  (https://rera.tn.gov.in/registered-layout/tn); layout CMS index pages return 404.
 - Each row yields: reg_no, promoter name, project name/description, expiry date,
   promoter-UUID (public-view1), project-UUID (public-view2), lat/lng, form-C URL
 - For each project: fetch public-view1 (promoter details) and
@@ -1561,18 +1568,54 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     # ── Checkpoint handling ──────────────────────────────────────────────────
     checkpoint = (load_checkpoint(site_id, mode) if mode != "full" else {}) or {}
-    last_project_key: str | None = checkpoint.get("last_project_key")
     last_page = int(checkpoint.get("last_page", 0))
+
+    # weekly_deep is a full refresh — it must process every project every time.
+    # Skipping rows via last_project_key would mean stale or interrupted checkpoints
+    # silently skip thousands of projects, defeating the purpose of a deep crawl.
+    # We still load last_page so an interrupted weekly_deep can resume from the
+    # correct year URL rather than re-crawling completed year pages from scratch.
+    if mode in ("full", "weekly_deep"):
+        last_project_key: str | None = None
+    else:
+        last_project_key = checkpoint.get("last_project_key")
 
     if mode == "full":
         reset_checkpoint(site_id, mode)
 
-    # ── Two master listing URLs (building + layout) ──────────────────────────
-    year_urls = [
-        f"{BASE_URL}/registered-building/tn",
-        f"{BASE_URL}/registered-layout/tn",
-    ]
-    logger.info("Crawling master listings", urls=year_urls)
+    # ── Build year URL list ──────────────────────────────────────────────────
+    # The master building listing only exposes current-year projects (e.g. 2026)
+    # that have not yet been archived to the CMS year-specific pages.
+    # Historical projects (2017-2025) live on CMS year pages which are
+    # auto-discovered from the CMS index and must be included for a full refresh.
+    # Layout CMS index pages return 404; the master layout listing is the only
+    # source for layout projects and covers all years.
+    year_urls: list[str] = [f"{BASE_URL}/registered-building/tn"]
+
+    if mode in ("weekly_deep", "full", "incremental"):
+        # Discover CMS building year pages (2017-2025)
+        cms_building_urls = _discover_urls_from_cms(CMS_INDEX_URL, logger)
+        if not cms_building_urls:
+            logger.warning(
+                "Building CMS index unreachable; falling back to known years",
+                url=CMS_INDEX_URL,
+            )
+            cms_building_urls = [
+                _TYPE_URL_TEMPLATES["Building"].format(year=y)
+                for y in sorted(_KNOWN_YEARS, reverse=True)
+            ]
+        seen_urls: set[str] = {year_urls[0]}
+        for url in cms_building_urls:
+            if url not in seen_urls:
+                seen_urls.add(url)
+                year_urls.append(url)
+        logger.info(
+            f"Added {len(year_urls) - 1} CMS building year pages to crawl queue",
+            cms_urls=cms_building_urls,
+        )
+
+    year_urls.append(f"{BASE_URL}/registered-layout/tn")
+    logger.info("Crawling listings", url_count=len(year_urls))
 
     machine_name, machine_ip = get_machine_context()
 
@@ -1593,6 +1636,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         if not first_listing_logged:
             logger.timing("search", time.monotonic() - t0, rows=len(rows))
             first_listing_logged = True
+
+        # Safety guard: if last_project_key was not found in this listing (e.g.
+        # listing reordered or project removed since checkpoint was saved), clear
+        # it after scanning the full page so subsequent listings are not skipped.
+        checkpoint_found_in_page = False
         for row in rows:
             reg_no = row.get("project_registration_no")
             if not reg_no:
@@ -1606,6 +1654,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             if last_project_key and mode != "full":
                 if project_key == last_project_key:
                     last_project_key = None
+                    checkpoint_found_in_page = True
                 counts["projects_skipped"] += 1
                 continue
 
@@ -1730,6 +1779,18 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 save_checkpoint(site_id, mode, year_index, project_key, run_id)
             finally:
                 logger.clear_project()
+
+        # Safety guard: if we scanned the entire listing and never found the
+        # checkpoint project key, clear it so subsequent listings are processed
+        # normally rather than being skipped wholesale.
+        if last_project_key and not checkpoint_found_in_page and mode != "full":
+            logger.warning(
+                "Checkpoint project key not found in listing — clearing checkpoint "
+                "to avoid skipping remaining listings",
+                checkpoint_key=last_project_key,
+                url=year_url,
+            )
+            last_project_key = None
 
     reset_checkpoint(site_id, mode)
     logger.info("Tamil Nadu RERA crawl complete", **counts)
