@@ -223,7 +223,7 @@ def _fetch_db():
             most_recent = max(latest_runs.values(), key=lambda r: r["started_at"])
             orch_info = {
                 "mode": most_recent.get("run_type", "unknown"),
-                "started": max_start,
+                "started": most_recent["started_at"],
                 "totals": totals,
             }
 
