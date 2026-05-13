@@ -438,23 +438,34 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     try:
         fresh = _parse_detail_page(detail_url, logger) or {}
     except Exception as exc:
-        # Transient network / SSL error — don't block the crawl; the main loop's
-        # own safe_get retries will handle individual project failures gracefully.
-        logger.warning(
-            f"Sentinel: fetch error (transient network/SSL?) — {exc}; skipping coverage check",
+        # Network / SSL error means the site is unreachable — abort the crawl.
+        logger.error(
+            f"Sentinel: fetch error — {exc}; aborting crawl",
             step="sentinel",
         )
-        return True
+        insert_crawl_error(
+            run_id, config.get("id", "pondicherry_rera"),
+            "SENTINEL_FAILED",
+            f"Sentinel fetch error: {exc}",
+            url=detail_url,
+        )
+        return False
 
     if not fresh:
-        # safe_get exhausted all retries and returned None → site temporarily unreachable.
-        # Log a warning so the dashboard records the miss, but allow the crawl to proceed.
-        logger.warning(
-            "Sentinel: page returned no data — site may be temporarily unreachable; skipping coverage check",
+        # safe_get exhausted all retries and returned None → site unreachable.
+        # Abort the crawl so bad/missing data is never written.
+        logger.error(
+            "Sentinel: page returned no data — site may be temporarily down; aborting crawl",
             url=detail_url,
             step="sentinel",
         )
-        return True
+        insert_crawl_error(
+            run_id, config.get("id", "pondicherry_rera"),
+            "SENTINEL_FAILED",
+            "Sentinel page returned no data — site may be temporarily down",
+            url=detail_url,
+        )
+        return False
 
     if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
         insert_crawl_error(

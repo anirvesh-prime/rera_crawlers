@@ -131,14 +131,24 @@ class SentinelCheckTests(unittest.TestCase):
             result = self._run_sentinel()
         self.assertTrue(result)
 
-    def test_skips_gracefully_on_transient_network_error(self):
+    def test_aborts_on_network_error(self):
         with mock.patch.object(
             pondicherry_rera, "_parse_detail_page",
             side_effect=ConnectionError("timeout"),
         ):
-            result = self._run_sentinel()
-        # A network error must NOT abort the crawl — sentinel should return True
-        self.assertTrue(result)
+            with mock.patch.object(pondicherry_rera, "insert_crawl_error") as mock_err:
+                result = self._run_sentinel()
+        # A network error means the site is unreachable — sentinel must abort the crawl
+        self.assertFalse(result)
+        mock_err.assert_called_once()
+
+    def test_aborts_when_page_returns_no_data(self):
+        with mock.patch.object(pondicherry_rera, "_parse_detail_page", return_value={}):
+            with mock.patch.object(pondicherry_rera, "insert_crawl_error") as mock_err:
+                result = self._run_sentinel()
+        # Empty response means site is down — sentinel must abort the crawl
+        self.assertFalse(result)
+        mock_err.assert_called_once()
 
     def test_skips_when_no_sentinel_reg_configured(self):
         config = {"id": "pondicherry_rera"}  # no sentinel_registration_no
