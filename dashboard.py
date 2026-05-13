@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import argparse
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from flask import Flask, render_template_string
@@ -77,14 +77,8 @@ def _fetch_db():
                     "errors_by_site": {}, "orch_info": {}, "source": "database",
                 }
 
-            # 2. Most-recent orchestrator window (±4 h around the latest started_at)
-            max_start = max(r["started_at"] for r in latest_runs.values())
-            window_start = max_start - timedelta(hours=4)
-            cur.execute(
-                "SELECT id FROM crawl_runs WHERE started_at >= %s",
-                (window_start,),
-            )
-            recent_ids = [r["id"] for r in cur.fetchall()]
+            # 2. Use only the latest run per site for all log queries
+            recent_ids = [r["id"] for r in latest_runs.values()]
 
             # 3. Sentinel log entries for that window.
             #
