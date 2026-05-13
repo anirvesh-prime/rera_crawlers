@@ -71,6 +71,28 @@ def _get(url: str, logger: CrawlerLogger):
     return safe_get(url, verify=False, logger=logger, timeout=60.0)
 
 
+# The listing page is ~1.3 MB served by a slow government server.  It regularly
+# needs more than 60 s to start streaming the response body, which causes the
+# default read timeout to fire and safe_get to give up after 3 attempts.
+# A dedicated timeout (connect is kept short; read is generous) + more retries
+# with longer back-off dramatically reduces the "Failed to load listing page" rate.
+import httpx as _httpx  # noqa: E402  (kept local to avoid polluting the module top)
+
+_LISTING_TIMEOUT = _httpx.Timeout(connect=30.0, read=180.0, write=30.0, pool=30.0)
+
+
+def _get_listing(logger: CrawlerLogger):
+    """Fetch the Pondicherry listing page with an extended read timeout and more retries."""
+    return safe_get(
+        LISTING_URL,
+        verify=False,
+        logger=logger,
+        timeout=_LISTING_TIMEOUT,
+        retries=5,
+        delay=10.0,
+    )
+
+
 def _parse_pondicherry_date(raw: str) -> str | None:
     """
     Convert "Wed Mar 25 16:15:36 IST 2026" → "2026-03-25" so that
@@ -468,7 +490,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     # Fetch listing page
     t0 = time.monotonic()
-    resp = _get(LISTING_URL, logger)
+    resp = _get_listing(logger)
     if not resp:
         logger.error("Failed to load Pondicherry listing page")
         insert_crawl_error(run_id, site_id, "listing_load_failed",
@@ -478,6 +500,26 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     soup  = BeautifulSoup(resp.text, "lxml")
     cards = _parse_listing_cards(soup)
+
+    # Guard against truncated/empty listing responses.  A live Pondicherry
+    # listing has ~350+ project cards; zero cards means the server returned an
+    # incomplete (or entirely blank) page rather than a real network failure.
+    # Without this guard the crawl silently "succeeds" with 0 projects — which
+    # looks like a clean run in the dashboard but is actually a data loss event.
+    if not cards:
+        logger.error(
+            "Listing page returned 0 project cards — likely truncated or empty response",
+            url=LISTING_URL,
+            step="listing",
+        )
+        insert_crawl_error(
+            run_id, site_id, "listing_empty",
+            "Listing page parsed 0 project cards (truncated response?)",
+            url=LISTING_URL,
+        )
+        counts["error_count"] += 1
+        return counts
+
     if item_limit:
         cards = cards[:item_limit]
         logger.info(f"Pondicherry: CRAWL_ITEM_LIMIT={item_limit} applied — processing {len(cards)} projects")

@@ -124,21 +124,27 @@ def safe_get(
     verify: bool = True,
     client: httpx.Client | None = None,
 ) -> httpx.Response | None:
-    """GET with retry/backoff.  Pass `client` to reuse an existing connection pool."""
+    """GET with retry/backoff.  Pass `client` to reuse an existing connection pool.
+
+    The timeout escalates with each attempt: attempt 1 uses ``timeout`` as-is,
+    attempt 2 uses ``timeout * 2``, attempt 3 uses ``timeout * 3``, etc.
+    With the default of 30 s that gives 30 s → 60 s → 90 s across three tries.
+    """
     _headers = {"User-Agent": get_random_ua(), **(headers or {})}
     last_exc: Exception | None = None
     attempt = 0
     for attempt in range(1, retries + 1):
+        attempt_timeout = timeout * attempt
         try:
             if client is not None:
-                resp = client.get(url, headers=_headers, params=params, timeout=timeout)
+                resp = client.get(url, headers=_headers, params=params, timeout=attempt_timeout)
             else:
                 pooled_client = _get_shared_http_client(verify=verify)
                 resp = pooled_client.get(
                     url,
                     headers=_headers,
                     params=params,
-                    timeout=timeout,
+                    timeout=attempt_timeout,
                     follow_redirects=True,
                 )
             resp.raise_for_status()
@@ -146,7 +152,10 @@ def safe_get(
         except httpx.HTTPStatusError as e:
             last_exc = e
             if logger:
-                logger.warning(f"GET attempt {attempt}/{retries} failed: {e}", url=url)
+                logger.warning(
+                    f"GET attempt {attempt}/{retries} failed (timeout={attempt_timeout}s): {e}",
+                    url=url,
+                )
             # 4xx errors are definitive client errors — no point retrying
             if e.response.status_code < 500:
                 break
@@ -155,7 +164,10 @@ def safe_get(
         except Exception as e:
             last_exc = e
             if logger:
-                logger.warning(f"GET attempt {attempt}/{retries} failed: {e}", url=url)
+                logger.warning(
+                    f"GET attempt {attempt}/{retries} failed (timeout={attempt_timeout}s): {e}",
+                    url=url,
+                )
             if attempt < retries:
                 time.sleep(delay * attempt)
     if logger and last_exc is not None:
@@ -175,11 +187,17 @@ def safe_post(
     verify: bool = True,
     client: httpx.Client | None = None,
 ) -> httpx.Response | None:
-    """POST with retry/backoff.  Pass `client` to reuse an existing connection pool."""
+    """POST with retry/backoff.  Pass `client` to reuse an existing connection pool.
+
+    The timeout escalates with each attempt: attempt 1 uses ``timeout`` as-is,
+    attempt 2 uses ``timeout * 2``, attempt 3 uses ``timeout * 3``, etc.
+    With the default of 30 s that gives 30 s → 60 s → 90 s across three tries.
+    """
     _headers = {"User-Agent": get_random_ua(), **(headers or {})}
     last_exc: Exception | None = None
     attempt = 0
     for attempt in range(1, retries + 1):
+        attempt_timeout = timeout * attempt
         try:
             if client is not None:
                 resp = client.post(
@@ -187,7 +205,7 @@ def safe_post(
                     data=data,
                     json=json_data,
                     headers=_headers,
-                    timeout=timeout,
+                    timeout=attempt_timeout,
                 )
             else:
                 pooled_client = _get_shared_http_client(verify=verify)
@@ -196,7 +214,7 @@ def safe_post(
                     data=data,
                     json=json_data,
                     headers=_headers,
-                    timeout=timeout,
+                    timeout=attempt_timeout,
                     follow_redirects=True,
                 )
             resp.raise_for_status()
@@ -204,7 +222,10 @@ def safe_post(
         except httpx.HTTPStatusError as e:
             last_exc = e
             if logger:
-                logger.warning(f"POST attempt {attempt}/{retries} failed: {e}", url=url)
+                logger.warning(
+                    f"POST attempt {attempt}/{retries} failed (timeout={attempt_timeout}s): {e}",
+                    url=url,
+                )
             # 4xx errors are definitive client errors — no point retrying
             if e.response.status_code < 500:
                 break
@@ -213,7 +234,10 @@ def safe_post(
         except Exception as e:
             last_exc = e
             if logger:
-                logger.warning(f"POST attempt {attempt}/{retries} failed: {e}", url=url)
+                logger.warning(
+                    f"POST attempt {attempt}/{retries} failed (timeout={attempt_timeout}s): {e}",
+                    url=url,
+                )
             if attempt < retries:
                 time.sleep(delay * attempt)
     if logger and last_exc is not None:
@@ -239,13 +263,27 @@ def download_response(
     follow_redirects: bool = True,
     client: httpx.Client | None = None,
 ) -> httpx.Response | None:
-    """Download a response body with a hard wall-clock timeout and size cap."""
+    """Download a response body with a hard wall-clock timeout and size cap.
+
+    Both ``timeout`` (per-request connect/read, when a plain float) and
+    ``total_timeout`` (wall-clock download limit) escalate with each attempt:
+    attempt 1 uses the base values as-is, attempt 2 doubles them, attempt 3
+    triples them, etc.  With the defaults that gives:
+      attempt 1 → timeout=30 s, total_timeout=60 s
+      attempt 2 → timeout=60 s, total_timeout=120 s
+      attempt 3 → timeout=90 s, total_timeout=180 s
+    """
     _headers = {"User-Agent": get_random_ua(), **(headers or {})}
     last_exc: Exception | None = None
     method = method.upper()
     attempt = 0
 
     for attempt in range(1, retries + 1):
+        # Scale timeouts linearly with attempt number (30→60→90 pattern).
+        attempt_timeout: float | httpx.Timeout = (
+            timeout * attempt if isinstance(timeout, (int, float)) else timeout
+        )
+        attempt_total_timeout = total_timeout * attempt
         try:
             if client is not None:
                 response = _stream_download_response(
@@ -256,8 +294,8 @@ def download_response(
                     params=params,
                     data=data,
                     json_data=json_data,
-                    timeout=timeout,
-                    total_timeout=total_timeout,
+                    timeout=attempt_timeout,
+                    total_timeout=attempt_total_timeout,
                     max_bytes=max_bytes,
                     follow_redirects=follow_redirects,
                 )
@@ -271,8 +309,8 @@ def download_response(
                     params=params,
                     data=data,
                     json_data=json_data,
-                    timeout=timeout,
-                    total_timeout=total_timeout,
+                    timeout=attempt_timeout,
+                    total_timeout=attempt_total_timeout,
                     max_bytes=max_bytes,
                     follow_redirects=follow_redirects,
                 )
@@ -281,7 +319,8 @@ def download_response(
             last_exc = exc
             if logger:
                 logger.warning(
-                    f"{method} attempt {attempt}/{retries} failed: {exc}",
+                    f"{method} attempt {attempt}/{retries} failed"
+                    f" (timeout={attempt_timeout}s, total={attempt_total_timeout}s): {exc}",
                     url=url,
                 )
             if exc.response.status_code < 500:
@@ -292,7 +331,8 @@ def download_response(
             last_exc = exc
             if logger:
                 logger.warning(
-                    f"{method} attempt {attempt}/{retries} failed: {exc}",
+                    f"{method} attempt {attempt}/{retries} failed"
+                    f" (timeout={attempt_timeout}s, total={attempt_total_timeout}s): {exc}",
                     url=url,
                 )
             if attempt < retries:
