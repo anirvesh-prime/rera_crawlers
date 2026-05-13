@@ -100,15 +100,11 @@ STATE_DOC_DICT: dict[str, list[str]] = {
         "Occupancy Certificate",
     ],
     "assam": [
-        "RERA REGISTRATION CERTIFICATE",
-        "CARPET AREA",
-        "PARKING AREA DETAILS",
-        "PLAN OF DEVELOPMENT WORKS",
-        "APPROVED DRAWING",
-        "Project Specifications", "CERTIFICATE OF THE REGISTERED ARCHITECT",
+        "RERA REGISTRATION CERTIFICATE", "CARPET AREA", " PARKING AREA DETAILS", "PLAN OF DEVELOPMENT WORKS",
+        "APPROVED DRAWING", "Project Specifications", "CERTIFICATE OF THE REGISTERED ARCHITECT",
         "CERTIFICATE OF THE REGISTERED ENGINEER",
-        "ARCHITECT, STRUCTURAL ENGINEER AND CONTRACTOR DETAILS",
-        "Occupation Certificate", "Occupancy Certificate",
+        "ARCHITECT, STRUCTURAL ENGINEER AND CONTRACTOR DETAILS", "Occupation Certificate",
+        "Occupancy Certificate",
     ],
     "jharkhand": [
         "Brochure", "Gant chart", "RERA Certificate", "Registration Certificate", "RERA Registration",
@@ -136,8 +132,7 @@ STATE_DOC_DICT: dict[str, list[str]] = {
         "Occupation Certificate", "Occupancy Certificate",
     ],
     "puducherry": [
-        "Form B",
-        "Registration Certificate",
+        "Form B", "Registration Certificate",
     ],
 }
 

@@ -414,6 +414,13 @@ _DOC_EXTENSIONS = frozenset({
 })
 _DOC_PATH_KEYWORDS = ("download", "/content/", "/uploads/", "getfile", "viewdoc", "getdocument")
 
+# Anchor texts that carry no meaningful document-type information.
+# When a link has one of these generic texts we fall back to the parent
+# table-row's first cell (which contains the real document category).
+_GENERIC_ANCHOR_TEXTS = frozenset({
+    "view", "view photo", "download", "click here", "here", "open", "pdf", "",
+})
+
 
 def _extract_kv_from_html(soup: BeautifulSoup) -> dict[str, str]:
     """Extract key-value pairs from multiple Bootstrap/Angular HTML patterns."""
@@ -760,7 +767,14 @@ def _parse_viewproject_html(soup: BeautifulSoup) -> dict:  # noqa: C901
 
 
 def _parse_detail_docs(soup: BeautifulSoup) -> list[dict]:
-    """Collect all document/download links from the rendered detail page HTML."""
+    """Collect all document/download links from the rendered detail page HTML.
+
+    For links whose anchor text is generic (e.g. "View", "View Photo") the
+    function inspects the parent <tr> row and uses the first non-generic cell
+    text as the document label — this is the pattern used on the ViewProject
+    table-based page where document type is in cell[0] and the link is in the
+    last cell.
+    """
     docs: list[dict] = []
     seen: set[str] = set()
     for a in soup.find_all("a", href=True):
@@ -778,7 +792,29 @@ def _parse_detail_docs(soup: BeautifulSoup) -> list[dict]:
         if not url or url in seen:
             continue
         seen.add(url)
-        label = _clean(a.get_text()) or "document"
+
+        anchor_text = _clean(a.get_text()) or ""
+        label = anchor_text
+
+        # When anchor text is generic ("View", "Download" …), look for the
+        # document category in the first non-generic cell of the parent <tr>.
+        if label.lower() in _GENERIC_ANCHOR_TEXTS:
+            parent_tr = a.find_parent("tr")
+            if parent_tr:
+                cells = [
+                    _clean(td.get_text())
+                    for td in parent_tr.find_all(["td", "th"])
+                ]
+                row_label = next(
+                    (c for c in cells if c and c.lower() not in _GENERIC_ANCHOR_TEXTS),
+                    "",
+                )
+                if row_label:
+                    label = row_label
+
+        if not label:
+            label = "document"
+
         docs.append({"label": label, "url": url})
     return docs
 
