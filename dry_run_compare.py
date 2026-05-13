@@ -452,9 +452,18 @@ def _listing_patches_tamil_nadu(module, sample_url: str, reg_no: str, sample: di
         # cell) is used as the estimated commencement date.  Mirror this from the sample.
         "estimated_commencement_date": sample.get("estimated_commencement_date") or "",
     }
+    # run() iterates over 2 hardcoded master listing URLs (building + layout).
+    # _fetch_sentinel_listing_row also calls _parse_year_listing on the building URL
+    # during the sentinel phase, so we can't use a simple call counter.
+    # Instead: always return [stub] for the building URL (covering both the sentinel
+    # lookup and the main building-listing pass) and [] for the layout URL.
+    # This produces exactly 1 project, regardless of how many times each URL is called.
+    _building_url = f"{module.BASE_URL}/registered-building/tn"
+    def _fake_parse_year_listing(url, logger):
+        return [stub] if url == _building_url else []
+
     return [
-        patch.object(module, "_get_year_listing_urls", return_value=["https://rera.tn.gov.in/_dry_run_sample"]),
-        patch.object(module, "_parse_year_listing",    return_value=[stub]),
+        patch.object(module, "_parse_year_listing", side_effect=_fake_parse_year_listing),
     ]
 
 

@@ -988,6 +988,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     resume_after_district = checkpoint.get("last_page", -1)
     resume_after_key = checkpoint.get("last_project_key")
     resume_pending = bool(resume_after_key)
+    if resume_pending:
+        logger.warning(
+            f"Resuming {mode} from checkpoint: district_idx={resume_after_district}, "
+            f"last_project_key={resume_after_key}. "
+            f"All projects up to this checkpoint will be counted as skipped."
+        )
     item_limit = settings.CRAWL_ITEM_LIMIT or 0
 
     machine_name, machine_ip = get_machine_context()
@@ -1018,11 +1024,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             reg_no = stub["reg_no"]
             project_key = generate_project_key(reg_no)
 
-            # Resume: skip projects already processed in a previous run
+            # Resume: skip projects already processed in a previous run.
+            # The checkpoint key marks the LAST project fully processed, so it
+            # is also skipped (not re-processed).  Count every resume-skip in
+            # projects_skipped so the dashboard reflects what actually happened.
             if resume_pending:
+                counts["projects_skipped"] += 1
                 if project_key == resume_after_key:
-                    resume_pending = False
-                continue  # still skipping until we reach the checkpoint
+                    resume_pending = False  # next project will be processed normally
+                continue
 
             # ── Dedup check ────────────────────────────────────────────────────
             existing = get_project_by_key(project_key)
@@ -1186,6 +1196,19 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
             save_checkpoint(site_id, mode, district_idx, project_key, run_id)
             random_delay(delay_min, delay_max)
+
+        # Guard against a stale checkpoint whose key no longer exists in the
+        # current listings (project removed / listing changed).  If we just
+        # finished the resume district and resume_pending is still True, the
+        # key was never found — reset it so we don't silently skip every
+        # project in all remaining districts.
+        if resume_pending and district_idx == resume_after_district:
+            logger.warning(
+                f"Checkpoint project key {resume_after_key!r} was not found in "
+                f"district '{district}' listings — stale checkpoint cleared. "
+                f"Remaining districts will be processed normally."
+            )
+            resume_pending = False
 
         if item_limit and items_processed >= item_limit:
             break

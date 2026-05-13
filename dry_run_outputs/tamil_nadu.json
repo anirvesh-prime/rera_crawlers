@@ -49,16 +49,14 @@
   },
   "uploaded_documents": [
     {
-      "type": "Form C",
+      "type": "Form C 1",
       "link": "https://rera.tn.gov.in/formcqr/3c2c3140-ca91-11f0-be7a-49ff3448b535",
-      "s3_link": "https://s3.example.com/dry-run",
+      "s3_link": "https://docs.primetenders.com/12586206054163957170/form_c_1.pdf",
       "updated": true
     },
     {
-      "type": "Site Photos With all four Sides",
       "link": "https://rera.tn.gov.in/public/storage/upload/DsSykbCLv6aXefqY45RpljYqNVkbVqbus3HF0oRT.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Site Photos With all four Sides"
     },
     {
       "type": "Approved Plan 1",
@@ -73,16 +71,12 @@
       "updated": true
     },
     {
-      "type": "Local Body Approval Letter",
       "link": "https://rera.tn.gov.in/public/storage/upload/QmGv52o52tXGn35qR82OT0TyYw8hbfrVcTHnKu48.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Local Body Approval Letter"
     },
     {
-      "type": "GLV value should be mentioned for all the survey numbers covered in the project*",
       "link": "https://rera.tn.gov.in/public/storage/upload/cCoXxXRNLH2DaOXdtLNJrc5tWYbPpkvypoSSvmuV.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "GLV value should be mentioned for all the survey numbers covered in the project*"
     },
     {
       "type": "Approved Plan 3",
@@ -91,16 +85,12 @@
       "updated": true
     },
     {
-      "type": "Land Title Deed/Document, GPA with Sale Power, JVDA/JDA",
       "link": "https://rera.tn.gov.in/public/storage/upload/5CUGUQFHlnrUOo2bL8VFSQQsnxabdzAh5G768v3O.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Land Title Deed/Document, GPA with Sale Power, JVDA/JDA"
     },
     {
-      "type": "Declaration(Form B)",
       "link": "https://rera.tn.gov.in/public/storage/upload/iAlFta0OJ8rR4fclazzB70ixsuXujlX5ATa900Ft.pdf",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Declaration(Form B)"
     }
   ],
   "professional_information": [
@@ -148,12 +138,8 @@
   "is_live": true,
   "document_urls": [
     {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Form C"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Site Photos With all four Sides"
+      "link": "https://docs.primetenders.com/12586206054163957170/form_c_1.pdf",
+      "type": "Form C 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
@@ -165,23 +151,7 @@
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Local Body Approval Letter"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "GLV value should be mentioned for all the survey numbers covered in the project*"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
       "type": "Approved Plan 3"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Land Title Deed/Document, GPA with Sale Power, JVDA/JDA"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Declaration(Form B)"
     }
   ],
   "project_type": null,

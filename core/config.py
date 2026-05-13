@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     CRAWL_DELAY_SCALE: float = 1.0   # scales random crawler throttling delays
     SCRAPE_DETAILS: bool = True      # set False to skip detail-page fetches
     MAX_PAGES: int | None = None     # None = unlimited
-    MAX_PARALLEL_CRAWLERS: int = 8   # hard cap on concurrent worker processes
+    MAX_PARALLEL_CRAWLERS: int = 2   # hard cap on concurrent worker processes
     HTTP_MAX_CONNECTIONS: int = 100
     HTTP_MAX_KEEPALIVE_CONNECTIONS: int = 20
 
