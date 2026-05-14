@@ -1418,10 +1418,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 action = upsert_project(db_dict)
                 if action == "new":
                     counts["projects_new"] += 1
-                elif action == "updated":
-                    counts["projects_updated"] += 1
                 else:
-                    counts["projects_skipped"] += 1
+                    counts["projects_updated"] += 1
                 logger.info(f"DB result: {action}", step="db_upsert")
 
                 # Documents

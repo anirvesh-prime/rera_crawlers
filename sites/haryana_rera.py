@@ -1215,10 +1215,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 status = upsert_project(db_dict)
                 if status == "new":
                     counts["projects_new"] += 1
-                elif status == "updated":
-                    counts["projects_updated"] += 1
                 else:
-                    counts["projects_skipped"] += 1
+                    counts["projects_updated"] += 1
                 logger.info(f"DB result: {status}", step="db_upsert")
                 items_processed += 1
 

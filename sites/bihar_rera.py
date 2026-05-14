@@ -1061,11 +1061,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     if status == "new":
                         counters["projects_new"] += 1
                         logger.info(f"New project: {reg_no}", step="upsert")
-                    elif status == "updated":
+                    else:
                         counters["projects_updated"] += 1
                         logger.info(f"Updated: {reg_no}", step="upsert")
-                    else:
-                        counters["projects_skipped"] += 1
 
                     # ── Step 5: Process documents (weekly_deep or new projects) ──
                     # Spec §13: process_documents() → download → md5 → S3 upload

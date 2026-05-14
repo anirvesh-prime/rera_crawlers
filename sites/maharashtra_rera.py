@@ -1330,11 +1330,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     if status == "new":
                         counters["projects_new"] += 1
                         logger.info(f"New: {reg_no}", step="upsert")
-                    elif status == "updated":
+                    else:
                         counters["projects_updated"] += 1
                         logger.info(f"Updated: {reg_no}", step="upsert")
-                    else:
-                        counters["projects_skipped"] += 1
 
                     # ── Document download + S3 upload ─────────────────────────
                     if auth_token and api_docs:

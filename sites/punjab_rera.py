@@ -1096,10 +1096,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                     if status == "new":
                         counters["projects_new"] += 1
-                    elif status == "updated":
-                        counters["projects_updated"] += 1
                     else:
-                        counters["projects_skipped"] += 1
+                        counters["projects_updated"] += 1
                     logger.info(f"DB result: {status}", step="db_upsert")
 
                     # ── Document download + S3 upload ─────────────────────────

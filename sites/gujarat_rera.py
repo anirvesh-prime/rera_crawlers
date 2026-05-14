@@ -1428,9 +1428,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
                 action = upsert_project(db_dict)
                 items_processed += 1
-                if action == "new":       counts["projects_new"] += 1
-                elif action == "updated": counts["projects_updated"] += 1
-                else:                     counts["projects_skipped"] += 1
+                if action == "new": counts["projects_new"] += 1
+                else:               counts["projects_updated"] += 1
                 logger.info(f"DB: {action}", step="db_upsert")
 
                 # Extract document links by clicking each View File button on the
