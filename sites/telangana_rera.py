@@ -718,11 +718,7 @@ def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
     data["project_name"]          = proj_lv(r"project\s*name")
     data["project_type"]          = proj_lv(r"project\s*type")
     data["status_of_the_project"] = proj_lv(r"project\s*status", r"\bstatus\b")
-    data["project_registration_no"] = lv(
-        r"registration\s*(no|number|cert)",
-        r"rera\s*(cert|reg|no)",
-        r"certificate\s*(no|number)",
-    )
+    data["project_registration_no"] = lv(r"plan\s*approval\s*number")
     data["approved_on_date"]      = proj_lv(r"approved\s*date")
     data["estimated_finish_date"] = proj_lv(
         r"revised\s*proposed\s*date",
@@ -1359,9 +1355,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         detail_data = _scrape_print_preview(pp_soup, row)
 
                     # ── Determine registration number ─────────────────────────
-                    reg_no = _clean(detail_data.get("project_registration_no")) or stable_id
-                    if not reg_no:
-                        reg_no = f"TG-APP-{app_id}" if app_id else f"TG-URL-{abs(hash(pp_url))}"
+                    reg_no = _clean(detail_data.get("project_registration_no"))
                     detail_data["project_registration_no"] = reg_no
                     final_key = generate_project_key(reg_no)
 
