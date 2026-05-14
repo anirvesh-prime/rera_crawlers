@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
@@ -77,6 +78,9 @@ _LISTING_HEADERS = {
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.5",
 }
+
+# Max parallel workers for pre-fetching district listing pages
+_MAX_LISTING_WORKERS = 8
 
 
 # ── String helpers ─────────────────────────────────────────────────────────────
@@ -1002,16 +1006,40 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     t0 = time.monotonic()
     first_district_logged = False
     items_processed = 0
-    for district_idx, district in enumerate(_UP_DISTRICTS):
-        # Resume: skip districts already processed
-        if resume_after_district >= 0 and district_idx < resume_after_district:
-            continue
-        if district_idx == resume_after_district and not resume_pending:
-            continue  # This district was fully done in the previous run
 
-        logger.info(f"Processing district: {district} ({district_idx + 1}/{len(_UP_DISTRICTS)})")
-        stubs = _fetch_district_listing(district, logger)
+    # Pre-compute the districts that still need processing (respecting checkpoint)
+    pending_districts = [
+        (idx, dist) for idx, dist in enumerate(_UP_DISTRICTS)
+        if not (resume_after_district >= 0 and idx < resume_after_district)
+        and not (idx == resume_after_district and not resume_pending)
+    ]
+
+    # Fetch all pending district listings in parallel to overlap HTTP I/O
+    logger.info(
+        f"Pre-fetching {len(pending_districts)} district listings "
+        f"(workers={_MAX_LISTING_WORKERS})",
+        step="listing",
+    )
+    district_stubs: dict[int, list[dict]] = {}
+    with ThreadPoolExecutor(max_workers=_MAX_LISTING_WORKERS) as pool:
+        futures = {
+            pool.submit(_fetch_district_listing, dist, logger): (idx, dist)
+            for idx, dist in pending_districts
+        }
+        for future in as_completed(futures):
+            idx, dist = futures[future]
+            try:
+                district_stubs[idx] = future.result()
+            except Exception as exc:
+                logger.error(
+                    f"Listing fetch failed for {dist}: {exc}", step="listing"
+                )
+                district_stubs[idx] = []
+
+    for district_idx, district in pending_districts:
+        stubs = district_stubs.get(district_idx, [])
         counts["projects_found"] += len(stubs)
+        logger.info(f"Processing district: {district} ({district_idx + 1}/{len(_UP_DISTRICTS)})")
         if not first_district_logged:
             logger.timing("search", time.monotonic() - t0, rows=len(stubs))
             first_district_logged = True

@@ -39,7 +39,7 @@ SITES: list[dict] = [
         "crawler_module": "sites.rajasthan_rera",
         "crawler_type": "api",
         "enabled": True,
-        "rate_limit_delay": (1, 3),
+        "rate_limit_delay": (0.5, 1.5),
         "max_retries": 3,
         # RAJ/P/2024/3058 (VENTURA by J S BUILDCOM) — used as the sample project
         # for dry-run comparisons (state_projects_sample/rajasthan.json).
@@ -142,7 +142,7 @@ SITES: list[dict] = [
         "crawler_module": "sites.gujarat_rera",
         "crawler_type": "api",
         "enabled": True,
-        "rate_limit_delay": (1, 3),
+        "rate_limit_delay": (0.5, 1.5),
         "max_retries": 3,
         # Sentinel and dry-run sample align to a known live project ID.
         "sentinel_registration_no": "PR/GJ/SURAT/CHORYASI/Surat Municipal Corporation/RAA16644/250326/311231",
@@ -386,7 +386,7 @@ SITES: list[dict] = [
         "crawler_module": "sites.himachal_pradesh_rera",
         "crawler_type": "api",
         "enabled": True,
-        "rate_limit_delay": (1, 3),
+        "rate_limit_delay": (0.5, 1.5),
         "max_retries": 3,
         # AURAMAH VALLEY PHASE-I (RERAHPSHP01190048) — matches the sample project in
         # state_projects_sample/himachal_pradesh.json.
