@@ -1089,21 +1089,17 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     except Exception:
                         pass
 
-                # Skip projects where no name could be found in either the
-                # listing marker or the detail page — a name-less record is not
-                # useful and would fail required-field validation anyway.
+                # Fallback: use registration number as project_name when the
+                # portal provides no name in either the listing marker or the
+                # detail page.  The reg number uniquely identifies the project
+                # and satisfies the required-field constraint without skipping
+                # an otherwise valid record.
                 if not payload.get("project_name"):
                     logger.warning(
-                        "project_name missing — skipping project",
+                        "project_name missing — falling back to registration number",
                         reg_no=reg_no, step="normalize",
                     )
-                    insert_crawl_error(
-                        run_id, site_id, "VALIDATION_FAILED",
-                        "Missing required project fields after normalization: project_name",
-                        project_key=key, url=detail_url, raw_data=payload,
-                    )
-                    counts["error_count"] += 1
-                    continue
+                    payload["project_name"] = reg_no
 
                 # Normalize and validate
                 logger.info("Normalizing and validating", step="normalize")
