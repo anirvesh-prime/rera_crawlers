@@ -1231,7 +1231,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     # all detail-page scrapes.  Each project still gets its own fresh context
     # (required for a clean CAPTCHA canvas), but we avoid the ~1 s per-project
     # Playwright subprocess startup cost.
-    _pw_instance = sync_playwright().__enter__()
+    _pw_instance = sync_playwright().start()
     _shared_browser = _pw_instance.chromium.launch(headless=True)
     for page_no in range(start_page, end_page):
         if stop_all:
@@ -1399,7 +1399,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         random_delay(*delay_range)
 
     _shared_browser.close()
-    _pw_instance.__exit__(None, None, None)
+    _pw_instance.stop()
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Maharashtra RERA complete: {counters}", step="done")

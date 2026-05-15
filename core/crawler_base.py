@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import concurrent.futures
 import logging
 import os
 import random
@@ -418,12 +420,31 @@ class PlaywrightSession:
         self._context: BrowserContext | None = None
 
     def __enter__(self) -> "PlaywrightSession":
-        self._playwright = sync_playwright().start()
-        self._browser = self._playwright.chromium.launch(headless=self.headless)
-        self._context = self._browser.new_context(
-            user_agent=get_random_ua(),
-            ignore_https_errors=self.ignore_https_errors,
-        )
+        # Playwright's sync API raises an error when sync_playwright().start()
+        # is called from a thread that already has a running asyncio event loop.
+        # If one is detected, bootstrap playwright from a thread-pool worker
+        # (which has no event loop); the returned objects can then be used
+        # freely from this thread because subsequent API calls don't re-check.
+        try:
+            asyncio.get_running_loop()
+            _in_async = True
+        except RuntimeError:
+            _in_async = False
+
+        def _start() -> None:
+            self._playwright = sync_playwright().start()
+            self._browser = self._playwright.chromium.launch(headless=self.headless)
+            self._context = self._browser.new_context(
+                user_agent=get_random_ua(),
+                ignore_https_errors=self.ignore_https_errors,
+            )
+
+        if _in_async:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                pool.submit(_start).result()
+        else:
+            _start()
+
         return self
 
     def __exit__(self, *args):
