@@ -272,7 +272,7 @@ def _fetch_detail(ack_no: str, logger: CrawlerLogger) -> tuple[str | None, dict]
         PROJECT_URL,
         data={"appNo": ack_no, "regNo": "", "project": "", "firm": "",
               "district": "0", "subdistrict": "0"},
-        retries=3, logger=logger, timeout=60.0,
+        retries=2, logger=logger, timeout=30.0,
     )
     if not search_resp:
         logger.warning(f"Search POST failed for {ack_no!r}", step="detail")
@@ -320,7 +320,7 @@ def _fetch_detail(ack_no: str, logger: CrawlerLogger) -> tuple[str | None, dict]
     # Step 2: fetch full detail page
     detail_resp = safe_post(
         DETAIL_URL, data={"action": numeric_id},
-        retries=3, logger=logger, timeout=60.0,
+        retries=2, logger=logger, timeout=30.0,
     )
     if not detail_resp:
         logger.warning(f"Detail POST failed for numeric_id={numeric_id!r}", step="detail")
@@ -1309,6 +1309,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                                 url=PROJECT_URL,
                                 page=page_number,
                             )
+                            if mode == "daily_light" and get_project_by_key(project_key):
+                                counters["projects_skipped"] += 1
+                                logger.info(
+                                    f"Skipping — already in DB (daily_light): {reg_no}",
+                                    step="skip",
+                                )
+                                continue
                         uploaded_docs = _extract_documents(detail_html, reg_no)
                     else:
                         logger.warning(
@@ -1347,12 +1354,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         if status == "new":
                             counters["projects_new"] += 1
                             logger.info(f"New: {ack_no}", step="upsert")
-                        else:
+                        elif status == "updated":
                             counters["projects_updated"] += 1
                             logger.info(f"Updated: {ack_no}", step="upsert")
+                        else:
+                            counters["projects_skipped"] += 1
+                            logger.info(f"Skipped: {ack_no}", step="upsert")
 
                         # ── Document upload (new or weekly_deep) ────────────────
-                        if uploaded_docs:
+                        if uploaded_docs and (mode != "daily_light" or status == "new"):
                             enriched, doc_count = _process_documents(
                                 project_key, uploaded_docs, run_id, config["id"], logger, state,
                             )
@@ -1387,9 +1397,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 finally:
                     logger.clear_project()
 
-                # Rate-limit: pause every 10 projects, not after every single one
-                if items_processed > 0 and items_processed % 10 == 0:
-                    random_delay(*delay_range)
+                # Rate-limit: a per-page delay already fires at the pagination
+                # step below, so no additional per-project pause is needed.
 
             # ── Pagination ──────────────────────────────────────────────────
             page_number += 1

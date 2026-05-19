@@ -410,6 +410,9 @@ def _missing_required_project_fields(data: Mapping[str, Any]) -> list[str]:
 # crawl_runs
 
 def insert_crawl_run(site_id: str, run_type: str) -> int:
+    if settings.TEST_MODE:
+        log.info("[TEST MODE] Skipping insert_crawl_run — returning sentinel run_id=-1")
+        return -1
     with get_connection() as conn:
         row = conn.execute(
             """
@@ -430,6 +433,8 @@ def update_crawl_run(
     sentinel_passed: bool | None = None,
     notes: str | None = None,
 ):
+    if settings.TEST_MODE:
+        return
     counts = counts or {}
     with get_connection() as conn:
         conn.execute(
@@ -474,6 +479,8 @@ def insert_crawl_error(
     url: str | None = None,
     raw_data: dict | None = None,
 ):
+    if settings.TEST_MODE:
+        return
     with get_connection() as conn:
         conn.execute(
             """
@@ -496,6 +503,8 @@ def get_checkpoint(site_id: str, run_type: str) -> dict | None:
 
 
 def set_checkpoint(site_id: str, run_type: str, last_page: int, last_project_key: str | None, run_id: int):
+    if settings.TEST_MODE:
+        return
     with get_connection() as conn:
         conn.execute(
             """
@@ -514,6 +523,8 @@ def set_checkpoint(site_id: str, run_type: str, last_page: int, last_project_key
 
 
 def clear_checkpoint(site_id: str, run_type: str):
+    if settings.TEST_MODE:
+        return
     with get_connection() as conn:
         conn.execute(
             "DELETE FROM crawl_checkpoints WHERE site_id = %s AND run_type = %s",
@@ -555,17 +566,26 @@ def upsert_project(data: dict[str, Any]) -> str:
 
     Runs entirely inside one transaction with SELECT … FOR UPDATE so that
     parallel crawler processes cannot race on the same project key.
+
+    In TEST_MODE all reads and comparisons still run (so the return value
+    reflects what *would* have happened) but no writes are executed.
     """
     key = data["key"]
     conn = get_connection()
 
+    # Skip row-level locking in test mode — we won't write, so no need to lock.
+    select_sql = (
+        "SELECT * FROM rera_projects WHERE key = %s"
+        if settings.TEST_MODE
+        else "SELECT * FROM rera_projects WHERE key = %s FOR UPDATE"
+    )
+
     with conn.transaction():
-        existing = conn.execute(
-            "SELECT * FROM rera_projects WHERE key = %s FOR UPDATE", (key,)
-        ).fetchone()
+        existing = conn.execute(select_sql, (key,)).fetchone()
 
         if existing is None:
-            _insert_project(data, conn)
+            if not settings.TEST_MODE:
+                _insert_project(data, conn)
             return "new"
 
         item = dict(data)          # working copy (null-preservation writes back here)
@@ -591,7 +611,8 @@ def upsert_project(data: dict[str, Any]) -> str:
                 updated_fields.append(column)
 
         if not updated_fields:
-            _touch_project(key, conn)
+            if not settings.TEST_MODE:
+                _touch_project(key, conn)
             return "skipped"
 
         # Build old_updates history entry (stores old values for changed fields)
@@ -613,7 +634,8 @@ def upsert_project(data: dict[str, Any]) -> str:
             reverse=True,
         )[:_MAX_UPDATES_HISTORY]
 
-        _update_project_fields(key, item, updated_fields, old_updates, conn)
+        if not settings.TEST_MODE:
+            _update_project_fields(key, item, updated_fields, old_updates, conn)
         return "updated"
 
 
@@ -707,7 +729,7 @@ def bulk_insert_logs(entries: list[dict]) -> None:
 
     Note: psycopg3 Connection has no executemany() — use an explicit cursor.
     """
-    if not entries:
+    if not entries or settings.TEST_MODE:
         return
     try:
         conn = get_connection()
@@ -748,7 +770,7 @@ def bulk_insert_document_events(entries: list[dict]) -> None:
 
     Note: psycopg3 Connection has no executemany() — use an explicit cursor.
     """
-    if not entries:
+    if not entries or settings.TEST_MODE:
         return
 
     try:
@@ -799,29 +821,41 @@ def upsert_document(
     ``conn.transaction()`` block.  The row-level lock acquired by FOR UPDATE
     serialises concurrent writers on the same ``(project_key, original_url)``
     pair, and the UNIQUE INDEX in the schema is the DB-level safety net.
+
+    In TEST_MODE the read and comparison still run so the return value
+    reflects what *would* have happened, but no writes are executed.
     """
     conn = get_connection()
+
+    # Skip row-level locking in test mode — we won't write, so no need to lock.
+    select_sql = (
+        """
+        SELECT * FROM rera_project_documents
+        WHERE project_key = %s AND original_url = %s
+        """
+        if settings.TEST_MODE
+        else """
+        SELECT * FROM rera_project_documents
+        WHERE project_key = %s AND original_url = %s
+        FOR UPDATE
+        """
+    )
+
     with conn.transaction():
-        existing = conn.execute(
-            """
-            SELECT * FROM rera_project_documents
-            WHERE project_key = %s AND original_url = %s
-            FOR UPDATE
-            """,
-            (project_key, original_url),
-        ).fetchone()
+        existing = conn.execute(select_sql, (project_key, original_url)).fetchone()
 
         if existing is None:
-            conn.execute(
-                """
-                INSERT INTO rera_project_documents
+            if not settings.TEST_MODE:
+                conn.execute(
+                    """
+                    INSERT INTO rera_project_documents
+                        (project_key, document_type, original_url, s3_key, s3_bucket,
+                         file_name, md5_checksum, file_size_bytes)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
                     (project_key, document_type, original_url, s3_key, s3_bucket,
-                     file_name, md5_checksum, file_size_bytes)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """,
-                (project_key, document_type, original_url, s3_key, s3_bucket,
-                 file_name, md5_checksum, file_size_bytes),
-            )
+                     file_name, md5_checksum, file_size_bytes),
+                )
             return "uploaded"
 
         if (
@@ -829,19 +863,21 @@ def upsert_document(
             or existing["s3_key"] != s3_key
             or existing["file_name"] != file_name
         ):
-            conn.execute(
-                """
-                UPDATE rera_project_documents
-                SET s3_key = %s, file_name = %s, md5_checksum = %s,
-                    file_size_bytes = %s, uploaded_at = now()
-                WHERE id = %s
-                """,
-                (s3_key, file_name, md5_checksum, file_size_bytes, existing["id"]),
-            )
+            if not settings.TEST_MODE:
+                conn.execute(
+                    """
+                    UPDATE rera_project_documents
+                    SET s3_key = %s, file_name = %s, md5_checksum = %s,
+                        file_size_bytes = %s, uploaded_at = now()
+                    WHERE id = %s
+                    """,
+                    (s3_key, file_name, md5_checksum, file_size_bytes, existing["id"]),
+                )
             return "updated"
 
-        conn.execute(
-            "UPDATE rera_project_documents SET last_verified = now() WHERE id = %s",
-            (existing["id"],),
-        )
+        if not settings.TEST_MODE:
+            conn.execute(
+                "UPDATE rera_project_documents SET last_verified = now() WHERE id = %s",
+                (existing["id"],),
+            )
         return "skipped"

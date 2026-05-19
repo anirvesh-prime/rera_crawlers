@@ -72,10 +72,10 @@ def _dismiss_modal(page: Page) -> None:
 
 def _scroll_full(page: Page) -> None:
     """Scroll the page fully so Angular lazy-loaded cards / buttons are all rendered."""
-    for pct in (0.2, 0.4, 0.6, 0.8, 1.0):
+    for pct in (0.35, 0.70, 1.0):
         page.evaluate(f"window.scrollTo(0, document.body.scrollHeight * {pct})")
-        page.wait_for_timeout(600)
-    page.wait_for_timeout(400)
+        page.wait_for_timeout(250)
+    page.wait_for_timeout(200)
 
 
 def _wait_for_loaders(page: Page, timeout: int = 25000) -> None:
@@ -1181,11 +1181,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     try:
                         _dismiss_modal(page)  # dismiss any SweetAlert2 modal first
                         page.click("text=Promoter Details", timeout=8000)
-                        page.wait_for_timeout(4000)
                         try:
-                            page.wait_for_load_state("networkidle", timeout=8000)
+                            page.wait_for_load_state("networkidle", timeout=6000)
                         except Exception:
-                            pass
+                            page.wait_for_timeout(1000)
                         promoter = _parse_promoter_tab(BeautifulSoup(page.content(), "lxml"))
                     except Exception as e:
                         logger.warning(f"Promoter tab failed for {reg}: {e}")
@@ -1195,17 +1194,16 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     try:
                         _dismiss_modal(page)
                         page.click("text=Booking Status", timeout=8000)
-                        page.wait_for_timeout(3000)
                         try:
-                            page.wait_for_load_state("networkidle", timeout=8000)
+                            page.wait_for_load_state("networkidle", timeout=6000)
                         except Exception:
-                            pass
+                            page.wait_for_timeout(800)
                         # Scroll to trigger lazy-rendering of all floor cards
-                        for _pct in (0.3, 0.6, 1.0):
+                        for _pct in (0.4, 0.8, 1.0):
                             page.evaluate(
                                 f"window.scrollTo(0, document.body.scrollHeight * {_pct})"
                             )
-                            page.wait_for_timeout(400)
+                            page.wait_for_timeout(200)
                         units = _parse_booking_status_cards(
                             BeautifulSoup(page.content(), "lxml")
                         )
@@ -1218,15 +1216,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     try:
                         _dismiss_modal(page)
                         page.click("text=Project Milestone", timeout=8000)
-                        page.wait_for_timeout(3000)
                         try:
-                            page.wait_for_load_state("networkidle", timeout=8000)
+                            page.wait_for_load_state("networkidle", timeout=6000)
                         except Exception:
-                            pass
+                            page.wait_for_timeout(800)
                         # Extra scroll to trigger any lazy-loaded milestone rows
                         # (Angular may populate date cells after the initial render)
                         _scroll_full(page)
-                        page.wait_for_timeout(1000)
                         milestones = _parse_timeline_table(
                             BeautifulSoup(page.content(), "lxml")
                         )
@@ -1239,11 +1235,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     try:
                         _dismiss_modal(page)
                         page.click("text=Documents", timeout=8000)
-                        page.wait_for_timeout(3000)
                         try:
-                            page.wait_for_load_state("networkidle", timeout=10000)
+                            page.wait_for_load_state("networkidle", timeout=8000)
                         except Exception:
-                            pass
+                            page.wait_for_timeout(1000)
                         extra_docs = _extract_doc_links(BeautifulSoup(page.content(), "lxml"))
                         seen_urls = {d["url"] for d in doc_links}
                         doc_links += [d for d in extra_docs if d["url"] not in seen_urls]
@@ -1283,24 +1278,14 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         resolved.append(doc)
                     doc_links = resolved
 
-                    # ── Go back to listing page ───────────────────────────
-                    page.go_back()
-                    # If we're still on detail page (Promoter/Documents tabs push history), go back once more
-                    if "/project-details/" in page.url:
-                        page.go_back()
-                    try:
-                        page.wait_for_url("**/project-list**", timeout=8000)
-                    except Exception:
-                        pass
-                    try:
-                        page.wait_for_load_state("networkidle", timeout=12000)
-                    except Exception:
-                        pass
-                    page.wait_for_timeout(1500)
-                    # Re-render all cards (Angular lazy-scroll)
+                    # ── Return to listing page via direct navigation ──────
+                    # Angular pushes a history entry per tab click, so go_back()
+                    # lands on a tab route rather than the listing.  A direct goto
+                    # is faster and fully deterministic.
+                    page.goto(LISTING_URL, wait_until="domcontentloaded", timeout=20000)
                     _scroll_full(page)
                     page.evaluate("window.scrollTo(0, 0)")
-                    page.wait_for_timeout(400)
+                    page.wait_for_timeout(200)
 
                     # ── Build data dict ───────────────────────────────────
                     overview_data  = {k: v for k, v in overview.items()

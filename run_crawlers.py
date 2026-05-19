@@ -11,6 +11,7 @@ Usage:
     python run_crawlers.py --no-item-limit      # override env and run unlimited
     python run_crawlers.py --mode weekly_deep   # explicit mode (default: weekly_deep)
     python run_crawlers.py --sequential         # disable parallel execution
+    python run_crawlers.py --test               # skip S3 uploads and DB writes (dry run)
 """
 from __future__ import annotations
 
@@ -102,6 +103,12 @@ def parse_args() -> argparse.Namespace:
         default=False,
         help="Run sites one-by-one instead of in parallel (useful for debugging)",
     )
+    parser.add_argument(
+        "--test",
+        action="store_true",
+        default=False,
+        help="Test mode: skip all S3 uploads and DB writes; everything else runs normally.",
+    )
     return parser.parse_args()
 
 
@@ -186,6 +193,12 @@ def ensure_playwright_browsers(sites: list[dict]) -> None:
 
 def apply_runtime_overrides(args: argparse.Namespace) -> int:
     """Apply CLI overrides to runtime settings and child worker environment."""
+    if getattr(args, "test", False):
+        os.environ["TEST_MODE"] = "true"
+        os.environ["DRY_RUN_S3"] = "true"
+        settings.TEST_MODE = True
+        settings.DRY_RUN_S3 = True
+
     delay_scale = getattr(args, "delay_scale", None)
     if delay_scale is not None:
         os.environ["CRAWL_DELAY_SCALE"] = str(delay_scale)
@@ -250,6 +263,8 @@ def main():
     print(f"  Host      : {host}")
     print(f"  States    : {', '.join(site_ids)}")
     print(f"  Started   : {started.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+    if getattr(args, "test", False):
+        print(f"  *** TEST MODE: S3 uploads and DB writes are SKIPPED ***")
     if disabled_sites:
         print(f"  Disabled  : {', '.join(disabled_sites)} (explicitly selected)")
     print(f"{_SEP}\n")

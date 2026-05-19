@@ -633,7 +633,7 @@ def _is_valid_preview_html(html: str) -> bool:
 
 
 def _fetch_print_preview_html(
-    browser: Any,
+    detail_page: Any,
     pp_url: str,
     logger: CrawlerLogger,
     max_retries: int = 3,
@@ -641,33 +641,37 @@ def _fetch_print_preview_html(
     """
     Navigate to the PrintPreview page and return its HTML.
 
+    Accepts a reusable Playwright page (detail_page) rather than a browser so
+    the same page object is navigated for every project instead of creating and
+    destroying a new page on each call.  This eliminates per-project page
+    allocation overhead and halves the networkidle timeout (the Telangana
+    PrintPreview is server-rendered and typically settles in 3-8 s).
+
     Validates that the response is a real project page (not an error/redirect
     from an expired or invalid session).  Retries up to *max_retries* times
-    with linear back-off (3 s, 6 s, 9 s) so transient network hiccups or
-    brief server-side session issues are recovered automatically.
+    with linear back-off (2 s, 4 s) so transient network hiccups or brief
+    server-side session issues are recovered automatically.
 
     Returns None only when every attempt fails, so the caller can decide
     to skip the project rather than silently upsert an empty record.
     """
     for attempt in range(1, max_retries + 1):
-        pp_page = None
         try:
             logger.info(
                 f"Fetching PrintPreview (attempt {attempt}/{max_retries})",
                 step="detail_fetch",
             )
-            pp_page = browser.new_page()
-            pp_page.goto(pp_url, wait_until="domcontentloaded", timeout=_NAV_TIMEOUT_MS)
+            detail_page.goto(pp_url, wait_until="domcontentloaded", timeout=_NAV_TIMEOUT_MS)
             try:
-                pp_page.wait_for_load_state("networkidle", timeout=30_000)
+                detail_page.wait_for_load_state("networkidle", timeout=15_000)
             except Exception:
                 pass  # networkidle timeout is non-fatal; content may still be complete
 
-            html = pp_page.content()
+            html = detail_page.content()
             if _is_valid_preview_html(html):
                 return html
 
-            landed = pp_page.url
+            landed = detail_page.url
             logger.warning(
                 f"PrintPreview returned invalid content "
                 f"(attempt {attempt}/{max_retries}, landed={landed!r}, "
@@ -679,15 +683,14 @@ def _fetch_print_preview_html(
                 f"PrintPreview navigation error (attempt {attempt}/{max_retries}): {exc}",
                 step="detail_fetch",
             )
-        finally:
-            if pp_page:
-                try:
-                    pp_page.close()
-                except Exception:
-                    pass
+            # Reset the page to a blank state so the next attempt starts clean.
+            try:
+                detail_page.goto("about:blank", timeout=5000)
+            except Exception:
+                pass
 
         if attempt < max_retries:
-            time.sleep(3 * attempt)   # 3 s, 6 s before the 2nd and 3rd retry
+            time.sleep(2 * attempt)   # 2 s, 4 s before the 2nd and 3rd retry
 
     return None
 
@@ -1273,6 +1276,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     with PlaywrightSession(headless=True, ignore_https_errors=True) as browser:
         # ── Open search page ─────────────────────────────────────────────────
         page = browser.new_page()
+        # One reusable detail page shared across all projects — avoids the
+        # per-project cost of creating and destroying a new browser page.
+        detail_page = browser.new_page()
         t0 = time.monotonic()
         try:
             logger.info("Navigating to Telangana RERA search page")
@@ -1352,12 +1358,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     continue
 
                 try:
-                    random_delay(delay_min, delay_max)
-
                     # ── Navigate to PrintPreview ──────────────────────────────
+                    # No per-project delay — the PrintPreview navigation itself
+                    # takes 3-8 s, and a per-page delay already fires at the
+                    # pagination step below.
                     detail_data: dict[str, Any] = {}
                     if pp_url:
-                        pp_html = _fetch_print_preview_html(browser, pp_url, logger)
+                        pp_html = _fetch_print_preview_html(detail_page, pp_url, logger)
                         if pp_html is None:
                             logger.error(
                                 "PrintPreview unavailable after retries — skipping project",
