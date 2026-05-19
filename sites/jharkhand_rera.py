@@ -806,11 +806,14 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
     current_page = 1
     max_pages    = settings.MAX_PAGES
-    stop_all     = False
+    # When item_limit is hit we stop processing further projects but continue
+    # walking listing pages so projects_found reflects every project Jharkhand
+    # lists (not just those processed before the cap).
+    done_processing = False
     t0 = time.monotonic()
     first_page_logged = False
 
-    while not stop_all:
+    while True:
         page_url = LISTING_URL if current_page == 1 else f"{LISTING_URL}?page={current_page}"
         resp = safe_get(page_url, retries=config.get("max_retries", 3), logger=logger)
         if not resp:
@@ -833,10 +836,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             break
 
         for raw in rows:
-            if item_limit and items_processed >= item_limit:
-                logger.info(f"Item limit {item_limit} reached — stopping", step="listing")
-                stop_all = True
+            if done_processing or (item_limit and items_processed >= item_limit):
+                if not done_processing:
+                    logger.info(f"Item limit {item_limit} reached — counting only",
+                                step="listing")
+                done_processing = True
                 break
+            # Count every row toward the limit BEFORE skip checks so daily_light
+            # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
+            items_processed += 1
 
             reg_no = raw.get("project_registration_no", "").strip()
             if not reg_no:
@@ -900,7 +908,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                     record  = ProjectRecord(**normalized)
                     db_dict = record.to_db_dict()
                     status  = upsert_project(db_dict)
-                    items_processed += 1
 
                     if status == "new":
                         counters["projects_new"] += 1
@@ -939,19 +946,22 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             finally:
                 logger.clear_project()
 
-            random_delay(*delay_range)
+            # Skip per-row delay once we have stopped processing.
+            if not done_processing:
+                random_delay(*delay_range)
 
         # ── Advance pagination ────────────────────────────────────────────
         if max_pages and current_page >= max_pages:
             logger.info(f"Reached max_pages={max_pages}, stopping", step="listing")
             break
-        if stop_all:
-            break
         if not _has_next_page(soup, current_page):
             logger.info("No more pages", step="listing")
             break
         current_page += 1
-        random_delay(*delay_range)
+        # Skip artificial inter-page delays once we are only walking pages
+        # for the projects_found count (no detail-fetch happens past the cap).
+        if not done_processing:
+            random_delay(*delay_range)
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Jharkhand RERA complete: {counters}", step="done")

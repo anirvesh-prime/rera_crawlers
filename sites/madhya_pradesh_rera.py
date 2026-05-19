@@ -743,6 +743,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached, stopping")
             save_checkpoint(site_id, mode, 0, None, run_id)
             return counts
+        # Count every row toward the limit BEFORE skip checks so daily_light
+        # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
+        items_processed += 1
 
         detail_url = stub.get("detail_url", "")
         if not detail_url:
@@ -862,7 +865,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 )
 
             action = upsert_project(db_dict)
-            items_processed += 1
             if action == "new": counts["projects_new"] += 1
             else:               counts["projects_updated"] += 1
             logger.info(f"DB result: {action}", step="db_upsert")

@@ -861,6 +861,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached, stopping")
             reset_checkpoint(site_id, mode)
             return counts
+        # Count every row toward the limit BEFORE skip checks so daily_light
+        # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
+        items_processed += 1
 
         reg_no = stub.get("project_registration_no", "")
         if not reg_no:
@@ -956,7 +959,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 }
 
             action = upsert_project(db_dict)
-            items_processed += 1
             if action == "new": counts["projects_new"] += 1
             else:               counts["projects_updated"] += 1
             logger.info(f"DB result: {action}", step="db_upsert")

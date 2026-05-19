@@ -1048,6 +1048,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             if item_limit and items_processed >= item_limit:
                 logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached", step="listing")
                 break
+            # Count every row toward the limit BEFORE skip checks so daily_light
+            # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
+            items_processed += 1
 
             reg_no = stub["reg_no"]
             project_key = generate_project_key(reg_no)
@@ -1068,8 +1071,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 counts["projects_skipped"] += 1
                 save_checkpoint(site_id, mode, district_idx, project_key, run_id)
                 continue
-
-            items_processed += 1
 
             # ── Deep crawl: fetch detail page ──────────────────────────────────
             logger.info(f"Deep crawling project {reg_no}", district=district)

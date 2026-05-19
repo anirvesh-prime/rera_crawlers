@@ -1305,6 +1305,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         logger.info(f"Resuming from checkpoint: page {page}", step="checkpoint")
 
     # ── Pagination loop ───────────────────────────────────────────────────────
+    # When item_limit is hit we stop processing further projects but continue
+    # walking listing pages so projects_found reflects every Delhi project
+    # listed (not just those processed before the cap).
+    done_processing = False
     t0 = time.monotonic()
     first_page_logged = False
     while True:
@@ -1336,7 +1340,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         # ── Playwright fallback: click "View Project" for any rows missing the URL ──
         # The static HTML may not expose project_page/ links (class change / JS render).
         # One Playwright session per listing page covers all rows at once.
-        if any(not r.get("_project_page_url") for r in rows) and settings.SCRAPE_DETAILS:
+        # Skip the Playwright fallback once the cap is hit — those rows will
+        # never be processed, so resolving their detail URL is wasted work.
+        if not done_processing and any(not r.get("_project_page_url") for r in rows) and settings.SCRAPE_DETAILS:
             pw_urls = _fetch_project_page_urls_playwright(page_url, logger)
             if pw_urls:
                 for r in rows:
@@ -1346,10 +1352,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
         stop_all = False
         for row in rows:
-            if item_limit and items_done >= item_limit:
-                logger.info(f"Item limit {item_limit} reached — stopping", step="listing")
-                stop_all = True
+            if done_processing or (item_limit and items_done >= item_limit):
+                if not done_processing:
+                    logger.info(f"Item limit {item_limit} reached — counting only",
+                                step="listing")
+                done_processing = True
                 break
+            # Count every row toward the limit BEFORE skip checks so daily_light
+            # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
+            items_done += 1
 
             reg_no = row.get("project_registration_no", "").strip().upper()
             if not reg_no:
@@ -1490,7 +1501,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     record  = ProjectRecord(**normalized)
                     db_dict = record.to_db_dict()
                     status  = upsert_project(db_dict)
-                    items_done += 1
 
                     if status == "new":
                         counters["projects_new"] += 1
@@ -1538,8 +1548,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         # ── Checkpoint + advance ───────────────────────────────────────────
         save_checkpoint(config["id"], mode, page, None, run_id)
 
-        if stop_all:
-            break
         if max_pages is not None and page >= max_pages - 1:
             logger.info(f"Reached max_pages={max_pages}, stopping", step="listing")
             break
@@ -1548,7 +1556,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             break
 
         page += 1
-        random_delay(*delay_range)
+        # Skip artificial inter-page delays once we are only walking pages
+        # for the projects_found count (no detail-fetch happens past the cap).
+        if not done_processing:
+            random_delay(*delay_range)
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Delhi RERA complete: {counters}", step="done")

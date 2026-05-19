@@ -671,9 +671,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         counts["error_count"] += 1
         return counts
 
+    # projects_found must reflect the total Goa listing — slice afterwards.
+    counts["projects_found"] = len(cards)
     if item_limit:
         cards = cards[:item_limit]
-    counts["projects_found"] = len(cards)
     logger.info(f"Goa RERA: {len(cards)} projects to process")
     logger.timing("search", time.monotonic() - t0, rows=len(cards))
 

@@ -1291,6 +1291,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         if item_limit and items_processed >= item_limit:
             logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached")
             break
+        # Count every row toward the limit BEFORE skip checks so daily_light
+        # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
+        items_processed += 1
 
         reg_no      = stub["project_registration_no"]
         project_key = generate_project_key(reg_no)
@@ -1309,7 +1312,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             continue
 
         logger.set_project(key=project_key, reg_no=reg_no, url=detail_url or LISTING_URL, page=i)
-        items_processed += 1  # Count every attempted row toward the limit
         try:
             if not detail_url:
                 logger.warning("No detail URL for project")

@@ -1556,6 +1556,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         "error_count":       0,
     }
     item_limit = settings.CRAWL_ITEM_LIMIT or 0
+    items_processed = 0
     t_run = time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
@@ -1647,9 +1648,14 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 continue
 
             counts["projects_found"] += 1
-            if item_limit and counts["projects_found"] > item_limit:
-                logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached, stopping")
-                return counts
+            # Stop processing once item_limit is reached, but continue counting
+            # remaining listing rows toward projects_found so the count reflects
+            # all projects in the state (not just those processed).
+            if item_limit and items_processed >= item_limit:
+                continue
+            # Count every row toward the limit BEFORE skip checks so daily_light
+            # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
+            items_processed += 1
             project_key = generate_project_key(reg_no)
             if last_project_key and mode != "full":
                 if project_key == last_project_key:

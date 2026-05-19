@@ -1152,6 +1152,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         if item_limit and items_processed >= item_limit:
             logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached", step="listing")
             break
+        # Count every row toward the limit BEFORE skip checks so daily_light
+        # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
+        items_processed += 1
 
         reg_no      = stub["project_registration_no"]
         project_key = generate_project_key(reg_no)
@@ -1218,7 +1221,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 else:
                     counts["projects_updated"] += 1
                 logger.info(f"DB result: {status}", step="db_upsert")
-                items_processed += 1
 
                 # ── Documents (weekly_deep or new projects only) ─────────────────
                 all_docs: list[dict] = raw_payload.get("uploaded_documents") or []

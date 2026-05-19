@@ -901,6 +901,9 @@ def _process_row(
     """
     if item_limit and items_processed >= item_limit:
         return items_processed
+    # Count every row toward the limit BEFORE skip checks so daily_light
+    # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
+    items_processed += 1
 
     reg_no = row["project_registration_no"]
     if reg_no in done_regs:
@@ -1003,7 +1006,6 @@ def _process_row(
 
         logger.info("Upserting to DB", step="db_upsert")
         action = upsert_project(db_dict)
-        items_processed += 1
         if action == "new": counts["projects_new"] += 1
         else:               counts["projects_updated"] += 1
         logger.info(f"DB result: {action}", step="db_upsert")
@@ -1126,7 +1128,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 break
 
             logger.info(f"Search page {search_page + 1}: {len(rows)} rows (total={total_records})")
-            counts["projects_found"] += len(rows)
+            # projects_found should reflect the entire Tripura listing — the
+            # primary search API exposes total_records on the first page, so
+            # pin projects_found to that value once and ignore per-page deltas
+            # (the per-page accumulator would only equal the total after every
+            # page is walked, which item_limit may interrupt).
+            if total_records and counts["projects_found"] < total_records:
+                counts["projects_found"] = total_records
             if not first_page_logged:
                 logger.timing("search", time.monotonic() - t0, rows=len(rows))
                 first_page_logged = True
@@ -1159,6 +1167,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             new_supp  = [r for r in supp_rows if r["project_registration_no"] not in done_regs]
             logger.info(f"Supplementary listing: {len(supp_rows)} total, "
                         f"{len(new_supp)} not seen in search")
+            # Add only rows not already counted in the primary search total.
             counts["projects_found"] += len(new_supp)
 
             for row in new_supp:

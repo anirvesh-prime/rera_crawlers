@@ -265,69 +265,62 @@ def _scrape_project_list_playwright(logger: CrawlerLogger) -> list[dict]:
                 return projects
             page.wait_for_load_state("networkidle", timeout=30_000)
 
-            # Try to set DataTables page size to maximum (show all rows at once).
-            # Attempt multiple strategies: value attribute, visible label, and
-            # last-index fallback (the "All" option is often the last entry).
-            _length_selector = (
-                "select[name*='DataTables_Table'], select[name*='_length'], "
-                "select.dt-length-select"
+            # ── Extract rows then paginate through every page ─────────────────
+            # Selector covers: DataTables classic, Bootstrap 3/4/5,
+            # Angular Material (mat-paginator), and aria-label variants.
+            _NEXT_SEL = (
+                "a.paginate_button.next:not(.disabled), "
+                "li.paginate_button.next:not(.disabled) a, "
+                "li.next:not(.disabled) a, "
+                "a[aria-label='Next']:not(.disabled), "
+                "button[aria-label='Next page']:not([disabled]), "
+                "button[aria-label='next']:not([disabled]), "
+                "button.mat-mdc-paginator-navigation-next:not([disabled]), "
+                "button.mat-paginator-navigation-next:not([disabled]), "
+                ".pagination .next:not(.disabled) a, "
+                "a:has-text('Next'):not(.disabled)"
             )
-            _set_page_size = False
-            _size_attempts: list[dict] = [
-                {"value": "-1"},    # DataTables standard "All" value
-                {"label": "All"},   # visible label fallback
-                {"value": "100"},
-                {"value": "50"},
-            ]
-            for _kwargs in _size_attempts:
-                try:
-                    page.select_option(_length_selector, **_kwargs, timeout=5_000)
-                    page.wait_for_timeout(3_000)
-                    page.wait_for_load_state("networkidle", timeout=15_000)
-                    _set_page_size = True
-                    logger.info(f"DataTables page size set ({_kwargs})")
-                    break
-                except Exception:
-                    pass
-            if not _set_page_size:
-                # Last resort: pick the last option (often "All" or the highest N)
-                try:
-                    page.evaluate(
-                        """(sel) => {
-                            const el = document.querySelector(sel);
-                            if (el && el.options.length) {
-                                el.selectedIndex = el.options.length - 1;
-                                el.dispatchEvent(new Event('change', {bubbles: true}));
-                            }
-                        }""",
-                        (
-                            "select[name*='DataTables_Table'], select[name*='_length'], "
-                            "select.dt-length-select"
-                        ),
-                    )
-                    page.wait_for_timeout(3_000)
-                    page.wait_for_load_state("networkidle", timeout=15_000)
-                    _set_page_size = True
-                    logger.info("DataTables page size set via JS last-option fallback")
-                except Exception:
-                    pass
-            if not _set_page_size:
-                logger.warning("Could not change DataTables page size — will paginate")
 
-            # Extract rows from current view and paginate
             projects.extend(_extract_rj_table_rows(page))
+            logger.info(f"Page 1: {len(projects)} rows so far")
+
+            _page_num    = 1
+            _stall_guard = 0    # consecutive pages with no new rows
             while True:
                 try:
-                    next_btn = page.locator(
-                        "a.paginate_button.next:not(.disabled), "
-                        "li.paginate_button.next:not(.disabled) a"
-                    ).first
-                    if not next_btn or not next_btn.is_visible():
+                    next_locator = page.locator(_NEXT_SEL)
+                    if next_locator.count() == 0:
+                        logger.info("No next-button found — pagination complete")
                         break
+                    next_btn = next_locator.first
+                    if not next_btn.is_visible():
+                        logger.info("Next-button not visible — pagination complete")
+                        break
+                    # Bootstrap wraps <a> in <li class="page-item disabled"> on the
+                    # last page — the link is visible but the parent blocks clicks.
+                    parent_li = next_btn.locator("xpath=..")
+                    if parent_li.count() and "disabled" in (parent_li.get_attribute("class") or ""):
+                        logger.info("Next-button parent is disabled — pagination complete")
+                        break
+
+                    _before = len(projects)
                     next_btn.click()
                     page.wait_for_load_state("networkidle", timeout=15_000)
                     page.wait_for_timeout(1_000)
-                    projects.extend(_extract_rj_table_rows(page))
+                    new_rows = _extract_rj_table_rows(page)
+                    projects.extend(new_rows)
+                    _page_num += 1
+                    logger.info(f"Page {_page_num}: +{len(new_rows)} rows ({len(projects)} total)")
+
+                    # Guard: stop if no new data arrived (disabled button stayed
+                    # visible, or click had no effect).
+                    if len(projects) == _before:
+                        _stall_guard += 1
+                        if _stall_guard >= 2:
+                            logger.warning("Pagination stalled (no new rows) — stopping")
+                            break
+                    else:
+                        _stall_guard = 0
                 except Exception as e:
                     logger.warning(f"Pagination stopped: {e}")
                     break
@@ -1226,16 +1219,19 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     listed_projects = _scrape_project_list_playwright(logger)
     if not listed_projects:
         return counts
+    # projects_found must reflect the total Rajasthan listing (all projects in
+    # the state) regardless of CRAWL_ITEM_LIMIT — slice the work list afterwards.
+    counts["projects_found"] = len(listed_projects)
+    total_listing = len(listed_projects)
     if item_limit:
         listed_projects = listed_projects[:item_limit]
-        logger.info(f"Rajasthan: CRAWL_ITEM_LIMIT={item_limit} — {len(listed_projects)} projects")
+        logger.info(f"Rajasthan: CRAWL_ITEM_LIMIT={item_limit} — {len(listed_projects)} of {total_listing} projects")
     else:
         max_pages = settings.MAX_PAGES
         if max_pages:
             listed_projects = listed_projects[:max_pages * 50]
-            logger.info(f"Rajasthan: limiting to {len(listed_projects)} projects (max_pages={max_pages})")
-    counts["projects_found"] = len(listed_projects)
-    logger.timing("search", time.monotonic() - t0, rows=len(listed_projects))
+            logger.info(f"Rajasthan: limiting to {len(listed_projects)} of {total_listing} projects (max_pages={max_pages})")
+    logger.timing("search", time.monotonic() - t0, rows=total_listing)
 
     # httpx session is used only for document downloads
     _timeout = httpx.Timeout(connect=10.0, read=30.0, write=10.0, pool=5.0)

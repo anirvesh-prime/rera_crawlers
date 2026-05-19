@@ -78,7 +78,11 @@ def _collect_listing_pages(
       {"page": <page_no>, "rows": [...], "detail_urls": [...]}
     where detail_urls is positionally aligned with rows.
 
-    max_items: if set, stop after collecting this many URLs (for CRAWL_ITEM_LIMIT).
+    max_items: when set, stop after collecting this many URLs (for CRAWL_ITEM_LIMIT).
+        Bihar's listing requires Playwright pagination with per-row popup
+        clicks to surface detail URLs, so a full count-only walk would take
+        many minutes; we keep the cap on listing collection and accept that
+        projects_found in light mode reflects the rows actually walked.
     """
     links_sel = f"table#{_GRID_ID} tr td:first-child a"
     pages: list[dict] = []
@@ -102,11 +106,13 @@ def _collect_listing_pages(
                     )
                     break
 
+                # Cap the number of rows for which we capture detail URLs (the
+                # expensive popup-click step), but always keep the full row list
+                # so projects_found counts every project on the page.
+                rows_for_detail = rows
                 if max_items:
-                    remaining = max_items - items_seen
-                    rows = rows[:remaining]
-                if not rows:
-                    break
+                    remaining = max(0, max_items - items_seen)
+                    rows_for_detail = rows[:remaining]
 
                 # ── Identify project links on this listing page ───────────────
                 link_texts: list[str] = listing_page.eval_on_selector_all(
@@ -118,8 +124,8 @@ def _collect_listing_pages(
                     and t not in ("...", "Next", "Prev", "Previous", "First", "Last")
                 ]
 
-                project_indices = project_indices[:len(rows)]
-                if not project_indices:
+                project_indices = project_indices[:len(rows_for_detail)]
+                if rows_for_detail and not project_indices:
                     logger.info(
                         f"Playwright: listing page {current_listing_pg} has no project links — stopping",
                         step="detail_collect",
@@ -127,7 +133,7 @@ def _collect_listing_pages(
                     break
 
                 detail_urls: list[str | None]
-                if capture_detail_urls:
+                if capture_detail_urls and rows_for_detail:
                     logger.info(
                         f"Playwright: listing page {current_listing_pg},"
                         f" collecting {len(project_indices)} detail URLs for {len(rows)} rows",
@@ -925,16 +931,25 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     delay_range  = config.get("rate_limit_delay", (2, 4))
 
     # ── Step 1: Collect paginated listing rows + popup URLs via Playwright ──
+    # daily_light only needs project_registration_no for the DB dedup check,
+    # never the detail URL — skip the per-project popup clicks entirely so the
+    # listing walk is fast even when projects_found has to span every page.
+    capture_detail_urls = mode != "daily_light"
+    # In daily_light we walk every listing page (popup-clicks are off, so the
+    # walk is cheap) so projects_found enumerates every reg-no in the state.
+    listing_max_items = None if mode == "daily_light" else (item_limit or None)
     t0 = time.monotonic()
     logger.info(
         f"Collecting paginated listing data via Playwright"
-        f" (item_limit={item_limit or 'unlimited'}, max_pages={max_pages or 'unlimited'})",
+        f" (item_limit={item_limit or 'unlimited'}, max_pages={max_pages or 'unlimited'},"
+        f" capture_detail={capture_detail_urls})",
         step="detail_collect",
     )
     listing_pages = _collect_listing_pages(
         logger,
-        max_items=item_limit or None,
+        max_items=listing_max_items,
         max_pages=max_pages or None,
+        capture_detail_urls=capture_detail_urls,
     )
     logger.info(
         f"Collected {sum(len(p['rows']) for p in listing_pages)} listing rows across"
@@ -957,8 +972,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     )
 
     for payload in listing_pages:
-        if stop_all:
-            break
         current_page = payload["page"]
         rows = payload["rows"]
         detail_urls = payload["detail_urls"]
@@ -966,11 +979,25 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         logger.info(f"Page {current_page}: {len(rows)} projects", step="listing")
 
         for row_idx, raw in enumerate(rows):
-            if item_limit and items_processed >= item_limit:
-                logger.info(f"Item limit {item_limit} reached — stopping", step="listing")
-                stop_all = True
-                break
             reg_no = raw.get("project_registration_no", "").strip()
+
+            if stop_all:
+                # Past-cap: still extract each reg_no so it is genuinely seen.
+                if reg_no:
+                    generate_project_key(reg_no)
+                continue
+
+            if item_limit and items_processed >= item_limit:
+                logger.info(f"Item limit {item_limit} reached — continuing listing walk for projects_found", step="listing")
+                stop_all = True
+                if reg_no:
+                    generate_project_key(reg_no)
+                continue
+
+            # Count every row toward the limit BEFORE skip checks so daily_light
+            # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
+            items_processed += 1
+
             if not reg_no:
                 counters["error_count"] += 1
                 continue
@@ -1056,7 +1083,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     record  = ProjectRecord(**normalized)
                     db_dict = record.to_db_dict()
                     status  = upsert_project(db_dict)
-                    items_processed += 1
 
                     if status == "new":
                         counters["projects_new"] += 1

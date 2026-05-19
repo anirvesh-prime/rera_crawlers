@@ -531,6 +531,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         counts["error_count"] += 1
         return counts
 
+    # projects_found must reflect the total Pondicherry listing (all projects in
+    # the state) regardless of CRAWL_ITEM_LIMIT — slice the work list afterwards.
+    counts["projects_found"] = len(cards)
     if item_limit:
         cards = cards[:item_limit]
         logger.info(f"Pondicherry: CRAWL_ITEM_LIMIT={item_limit} applied — processing {len(cards)} projects")
@@ -540,7 +543,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         if max_pages:
             cards = cards[:max_pages * 50]
             logger.info(f"Pondicherry: limiting to first {len(cards)} projects (max_pages={max_pages})")
-    counts["projects_found"] = len(cards)
     logger.info(f"Pondicherry: {len(cards)} project cards found")
     logger.timing("search", time.monotonic() - t0, rows=len(cards))
 

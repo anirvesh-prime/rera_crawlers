@@ -1022,6 +1022,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     done_regs: set[str] = set()
     item_limit   = settings.CRAWL_ITEM_LIMIT or 0
     items_processed = 0
+    # When item_limit is hit we keep paginating so projects_found enumerates
+    # every reg-no in Odisha and the listing parser is exercised end-to-end.
+    processing_done = False
     max_pages: int | None = settings.MAX_PAGES
     machine_name, machine_ip = get_machine_context()
     t_run = time.monotonic()
@@ -1046,10 +1049,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
         page_num = 1
         while True:
-            if item_limit and items_processed >= item_limit:
-                logger.info(f"Item limit {item_limit} reached — stopping.", step="listing")
-                break
-
             # Skip to start_page (resume after checkpoint)
             if page_num < start_page:
                 try:
@@ -1079,11 +1078,28 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 logger.timing("search", time.monotonic() - t0, rows=len(cards))
 
             for card in cards:
-                if item_limit and items_processed >= item_limit:
-                    logger.info(f"Item limit {item_limit} reached — stopping.", step="listing")
-                    break
-
                 reg  = card["project_registration_no"]
+
+                if processing_done:
+                    # Past-cap: still extract and key the reg_no so it is seen.
+                    if reg:
+                        generate_project_key(reg)
+                    continue
+
+                if item_limit and items_processed >= item_limit:
+                    logger.info(
+                        f"Item limit {item_limit} reached — continuing listing walk for projects_found",
+                        step="listing",
+                    )
+                    processing_done = True
+                    if reg:
+                        generate_project_key(reg)
+                    continue
+
+                # Count every card toward the limit BEFORE skip checks so daily_light
+                # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
+                items_processed += 1
+
                 key  = generate_project_key(reg)
 
                 if reg in done_regs:
@@ -1329,7 +1345,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                     logger.info("Upserting to DB", step="db_upsert")
                     action = upsert_project(db_dict)
-                    items_processed += 1
                     if action == "new": counts["projects_new"] += 1
                     else:               counts["projects_updated"] += 1
                     logger.info(f"DB result: {action}", step="db_upsert")

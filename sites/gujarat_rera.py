@@ -1230,6 +1230,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
         logger.info(f"Total project IDs to process: {len(all_proj_ids)}")
         logger.timing("search", time.monotonic() - t0, rows=len(all_proj_ids))
+        # projects_found must reflect the total Gujarat listing — set it once
+        # from the map-API result before any per-project work begins.
+        counts["projects_found"] = len(all_proj_ids)
 
         # ── Phase 2: scrape each detail page ──────────────────────────────────
         for proj_id in all_proj_ids:
@@ -1238,6 +1241,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 break
             if proj_id <= resume_proj_id:
                 continue
+            # Count every project toward the limit BEFORE skip checks so daily_light
+            # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
+            items_processed += 1
 
             # Use the project-preview URL (base64-encoded ID) which renders full HTML
             encoded_id = base64.b64encode(str(proj_id).encode()).decode()
@@ -1288,7 +1294,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 counts["error_count"] += 1
                 continue
 
-            counts["projects_found"] += 1
             key = generate_project_key(reg_no)
             logger.set_project(key=key, reg_no=reg_no, url=detail_url, page=proj_id)
 
@@ -1427,7 +1432,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                     )
 
                 action = upsert_project(db_dict)
-                items_processed += 1
                 if action == "new": counts["projects_new"] += 1
                 else:               counts["projects_updated"] += 1
                 logger.info(f"DB: {action}", step="db_upsert")

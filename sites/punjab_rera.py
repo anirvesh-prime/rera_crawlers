@@ -1025,21 +1025,28 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 step="checkpoint",
             )
 
+        # projects_found must reflect the total Punjab listing — slice afterwards.
+        counters["projects_found"] = len(rows)
         if item_limit:
             rows = rows[:item_limit]
             logger.info(
                 f"Punjab: CRAWL_ITEM_LIMIT={item_limit} applied — processing {len(rows)} projects",
                 step="listing",
             )
-        counters["projects_found"] = len(rows)
 
         for idx, row in enumerate(rows):
             reg_no = row["project_registration_no"]
             key = generate_project_key(reg_no)
 
-            # ── daily_light: skip projects already in the DB ──────────────────
-            if mode == "daily_light" and get_project_by_key(key):
-                counters["projects_skipped"] += 1
+            # ── daily_light: listing-only pass, never fetch detail pages ─────────
+            # Per spec, daily_light only scans listing pages.
+            # Projects already in DB → skipped; genuinely new ones are counted
+            # as projects_new and left for the weekly_deep to deep-crawl.
+            if mode == "daily_light":
+                if get_project_by_key(key):
+                    counters["projects_skipped"] += 1
+                else:
+                    counters["projects_new"] += 1
                 continue
 
             logger.set_project(key=key, reg_no=reg_no, url=LISTING_URL, page=idx)

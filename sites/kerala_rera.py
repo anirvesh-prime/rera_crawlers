@@ -1572,13 +1572,14 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     logger.timing("search", time.monotonic() - t0, rows=len(first_page_cards))
 
     machine_name, machine_ip = get_machine_context()
-    stop_all = False
+    # When item_limit is hit we stop processing further projects but continue
+    # walking listing pages so projects_found reflects every project Kerala
+    # lists (not just those processed before the cap).
+    done_processing = False
     print_preview_pages: dict[str, Any] = {}
 
     with PlaywrightSession(headless=True) as browser_session:
         for page_num in range(start_page, effective_end + 1):
-            if stop_all:
-                break
             logger.info(f"Listing page {page_num}/{effective_end}")
 
             page_soup = soup if page_num == 1 else None
@@ -1595,16 +1596,25 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             logger.info(f"  {len(cards)} project cards on page {page_num}")
 
             for card in cards:
-                if item_limit and items_processed >= item_limit:
-                    logger.info(f"Item limit {item_limit} reached — stopping", step="listing")
-                    stop_all = True
-                    break
-
                 cert_no = card.get("cert_no_from_card")
                 if not cert_no:
                     continue
-
+                # Always count every parseable card toward projects_found so
+                # the dashboard reports the full state listing total even when
+                # CRAWL_ITEM_LIMIT halts further detail processing.
                 counts["projects_found"] += 1
+                if done_processing or (item_limit and items_processed >= item_limit):
+                    if not done_processing:
+                        logger.info(
+                            f"Item limit {item_limit} reached — counting only",
+                            step="listing",
+                        )
+                    done_processing = True
+                    continue
+                # Count every card toward the limit BEFORE skip checks so daily_light
+                # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
+                items_processed += 1
+
                 key = generate_project_key(cert_no)
                 logger.set_project(key=key, reg_no=cert_no, url=card["detail_url"], page=page_num)
 
@@ -1666,7 +1676,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                     logger.info("Upserting to DB", step="db_upsert")
                     action = upsert_project(db_dict)
-                    items_processed += 1
                     if action == "new": counts["projects_new"] += 1
                     else:               counts["projects_updated"] += 1
                     logger.info(f"DB result: {action}", step="db_upsert")

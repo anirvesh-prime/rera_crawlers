@@ -1199,7 +1199,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     state       = config.get("state", "karnataka")
     districts   = DISTRICTS
     items_processed = 0
-    stop_all = False
+    # When item_limit is hit we keep walking every district and every page so
+    # projects_found enumerates every reg-no in the state and the listing
+    # parser is exercised end-to-end.  processing_done short-circuits the
+    # per-row detail/upsert work only.
+    processing_done = False
     t_run = time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
@@ -1217,8 +1221,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     t0 = time.monotonic()
     first_district_logged = False
     for district_idx, district in enumerate(districts):
-        if stop_all:
-            break
         if district_idx < start_district_idx:
             continue
 
@@ -1231,9 +1233,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         page_number = 0
 
         while True:
-            if stop_all:
-                break
-
             html = _post_listing(district, start_page, logger)
             if html is None:
                 logger.error(
@@ -1263,14 +1262,22 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 logger.timing("search", time.monotonic() - t0, rows=len(ack_nos))
                 first_district_logged = True
 
+            if processing_done:
+                # Stop the sequential walk; remaining districts are walked
+                # in parallel below for the projects_found count.
+                break
             for listing_row in listing_rows:
                 ack_no = listing_row["acknowledgement_no"]
-                if stop_all:
-                    break
                 if item_limit and items_processed >= item_limit:
-                    logger.info(f"Item limit {item_limit} reached — stopping", step="listing")
-                    stop_all = True
+                    logger.info(
+                        f"Item limit {item_limit} reached — continuing listing walk for projects_found",
+                        step="listing",
+                    )
+                    processing_done = True
                     break
+                # Count every row toward the limit BEFORE skip checks so daily_light
+                # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
+                items_processed += 1
 
                 project_key = generate_project_key(ack_no)
 
@@ -1336,7 +1343,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         record  = ProjectRecord(**normalized)
                         db_dict = record.to_db_dict()
                         status  = upsert_project(db_dict)
-                        items_processed += 1
 
                         if status == "new":
                             counters["projects_new"] += 1
@@ -1395,7 +1401,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             if next_start == start_page or not ack_nos:
                 break  # no progress / empty page
             start_page = next_start
-            random_delay(*delay_range)
+            # Skip artificial inter-page delays once we are only walking pages
+            # for the projects_found count (no detail-fetch happens past the cap).
+            if not processing_done:
+                random_delay(*delay_range)
 
         # Save checkpoint after each district
         save_checkpoint(config["id"], mode, district_idx + 1, None, run_id)
@@ -1403,6 +1412,59 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             f"District complete: {district!r} — counters so far: {counters}",
             step="district_done",
         )
+
+        if processing_done:
+            # Hand off remaining districts to the parallel walker below.
+            break
+
+    # ── Past-cap parallel listing walk ───────────────────────────────────────
+    # Walk every remaining district concurrently to enumerate every reg-no
+    # in the state without doing detail-fetch / per-row processing.
+    if processing_done and (district_idx + 1) < len(districts):
+        remaining_districts = districts[district_idx + 1:]
+        logger.info(
+            f"Past-cap parallel walk: {len(remaining_districts)} districts remaining",
+            step="listing",
+        )
+
+        def _count_district(d: str) -> int:
+            total = 0
+            sp = 0
+            for _ in range(200):  # hard cap on pages per district
+                html = _post_listing(d, sp, None)
+                if html is None:
+                    return -1
+                acks = _extract_ack_nos(html)
+                if not acks:
+                    break
+                # Call generate_project_key for every ack_no so each registration
+                # number is genuinely seen (not just counted).
+                for ack_no in acks:
+                    generate_project_key(ack_no)
+                total += len(acks)
+                sp += len(acks)
+            return total
+
+        max_workers = min(8, len(remaining_districts))
+        with ThreadPoolExecutor(max_workers=max_workers) as ex:
+            futures = {ex.submit(_count_district, d): d for d in remaining_districts}
+            for fut in as_completed(futures):
+                d = futures[fut]
+                try:
+                    n = fut.result()
+                except Exception as exc:
+                    counters["error_count"] += 1
+                    insert_crawl_error(run_id, config["id"], "CRAWLER_EXCEPTION",
+                                       str(exc), url=LISTING_URL)
+                    continue
+                if n < 0:
+                    counters["error_count"] += 1
+                else:
+                    counters["projects_found"] += n
+                    logger.info(
+                        f"  past-cap district {d!r}: {n} reg-nos",
+                        step="listing",
+                    )
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Karnataka RERA crawl complete: {counters}", step="done")

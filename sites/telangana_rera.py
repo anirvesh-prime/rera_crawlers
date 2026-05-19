@@ -321,10 +321,14 @@ def _submit_search(page: Any, logger: CrawlerLogger) -> bool:
     return False
 
 
-def _goto_next_page(page: Any) -> bool:
+def _goto_next_page(page: Any, fast: bool = False) -> bool:
     """
     Click the ASP.NET postback 'next page' link in the pager if present.
     Returns True if a next-page link was found and clicked.
+
+    When ``fast=True`` we skip the networkidle wait and use a tighter timeout
+    on the page-number watcher.  This is used for past-cap listing walks where
+    we only need the next page's HTML for row extraction (no detail work).
     """
     try:
         current_page = _get_current_page(page)
@@ -338,13 +342,14 @@ def _goto_next_page(page: Any) -> bool:
             return False
         next_link.click()
         try:
-            page.wait_for_load_state("domcontentloaded", timeout=30_000)
+            page.wait_for_load_state("domcontentloaded", timeout=15_000 if fast else 30_000)
         except Exception:
             pass
-        try:
-            page.wait_for_load_state("networkidle", timeout=30_000)
-        except Exception:
-            pass
+        if not fast:
+            try:
+                page.wait_for_load_state("networkidle", timeout=30_000)
+            except Exception:
+                pass
         try:
             page.wait_for_function(
                 """(prev) => {
@@ -354,7 +359,7 @@ def _goto_next_page(page: Any) -> bool:
                     return Number.isFinite(current) && current > prev;
                 }""",
                 current_page,
-                timeout=30_000,
+                timeout=10_000 if fast else 30_000,
             )
         except Exception:
             pass
@@ -1297,30 +1302,45 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             if not _goto_next_page(page):
                 break
 
-        stop_all = False
+        # When item_limit is hit we keep paginating so projects_found reflects
+        # every reg-no in Telangana and the listing parser is exercised across
+        # every page.  processing_done short-circuits the per-row work only.
+        processing_done = False
         current_page = start_page
 
-        while current_page <= effective_end and not stop_all:
+        while current_page <= effective_end:
             logger.info(f"Listing page {current_page}/{effective_end}")
             html  = page.content()
             rows  = _parse_listing_rows(html)
             logger.info(f"  {len(rows)} project rows on page {current_page}")
+            counts["projects_found"] += len(rows)
 
             for row in rows:
-                if item_limit and items_done >= item_limit:
-                    logger.info(f"Item limit {item_limit} reached")
-                    stop_all = True
-                    break
-
                 app_id    = row.get("app_id") or row.get("project_id") or ""
                 pp_url    = row.get("print_preview_url")
                 stable_id = f"TG-APP-{app_id}" if app_id else None
 
                 if not stable_id and not pp_url:
-                    counts["error_count"] += 1
+                    if not processing_done:
+                        counts["error_count"] += 1
                     continue
 
-                counts["projects_found"] += 1
+                if processing_done:
+                    # Past-cap: still extract the reg_no so it is genuinely seen.
+                    generate_project_key(stable_id or pp_url)
+                    continue
+
+                if item_limit and items_done >= item_limit:
+                    logger.info(
+                        f"Item limit {item_limit} reached — continuing listing walk for projects_found"
+                    )
+                    processing_done = True
+                    generate_project_key(stable_id or pp_url)
+                    continue
+
+                # Count every row toward the limit BEFORE skip checks so daily_light
+                # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
+                items_done += 1
                 key = generate_project_key(stable_id or pp_url)
                 logger.set_project(key=key, reg_no=stable_id, url=pp_url or SEARCH_URL,
                                    page=current_page)
@@ -1442,7 +1462,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                     # ── Upsert to DB ──────────────────────────────────────────
                     action = upsert_project(db_dict)
-                    items_done += 1
                     if action == "new": counts["projects_new"] += 1
                     else:               counts["projects_updated"] += 1
                     logger.info(f"DB result: {action}", step="db_upsert")
@@ -1483,9 +1502,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             save_checkpoint(site_id, mode, current_page, None, run_id)
 
             # ── Paginate ──────────────────────────────────────────────────────
-            if current_page < effective_end and not stop_all:
-                random_delay(delay_min, delay_max)
-                if not _goto_next_page(page):
+            if current_page < effective_end:
+                if not processing_done:
+                    random_delay(delay_min, delay_max)
+                if not _goto_next_page(page, fast=processing_done):
                     logger.info("No next-page link found — stopping pagination")
                     break
 
