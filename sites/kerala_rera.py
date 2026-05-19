@@ -45,6 +45,21 @@ EXPLORE_URL = f"{BASE_URL}/explore-projects"
 STATE_CODE = "KL"
 DOMAIN = "rera.kerala.gov.in"
 LEGACY_DOMAIN = "reraonline.kerala.gov.in"
+
+
+def _get(url: str, logger: CrawlerLogger, *, timeout: float = 30.0,
+         params: dict | None = None):
+    """Thin wrapper around safe_get with SSL verification disabled.
+
+    The Kerala RERA portal (rera.kerala.gov.in / reraonline.kerala.gov.in)
+    serves an incomplete certificate chain that fails Python's default SSL
+    verification with 'unable to get local issuer certificate'.  Using
+    verify=False is consistent with how other state portals with broken certs
+    are handled in this codebase (e.g. Pondicherry, Tripura).
+    """
+    return safe_get(url, verify=False, logger=logger, timeout=timeout, params=params)
+
+
 LEGACY_CONFIG_ID = 14521
 _LEGACY_SKIP_DOC_LABELS = {"complete_project_details", "quarterly_progress_report"}
 _PLAYWRIGHT_PAGE_TIMEOUT_MS = 60_000
@@ -54,7 +69,7 @@ _PLAYWRIGHT_DOWNLOAD_START_TIMEOUT_MS = 120_000
 # ── Listing pagination via explore-projects ───────────────────────────────────
 
 def _get_explore_page(page_num: int, logger: CrawlerLogger) -> BeautifulSoup | None:
-    resp = safe_get(EXPLORE_URL, params={"page": page_num}, logger=logger)
+    resp = _get(EXPLORE_URL, logger, params={"page": page_num})
     if not resp:
         return None
     return BeautifulSoup(resp.text, "lxml")
@@ -348,7 +363,7 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
     all_tables: list[dict] = []
     all_doc_btns: list[dict] = []
     for attempt in range(1, 4):
-        resp = safe_get(url, logger=logger, timeout=45.0)
+        resp = _get(url, logger, timeout=45.0)
         if not resp or resp.status_code != 200:
             logger.warning("PrintPreview fetch failed", url=url, attempt=attempt)
             continue
@@ -1227,7 +1242,7 @@ def build_kerala_legacy_uploaded_documents(
 # ── Detail page scraping ──────────────────────────────────────────────────────
 
 def _scrape_detail_page(url: str, logger: CrawlerLogger) -> dict:
-    resp = safe_get(url, logger=logger)
+    resp = _get(url, logger)
     if not resp:
         return {}
     soup = BeautifulSoup(resp.text, "lxml")
@@ -1426,7 +1441,7 @@ def _handle_document(
         if browser_session is not None and page_cache is not None:
             data = _download_print_preview_document(browser_session, page_cache, doc, logger)
         if data is None:
-            resp = safe_get(url, logger=logger, timeout=60.0)
+            resp = _get(url, logger, timeout=60.0)
             if not resp or len(resp.content) < 100:
                 return None
             data = resp.content
@@ -1473,10 +1488,17 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     Data-quality sentinel for Kerala RERA.
     Loads state_projects_sample/kerala.json as the baseline, re-scrapes the
     sentinel project's detail page, and verifies ≥ 80% field coverage.
+
+    The PrintPreview sub-page (which provides most structured fields) can
+    occasionally return a 200 response with empty HTML on the Kerala portal.
+    To avoid false-positive failures the scrape is retried up to
+    _SENTINEL_MAX_ATTEMPTS times before the check is considered a real failure.
     """
     import json as _json
     import os as _os
     from core.sentinel_utils import check_field_coverage
+
+    _SENTINEL_MAX_ATTEMPTS = 3
 
     sentinel_reg = config.get("sentinel_registration_no", "")
     if not sentinel_reg:
@@ -1501,26 +1523,44 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
         return True
 
     logger.info(f"Sentinel: scraping {sentinel_reg}", url=detail_url, step="sentinel")
-    try:
-        fresh = _scrape_detail_page(detail_url, logger) or {}
-    except Exception as exc:
-        logger.error(f"Sentinel: scrape error — {exc}", step="sentinel")
-        return False
 
-    if not fresh:
-        logger.error("Sentinel: no data extracted", url=detail_url, step="sentinel")
-        return False
+    fresh: dict = {}
+    for _attempt in range(1, _SENTINEL_MAX_ATTEMPTS + 1):
+        if _attempt > 1:
+            logger.warning(
+                f"Sentinel: coverage too low on attempt {_attempt - 1} "
+                f"(PrintPreview may have returned empty page) — retrying",
+                url=detail_url,
+                attempt=_attempt,
+                step="sentinel",
+            )
+        try:
+            fresh = _scrape_detail_page(detail_url, logger) or {}
+        except Exception as exc:
+            logger.error(f"Sentinel: scrape error — {exc}", step="sentinel")
+            return False
 
-    if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
-        insert_crawl_error(
-            run_id, config.get("id", "kerala_rera"),
-            "SENTINEL_FAILED",
-            f"Coverage below 80% for sentinel project {sentinel_reg}",
-        )
-        return False
+        if not fresh:
+            logger.error("Sentinel: no data extracted", url=detail_url, step="sentinel")
+            return False
 
-    logger.info("Sentinel check passed", reg=sentinel_reg, step="sentinel")
-    return True
+        if check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
+            logger.info("Sentinel check passed", reg=sentinel_reg, step="sentinel")
+            return True
+
+        if _attempt < _SENTINEL_MAX_ATTEMPTS:
+            # Coverage was too low — likely a transient empty PrintPreview response.
+            # Clear the result and retry the full detail scrape.
+            continue
+
+    # All attempts exhausted — genuine failure.
+    insert_crawl_error(
+        run_id, config.get("id", "kerala_rera"),
+        "SENTINEL_FAILED",
+        f"Coverage below 80% for sentinel project {sentinel_reg} "
+        f"after {_SENTINEL_MAX_ATTEMPTS} attempts",
+    )
+    return False
 
 
 # ── Main run() ────────────────────────────────────────────────────────────────

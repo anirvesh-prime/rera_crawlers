@@ -787,11 +787,41 @@ def _parse_page_cards(page: Page) -> list[dict]:
 
 
 def _open_detail_page(page: Page, reg: str, logger: CrawlerLogger) -> bool:
-    """Open a detail page from the listing view using several fallback strategies."""
+    """Open a detail page from the listing view using several fallback strategies.
+
+    IMPORTANT: do NOT scroll to (0,0) before clicking — Angular virtual-scroll
+    will remove cards that are out of the viewport, making the JS DOM search fail
+    for any card below the fold.  Instead we scroll the *target* card into the
+    viewport and then click its button.
+    """
     _dismiss_modal(page)
-    _scroll_full(page)
-    page.evaluate("window.scrollTo(0, 0)")
-    page.wait_for_timeout(300)
+
+    # Strategy 1: use Playwright locator — it auto-scrolls the element into view
+    # before clicking (no force=True so Playwright waits for actionability).
+    try:
+        btn_loc = (
+            page.locator("span.fw-bold.me-2", has_text=reg)
+            .locator("xpath=ancestor::*[contains(@class, 'card')][1]")
+            .get_by_text("View Details", exact=True)
+            .first
+        )
+        btn_loc.scroll_into_view_if_needed(timeout=6000)
+        page.wait_for_timeout(400)  # let Angular re-render around the scroll pos
+        btn_loc.click(timeout=5000)
+        return True
+    except Exception:
+        pass
+
+    # Strategy 2: JS — scroll the reg-no span into view first, then click its button.
+    page.evaluate(
+        """(reg) => {
+            const span = Array.from(document.querySelectorAll('span'))
+                              .find(s => s.textContent.trim() === reg);
+            if (span) span.scrollIntoView({behavior: 'instant', block: 'center'});
+        }""",
+        reg,
+    )
+    page.wait_for_timeout(500)  # allow Angular to render cards around scroll pos
 
     clicked = page.evaluate(
         """(reg) => {
@@ -803,7 +833,7 @@ def _open_detail_page(page: Page, reg: str, logger: CrawlerLogger) -> bool:
                 if (!el) return false;
                 const els = Array.from(el.querySelectorAll('a, button'));
                 const btn = els.find(b => b.textContent.trim() === 'View Details');
-                if (btn) { btn.click(); return true; }
+                if (btn) { btn.scrollIntoView({behavior: 'instant', block: 'center'}); btn.click(); return true; }
                 el = el.parentElement;
             }
             return false;
@@ -813,6 +843,9 @@ def _open_detail_page(page: Page, reg: str, logger: CrawlerLogger) -> bool:
     if clicked:
         return True
 
+    # Strategy 3: fallback — re-scroll full page then retry Playwright locator with force.
+    _scroll_full(page)
+    page.wait_for_timeout(300)
     try:
         button = page.locator("span.fw-bold.me-2", has_text=reg).locator(
             "xpath=ancestor::*[contains(@class, 'card')][1]"
@@ -1119,6 +1152,20 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     logger.info("Opening detail page", step="detail_fetch")
                     if not _open_detail_page(page, reg, logger):
                         logger.warning("No View Details button found", step="detail_fetch")
+                        # A failed click may have partially navigated; recover to listing.
+                        if "/project-list" not in page.url:
+                            try:
+                                page.go_back()
+                                page.wait_for_load_state("networkidle", timeout=10000)
+                            except Exception:
+                                pass
+                            if "/project-list" not in page.url:
+                                try:
+                                    page.goto(LISTING_URL, wait_until="networkidle", timeout=20000)
+                                    page.wait_for_timeout(2000)
+                                    _dismiss_modal(page)
+                                except Exception:
+                                    pass
                         continue
                     page.wait_for_url("**/project-details/**", timeout=15000)
                     detail_url = page.url
@@ -1396,9 +1443,23 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 logger.info(f"Reached max_pages={max_pages}, stopping.")
                 break
 
+            # ── Recover to listing if any failed detail-open navigated away ──
+            if "/project-list" not in page.url:
+                logger.warning(f"Not on listing after page {page_num} cards — recovering")
+                try:
+                    page.goto(LISTING_URL, wait_until="networkidle", timeout=20000)
+                    page.wait_for_timeout(2000)
+                    _dismiss_modal(page)
+                except Exception as _nav_err:
+                    logger.warning(f"Listing recovery failed: {_nav_err}")
+                    break
+
             _dismiss_modal(page)
             try:
                 next_page_num = page_num + 1
+                # Pagination buttons live at the bottom — scroll there before querying.
+                page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                page.wait_for_timeout(600)
                 all_btns = page.query_selector_all(
                     "li.page-item:not(.disabled):not(.active) button.page-link")
                 found_next = next(
