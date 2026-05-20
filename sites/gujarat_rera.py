@@ -70,8 +70,16 @@ _LABEL_TO_FIELD: dict[str, str] = {
     "registration number":          "project_registration_no",
     "registration no":              "project_registration_no",
     "project registration no":      "project_registration_no",
+    "project reg no":               "project_registration_no",
+    "project reg. no":              "project_registration_no",
     "rera registration no":         "project_registration_no",
+    "rera reg no":                  "project_registration_no",
+    "rera reg. no":                 "project_registration_no",
     "gujrera reg. no.":             "project_registration_no",
+    "gujrera reg. no":              "project_registration_no",
+    "gujrera registration no":      "project_registration_no",
+    "reg no":                       "project_registration_no",
+    "reg. no":                      "project_registration_no",
     "application no":               "acknowledgement_no",
     "application number":           "acknowledgement_no",
     "acknowledgement no":           "acknowledgement_no",
@@ -183,6 +191,38 @@ def _clean(text) -> str:
         return ""
     return re.sub(r"\s+", " ", str(text)).strip()
 
+
+
+def _extract_regline_reg_no(soup: BeautifulSoup) -> str:
+    """Extract the registration number from the dedicated ``div.regLine`` banner.
+
+    The Angular SPA renders a header band on every project-preview page:
+
+        <div class="... regLine ...">
+          <p>
+            <strong>GUJRERA Reg. No. :</strong>
+            PR/GJ/AHMEDABAD/AHMEDABAD CITY/AUDA/RAA00610/071117
+          </p>
+        </div>
+
+    The value is the text that follows the ``<strong>`` label inside that ``<p>``.
+    Returns an empty string when the element is absent.
+    """
+    reg_div = soup.select_one("div.regLine")
+    if not reg_div:
+        return ""
+    p = reg_div.find("p")
+    if not p:
+        return ""
+    strong = p.find("strong")
+    if not strong:
+        return ""
+    # Collect all text nodes that are direct siblings of <strong> inside <p>
+    parts = []
+    for node in strong.next_siblings:
+        text = str(node) if not hasattr(node, "get_text") else node.get_text(separator=" ")
+        parts.append(text)
+    return _clean(" ".join(parts))
 
 
 def _extract_label_values(soup: BeautifulSoup) -> dict[str, str]:
@@ -1419,6 +1459,20 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 # When the listing stub already supplied a reg_no, prefer it so the
                 # key stays consistent with the pre-detail daily_light skip check.
                 detail_reg_no = data.get("project_registration_no") or ""
+
+                # Structural fallback: the Angular SPA always renders a
+                # ``div.regLine`` banner containing the registration number as
+                # a text node after a <strong> label.  This is tried when the
+                # generic label-value table extractor found nothing (e.g. when
+                # the label text doesn't match any key in _LABEL_TO_FIELD).
+                if not detail_reg_no:
+                    detail_reg_no = _extract_regline_reg_no(soup)
+                    if detail_reg_no:
+                        logger.info(
+                            f"Reg no extracted via regLine selector for proj_id={proj_id}: {detail_reg_no}",
+                            step="reg_no",
+                        )
+
                 reg_no = listing_reg_no or detail_reg_no
                 if not reg_no:
                     logger.error(

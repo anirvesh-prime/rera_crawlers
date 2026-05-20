@@ -261,25 +261,9 @@ def _submit_search(page: Any, logger: CrawlerLogger) -> bool:
                 page.reload(wait_until="domcontentloaded", timeout=_NAV_TIMEOUT_MS)
                 continue
 
-            # Save the CAPTCHA element screenshot before submitting so we can
-            # visually compare what the model saw vs what it returned.
-            import pathlib
-            pathlib.Path("screenshots").mkdir(exist_ok=True)
-            captcha_shot_path = str(
-                pathlib.Path("screenshots") /
-                f"telangana_captcha_attempt{attempt}.png"
-            )
-            try:
-                captcha_el = page.query_selector("#captchaImage")
-                if captcha_el:
-                    captcha_el.screenshot(path=captcha_shot_path)
-            except Exception:
-                captcha_shot_path = "<screenshot failed>"
-
             captcha_input.fill(captcha_text)
             logger.info(
-                f"Submitting CAPTCHA answer: {captcha_text!r} | "
-                f"captcha_image={captcha_shot_path}",
+                f"Submitting CAPTCHA answer: {captcha_text!r}",
                 step="captcha",
             )
 
@@ -327,20 +311,9 @@ def _submit_search(page: Any, logger: CrawlerLogger) -> bool:
                 except Exception:
                     error_snippet = "<could not read body>"
 
-                page_shot_path = str(
-                    pathlib.Path("screenshots") /
-                    f"telangana_submit_fail_attempt{attempt}.png"
-                )
-                try:
-                    page.screenshot(path=page_shot_path, full_page=False)
-                except Exception:
-                    page_shot_path = "<screenshot failed>"
-
                 logger.warning(
                     f"No results table after submit (attempt {attempt}); "
-                    f"url={landed_url!r} | page_text={error_snippet!r} | "
-                    f"captcha_image={captcha_shot_path} | "
-                    f"page_screenshot={page_shot_path}",
+                    f"url={landed_url!r} | page_text={error_snippet!r}",
                     step="search",
                 )
 
