@@ -7,8 +7,10 @@ How the portal works (observed from live HTML):
   Each project appears as:
       var localObj = { appNo : 'ACK/KA/RERA/.../...' };
       applicationArray.push(localObj);
+  The registration number (format PRM/KA/RERA/...) is embedded in a parallel
+  array: applicationNameList1.push('<reg_no>').
   A district MUST be selected — blank search returns zero results.
-  The crawler POSTs each district name and extracts ack_nos via regex.
+  The crawler POSTs each district name and extracts both ack_no and reg_no.
 
 - Detail fetch (TWO-STEP, as of 2025):
   Step 1: POST /projectViewDetails with appNo=<ack_no>
@@ -80,9 +82,13 @@ DISTRICTS: list[str] = [
     "Vijayapura", "Yadgir",
 ]
 
-# Regex to extract acknowledgement numbers from the embedded JavaScript arrays.
+# Regex patterns for the embedded JavaScript arrays in the listing page.
 # Matches: appNo : 'ACK/KA/RERA/...' or appNo : "ACK/KA/RERA/..."
 _ACK_RE = re.compile(r"""appNo\s*:\s*['"]([^'"]+)['"]""")
+# applicationNameList1 → project registration no (PRM/KA/RERA/...)
+_REG_NO_RE = re.compile(r"""applicationNameList1\s*\.push\('([^']*)'\)""")
+# Fallback: regNo field inside localObj if list1 is absent
+_LOCAL_OBJ_REG_RE = re.compile(r"""regNo\s*:\s*['"]([^'"]+)['"]""")
 _PROMO_RE = re.compile(r"""applicationNameList2\s*\.push\('([^']*)'\)""")
 _PROJECT_NAME_RE = re.compile(r"""applicationNameList3\s*\.push\('([^']*)'\)""")
 _PROMOTER_NAME_RE = re.compile(r"""applicationNameList4\s*\.push\('([^']*)'\)""")
@@ -230,25 +236,41 @@ def _extract_ack_nos(html: str) -> list[str]:
 
 
 def _extract_listing_rows(html: str, district: str) -> list[dict]:
-    """Recover per-project listing data from the JS arrays embedded in the page."""
+    """Recover per-project listing data from the JS arrays embedded in the page.
+
+    Registration numbers (``applicationNameList1``) are extracted alongside
+    acknowledgement numbers so the project key can be generated at listing time,
+    avoiding a detail-page fetch for ``daily_light`` dedup checks.
+    """
     acks = _extract_ack_nos(html)
+
+    # Extract registration numbers from applicationNameList1.
+    # Fall back to checking for a regNo field inside localObj (older portal versions).
+    reg_nos = [m.group(1).strip() for m in _REG_NO_RE.finditer(html)]
+    if not reg_nos:
+        reg_nos = [m.group(1).strip() for m in _LOCAL_OBJ_REG_RE.finditer(html)]
+
     promoter_regs = [m.group(1).strip() for m in _PROMO_RE.finditer(html)]
     project_names = [m.group(1).strip() for m in _PROJECT_NAME_RE.finditer(html)]
     promoter_names = [m.group(1).strip() for m in _PROMOTER_NAME_RE.finditer(html)]
 
     rows: list[dict] = []
     for idx, ack_no in enumerate(acks):
+        reg_no = reg_nos[idx] if idx < len(reg_nos) else None
+        promo_reg = promoter_regs[idx] if idx < len(promoter_regs) else None
         rows.append({
             "acknowledgement_no": ack_no,
-            "project_registration_no": ack_no,
+            # Use the real registration number; None means it wasn't on the
+            # listing page and the detail page must supply it (fallback only).
+            "project_registration_no": reg_no,
             "project_name": project_names[idx] if idx < len(project_names) else None,
             "promoter_name": promoter_names[idx] if idx < len(promoter_names) else None,
-            "promoter_registration_no": promoter_regs[idx] if idx < len(promoter_regs) else None,
+            "promoter_registration_no": promo_reg,
             "project_city": district.upper(),
             "project_location_raw": {"district": district},
             "data": {
                 "search_district": district,
-                "promoter_registration_no": promoter_regs[idx] if idx < len(promoter_regs) else None,
+                "promoter_registration_no": promo_reg,
                 "listing_fallback": True,
             },
         })
@@ -1132,18 +1154,15 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     try:
         html, meta = _fetch_detail(ack_no, logger)
         if not html:
-            # None HTML means the POST endpoint was unreachable — treat as a
-            # transient network timeout so the crawl is not aborted unnecessarily.
-            logger.warning(
-                "Sentinel: detail fetch returned no HTML — likely transient network issue; "
-                "skipping coverage check this run",
+            logger.error(
+                "Sentinel: detail fetch returned no HTML — site may be down",
                 step="sentinel",
             )
-            return True
+            return False
         fresh = _parse_detail(html, ack_no, DISTRICTS[0], start_page=0, meta=meta) or {}
     except Exception as exc:
-        logger.warning(f"Sentinel: fetch/parse error — {exc}; skipping check", step="sentinel")
-        return True
+        logger.error(f"Sentinel: fetch/parse error — {exc}", step="sentinel")
+        return False
 
     if not fresh:
         logger.error("Sentinel: no data extracted", step="sentinel")
@@ -1211,8 +1230,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     sentinel_ok = _sentinel_check(config, run_id, logger)
     if not sentinel_ok:
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
+        counters["sentinel_passed"] = False
         counters["error_count"] += 1
         return counters
+    counters["sentinel_passed"] = True
     logger.timing("sentinel", time.monotonic() - t0)
 
     checkpoint = load_checkpoint(config["id"], mode) or {}
@@ -1268,6 +1289,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 break
             for listing_row in listing_rows:
                 ack_no = listing_row["acknowledgement_no"]
+                listing_reg_no = listing_row.get("project_registration_no")
                 if item_limit and items_processed >= item_limit:
                     logger.info(
                         f"Item limit {item_limit} reached — continuing listing walk for projects_found",
@@ -1279,29 +1301,50 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
                 items_processed += 1
 
-                project_key = generate_project_key(ack_no)
+                # Fast path: reg_no known from listing — skip detail fetch for known projects.
+                if listing_reg_no:
+                    project_key = generate_project_key(listing_reg_no)
+                    logger.set_project(
+                        key=project_key,
+                        reg_no=listing_reg_no,
+                        url=PROJECT_URL,
+                        page=page_number,
+                    )
+                    if mode == "daily_light" and get_project_by_key(project_key):
+                        counters["projects_skipped"] += 1
+                        logger.info(
+                            f"Skipping — already in DB (daily_light): {listing_reg_no}",
+                            step="skip",
+                        )
+                        continue
+                else:
+                    # Reg_no not in listing — will be resolved from detail page.
+                    project_key = None
+                    logger.set_project(
+                        reg_no=ack_no,
+                        url=PROJECT_URL,
+                        page=page_number,
+                    )
 
-                # ── daily_light: skip projects already in the DB ──────────────
-                if mode == "daily_light" and get_project_by_key(project_key):
-                    counters["projects_skipped"] += 1
-                    continue
-
-                logger.set_project(
-                    key=project_key,
-                    reg_no=ack_no,
-                    url=PROJECT_URL,
-                    page=page_number,
-                )
                 try:
-
                     # ── Fetch and parse detail page (two-step) ──────────────────
                     detail_html, fetch_meta = _fetch_detail(ack_no, logger)
                     if detail_html:
                         detail = _parse_detail(
                             detail_html, ack_no, district, start_page, meta=fetch_meta
                         )
-                        reg_no = detail.get("project_registration_no", "")
-                        if reg_no:
+                        # Prefer listing reg_no; fall back to detail page value.
+                        detail_reg_no = detail.get("project_registration_no", "")
+                        reg_no = listing_reg_no or detail_reg_no
+                        if not listing_reg_no:
+                            if not reg_no:
+                                logger.warning(
+                                    f"No registration number for {ack_no!r} — skipping",
+                                    step="detail",
+                                )
+                                counters["error_count"] += 1
+                                continue
+                            # Compute key from detail page reg_no and check daily_light.
                             project_key = generate_project_key(reg_no)
                             logger.set_project(
                                 key=project_key,
@@ -1318,12 +1361,19 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                                 continue
                         uploaded_docs = _extract_documents(detail_html, reg_no)
                     else:
+                        if not listing_reg_no:
+                            logger.warning(
+                                f"Detail fetch failed for {ack_no!r} and no listing reg_no — skipping",
+                                step="detail",
+                            )
+                            counters["error_count"] += 1
+                            continue
                         logger.warning(
                             f"Detail fetch failed for {ack_no!r}; using listing fallback",
                             step="detail",
                         )
                         detail = dict(listing_row)
-                        reg_no = detail.get("project_registration_no", ack_no)
+                        reg_no = listing_reg_no
                         uploaded_docs = []
 
                     # ── Build merged record ─────────────────────────────────────

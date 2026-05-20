@@ -1576,8 +1576,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
+        counts["sentinel_passed"] = False
         counts["error_count"] += 1
         return counts
+    counts["sentinel_passed"] = True
     logger.timing("sentinel", time.monotonic() - t0)
 
     item_limit = settings.CRAWL_ITEM_LIMIT or 0  # 0 = unlimited
@@ -1681,9 +1683,20 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     if not detail_data.get("project_name") and card.get("project_name"):
                         detail_data["project_name"] = card["project_name"]
 
-                    final_reg = detail_data.get("project_registration_no") or cert_no
-                    detail_data["project_registration_no"] = final_reg
-                    detail_data["key"] = generate_project_key(final_reg)
+                    final_reg = detail_data.get("project_registration_no")
+                    if not final_reg:
+                        logger.error(
+                            "Detail page missing project_registration_no — skipping",
+                            step="detail_fetch",
+                        )
+                        counts["error_count"] += 1
+                        continue
+                    # Re-use the listing-derived key so the DB record is found by the
+                    # same key that daily_light will query on subsequent crawls.
+                    # Recomputing from final_reg would drift the key when the detail
+                    # reg_no differs from the listing card cert_no (whitespace/case),
+                    # leaving daily_light to re-fetch every detail page forever.
+                    detail_data["key"] = key
                     detail_data["state"] = config["state"]
                     detail_data["project_state"] = config["state"]
                     detail_data["domain"] = DOMAIN

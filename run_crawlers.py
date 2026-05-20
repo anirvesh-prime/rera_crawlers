@@ -140,7 +140,8 @@ def run_site(site_cfg: dict, mode: str) -> dict:
         module = importlib.import_module(site_cfg["crawler_module"])
         result = module.run(site_cfg, run_id, mode)
         counts.update(result)
-        update_crawl_run(run_id, "completed", counts, notes=None)
+        sentinel_passed = counts.pop("sentinel_passed", None)
+        update_crawl_run(run_id, "completed", counts, sentinel_passed=sentinel_passed, notes=None)
         logger.info("Crawl completed", **counts)
     except Exception as exc:
         counts["error_count"] += 1

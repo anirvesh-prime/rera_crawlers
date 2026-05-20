@@ -880,8 +880,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         if not _sentinel_check(config, run_id, logger,
                                markers=markers, qs_map=qs_map, client=client):
             logger.error("Sentinel failed — aborting crawl", step="sentinel")
+            counts["sentinel_passed"] = False
             counts["error_count"] += 1
             return counts
+        counts["sentinel_passed"] = True
         logger.timing("sentinel", time.monotonic() - t0)
 
         # Build marker lookup by registration number (try multiple key names)

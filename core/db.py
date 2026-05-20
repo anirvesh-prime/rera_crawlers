@@ -242,12 +242,13 @@ _SCHEMA_DDL = [
     """,
     """
     CREATE TABLE IF NOT EXISTS crawl_checkpoints (
-        site_id TEXT PRIMARY KEY,
+        site_id TEXT NOT NULL,
         run_type TEXT NOT NULL,
         last_page INTEGER,
         last_project_key TEXT,
         last_run_id INTEGER REFERENCES crawl_runs(id),
-        updated_at TIMESTAMPTZ DEFAULT now()
+        updated_at TIMESTAMPTZ DEFAULT now(),
+        PRIMARY KEY (site_id, run_type)
     )
     """,
     """
@@ -285,6 +286,18 @@ _SCHEMA_DDL = [
         extra JSONB,
         logged_at TIMESTAMPTZ DEFAULT now()
     )
+    """,
+    # ── crawl_checkpoints schema migration (composite PK) ────────────────────
+    # Old schema used site_id alone as the PRIMARY KEY, which meant a
+    # daily_light checkpoint would silently overwrite a weekly_deep one and
+    # vice-versa.  Migrate existing databases to (site_id, run_type) PK.
+    # DROP … IF EXISTS is always safe; ADD PRIMARY KEY raises DuplicateObject
+    # (caught by ensure_schema) if the constraint already exists.
+    """
+    ALTER TABLE crawl_checkpoints DROP CONSTRAINT IF EXISTS crawl_checkpoints_pkey
+    """,
+    """
+    ALTER TABLE crawl_checkpoints ADD PRIMARY KEY (site_id, run_type)
     """,
     # One row per document download / S3 upload attempt.
     """
@@ -510,8 +523,7 @@ def set_checkpoint(site_id: str, run_type: str, last_page: int, last_project_key
             """
             INSERT INTO crawl_checkpoints (site_id, run_type, last_page, last_project_key, last_run_id, updated_at)
             VALUES (%s, %s, %s, %s, %s, now())
-            ON CONFLICT (site_id) DO UPDATE SET
-                run_type = EXCLUDED.run_type,
+            ON CONFLICT (site_id, run_type) DO UPDATE SET
                 last_page = EXCLUDED.last_page,
                 last_project_key = EXCLUDED.last_project_key,
                 last_run_id = EXCLUDED.last_run_id,

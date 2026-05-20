@@ -796,8 +796,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
+        counters["sentinel_passed"] = False
         counters["error_count"] += 1
         return counters
+    counters["sentinel_passed"] = True
     logger.timing("sentinel", time.monotonic() - t0)
 
     item_limit    = settings.CRAWL_ITEM_LIMIT or 0

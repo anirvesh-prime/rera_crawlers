@@ -1086,8 +1086,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
+        counts["sentinel_passed"] = False
         counts["error_count"] += 1
         return counts
+    counts["sentinel_passed"] = True
     logger.timing("sentinel", time.monotonic() - t0)
 
     # Use Playwright to fetch all rows via the DataTables JS API.

@@ -1256,7 +1256,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     t0 = time.monotonic()
     if not _sentinel_check(config, logger, run_id):
         logger.error("Sentinel check failed — aborting Assam RERA crawl")
+        counts["sentinel_passed"] = False
         return counts
+    counts["sentinel_passed"] = True
     logger.timing("sentinel", time.monotonic() - t0)
 
     # ── Step 1: Fetch listing ────────────────────────────────────────────────

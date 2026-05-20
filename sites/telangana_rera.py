@@ -104,6 +104,22 @@ def _decode_data_cert(b64: str) -> dict[str, str]:
         return {}
 
 
+def _compute_doc_decoded(raw_cert: str) -> str:
+    """
+    Decode *raw_cert* (a base64 query-string) and strip the last two
+    parameters (CharacterD and ExtAppID) so the result is stable across
+    sessions.
+
+    Formula supplied by the user:
+        '&'.join(base64.b64decode(raw_cert).decode('utf-8').split('&')[:-2])
+    """
+    try:
+        decoded = base64.b64decode(raw_cert + "==").decode("utf-8", errors="replace")
+        return str("&".join(decoded.split("&")[:-2]))
+    except Exception:
+        return ""
+
+
 def _build_cert_url(params: dict[str, str], char_d: int) -> str:
     """Rebuild a GetShowCertificateFileContent URL with a specific CharacterD."""
     p = {**params, "CharacterD": str(char_d), "ExtAppID": ""}
@@ -416,6 +432,30 @@ def _get_total_pages(page: Any) -> int:
 
 # ── Listing table parsing ─────────────────────────────────────────────────────
 
+def _find_listing_column_indexes(table) -> tuple[int | None, int | None]:
+    """Locate the project/promoter-name column indexes from the listing table headers.
+
+    Returns (project_name_idx, promoter_name_idx).  Each is None when the
+    corresponding header cannot be found, in which case the caller falls back to
+    extracting those fields from the detail page.
+    """
+    proj_idx: int | None = None
+    prom_idx: int | None = None
+    for thead_tr in table.find_all("tr"):
+        ths = thead_tr.find_all("th")
+        if not ths:
+            continue
+        for i, th in enumerate(ths):
+            label = re.sub(r"\s+", " ", th.get_text(" ", strip=True)).lower()
+            if proj_idx is None and "project name" in label:
+                proj_idx = i
+            if prom_idx is None and "promoter name" in label:
+                prom_idx = i
+        if proj_idx is not None or prom_idx is not None:
+            break
+    return proj_idx, prom_idx
+
+
 def _parse_listing_rows(html: str) -> list[dict]:
     """
     Parse the search results HTML table.
@@ -426,6 +466,7 @@ def _parse_listing_rows(html: str) -> list[dict]:
     seen_app_ids: set[str] = set()
 
     for table in soup.find_all("table"):
+        proj_idx, prom_idx = _find_listing_column_indexes(table)
         tbody = table.find("tbody") or table
         for tr in tbody.find_all("tr"):
             cells = tr.find_all("td")
@@ -435,16 +476,26 @@ def _parse_listing_rows(html: str) -> list[dict]:
             pp_url: str | None = None
             raw_cert: str | None = None
 
+            # Extract PrintPreview URL from any tag in the row.
             for tag in list(tr.find_all(["a", "button", "input", "span"])) + [tr]:
                 if pp_url is None:
                     pp_url = _extract_print_preview_url(tag)
-                for attr in ("href", "onclick", "data-url"):
-                    v = str(tag.get(attr, "") or "") if hasattr(tag, "get") else ""
-                    m = re.search(r"QueryStringID=([A-Za-z0-9+/=]+)", v)
-                    if not m:
-                        m = re.search(r"GetshowFileApplicationPreviewFileContent/([A-Za-z0-9+/=]+)", v)
-                    if m and not raw_cert:
-                        raw_cert = m.group(1)
+
+            # data_cert lives specifically in the <a> inside td[6] (0-indexed: cells[5]).
+            if len(cells) >= 6:
+                for a in cells[5].find_all("a"):
+                    for attr in ("href", "onclick", "data-url"):
+                        v = str(a.get(attr, "") or "")
+                        m = re.search(r"QueryStringID=([A-Za-z0-9+/=]+)", v)
+                        if not m:
+                            m = re.search(
+                                r"GetshowFileApplicationPreviewFileContent/([A-Za-z0-9+/=]+)", v
+                            )
+                        if m:
+                            raw_cert = m.group(1)
+                            break
+                    if raw_cert:
+                        break
 
             if not pp_url and not raw_cert:
                 continue
@@ -464,6 +515,15 @@ def _parse_listing_rows(html: str) -> list[dict]:
             texts = [_clean(c.get_text(separator=" ", strip=True)) for c in cells]
             texts = [t for t in texts if t]
 
+            # Pull project_name/promoter_name from the resolved header positions
+            # so the daily_light skip can compute the composite key without
+            # fetching the PrintPreview detail page.  Missing/empty values fall
+            # back to None and force the slow path post-detail.
+            def _cell(idx: int | None) -> str | None:
+                if idx is None or idx >= len(cells):
+                    return None
+                return _clean(cells[idx].get_text(separator=" ", strip=True))
+
             rows.append({
                 "print_preview_url": pp_url,
                 "data_cert": raw_cert,
@@ -475,6 +535,8 @@ def _parse_listing_rows(html: str) -> list[dict]:
                 "division": params.get("Division", ""),
                 "role_id": params.get("RoleID", ""),
                 "listing_texts": texts,
+                "project_name": _cell(proj_idx),
+                "promoter_name": _cell(prom_idx),
             })
 
     return rows
@@ -1264,8 +1326,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting crawl", step="sentinel")
+        counts["sentinel_passed"] = False
         counts["error_count"] += 1
         return counts
+    counts["sentinel_passed"] = True
     logger.timing("sentinel", time.monotonic() - t0)
 
     checkpoint = load_checkpoint(site_id, mode)
@@ -1322,18 +1386,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             counts["projects_found"] += len(rows)
 
             for row in rows:
-                app_id    = row.get("app_id") or row.get("project_id") or ""
-                pp_url    = row.get("print_preview_url")
-                stable_id = f"TG-APP-{app_id}" if app_id else None
+                app_id = row.get("app_id") or row.get("project_id") or ""
+                pp_url = row.get("print_preview_url")
 
-                if not stable_id and not pp_url:
+                if not pp_url:
                     if not processing_done:
                         counts["error_count"] += 1
                     continue
 
                 if processing_done:
-                    # Past-cap: still extract the reg_no so it is genuinely seen.
-                    generate_project_key(stable_id or pp_url)
                     continue
 
                 if item_limit and items_done >= item_limit:
@@ -1341,50 +1402,64 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         f"Item limit {item_limit} reached — continuing listing walk for projects_found"
                     )
                     processing_done = True
-                    generate_project_key(stable_id or pp_url)
                     continue
 
                 # Count every row toward the limit BEFORE skip checks so daily_light
                 # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
                 items_done += 1
-                key = generate_project_key(stable_id or pp_url)
-                logger.set_project(key=key, reg_no=stable_id, url=pp_url or SEARCH_URL,
-                                   page=current_page)
+                key: str | None = None
+                logger.set_project(url=pp_url, page=current_page)
 
-                if mode == "daily_light" and get_project_by_key(key):
-                    logger.info("Skipping — already in DB (daily_light)", step="skip")
-                    counts["projects_skipped"] += 1
-                    logger.clear_project()
-                    continue
+                # ── Fast path: compute composite key from listing-row fields ──
+                # When the listing exposes project_name, promoter_name, and a
+                # decodable data_cert, the same composite key formula used
+                # post-detail can run here, letting daily_light skip already-known
+                # projects without fetching the PrintPreview page.  All other
+                # components (STATE, doc_decoded) are derivable without the
+                # detail page.  Falls back to the slow post-detail path when any
+                # listing-side component is missing.
+                listing_project_name  = _clean(row.get("project_name"))
+                listing_promoter_name = _clean(row.get("promoter_name"))
+                listing_doc_decoded   = _compute_doc_decoded(row.get("data_cert") or "")
+                listing_key: str | None = None
+                if listing_project_name and listing_promoter_name and listing_doc_decoded:
+                    listing_key_input = "|".join([
+                        listing_project_name, listing_promoter_name, STATE, listing_doc_decoded,
+                    ])
+                    listing_key = generate_project_key(listing_key_input)
+                    logger.set_project(key=listing_key, url=pp_url, page=current_page)
+                    if mode == "daily_light" and get_project_by_key(listing_key):
+                        logger.info("Skipping — already in DB (daily_light)", step="skip")
+                        counts["projects_skipped"] += 1
+                        logger.clear_project()
+                        continue
 
                 try:
                     # ── Navigate to PrintPreview ──────────────────────────────
                     # No per-project delay — the PrintPreview navigation itself
                     # takes 3-8 s, and a per-page delay already fires at the
                     # pagination step below.
-                    detail_data: dict[str, Any] = {}
-                    if pp_url:
-                        pp_html = _fetch_print_preview_html(detail_page, pp_url, logger)
-                        if pp_html is None:
-                            logger.error(
-                                "PrintPreview unavailable after retries — skipping project",
-                                step="detail_fetch",
-                            )
-                            insert_crawl_error(
-                                run_id, site_id, "DETAIL_FETCH_FAILED",
-                                "PrintPreview returned invalid content after max retries",
-                                project_key=key, url=pp_url,
-                            )
-                            counts["error_count"] += 1
-                            logger.clear_project()
-                            continue
-                        pp_soup = BeautifulSoup(pp_html, "lxml")
-                        detail_data = _scrape_print_preview(pp_soup, row)
+                    pp_html = _fetch_print_preview_html(detail_page, pp_url, logger)
+                    if pp_html is None:
+                        logger.error(
+                            "PrintPreview unavailable after retries — skipping project",
+                            step="detail_fetch",
+                        )
+                        insert_crawl_error(
+                            run_id, site_id, "DETAIL_FETCH_FAILED",
+                            "PrintPreview returned invalid content after max retries",
+                            url=pp_url,
+                        )
+                        counts["error_count"] += 1
+                        logger.clear_project()
+                        continue
+                    pp_soup = BeautifulSoup(pp_html, "lxml")
+                    detail_data = _scrape_print_preview(pp_soup, row)
 
-                    # ── Determine registration number ─────────────────────────
+                    # ── Store registration number (informational — not the key) ──
                     reg_no = _clean(detail_data.get("project_registration_no"))
-                    detail_data["project_registration_no"] = reg_no
-                    final_key = generate_project_key(reg_no)
+                    if reg_no:
+                        detail_data["project_registration_no"] = reg_no
 
                     # ── Assemble document list ────────────────────────────────
                     raw_docs = _build_uploaded_documents(row, detail_data)
@@ -1394,16 +1469,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     land_area_unit  = detail_data.pop("_land_area_unit", "Total Area(In sqmts)")
                     const_area_unit = detail_data.pop("_const_area_unit",
                                                       "Approved Built up Area (In Sqmts)")
-                    base_params = {
-                        "ProjectID": row.get("project_id", ""),
-                        "Division":  row.get("division", ""),
-                        "UserID":    row.get("user_id", ""),
-                        "RoleID":    row.get("role_id", ""),
-                        "AppID":     app_id,
-                        "Action":    "SEARCH",
-                    }
-                    raw_cert = row.get("data_cert") or ""
-                    doc_decoded = "&".join(f"{k}={v}" for k, v in base_params.items())
+
+                    # doc_decoded: base64-decode data_cert and strip the last two
+                    # session-scoped parameters (CharacterD, ExtAppID) so it is
+                    # stable across crawl sessions.
+                    raw_cert    = row.get("data_cert") or ""
+                    doc_decoded = _compute_doc_decoded(raw_cert)
 
                     detail_data["data"] = {
                         "data_cert": raw_cert,
@@ -1420,18 +1491,61 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         "construction_area_unit": const_area_unit,
                     }
 
-                    # ── Ensure required fields have fallbacks ─────────────────
-                    if not _clean(detail_data.get("project_name")):
-                        # Try to extract from listing texts (first long non-numeric text)
-                        for txt in row.get("listing_texts") or []:
-                            if txt and len(txt) > 4 and not txt.isdigit():
-                                detail_data["project_name"] = txt
-                                break
-                        if not _clean(detail_data.get("project_name")):
-                            detail_data["project_name"] = f"Telangana Project {app_id or proj_id}"
+                    # ── Key: project_name | promoter_name | state | doc_decoded ──
+                    # Telangana is the sole exception to the single-reg-no formula.
+                    # All four components are required — skip if any is absent.
+                    project_name  = _clean(detail_data.get("project_name"))
+                    promoter_name = _clean(detail_data.get("promoter_name"))
+                    if not project_name or not promoter_name or not doc_decoded:
+                        missing = [
+                            f for f, v in [
+                                ("project_name",  project_name),
+                                ("promoter_name", promoter_name),
+                                ("doc_decoded",   doc_decoded),
+                            ] if not v
+                        ]
+                        logger.error(
+                            f"Missing key fields {missing} — skipping project",
+                            step="key_generation",
+                        )
+                        insert_crawl_error(
+                            run_id, site_id, "KEY_FIELDS_MISSING",
+                            f"Cannot generate key — missing: {missing}",
+                            url=pp_url,
+                        )
+                        counts["error_count"] += 1
+                        logger.clear_project()
+                        continue
+
+                    key_input = "|".join([project_name, promoter_name, STATE, doc_decoded])
+                    key = generate_project_key(key_input)
+                    # When the listing exposed all key components, the listing-derived
+                    # key must match the detail-derived key — otherwise daily_light will
+                    # silently re-fetch this project forever.  Log loudly when they
+                    # diverge; the listing-derived key wins so the DB record is
+                    # findable by the next daily_light run.
+                    if listing_key and listing_key != key:
+                        logger.warning(
+                            "Listing key disagrees with detail key — keeping listing key",
+                            step="key_generation",
+                            listing_key=listing_key,
+                            detail_key=key,
+                            listing_project_name=listing_project_name,
+                            detail_project_name=project_name,
+                            listing_promoter_name=listing_promoter_name,
+                            detail_promoter_name=promoter_name,
+                        )
+                        key = listing_key
+                    logger.set_project(key=key, reg_no=reg_no or "", url=pp_url, page=current_page)
+
+                    if mode == "daily_light" and get_project_by_key(key):
+                        logger.info("Skipping — already in DB (daily_light)", step="skip")
+                        counts["projects_skipped"] += 1
+                        logger.clear_project()
+                        continue
 
                     # ── Core metadata ─────────────────────────────────────────
-                    detail_data["key"]              = final_key
+                    detail_data["key"]              = key
                     detail_data["state"]            = STATE
                     detail_data["project_state"]    = STATE
                     detail_data["domain"]           = DOMAIN
@@ -1454,7 +1568,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         logger.warning("Validation failed — using fallback", error=str(ve),
                                        step="normalize")
                         insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(ve),
-                                           project_key=final_key, url=pp_url)
+                                           project_key=key, url=pp_url)
                         counts["error_count"] += 1
                         try:
                             detail_data["data"] = merge_data_sections(

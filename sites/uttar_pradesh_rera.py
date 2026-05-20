@@ -918,19 +918,21 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     """
     Fetch the sentinel project's detail page and verify basic fields.
     Returns True if passed, False if failed (caller should abort crawl).
+
+    Uses _fetch_full_detail_html (direct HTTP GET to frm_view_project_details.aspx)
+    rather than _fetch_detail_html_playwright so the sentinel does not depend on
+    the project still appearing in the active district listing — a fragile
+    Playwright-based navigation that fails when the project is revoked/expired,
+    the GridView is slow, or the site is in maintenance mode.
     """
     sentinel_reg = config.get("sentinel_registration_no", "")
     if not sentinel_reg:
         logger.warning("No sentinel_registration_no configured — skipping", step="sentinel")
         return True
 
-    # The sentinel project's district is stored in config or inferred
-    sentinel_district = config.get("sentinel_district", "Gautam Buddha Nagar")
     logger.info(f"Sentinel: fetching detail for {sentinel_reg}", step="sentinel")
 
-    detail_html, detail_url = _fetch_detail_html_playwright(
-        sentinel_district, sentinel_reg, logger
-    )
+    detail_html, detail_url = _fetch_full_detail_html(sentinel_reg, logger)
     if not detail_html:
         logger.error("Sentinel: could not fetch detail page", step="sentinel")
         insert_crawl_error(run_id, config.get("id", "uttar_pradesh_rera"),
@@ -938,7 +940,8 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
                            f"Could not fetch detail for sentinel {sentinel_reg}")
         return False
 
-    parsed = _parse_detail_page(detail_html, sentinel_reg, sentinel_district)
+    sentinel_district = config.get("sentinel_district", "Gautam Buddha Nagar")
+    parsed = _parse_full_detail_page(detail_html, sentinel_reg, sentinel_district)
     if not parsed.get("project_registration_no"):
         logger.error("Sentinel: registration number not found in detail", step="sentinel")
         insert_crawl_error(run_id, config.get("id", "uttar_pradesh_rera"),
@@ -984,7 +987,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     t0 = time.monotonic()
     if not _sentinel_check(config, run_id, logger):
         logger.error("Sentinel failed — aborting UP RERA crawl")
+        counts["sentinel_passed"] = False
         return counts
+    counts["sentinel_passed"] = True
     logger.timing("sentinel", time.monotonic() - t0)
 
     # ── Checkpoint / resume support ───────────────────────────────────────────

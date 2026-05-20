@@ -21,7 +21,8 @@ _CONFIG = {
 def _listing_row() -> dict:
     return {
         "acknowledgement_no": _ACK,
-        "project_registration_no": _ACK,
+        # Listing page now supplies the real registration number directly.
+        "project_registration_no": _REG,
         "project_name": "Listing Project",
         "promoter_name": "Listing Promoter",
         "project_city": "BENGALURU URBAN",
@@ -79,11 +80,13 @@ class KarnatakaDailyLightTests(unittest.TestCase):
             counts = karnataka_rera.run(_CONFIG, run_id=123, mode="daily_light")
         return counts, mocks
 
-    def test_daily_light_skips_existing_project_after_registration_key_is_known(self):
+    def test_daily_light_skips_existing_project_from_listing_reg_no(self):
+        # The listing row now carries the real registration number, so the key
+        # is generated and the DB check fires BEFORE any detail-page fetch.
         get_project = mock.patch.object(
             karnataka_rera,
             "get_project_by_key",
-            side_effect=[None, {"key": karnataka_rera.generate_project_key(_REG)}],
+            return_value={"key": karnataka_rera.generate_project_key(_REG)},
         )
         extract_docs = mock.patch.object(karnataka_rera, "_extract_documents")
         upsert = mock.patch.object(karnataka_rera, "upsert_project")
@@ -95,9 +98,13 @@ class KarnatakaDailyLightTests(unittest.TestCase):
         self.assertEqual(counts["projects_skipped"], 1)
         self.assertEqual(counts["projects_updated"], 0)
         self.assertEqual(counts["documents_uploaded"], 0)
-        mocks[-3].assert_not_called()
-        mocks[-2].assert_not_called()
-        mocks[-1].assert_not_called()
+        # Detail page must NOT be fetched when listing already has the reg_no
+        # and the project is already in the DB.
+        fetch_detail_mock = mocks[9]   # _fetch_detail is base_patches[9]
+        fetch_detail_mock.assert_not_called()
+        mocks[-3].assert_not_called()  # _extract_documents
+        mocks[-2].assert_not_called()  # upsert_project
+        mocks[-1].assert_not_called()  # _process_documents
 
     def test_daily_light_does_not_upload_documents_for_updated_project(self):
         get_project = mock.patch.object(karnataka_rera, "get_project_by_key", return_value=None)
