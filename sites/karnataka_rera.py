@@ -214,7 +214,12 @@ def _post_listing(district: str, start_page: int, logger: CrawlerLogger) -> str 
         "registrationNo": "",
         "START_PAGE":    str(start_page),
     }
-    resp = safe_post(LISTING_URL, data=payload, retries=3, logger=logger, timeout=45.0)
+    # Fast-fail: the Karnataka portal regularly hangs mid-POST. The default
+    # retries=3, timeout=45 ladder burns up to ~280s per stuck district and
+    # the crawler walks 31 districts sequentially, so even a handful of
+    # timeouts adds tens of minutes to every run. One attempt with a 30s cap
+    # lets the checkpoint resume the failed district on the next crawl.
+    resp = safe_post(LISTING_URL, data=payload, retries=1, logger=logger, timeout=30.0)
     return resp.text if resp else None
 
 

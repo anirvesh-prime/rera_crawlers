@@ -104,25 +104,40 @@ def _decode_data_cert(b64: str) -> dict[str, str]:
         return {}
 
 
+# Stable params kept in doc_decoded and in rebuilt cert/preview URLs.  The
+# Telangana portal periodically appends new session-scoped trailers (originally
+# CharacterD + ExtAppID; later IsAbyence was added).  Pinning the set of kept
+# keys makes doc_decoded stable across those server-side additions so existing
+# DB keys are not invalidated whenever a new trailer appears.
+_STABLE_DOC_KEYS = ("ProjectID", "Division", "UserID", "RoleID", "AppID", "Action")
+
+
 def _compute_doc_decoded(raw_cert: str) -> str:
     """
-    Decode *raw_cert* (a base64 query-string) and strip the last two
-    parameters (CharacterD and ExtAppID) so the result is stable across
-    sessions.
-
-    Formula supplied by the user:
-        '&'.join(base64.b64decode(raw_cert).decode('utf-8').split('&')[:-2])
+    Decode *raw_cert* (a base64 query-string) and keep only the canonical
+    stable parameters so the result is invariant across sessions and across
+    Telangana adding/removing trailing session-scoped params like CharacterD,
+    ExtAppID, IsAbyence.
     """
     try:
         decoded = base64.b64decode(raw_cert + "==").decode("utf-8", errors="replace")
-        return str("&".join(decoded.split("&")[:-2]))
+        kept: list[str] = []
+        for pair in decoded.split("&"):
+            if "=" not in pair:
+                continue
+            k, _ = pair.split("=", 1)
+            if k in _STABLE_DOC_KEYS:
+                kept.append(pair)
+        return "&".join(kept)
     except Exception:
         return ""
 
 
 def _build_cert_url(params: dict[str, str], char_d: int) -> str:
     """Rebuild a GetShowCertificateFileContent URL with a specific CharacterD."""
-    p = {**params, "CharacterD": str(char_d), "ExtAppID": ""}
+    p = {k: params[k] for k in _STABLE_DOC_KEYS if k in params}
+    p["CharacterD"] = str(char_d)
+    p["ExtAppID"]   = ""
     qs = "&".join(f"{k}={v}" for k, v in p.items())
     b64 = base64.b64encode(qs.encode()).decode().rstrip("=")
     return f"{BASE_URL}/SearchList/GetShowCertificateFileContent?QueryStringID={b64}"
@@ -130,7 +145,9 @@ def _build_cert_url(params: dict[str, str], char_d: int) -> str:
 
 def _build_preview_url(params: dict[str, str], char_d: int) -> str:
     """Rebuild a GetshowFileApplicationPreviewFileContent URL."""
-    p = {**params, "CharacterD": str(char_d), "ExtAppID": ""}
+    p = {k: params[k] for k in _STABLE_DOC_KEYS if k in params}
+    p["CharacterD"] = str(char_d)
+    p["ExtAppID"]   = ""
     qs = "&".join(f"{k}={v}" for k, v in p.items())
     b64 = base64.b64encode(qs.encode()).decode().rstrip("=")
     return f"{BASE_URL}//SearchList/GetshowFileApplicationPreviewFileContent/{b64}"
@@ -481,21 +498,31 @@ def _parse_listing_rows(html: str) -> list[dict]:
                 if pp_url is None:
                     pp_url = _extract_print_preview_url(tag)
 
-            # data_cert lives specifically in the <a> inside td[6] (0-indexed: cells[5]).
-            if len(cells) >= 6:
-                for a in cells[5].find_all("a"):
-                    for attr in ("href", "onclick", "data-url"):
-                        v = str(a.get(attr, "") or "")
-                        m = re.search(r"QueryStringID=([A-Za-z0-9+/=]+)", v)
-                        if not m:
-                            m = re.search(
-                                r"GetshowFileApplicationPreviewFileContent/([A-Za-z0-9+/=]+)", v
-                            )
-                        if m:
-                            raw_cert = m.group(1)
-                            break
-                    if raw_cert:
+            # data_cert lives on the "View Certificate" anchor.  Telangana now
+            # stores it as a raw base64 string in the ``data-qstr`` attribute
+            # (old layout wrapped it as ``?QueryStringID=…`` in href/onclick or
+            # embedded in a ``GetshowFileApplicationPreviewFileContent/<b64>``
+            # path).  Search any anchor in the row that uses ``showFile``-style
+            # callbacks so we are robust to column reordering as well as the
+            # storage variant — the older href/QueryStringID form is retained
+            # as a fallback for any cached or alternate-layout responses.
+            for a in tr.find_all("a"):
+                qstr = str(a.get("data-qstr", "") or "").strip().rstrip("=")
+                if qstr and re.fullmatch(r"[A-Za-z0-9+/=]+", qstr):
+                    raw_cert = qstr
+                    break
+                for attr in ("href", "onclick", "data-url"):
+                    v = str(a.get(attr, "") or "")
+                    m = re.search(r"QueryStringID=([A-Za-z0-9+/=]+)", v)
+                    if not m:
+                        m = re.search(
+                            r"GetshowFileApplicationPreviewFileContent/([A-Za-z0-9+/=]+)", v
+                        )
+                    if m:
+                        raw_cert = m.group(1)
                         break
+                if raw_cert:
+                    break
 
             if not pp_url and not raw_cert:
                 continue
@@ -614,6 +641,37 @@ def _lv(soup: BeautifulSoup, *label_patterns: str) -> str | None:
                     val = _clean(cols[i + 1].get_text(separator=" ", strip=True))
                     if val:
                         return val
+    return None
+
+
+def _lv_for(section: Any, *for_patterns: str) -> str | None:
+    """
+    Find a ``<label for="…">`` whose ``for`` attribute matches one of the
+    given regex patterns and return the value of the adjacent col-div.
+
+    The Telangana PrintPreview reuses the same ``<label for="…">`` ids for
+    semantically equivalent fields whose visible label text varies between
+    promoter types (e.g. Individual uses "Promoter Name" with
+    ``for="PersonalInfoModel_IndivisualName"``; Organization uses just "Name"
+    with ``for="PersonalInfoModel_CompanyName"``).  Matching on the stable
+    ``for`` id lets us extract the value without enumerating every visible
+    label variant.
+    """
+    if not section:
+        return None
+    for pattern in for_patterns:
+        pat = re.compile(pattern, re.I)
+        lbl = section.find("label", attrs={"for": pat})
+        if not lbl:
+            continue
+        col_parent = lbl.find_parent("div", class_=re.compile(r"\bcol"))
+        if not col_parent:
+            continue
+        next_col = col_parent.find_next_sibling("div", class_=re.compile(r"\bcol"))
+        if next_col:
+            val = _clean(next_col.get_text(separator=" ", strip=True))
+            if val:
+                return val
     return None
 
 
@@ -819,16 +877,62 @@ def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
     }
 
     # ── Promoter (Promoter Information section) ───────────────────────────────
-    # The page shows first-name ("Promoter Name") and last-name separately.
-    first_name = prom_lv(r"promoter\s*name")
-    last_name  = prom_lv(r"\blast\s*name\b", r"\bsurname\b")
-    data["promoter_name"] = " ".join(filter(None, [first_name, last_name])) or None
+    # The section header is "Promoter Information - Individual" or
+    # "Promoter Information - Organization"; the form labels differ between
+    # the two layouts:
+    #   Individual   : "Promoter Name" / "Middle Name" / "Last Name"
+    #                  (label for=PersonalInfoModel_IndivisualName / …MName / …LName)
+    #   Organization : just "Name"
+    #                  (label for=PersonalInfoModel_CompanyName)
+    # Fall back through the visible-label lookup first, then the stable
+    # for-id lookup, so both variants resolve.
+    first_name = (
+        prom_lv(r"promoter\s*name")
+        or _lv_for(prom_sec, r"PersonalInfoModel_IndivisualName$",
+                              r"PersonalInfoModel_CompanyName$")
+    )
+    middle_name = (
+        prom_lv(r"\bmiddle\s*name\b")
+        or _lv_for(prom_sec, r"PersonalInfoModel_IndivisualMName$")
+    )
+    last_name = (
+        prom_lv(r"\blast\s*name\b", r"\bsurname\b")
+        or _lv_for(prom_sec, r"PersonalInfoModel_IndivisualLName$")
+    )
+    data["promoter_name"] = " ".join(filter(None, [first_name, middle_name, last_name])) or None
 
-    prom_house    = prom_lv(r"building\s*name", r"house\s*number", r"house\s*no")
-    prom_locality = prom_lv(r"\blocality\b")
-    prom_district = prom_lv(r"\bdistrict\b")
-    prom_pin      = prom_lv(r"pin\s*code")
-    prom_state    = prom_lv(r"^state$") or "Telangana"
+    # Address labels also diverge between Individual and Organization.  Look
+    # up via for-id when the visible-label probe misses (e.g. Organization
+    # uses CompanyHouseNo / CompanyBuilding / CompanyLocality / CompanyDistrict /
+    # CompanyState / CompanyPinCode).
+    prom_house = (
+        prom_lv(r"building\s*name", r"house\s*number", r"house\s*no")
+        or _lv_for(prom_sec, r"PersonalInfoModel_CompanyHouseNo$",
+                              r"PersonalInfoModel_CompanyBuilding$",
+                              r"PersonalInfoModel_IndivisualHouseNo$",
+                              r"PersonalInfoModel_IndivisualBuilding$")
+    )
+    prom_locality = (
+        prom_lv(r"\blocality\b")
+        or _lv_for(prom_sec, r"PersonalInfoModel_CompanyLocality$",
+                              r"PersonalInfoModel_IndivisualLocality$")
+    )
+    prom_district = (
+        prom_lv(r"\bdistrict\b")
+        or _lv_for(prom_sec, r"PersonalInfoModel_CompanyDistrictValue$",
+                              r"PersonalInfoModel_IndivisualDistrictValue$")
+    )
+    prom_pin = (
+        prom_lv(r"pin\s*code")
+        or _lv_for(prom_sec, r"PersonalInfoModel_CompanyPinCode$",
+                              r"PersonalInfoModel_IndivisualPinCode$")
+    )
+    prom_state = (
+        prom_lv(r"^state$")
+        or _lv_for(prom_sec, r"PersonalInfoModel_CompanyState$",
+                              r"PersonalInfoModel_IndivisualState$")
+        or "Telangana"
+    )
 
     prom_raw_parts = [p for p in [prom_house, prom_locality, prom_district, prom_state,
                                    f"Pincode: {prom_pin}" if prom_pin else None] if p]
@@ -1081,12 +1185,19 @@ def _fetch_upid_document(
         with httpx.Client(
             timeout=60.0, follow_redirects=True, verify=False, cookies=cookies
         ) as client:
+            # Fast-fail: GetUserDocumentIframe frequently 500s or hangs on
+            # the Telangana portal. The default retries=3, timeout=60 ladder
+            # burns up to 360s per dead UPID, multiplied by 5-20 docs per new
+            # project. One attempt with a 25s/30s cap lets weekly_deep recover
+            # broken docs without blocking the run on systemic portal failures.
             resp = download_response(
                 post_url,
                 method="POST",
                 json_data=payload,
                 headers=headers,
-                timeout=60.0,
+                retries=1,
+                timeout=25.0,
+                total_timeout=30.0,
                 verify=False,
                 client=client,
             )
@@ -1120,7 +1231,9 @@ def _fetch_upid_document(
             pdf_resp = download_response(
                 pdf_url,
                 headers={"User-Agent": "Mozilla/5.0", "Referer": BASE_URL},
-                timeout=60.0,
+                retries=1,
+                timeout=25.0,
+                total_timeout=30.0,
                 verify=False,
                 client=client,
             )

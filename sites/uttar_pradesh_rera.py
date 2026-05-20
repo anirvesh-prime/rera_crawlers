@@ -444,6 +444,10 @@ def _parse_full_detail_page(html: str, reg_no: str, district: str) -> dict:  # n
     soup = BeautifulSoup(html, "lxml")
     out: dict[str, Any] = {}
 
+    # Always stamp the registration number so downstream callers (e.g. sentinel
+    # check) can confirm the page was parsed for the correct project.
+    out["project_registration_no"] = reg_no
+
     def _inp(elem_id: str) -> str | None:
         """Return the value= attribute of a hidden input element (None if empty/placeholder)."""
         elem = soup.find("input", id=elem_id)

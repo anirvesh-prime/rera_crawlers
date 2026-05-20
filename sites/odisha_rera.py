@@ -1078,8 +1078,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         logger.timing("sentinel", time.monotonic() - t0)
 
         t0 = time.monotonic()
-        page.goto(LISTING_URL, wait_until="networkidle", timeout=40000)
-        page.wait_for_timeout(5000)
+        # Odisha is an Angular SPA with background polling that never reaches
+        # networkidle. Wait for domcontentloaded + a short settle, then rely on
+        # _scroll_full below to trigger lazy card rendering. Saves ~30s per
+        # listing-page navigation.
+        page.goto(LISTING_URL, wait_until="domcontentloaded", timeout=20000)
+        page.wait_for_timeout(1500)
         _dismiss_modal(page)
 
         page_num = 1
@@ -1456,8 +1460,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     logger.info(f"No page {next_page_num} button — crawl complete")
                     break
                 found_next.click()
-                page.wait_for_timeout(3000)
-                page.wait_for_load_state("networkidle", timeout=15000)
+                # See note on initial goto: networkidle never settles on the
+                # Odisha SPA.  domcontentloaded + scroll is enough for the
+                # next page's cards; _scroll_full at the top of the page loop
+                # forces lazy hydration before parsing.
+                page.wait_for_timeout(800)
+                try:
+                    page.wait_for_load_state("domcontentloaded", timeout=10000)
+                except Exception:
+                    pass
                 page_num += 1
                 random_delay(*config.get("rate_limit_delay", (2, 4)))
             except PWTimeout:

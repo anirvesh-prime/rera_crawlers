@@ -964,13 +964,33 @@ def _fetch_listing_stubs(page, logger: CrawlerLogger) -> list[dict]:
         captured.extend(items)
 
     page.on("response", _on_response)
+    _listing_nav_url = f"{BASE_URL}/#/home-p/registered-project-listing"
+    _nav_attempts = 3
     try:
-        page.goto(
-            f"{BASE_URL}/#/home-p/registered-project-listing",
-            timeout=60_000,
-            wait_until="networkidle",
-        )
-        page.wait_for_timeout(3_000)
+        for _attempt in range(1, _nav_attempts + 1):
+            try:
+                page.goto(
+                    _listing_nav_url,
+                    timeout=60_000,
+                    wait_until="networkidle",
+                )
+                page.wait_for_timeout(3_000)
+                break  # success
+            except Exception as _nav_err:
+                _nav_err_str = str(_nav_err)
+                if _attempt < _nav_attempts and (
+                    "net::" in _nav_err_str.lower()
+                    or "timeout" in _nav_err_str.lower()
+                ):
+                    logger.warning(
+                        f"Listing page navigation failed (attempt {_attempt}/{_nav_attempts},"
+                        f" retrying in 15 s): {_nav_err}",
+                        url=_listing_nav_url,
+                    )
+                    import time as _time
+                    _time.sleep(15)
+                else:
+                    raise
     finally:
         page.remove_listener("response", _on_response)
 

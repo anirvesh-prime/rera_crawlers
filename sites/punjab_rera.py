@@ -1040,18 +1040,16 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             reg_no = row["project_registration_no"]
             key = generate_project_key(reg_no)
 
-            # ── daily_light: listing-only pass, never fetch detail pages ─────────
-            # Per spec, daily_light only scans listing pages.
-            # Projects already in DB → skipped; genuinely new ones are counted
-            # as projects_new and left for the weekly_deep to deep-crawl.
-            if mode == "daily_light":
-                if get_project_by_key(key):
-                    counters["projects_skipped"] += 1
-                else:
-                    counters["projects_new"] += 1
+            logger.set_project(key=key, reg_no=reg_no, url=LISTING_URL, page=idx)
+
+            # ── daily_light: skip projects already in the DB ──────────────────
+            # Genuinely new projects fall through to the regular detail-fetch +
+            # upsert path so they land in the DB on first sighting.
+            if mode == "daily_light" and get_project_by_key(key):
+                counters["projects_skipped"] += 1
+                logger.clear_project()
                 continue
 
-            logger.set_project(key=key, reg_no=reg_no, url=LISTING_URL, page=idx)
             try:
                 try:
                     t0 = time.monotonic()
