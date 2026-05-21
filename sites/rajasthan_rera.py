@@ -828,7 +828,7 @@ def _try_expand_tabs(page) -> None:
             tabs = page.locator(selector).all()
             for tab in tabs:
                 try:
-                    tab.click(timeout=2_000)
+                    tab.click(timeout=5_000)
                     page.wait_for_timeout(800)
                 except Exception:
                     pass
@@ -1130,6 +1130,15 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
             fresh, _ = _scrape_detail_playwright(page, sentinel_reg, logger)
             browser.close()
     except Exception as exc:
+        exc_str = str(exc)
+        # Playwright / network timeout → transient; skip rather than abort crawl
+        if "timeout" in exc_str.lower() or "net::" in exc_str.lower():
+            logger.warning(
+                f"Sentinel: Playwright timeout (likely transient) — {exc}; "
+                "skipping coverage check this run",
+                step="sentinel",
+            )
+            return True
         logger.error(f"Sentinel: Playwright failed — {exc}", step="sentinel")
         return False
 

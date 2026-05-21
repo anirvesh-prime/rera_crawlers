@@ -78,6 +78,26 @@ def _scroll_full(page: Page) -> None:
     page.wait_for_timeout(200)
 
 
+# Selector for the registration-number span rendered inside every project card.
+# Its presence is the cheapest signal that Angular has finished hydrating the
+# listing XHR (~20–25 s after domcontentloaded in headless Chromium).
+_LISTING_CARD_SELECTOR = "span.fw-bold.me-2"
+
+
+def _wait_for_listing_cards(page: Page, timeout_ms: int = 30_000) -> bool:
+    """Wait until the listing page has at least one rendered project card.
+
+    Returns True if cards appeared in time, False otherwise. Callers should
+    treat False as "page is empty or Angular failed to hydrate" — the regular
+    parser will then return 0 cards and pagination will end cleanly.
+    """
+    try:
+        page.wait_for_selector(_LISTING_CARD_SELECTOR, timeout=timeout_ms)
+        return True
+    except Exception:
+        return False
+
+
 def _wait_for_loaders(page: Page, timeout: int = 25000) -> None:
     """Scroll down to trigger lazy sections then settle."""
     try:
@@ -900,7 +920,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger, _page: "Pa
     import json as _json
     import os as _os
     from playwright.sync_api import sync_playwright
-    from core.sentinel_utils import check_field_coverage
+    from core.sentinel_utils import check_field_coverage, click_tab_with_retry
 
     sentinel_reg = config.get("sentinel_registration_no", "")
     if not sentinel_reg:
@@ -936,37 +956,35 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger, _page: "Pa
             result.pop("data", None)
 
             # ── Promoter Details tab ──────────────────────────────────────
-            try:
-                _dismiss_modal(sp)
-                sp.click("text=Promoter Details", timeout=8000)
-                sp.wait_for_timeout(3000)
+            _dismiss_modal(sp)
+            if click_tab_with_retry(
+                sp, "text=Promoter Details",
+                label="Promoter Details",
+                logger=logger,
+            ):
                 try:
-                    sp.wait_for_load_state("networkidle", timeout=8000)
-                except Exception:
-                    pass
-                promoter = _parse_promoter_tab(BeautifulSoup(sp.content(), "lxml"))
-                result.update({k: v for k, v in promoter.items()
-                               if v is not None and not k.startswith("_")})
-            except Exception as e:
-                logger.warning(f"Sentinel: Promoter tab skipped — {e}", step="sentinel")
+                    promoter = _parse_promoter_tab(BeautifulSoup(sp.content(), "lxml"))
+                    result.update({k: v for k, v in promoter.items()
+                                   if v is not None and not k.startswith("_")})
+                except Exception as e:
+                    logger.warning(f"Sentinel: Promoter parse failed — {e}", step="sentinel")
 
             # ── Documents tab ─────────────────────────────────────────────
-            try:
-                _dismiss_modal(sp)
-                sp.click("text=Documents", timeout=8000)
-                sp.wait_for_timeout(3000)
+            _dismiss_modal(sp)
+            if click_tab_with_retry(
+                sp, "text=Documents",
+                label="Documents",
+                logger=logger,
+            ):
                 try:
-                    sp.wait_for_load_state("networkidle", timeout=10000)
-                except Exception:
-                    pass
-                doc_links = _extract_doc_links(BeautifulSoup(sp.content(), "lxml"))
-                if doc_links:
-                    result["uploaded_documents"] = [
-                        {"link": d["url"], "type": d.get("label", "document")}
-                        for d in doc_links
-                    ]
-            except Exception as e:
-                logger.warning(f"Sentinel: Documents tab skipped — {e}", step="sentinel")
+                    doc_links = _extract_doc_links(BeautifulSoup(sp.content(), "lxml"))
+                    if doc_links:
+                        result["uploaded_documents"] = [
+                            {"link": d["url"], "type": d.get("label", "document")}
+                            for d in doc_links
+                        ]
+                except Exception as e:
+                    logger.warning(f"Sentinel: Documents parse failed — {e}", step="sentinel")
 
             # project_state is a constant, not scraped from a tab
             result["project_state"] = "odisha"
@@ -1083,11 +1101,20 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         # _scroll_full below to trigger lazy card rendering. Saves ~30s per
         # listing-page navigation.
         page.goto(LISTING_URL, wait_until="domcontentloaded", timeout=20000)
-        page.wait_for_timeout(1500)
+        # Angular fetches the project list asynchronously; wait up to 30 s for
+        # the first reg-no span to appear before scrolling/parsing. Without
+        # this the parser sees an empty skeleton and returns 0 projects.
+        if not _wait_for_listing_cards(page, timeout_ms=30_000):
+            logger.warning("Listing cards did not render within 30s after load",
+                           step="listing")
         _dismiss_modal(page)
 
         page_num = 1
         while True:
+            # Always re-wait at loop top: covers initial load, checkpoint
+            # resume, and every paginated next-page click.
+            _wait_for_listing_cards(page, timeout_ms=30_000)
+
             # Skip to start_page (resume after checkpoint)
             if page_num < start_page:
                 try:

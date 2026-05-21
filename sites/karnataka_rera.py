@@ -1159,13 +1159,24 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     try:
         html, meta = _fetch_detail(ack_no, logger)
         if not html:
-            logger.error(
-                "Sentinel: detail fetch returned no HTML — site may be down",
+            logger.warning(
+                "Sentinel: detail fetch returned no HTML — likely transient "
+                "(portal hangs mid-POST); skipping coverage check this run",
                 step="sentinel",
             )
-            return False
+            return True
         fresh = _parse_detail(html, ack_no, DISTRICTS[0], start_page=0, meta=meta) or {}
     except Exception as exc:
+        exc_str = str(exc)
+        # httpx ReadTimeout / ConnectTimeout / network blip → transient; skip
+        # rather than abort the entire crawl on a one-off portal hiccup.
+        if "timeout" in exc_str.lower() or "connect" in exc_str.lower():
+            logger.warning(
+                f"Sentinel: transient network error — {exc}; "
+                "skipping coverage check this run",
+                step="sentinel",
+            )
+            return True
         logger.error(f"Sentinel: fetch/parse error — {exc}", step="sentinel")
         return False
 

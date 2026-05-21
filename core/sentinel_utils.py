@@ -17,7 +17,7 @@ Usage (in any _sentinel_check):
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from core.logger import CrawlerLogger
@@ -128,3 +128,58 @@ def check_field_coverage(
             step="sentinel",
         )
     return True
+
+
+def click_tab_with_retry(
+    page: Any,
+    selector: str,
+    *,
+    label: str | None = None,
+    attempts: int = 2,
+    click_timeout_ms: int = 15_000,
+    settle_ms: int = 6_000,
+    networkidle_timeout_ms: int = 15_000,
+    logger: "CrawlerLogger | None" = None,
+) -> bool:
+    """
+    Click a tab/link on an Angular SPA with bounded retries and relaxed timeouts.
+
+    The Promoter / Documents / similar tabs on sentinel pages occasionally fail
+    to register the first click when the underlying XHR is still in flight.
+    A single retry covers the transient case without making the sentinel hang.
+
+    Returns True on success, False if all attempts were exhausted. On False the
+    caller should continue gracefully — coverage will reveal the missing data.
+    """
+    tab_label = label or selector
+    last_exc: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            page.click(selector, timeout=click_timeout_ms)
+            page.wait_for_timeout(settle_ms)
+            try:
+                page.wait_for_load_state("networkidle", timeout=networkidle_timeout_ms)
+            except Exception:
+                # networkidle is best-effort — Angular often keeps a long-poll open.
+                pass
+            return True
+        except Exception as exc:
+            last_exc = exc
+            if logger:
+                logger.warning(
+                    f"Sentinel: tab click failed (attempt {attempt}/{attempts}) "
+                    f"for {tab_label!r} — {exc}",
+                    step="sentinel",
+                )
+            if attempt < attempts:
+                # Brief settle before retry; gives Angular time to recover.
+                try:
+                    page.wait_for_timeout(1_000)
+                except Exception:
+                    pass
+    if logger and last_exc is not None:
+        logger.warning(
+            f"Sentinel: giving up on tab {tab_label!r} after {attempts} attempts",
+            step="sentinel",
+        )
+    return False
