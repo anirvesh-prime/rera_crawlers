@@ -624,7 +624,9 @@ def upsert_project(data: dict[str, Any]) -> str:
 
         if not updated_fields:
             if not settings.TEST_MODE:
-                _touch_project(key, conn)
+                _touch_project(key, conn,
+                               machine_name=data.get("machine_name"),
+                               crawl_machine_ip=data.get("crawl_machine_ip"))
             return "skipped"
 
         # Build old_updates history entry (stores old values for changed fields)
@@ -681,12 +683,24 @@ def _insert_project(data: dict[str, Any], conn: psycopg.Connection):
     conn.execute(query, [_db_value(data[c], c) for c in columns])
 
 
-def _touch_project(key: str, conn: psycopg.Connection):
-    """No meaningful change — only refresh last_crawled_date, clear updated_fields.
+def _touch_project(key: str, conn: psycopg.Connection,
+                   machine_name: str | None = None,
+                   crawl_machine_ip: str | None = None):
+    """No meaningful change — refresh last_crawled_date, clear updated_fields,
+    and update machine tracking to the current crawler.
     Executes within the caller's transaction — no commit here."""
+    parts = ["last_crawled_date = now()", "updated_fields = NULL"]
+    values: list[Any] = []
+    if machine_name:
+        parts.append("machine_name = %s")
+        values.append(machine_name)
+    if crawl_machine_ip:
+        parts.append("crawl_machine_ip = %s")
+        values.append(crawl_machine_ip)
+    values.append(key)
     conn.execute(
-        "UPDATE rera_projects SET last_crawled_date = now(), updated_fields = NULL WHERE key = %s",
-        (key,),
+        f"UPDATE rera_projects SET {', '.join(parts)} WHERE key = %s",
+        values,
     )
 
 
@@ -700,7 +714,8 @@ def _update_project_fields(
     """Write only changed business fields + bookkeeping columns.
     Executes within the caller's transaction — no commit here."""
     _BOOKKEEPING = ["updated_fields", "last_updated", "last_crawled_date",
-                    "old_updates", "config_id", "is_updated"]
+                    "old_updates", "config_id", "is_updated",
+                    "machine_name", "crawl_machine_ip"]
     # Deduplicate preserving order: changed fields first, then bookkeeping
     seen: set[str] = set()
     all_columns: list[str] = []

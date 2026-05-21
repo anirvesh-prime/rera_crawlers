@@ -8,7 +8,6 @@
   "project_type": "Plotted",
   "promoter_name": "VISION INFRA",
   "status_of_the_project": "Active",
-  "acknowledgement_no": "ACK16122505429",
   "project_pin_code": "441204",
   "project_city": "Nagpur",
   "project_state": "MAHARASHTRA",
@@ -32,22 +31,15 @@
     "locality": "DIGHORI",
     "landmark": "SHIVDARSHAN APARTMENT",
     "state": "MAHARASHTRA",
+    "district": "Nagpur",
     "taluk": "Nagpur (Urban)",
     "village": "Nagpur (M Corp.)",
-    "district": "Nagpur",
     "pin_code": "440034"
-  },
-  "promoter_contact_details": {
-    "phone": "9822234954",
-    "email": "sakharkar.girish@gmail.com"
   },
   "bank_details": {
     "bank_name": "ICICI BANK LIMITED",
     "IFSC": "ICIC0007398",
     "address": "ICICI Bank Ltd., NMC House 3285, Kirti Nagar, Narsala Road, Nagpur, Narsala.440034, Maharashtra"
-  },
-  "project_cost_detail": {
-    "estimated_construction_cost": 85352219.0
   },
   "uploaded_documents": [
     {
@@ -59,78 +51,80 @@
       "filename": "FORM 2.pdf"
     },
     {
-      "type": "Legal Title report",
+      "type": "Withdrawal Update Form 3",
+      "filename": "FORM 3.pdf"
+    },
+    {
+      "type": "UMARGAON 102-5 FINAL CERTIFICATE.pdf",
+      "filename": "UMARGAON 102-5 FINAL CERTIFICATE.pdf"
+    },
+    {
+      "type": "NA_ORDER.pdf",
+      "filename": "NA_ORDER.pdf"
+    },
+    {
+      "type": "ANNEXURE A COMMENCE DECLARATION.pdf",
+      "filename": "ANNEXURE A COMMENCE DECLARATION.pdf"
+    },
+    {
+      "type": "MAP.pdf",
+      "filename": "MAP.pdf"
+    },
+    {
+      "type": "FORM 1 Architect Cert.pdf",
+      "filename": "FORM 1 Architect Cert.pdf"
+    },
+    {
+      "type": "FORM 2 ENGG.pdf",
+      "filename": "FORM 2 ENGG.pdf"
+    },
+    {
+      "type": "SATBARA.pdf",
+      "filename": "SATBARA.pdf"
+    },
+    {
+      "type": "DISCLOSURE_INTEREST_PARTNERS.pdf",
+      "filename": "DISCLOSURE_INTEREST_PARTNERS.pdf"
+    },
+    {
+      "type": "Partnershipdeed_11zon.pdf",
+      "filename": "Partnershipdeed_11zon.pdf"
+    },
+    {
+      "type": "NMRDA_EMAIL_VERIFICATION.pdf",
+      "filename": "NMRDA_EMAIL_VERIFICATION.pdf"
+    },
+    {
+      "type": "VISIONPAN.pdf",
+      "filename": "VISIONPAN.pdf"
+    },
+    {
+      "type": "CERSAI_For_Asset_Based.pdf",
+      "filename": "CERSAI_For_Asset_Based.pdf"
+    },
+    {
+      "type": "CERSAI_For_Debtor_Based.pdf",
+      "filename": "CERSAI_For_Debtor_Based.pdf"
+    },
+    {
+      "type": "Undertaking about Cersai Report .pdf",
+      "filename": "Undertaking about Cersai Report .pdf"
+    },
+    {
+      "type": "Clarification_letter_11zon.pdf",
+      "filename": "Clarification_letter_11zon.pdf"
+    },
+    {
+      "type": "Declaration Form B",
       "filename": "LEGAL_REPORT.pdf"
     },
     {
-      "type": "Land Ownership Document",
+      "type": "Declaration Form B",
       "filename": "Sale deed_11zon.pdf"
     },
     {
       "type": "Declaration Form B",
       "filename": "Affidavit Form B.pdf"
-    },
-    {
-      "type": "Others",
-      "filename": "SATBARA.pdf"
-    },
-    {
-      "type": "Others",
-      "filename": "DISCLOSURE_INTEREST_PARTNERS.pdf"
-    },
-    {
-      "type": "Others",
-      "filename": "Partnershipdeed_11zon.pdf"
-    },
-    {
-      "type": "Others",
-      "filename": "NMRDA_EMAIL_VERIFICATION.pdf"
-    },
-    {
-      "type": "Building Plan Approval",
-      "filename": "UMARGAON 102-5 FINAL CERTIFICATE.pdf"
-    },
-    {
-      "type": "NA Order for Plotted Development",
-      "filename": "NA_ORDER.pdf"
-    },
-    {
-      "type": "Annexure-A as per order 50/2024",
-      "filename": "ANNEXURE A COMMENCE DECLARATION.pdf"
-    },
-    {
-      "type": "Layout Approval",
-      "filename": "MAP.pdf"
-    },
-    {
-      "type": "Others",
-      "filename": "FORM 2 ENGG.pdf"
-    },
-    {
-      "type": "Others",
-      "filename": "CERSAI_For_Asset_Based.pdf"
-    },
-    {
-      "type": "Others",
-      "filename": "CERSAI_For_Debtor_Based.pdf"
-    },
-    {
-      "type": "Others",
-      "filename": "Undertaking about Cersai Report .pdf"
-    },
-    {
-      "type": "Others",
-      "filename": "Clarification_letter_11zon.pdf"
-    }
-  ],
-  "authorised_signatory_details": [
-    {
-      "name": "GIRISH YADAORAO SAKHARKAR",
-      "role": "PARTNER"
-    },
-    {
-      "name": "GIRISH YADAORAO SAKHARKAR",
-      "role": "PARTNER"
     }
   ],
   "co_promoter_details": [
@@ -155,43 +149,12 @@
       "role": "Partner"
     }
   ],
-  "professional_information": [
-    {
-      "name": "PAWAN RAVIPRASAD GUPTA",
-      "role": "Professional",
-      "email": "pawanrgupta@gmail.com",
-      "phone": "9923432949",
-      "address": "SADAR Nagpur"
-    },
-    {
-      "name": "KAUSTUBH BHUMRAO NIMBARTE",
-      "role": "Professional",
-      "email": "arkaustubhnimbarte@gmail.com",
-      "phone": "9175177562",
-      "address": "GOPAL NAGAR Nagpur"
-    },
-    {
-      "name": "HUZAIFA S SANAWADWALA",
-      "role": "Professional",
-      "email": "ca.huzaifa@gmail.com",
-      "phone": "9881109925",
-      "address": "ITWARI Nagpur"
-    },
-    {
-      "name": "MURTAZA ILYAS HUSSAIN",
-      "role": "Professional",
-      "email": "eoffice.mhussain@gmail.com",
-      "phone": "8275789294",
-      "address": "Itwari Nagpur"
-    }
-  ],
   "data": {
-    "project_id": "61699",
-    "land_area_unit": "sq mt",
-    "estimated_construction_cost": "85352219.0",
     "state_promo": "MAHARASHTRA",
     "district_promo": "Nagpur",
-    "pin_code_promo": 440034
+    "pin_code_promo": 440034,
+    "land_area_unit": "sq mt",
+    "project_id": "61699"
   },
   "promoters_details": {
     "name": "VISION INFRA",
@@ -201,7 +164,6 @@
     "land_area": 10864.97,
     "land_area_unit": "sq mt"
   },
-  "submitted_date": "2025-12-18 00:00:00+00:00",
   "last_modified": "2026-02-13 00:00:00+00:00",
   "estimated_finish_date": "2030-12-31 00:00:00+00:00",
   "approved_on_date": "2026-02-13 00:00:00+00:00",
@@ -213,6 +175,9 @@
   "checked_updates": false,
   "rera_housing_found": false,
   "is_live": true,
+  "acknowledgement_no": null,
+  "promoter_contact_details": null,
+  "submitted_date": null,
   "estimated_commencement_date": null,
   "actual_commencement_date": null,
   "actual_finish_date": null,
@@ -220,12 +185,15 @@
   "construction_area": null,
   "total_floor_area_under_commercial_or_other_uses": null,
   "total_floor_area_under_residential": null,
+  "project_cost_detail": null,
   "number_of_residential_units": null,
   "number_of_commercial_units": null,
   "building_details": null,
   "complaints_litigation_details": null,
+  "authorised_signatory_details": null,
   "project_description": null,
   "provided_faciltiy": null,
+  "professional_information": null,
   "development_agreement_detail": null,
   "construction_progress": null,
   "land_detail": null,

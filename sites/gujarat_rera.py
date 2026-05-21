@@ -133,13 +133,12 @@ _LABEL_TO_FIELD: dict[str, str] = {
     "approved date":                        "approved_on_date",
     "approval date":                        "approved_on_date",
     "date of approval":                     "approved_on_date",
-    "total land area":                      "land_area",
-    "land area":                            "land_area",
-    "project land area":                    "land_area",
-    "total carpet area":                    "construction_area",
-    "carpet area":                          "construction_area",
+    # Gujarat RERA uses two specific labels for area:
+    #   "Total Open Area"  → project land area (open ground footprint)
+    #   "Total Covered Area" → building/construction footprint
+    # Other labels (Project Land Area, Carpet Area, etc.) are intentionally ignored.
+    "total open area":                      "land_area",
     "total covered area":                   "construction_area",
-    "total open area":                      "_total_open_area",
     "project estimated cost (rs.)":         "_total_project_cost",
     "office address":                       "_promoter_address",
     "total residential units":              "number_of_residential_units",
@@ -487,24 +486,22 @@ def _extract_html_fields(lv: dict[str, str], proj_id: int) -> dict:
                 pass
         return None, ""
 
-    land_area_val  = out.get("land_area")
-    carpet_area_val = out.get("construction_area")
-    if land_area_val or carpet_area_val:
+    land_area_val        = out.get("land_area")
+    construction_area_val = out.get("construction_area")
+    if land_area_val or construction_area_val:
         lad: dict = {}
-        # Try to get better units from the raw value strings stored in norm
-        covered_raw = norm.get("total covered area", "")
-        land_raw    = norm.get("project land area", "") or norm.get("land area", "")
-        _, construction_unit = _split_num_unit(covered_raw)
-        _, land_unit         = _split_num_unit(land_raw)
+        # Units come from the same raw value strings the numbers were extracted from
+        _, land_unit         = _split_num_unit(norm.get("total open area", ""))
+        _, construction_unit = _split_num_unit(norm.get("total covered area", ""))
         if land_area_val:
             lad["land_area"] = (
                 str(int(land_area_val)) if land_area_val == int(land_area_val)
                 else str(land_area_val)
             )
-            lad["land_area_unit"] = land_unit or "Sq. Mtrs."
-        if carpet_area_val:
-            lad["construction_area"] = carpet_area_val
-            lad["construction_area_unit"] = construction_unit or "Sq. Mtrs."
+            lad["land_area_unit"] = land_unit or "Sq Mtrs"
+        if construction_area_val:
+            lad["construction_area"] = construction_area_val
+            lad["construction_area_unit"] = construction_unit or "Sq Mtrs"
         if lad:
             out["land_area_details"] = lad
 
@@ -643,14 +640,7 @@ def _parse_overview_card(soup: BeautifulSoup) -> dict:
         # Remove parenthetical unit suffixes from the label, e.g. "(Sq Mtrs)"
         label = re.sub(r"\s*\([^)]*\)\s*$", "", label).strip()
 
-        if "land area" in label:
-            # Extract numeric value (strip commas)
-            num_str = value.replace(",", "")
-            try:
-                out.setdefault("land_area", float(num_str))
-            except ValueError:
-                pass
-        elif "project status" in label or label == "status":
+        if "project status" in label or label == "status":
             out.setdefault("status_of_the_project", value)
     return out
 
@@ -1514,11 +1504,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                             else str(land_area)
                         )
                         lad["land_area_unit"] = lad_old.get("land_area_unit", "Sq Mtrs")
-                    ca = lad_old.get("construction_area") or construction_area
-                    cau = lad_old.get("construction_area_unit", "in Sq. Mts.")
-                    if ca:
-                        lad["construction_area"] = ca
-                        lad["construction_area_unit"] = cau
+                    if construction_area:
+                        lad["construction_area"] = construction_area
+                        lad["construction_area_unit"] = lad_old.get("construction_area_unit", "Sq Mtrs")
                     if lad:
                         data["land_area_details"] = lad
 
@@ -1543,20 +1531,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                         if com_count:
                             data["number_of_commercial_units"] = com_count
 
-                    # Total carpet area = sum of all individual unit carpet areas
-                    total_carpet = 0.0
-                    for e in flat_entries:
-                        try:
-                            total_carpet += float(e.get("carpet_area", 0) or 0)
-                        except (ValueError, TypeError):
-                            pass
-                    if total_carpet > 0:
-                        # Override "Total Covered Area" (footprint) with actual carpet sum
-                        data["construction_area"] = total_carpet
-                        if "land_area_details" in data and isinstance(data["land_area_details"], dict):
-                            data["land_area_details"]["construction_area"] = total_carpet
-                            # Use the unit from the inventory table header (CARPET AREA in Sq. Mts.)
-                            data["land_area_details"]["construction_area_unit"] = "in Sq. Mts."
 
                 data.update({
                     "key": key, "state": config["state"],

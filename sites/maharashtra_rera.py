@@ -7,7 +7,15 @@ Strategy:
 - ~47,000+ projects across ~4,776 pages of 10 cards each.
 - Pagination quirk: ?page=0 and ?page=1 both return the first 10 records,
   so we start with the clean URL (page 0) then use ?page=N+1 for N>=1.
-- Each card (div.shadow.rounded) has 7 col-xl-4 cells:
+- Each card (dProject Name:- RAJHANS ERONZZA
+GUJRERA Reg. No.:- PR/GJ/SURAT/SURAT CITY/Surat Municipal Corporation/RAA10538/A1R/240426/300627
+Project Address:- R.S. NO:-22/4, BLOCK NO:-67,O.P. NO:-36, F.P. NO:- 45,AT T.P.S. NO:- 13 (BHARTHANA-VESU), MOJE:-BHARTHANA-VESU,TA:-MAJURA, DIST:-SURAT 	Taluka:- Surat City, District:- Surat, State:- Gujarat
+Project Type:- Residential/Group Housing
+About Property:-Residential Apartment
+Project Start Date:- 02-06-2022	Project End Date:- 30-06-2027
+Project Land Area:- Sq Mtrs
+Total Open Area:- 7124.06 Sq Mtrs
+Total Covered Area:- 2654.94 Sq Mtrs 	Carpet Area of Units (Range):- 164.44 Sq Mts - 302.05 Sq Mts iv.shadow.rounded) has 7 col-xl-4 cells:
     [0] header: p.p-0=reg_no, h4.title4=name, p.darkBlue.bold=promoter,
                 ul.listingList li[0]=location
     [1] State,  [2] Pincode,  [3] Certificate link,  [4] District,
