@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     LOG_LOCAL: bool = False          # set True to also write .jsonl files locally
     DRY_RUN_S3: bool
     TEST_MODE: bool = False          # --test flag: skip S3 uploads and all DB writes
+    # --test-logs flag: in TEST_MODE, still write the *log* tables (crawl_runs,
+    # crawl_logs, crawl_document_events, crawl_errors) so the run shows up on
+    # the dashboard and per-step logs are queryable.  Data writes
+    # (rera_projects, rera_project_documents, checkpoints) and S3 uploads
+    # remain skipped.  No effect when TEST_MODE is False.
+    TEST_MODE_LOG_TO_DB: bool = False
     CRAWL_ITEM_LIMIT: int = 0        # 0 = unlimited
     CRAWL_DELAY_SCALE: float = 1.0   # scales random crawler throttling delays
     SCRAPE_DETAILS: bool = True      # set False to skip detail-page fetches

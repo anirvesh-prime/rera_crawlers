@@ -423,7 +423,7 @@ def _missing_required_project_fields(data: Mapping[str, Any]) -> list[str]:
 # crawl_runs
 
 def insert_crawl_run(site_id: str, run_type: str) -> int:
-    if settings.TEST_MODE:
+    if settings.TEST_MODE and not settings.TEST_MODE_LOG_TO_DB:
         log.info("[TEST MODE] Skipping insert_crawl_run — returning sentinel run_id=-1")
         return -1
     with get_connection() as conn:
@@ -446,7 +446,7 @@ def update_crawl_run(
     sentinel_passed: bool | None = None,
     notes: str | None = None,
 ):
-    if settings.TEST_MODE:
+    if settings.TEST_MODE and not settings.TEST_MODE_LOG_TO_DB:
         return
     counts = counts or {}
     with get_connection() as conn:
@@ -492,7 +492,7 @@ def insert_crawl_error(
     url: str | None = None,
     raw_data: dict | None = None,
 ):
-    if settings.TEST_MODE:
+    if settings.TEST_MODE and not settings.TEST_MODE_LOG_TO_DB:
         return
     with get_connection() as conn:
         conn.execute(
@@ -756,7 +756,7 @@ def bulk_insert_logs(entries: list[dict]) -> None:
 
     Note: psycopg3 Connection has no executemany() — use an explicit cursor.
     """
-    if not entries or settings.TEST_MODE:
+    if not entries or (settings.TEST_MODE and not settings.TEST_MODE_LOG_TO_DB):
         return
     try:
         conn = get_connection()
@@ -797,7 +797,7 @@ def bulk_insert_document_events(entries: list[dict]) -> None:
 
     Note: psycopg3 Connection has no executemany() — use an explicit cursor.
     """
-    if not entries or settings.TEST_MODE:
+    if not entries or (settings.TEST_MODE and not settings.TEST_MODE_LOG_TO_DB):
         return
 
     try:

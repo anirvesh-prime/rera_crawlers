@@ -12,6 +12,7 @@ Usage:
     python run_crawlers.py --mode weekly_deep   # explicit mode (default: weekly_deep)
     python run_crawlers.py --sequential         # disable parallel execution
     python run_crawlers.py --test               # skip S3 uploads and DB writes (dry run)
+    python run_crawlers.py --test-logs          # like --test but still write log tables (visible on dashboard)
 """
 from __future__ import annotations
 
@@ -109,6 +110,18 @@ def parse_args() -> argparse.Namespace:
         default=False,
         help="Test mode: skip all S3 uploads and DB writes; everything else runs normally.",
     )
+    parser.add_argument(
+        "--test-logs",
+        dest="test_logs",
+        action="store_true",
+        default=False,
+        help=(
+            "Implies --test (skips S3 uploads and data writes to rera_projects / "
+            "rera_project_documents / checkpoints) but still writes the log tables "
+            "(crawl_runs, crawl_logs, crawl_document_events, crawl_errors) so the "
+            "test run is visible on the dashboard."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -194,11 +207,19 @@ def ensure_playwright_browsers(sites: list[dict]) -> None:
 
 def apply_runtime_overrides(args: argparse.Namespace) -> int:
     """Apply CLI overrides to runtime settings and child worker environment."""
+    # --test-logs implies --test but additionally enables DB log writes.
+    if getattr(args, "test_logs", False):
+        args.test = True
+
     if getattr(args, "test", False):
         os.environ["TEST_MODE"] = "true"
         os.environ["DRY_RUN_S3"] = "true"
         settings.TEST_MODE = True
         settings.DRY_RUN_S3 = True
+
+    if getattr(args, "test_logs", False):
+        os.environ["TEST_MODE_LOG_TO_DB"] = "true"
+        settings.TEST_MODE_LOG_TO_DB = True
 
     delay_scale = getattr(args, "delay_scale", None)
     if delay_scale is not None:
@@ -265,7 +286,10 @@ def main():
     print(f"  States    : {', '.join(site_ids)}")
     print(f"  Started   : {started.strftime('%Y-%m-%d %H:%M:%S UTC')}")
     if getattr(args, "test", False):
-        print(f"  *** TEST MODE: S3 uploads and DB writes are SKIPPED ***")
+        if getattr(args, "test_logs", False):
+            print(f"  *** TEST MODE (--test-logs): S3 uploads + data writes SKIPPED; log tables WRITTEN ***")
+        else:
+            print(f"  *** TEST MODE: S3 uploads and DB writes are SKIPPED ***")
     if disabled_sites:
         print(f"  Disabled  : {', '.join(disabled_sites)} (explicitly selected)")
     print(f"{_SEP}\n")
