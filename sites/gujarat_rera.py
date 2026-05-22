@@ -1,20 +1,24 @@
 """
 Gujarat RERA Crawler — gujrera.gujarat.gov.in
-Type: Playwright (Angular SPA — listing-page stub collection + detail page scraping)
+Type: Playwright (Angular SPA — bulk enumeration API + detail page scraping)
 
 Strategy:
-- Collect project stubs (including project_registration_no) from the Angular
-  listing page /#/home-p/registered-project-listing by intercepting the SPA's
-  data API response.  Each stub carries proj_id + reg_no, so the project key is
-  generated from the listing's registration number — no detail page required just
-  for key generation.
-- getAllLocations (/maplocation/public/getAllLocations) is used as a fallback /
-  gap-filler to ensure every projectId is covered even if the listing API
-  interception misses some records.
-- For each project, navigate to its detail page via Playwright, wait for the
-  Angular SPA to fully render, then parse the HTML with BeautifulSoup.
-- Documents: collect all anchor links pointing to /vdms/view-doc or /vdms/download
-  paths from the rendered detail page.
+- Enumeration: a single call to the dashboard's bulk project-list endpoint
+  /dashboard/get-district-wise-projectlist/0/0/all/all/all returns every
+  registered project with its projectRegId and regNo.  This is the only
+  internal API used; it exists because the public listing page's search
+  form cannot be driven via automation, and the registration number is
+  required to compute the project key before the detail page is fetched
+  (so daily_light can skip already-known projects without a per-project
+  page.goto).
+- Detail scrape: for each stub, navigate to /#/project-preview?id={b64}
+  via Playwright, wait for the Angular SPA to render, and parse the HTML
+  with BeautifulSoup using CSS selectors.  The registration number from
+  the enumeration stub is the single source of truth — it is NOT
+  re-extracted from the detail page.
+- Documents: collect document tokens by triggering each View File button
+  on the rendered detail page (Angular click handlers fire
+  /vdms/getDocMetadata/{uid}) and download the resulting files.
 """
 from __future__ import annotations
 
@@ -51,35 +55,19 @@ VDMS_BASE      = f"{BASE_URL}/vdms/download"
 VDMS_VIEW_DOC  = f"{BASE_URL}/vdms/view-doc"
 DOMAIN         = "gujrera.gujarat.gov.in"
 STATE          = "Gujarat"
-LISTING_URL    = f"{BASE_URL}/#/home-p/view-registered-project"
-
-# Gujarat districts — iterated to discover all registered projects
-GUJARAT_DISTRICTS = [
-    "Ahmedabad", "Amreli", "Anand", "Aravalli", "Banaskantha",
-    "Bharuch", "Bhavnagar", "Botad", "Chhota Udaipur", "Dahod",
-    "Dang", "Devbhoomi Dwarka", "Gandhinagar", "Gir Somnath",
-    "Jamnagar", "Junagadh", "Kheda", "Kutch", "Mahisagar",
-    "Mehsana", "Morbi", "Narmada", "Navsari", "Panchmahal",
-    "Patan", "Porbandar", "Rajkot", "Sabarkantha", "Surat",
-    "Surendranagar", "Tapi", "Vadodara", "Valsad",
-]
+# Warmup URL used to bootstrap the Angular SPA before issuing in-browser
+# fetch() calls against the dashboard enumeration endpoint.
+WARMUP_URL     = f"{BASE_URL}/#/home-p/registered-project"
+# Bulk enumeration: returns every registered project with projectRegId + regNo.
+BULK_LIST_PATH = "/dashboard/get-district-wise-projectlist/0/0/all/all/all"
 
 # HTML label (lowercase, colon-stripped) → schema field name.
 # Fields prefixed with "_" are internal and assembled into compound fields below.
+# Note: project_registration_no is intentionally NOT extracted from the detail
+# page.  It is the single source of truth coming from the bulk enumeration API
+# (see _fetch_listing_stubs), so any detail-page label variants are ignored to
+# avoid inconsistency.
 _LABEL_TO_FIELD: dict[str, str] = {
-    "registration number":          "project_registration_no",
-    "registration no":              "project_registration_no",
-    "project registration no":      "project_registration_no",
-    "project reg no":               "project_registration_no",
-    "project reg. no":              "project_registration_no",
-    "rera registration no":         "project_registration_no",
-    "rera reg no":                  "project_registration_no",
-    "rera reg. no":                 "project_registration_no",
-    "gujrera reg. no.":             "project_registration_no",
-    "gujrera reg. no":              "project_registration_no",
-    "gujrera registration no":      "project_registration_no",
-    "reg no":                       "project_registration_no",
-    "reg. no":                      "project_registration_no",
     "application no":               "acknowledgement_no",
     "application number":           "acknowledgement_no",
     "acknowledgement no":           "acknowledgement_no",
@@ -190,38 +178,6 @@ def _clean(text) -> str:
         return ""
     return re.sub(r"\s+", " ", str(text)).strip()
 
-
-
-def _extract_regline_reg_no(soup: BeautifulSoup) -> str:
-    """Extract the registration number from the dedicated ``div.regLine`` banner.
-
-    The Angular SPA renders a header band on every project-preview page:
-
-        <div class="... regLine ...">
-          <p>
-            <strong>GUJRERA Reg. No. :</strong>
-            PR/GJ/AHMEDABAD/AHMEDABAD CITY/AUDA/RAA00610/071117
-          </p>
-        </div>
-
-    The value is the text that follows the ``<strong>`` label inside that ``<p>``.
-    Returns an empty string when the element is absent.
-    """
-    reg_div = soup.select_one("div.regLine")
-    if not reg_div:
-        return ""
-    p = reg_div.find("p")
-    if not p:
-        return ""
-    strong = p.find("strong")
-    if not strong:
-        return ""
-    # Collect all text nodes that are direct siblings of <strong> inside <p>
-    parts = []
-    for node in strong.next_siblings:
-        text = str(node) if not hasattr(node, "get_text") else node.get_text(separator=" ")
-        parts.append(text)
-    return _clean(" ".join(parts))
 
 
 def _extract_label_values(soup: BeautifulSoup) -> dict[str, str]:
@@ -929,131 +885,41 @@ def _fetch_document_tokens(page) -> list[dict]:
 
 
 def _fetch_listing_stubs(page, logger: CrawlerLogger) -> list[dict]:
-    """Fetch project stubs from the Gujarat RERA listing page.
+    """Enumerate every registered project via the bulk dashboard endpoint.
 
-    Two-phase approach:
+    Issues a single in-browser fetch() against
+    /dashboard/get-district-wise-projectlist/0/0/all/all/all — the dashboard
+    "Grand Total" link uses this same endpoint to render the full registered-
+    project table.  Each row carries projectRegId (the numeric identifier
+    used to compute the base64-encoded detail-page URL) and regNo (the full
+    PR/GJ/... registration number), so the project key can be derived before
+    any detail page is loaded.
 
-    Phase 1 — intercept the Angular SPA's listing API response.
-      The listing page (/#/home-p/registered-project-listing) calls a backend
-      JSON endpoint that returns records containing both ``projectId`` and
-      ``projectRegNo`` (and other listing fields).  Intercepting this avoids
-      loading every detail page just to obtain a registration number.
-
-    Phase 2 — fill gaps with getAllLocations.
-      /maplocation/public/getAllLocations guarantees we have every projectId.
-      For any proj_id not found in Phase 1, the stub is added with
-      ``project_registration_no=None``; the detail-page scrape will then supply
-      the reg_no (legacy fallback only).
-
-    Returns a list of dicts sorted ascending by proj_id:
-      proj_id, project_registration_no (or None), project_name, project_type,
+    Returns a list of dicts sorted ascending by proj_id with fields:
+      proj_id, project_registration_no, project_name, project_type,
       promoter_name, project_city, approved_on_date, estimated_finish_date.
     """
-    import json as _json
+    bulk_url = f"{BASE_URL}{BULK_LIST_PATH}"
 
-    stubs_by_id: dict[int, dict] = {}
-
-    # ── Phase 1: intercept listing API ──────────────────────────────────────────
-    # Known field-name variants across Gujarat RERA API versions.
-    _REG_KEYS  = ("projectRegNo", "regNo", "registrationNo", "projectRegistrationNo", "reg_no")
-    _ID_KEYS   = ("projectId", "projId", "id")
-    _NAME_KEYS = ("projectName", "name")
-    _TYPE_KEYS = ("projectType", "type")
-    _PROMO_KEYS = ("promoterName", "promoter")
-    _DIST_KEYS  = ("district", "city")
-    _APV_KEYS   = ("approvedOn", "approvalDate", "approvedDate", "approved_on")
-    _END_KEYS   = ("extendedEndDate", "originalEndDate", "endDate", "projectEndDate")
-
-    def _first(d: dict, keys) -> str | None:
-        for k in keys:
-            v = d.get(k)
-            if v:
-                return _clean(str(v)) or None
-        return None
-
-    captured: list[dict] = []
-
-    def _on_response(response):
-        if BASE_URL not in response.url:
-            return
-        if "json" not in response.headers.get("content-type", ""):
-            return
+    nav_attempts = 3
+    for attempt in range(1, nav_attempts + 1):
         try:
-            body = _json.loads(response.body())
-        except Exception:
-            return
-        items = body if isinstance(body, list) else (body.get("data") or [])
-        if not isinstance(items, list) or not items:
-            return
-        first = items[0] if items else {}
-        # Only process responses that look like project listing records
-        if not any(k in first for k in _REG_KEYS):
-            return
-        if not any(k in first for k in _ID_KEYS):
-            return
-        captured.extend(items)
-
-    page.on("response", _on_response)
-    _listing_nav_url = f"{BASE_URL}/#/home-p/registered-project-listing"
-    _nav_attempts = 3
-    try:
-        for _attempt in range(1, _nav_attempts + 1):
-            try:
-                page.goto(
-                    _listing_nav_url,
-                    timeout=60_000,
-                    wait_until="networkidle",
+            page.goto(WARMUP_URL, timeout=60_000, wait_until="networkidle")
+            page.wait_for_timeout(2_500)
+            break
+        except Exception as nav_err:
+            msg = str(nav_err).lower()
+            if attempt < nav_attempts and ("net::" in msg or "timeout" in msg):
+                logger.warning(
+                    f"Warmup navigation failed (attempt {attempt}/{nav_attempts},"
+                    f" retrying in 15 s): {nav_err}",
+                    url=WARMUP_URL,
                 )
-                page.wait_for_timeout(3_000)
-                break  # success
-            except Exception as _nav_err:
-                _nav_err_str = str(_nav_err)
-                if _attempt < _nav_attempts and (
-                    "net::" in _nav_err_str.lower()
-                    or "timeout" in _nav_err_str.lower()
-                ):
-                    logger.warning(
-                        f"Listing page navigation failed (attempt {_attempt}/{_nav_attempts},"
-                        f" retrying in 15 s): {_nav_err}",
-                        url=_listing_nav_url,
-                    )
-                    import time as _time
-                    _time.sleep(15)
-                else:
-                    raise
-    finally:
-        page.remove_listener("response", _on_response)
+                import time as _time
+                _time.sleep(15)
+            else:
+                raise
 
-    for item in captured:
-        reg_no = _first(item, _REG_KEYS)
-        proj_id_raw = _first(item, _ID_KEYS)
-        if not proj_id_raw:
-            continue
-        try:
-            proj_id = int(proj_id_raw)
-        except (TypeError, ValueError):
-            continue
-        if proj_id in stubs_by_id:
-            continue
-        stubs_by_id[proj_id] = {
-            "proj_id":                  proj_id,
-            "project_registration_no":  reg_no,
-            "project_name":             _first(item, _NAME_KEYS),
-            "project_type":             _first(item, _TYPE_KEYS),
-            "promoter_name":            _first(item, _PROMO_KEYS),
-            "project_city":             _first(item, _DIST_KEYS),
-            "approved_on_date":         _normalize_date(_first(item, _APV_KEYS)),
-            "estimated_finish_date":    _normalize_date(_first(item, _END_KEYS)),
-        }
-
-    logger.info(
-        f"Listing API interception: {len(stubs_by_id)} stubs with reg_no captured"
-        if stubs_by_id else
-        "Listing API interception: no stubs captured — will rely on getAllLocations + detail pages"
-    )
-
-    # ── Phase 2: fill gaps with getAllLocations ───────────────────────────────────
-    LOCATIONS_URL = f"{BASE_URL}/maplocation/public/getAllLocations"
     try:
         result = page.evaluate(
             """async (url) => {
@@ -1061,44 +927,45 @@ def _fetch_listing_stubs(page, logger: CrawlerLogger) -> list[dict]:
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
                 return await resp.json();
             }""",
-            LOCATIONS_URL,
-        )
-        api_status = result.get("sataus") or result.get("status")
-        if api_status not in (200, "200"):
-            logger.warning(f"getAllLocations API returned unexpected status: {api_status}")
-
-        data = result.get("data") or []
-        gaps = 0
-        for item in data:
-            proj_id_raw = item.get("projectId")
-            if not proj_id_raw:
-                continue
-            try:
-                proj_id = int(proj_id_raw)
-            except (TypeError, ValueError):
-                continue
-            if proj_id in stubs_by_id:
-                continue
-            # Reg_no may also appear on map items (not guaranteed)
-            reg_no = _first(item, _REG_KEYS)
-            stubs_by_id[proj_id] = {
-                "proj_id":                  proj_id,
-                "project_registration_no":  reg_no,   # None if map API has no reg_no
-                "project_name":             _first(item, _NAME_KEYS),
-                "project_type":             _first(item, _TYPE_KEYS),
-                "promoter_name":            _first(item, _PROMO_KEYS),
-                "project_city":             _first(item, _DIST_KEYS),
-                "approved_on_date":         None,
-                "estimated_finish_date":    None,
-            }
-            gaps += 1
-        logger.info(
-            f"getAllLocations: {len(data)} total projects; "
-            f"{gaps} gap stubs added; {len(stubs_by_id)} unique stubs total"
+            bulk_url,
         )
     except Exception as e:
-        logger.error(f"Failed to fetch getAllLocations: {e}")
+        logger.error(f"Bulk enumeration fetch failed: {e}", url=bulk_url)
+        return []
 
+    api_status = result.get("status") or result.get("sataus")
+    if api_status not in (200, "200"):
+        logger.warning(f"Bulk enumeration returned unexpected status: {api_status}")
+
+    rows = result.get("data") or []
+    if not isinstance(rows, list):
+        logger.error(f"Bulk enumeration payload not a list: {type(rows).__name__}")
+        return []
+
+    stubs_by_id: dict[int, dict] = {}
+    for item in rows:
+        proj_id_raw = item.get("projectRegId")
+        if proj_id_raw is None:
+            continue
+        try:
+            proj_id = int(proj_id_raw)
+        except (TypeError, ValueError):
+            continue
+        if proj_id in stubs_by_id:
+            continue
+        reg_no = _clean(item.get("regNo") or "") or None
+        stubs_by_id[proj_id] = {
+            "proj_id":                  proj_id,
+            "project_registration_no":  reg_no,
+            "project_name":             _clean(item.get("projectName") or "") or None,
+            "project_type":             _clean(item.get("projectType") or "") or None,
+            "promoter_name":            _clean(item.get("promoterName") or "") or None,
+            "project_city":             _clean(item.get("districtName") or "") or None,
+            "approved_on_date":         _normalize_date(item.get("approvedOn") or ""),
+            "estimated_finish_date":    _normalize_date(item.get("endDate") or ""),
+        }
+
+    logger.info(f"Bulk enumeration: {len(stubs_by_id)} unique projects discovered")
     return sorted(stubs_by_id.values(), key=lambda x: x["proj_id"])
 
 
@@ -1371,14 +1238,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         ctx     = browser.new_context(ignore_https_errors=True)
         page    = ctx.new_page()
 
-        # ── Phase 1: collect listing stubs (reg_no + proj_id) ─────────────────
-        # _fetch_listing_stubs navigates to the registered-project-listing page,
-        # intercepts the Angular SPA's data API to get project_registration_no
-        # directly from the lister, then fills any gaps via getAllLocations.
+        # ── Phase 1: bulk enumeration ─────────────────────────────────────────
+        # Single call to the dashboard's grand-total endpoint returns every
+        # registered project with projectRegId (detail-page ID) and regNo
+        # (full registration number).  This is the single source of truth for
+        # the registration number; the detail page is never consulted for it.
         t0 = time.monotonic()
         all_stubs = _fetch_listing_stubs(page, logger)
         if not all_stubs:
-            logger.error("No project stubs returned from listing — aborting")
+            logger.error("No project stubs returned from enumeration — aborting")
             ctx.close()
             browser.close()
             session.close()
@@ -1397,6 +1265,18 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 break
             if proj_id <= resume_proj_id:
                 continue
+
+            # Single-source reg_no: comes from the bulk enumeration stub.  If it
+            # is missing, the project cannot be keyed and is skipped silently
+            # (no counter touched) — there is intentionally no fallback path.
+            reg_no = (stub.get("project_registration_no") or "").strip()
+            if not reg_no:
+                logger.warning(
+                    f"No registration number in enumeration stub for proj_id={proj_id} — skipping",
+                    step="reg_no",
+                )
+                continue
+
             # Count every project toward the limit BEFORE skip checks so daily_light
             # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
             items_processed += 1
@@ -1404,24 +1284,17 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             # Use the project-preview URL (base64-encoded ID) which renders full HTML
             encoded_id = base64.b64encode(str(proj_id).encode()).decode()
             detail_url = f"{BASE_URL}/#/project-preview?id={encoded_id}"
+            key = generate_project_key(reg_no)
+            logger.set_project(key=key, reg_no=reg_no, url=detail_url, page=proj_id)
 
-            # Fast path: when the listing stub carries the registration number
-            # (true for stubs sourced from the listing API interception), compute
-            # the project key from it and run the daily_light skip BEFORE fetching
-            # the detail page.  Falls back to the detail-extracted reg_no only
-            # when the stub came from getAllLocations without a reg_no.
-            listing_reg_no = (stub.get("project_registration_no") or "").strip()
-            if listing_reg_no:
-                listing_key = generate_project_key(listing_reg_no)
-                logger.set_project(key=listing_key, reg_no=listing_reg_no,
-                                   url=detail_url, page=proj_id)
-                if mode == "daily_light" and get_project_by_key(listing_key):
-                    logger.info("Skipping — already in DB (daily_light)", step="skip")
-                    counts["projects_skipped"] += 1
-                    logger.clear_project()
-                    continue
-            else:
-                listing_key = None
+            # daily_light skip happens BEFORE page.goto: the reg_no is already
+            # known from the bulk stub, so there is no need to load the SPA
+            # detail page just to discover it.
+            if mode == "daily_light" and get_project_by_key(key):
+                logger.info("Skipping — already in DB (daily_light)", step="skip")
+                counts["projects_skipped"] += 1
+                logger.clear_project()
+                continue
 
             logger.info(f"Scraping detail page for project ID {proj_id}", url=detail_url)
 
@@ -1442,45 +1315,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
             try:
                 data = _extract_html_fields(lv, proj_id)
-
-                # Registration number comes from the rendered HTML label-value pairs.
-                # _LABEL_TO_FIELD maps "registration number" / "registration no" etc.
-                # → project_registration_no, so it is already populated in data.
-                # When the listing stub already supplied a reg_no, prefer it so the
-                # key stays consistent with the pre-detail daily_light skip check.
-                detail_reg_no = data.get("project_registration_no") or ""
-
-                # Structural fallback: the Angular SPA always renders a
-                # ``div.regLine`` banner containing the registration number as
-                # a text node after a <strong> label.  This is tried when the
-                # generic label-value table extractor found nothing (e.g. when
-                # the label text doesn't match any key in _LABEL_TO_FIELD).
-                if not detail_reg_no:
-                    detail_reg_no = _extract_regline_reg_no(soup)
-                    if detail_reg_no:
-                        logger.info(
-                            f"Reg no extracted via regLine selector for proj_id={proj_id}: {detail_reg_no}",
-                            step="reg_no",
-                        )
-
-                reg_no = listing_reg_no or detail_reg_no
-                if not reg_no:
-                    logger.error(
-                        f"No registration number in detail HTML for proj_id={proj_id} — skipping",
-                        step="reg_no",
-                    )
-                    counts["error_count"] += 1
-                    continue
+                # reg_no is single-sourced from the enumeration stub above; it
+                # is NOT re-extracted from the detail page.  Stamp it onto data
+                # so downstream normalization sees a consistent value.
                 data["project_registration_no"] = reg_no
-
-                key = listing_key or generate_project_key(reg_no)
-                if not listing_reg_no:
-                    logger.set_project(key=key, reg_no=reg_no, url=detail_url, page=proj_id)
-                    if mode == "daily_light" and get_project_by_key(key):
-                        logger.info("Skipping — already in DB (daily_light)", step="skip")
-                        counts["projects_skipped"] += 1
-                        logger.clear_project()
-                        continue
 
                 # Enrich with fields from additional page sections (higher priority — overrides lv)
                 overview   = _parse_overview_card(soup)

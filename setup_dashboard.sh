@@ -19,7 +19,7 @@ set -euo pipefail
 
 # ── Config ────────────────────────────────────────────────────────────────────
 PORT="${PORT:-8080}"
-WORKERS="${WORKERS:-2}"
+WORKERS="${WORKERS:-2}" ww
 SERVICE_NAME="rera-dashboard"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 

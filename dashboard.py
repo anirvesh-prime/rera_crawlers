@@ -202,6 +202,35 @@ def _fetch_db():
                         "traceback": raw.get("traceback") or "",
                     }
 
+            # 4c. Last-resort fallback: some crawlers bump error_count from
+            #     WARNING-level paths (e.g. missing reg_no, detail fetch
+            #     fallback) without emitting an ERROR row or a crawl_errors
+            #     entry.  Pull the latest WARNING for those sites so the
+            #     dashboard at least shows what was counted.
+            need_warn = [
+                sid for sid, r in latest_runs.items()
+                if (r.get("error_count") or 0) > 0 and sid not in errors_by_site
+            ]
+            if need_warn and recent_ids:
+                cur.execute(
+                    """
+                    SELECT DISTINCT ON (site_id) site_id, message, step, extra, traceback, registration_no
+                    FROM crawl_logs
+                    WHERE level = 'WARNING' AND site_id = ANY(%s) AND run_id = ANY(%s)
+                    ORDER BY site_id, logged_at DESC
+                    """,
+                    (need_warn, recent_ids),
+                )
+                for row in cur.fetchall():
+                    sid = row["site_id"]
+                    errors_by_site[sid] = {
+                        "message": _clean_msg(row["message"] or ""),
+                        "step": row.get("step") or "",
+                        "extra": row.get("extra") or {},
+                        "traceback": row.get("traceback") or "",
+                        "registration_no": row.get("registration_no") or "",
+                    }
+
             # 5. Compute elapsed_s for each run from started_at / finished_at;
             #    always set the key so the template never hits UndefinedError.
             for run in latest_runs.values():
