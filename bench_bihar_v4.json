@@ -1,0 +1,19 @@
+{
+  "started_at": "2026-05-24T23:06:37Z",
+  "item_limit": 10,
+  "max_pages": 2,
+  "results": [
+    {
+      "site": "bihar_rera",
+      "status": "timeout",
+      "elapsed_s": 600.01,
+      "max_pages": 2,
+      "item_limit": 10,
+      "stdout_tail": [],
+      "stderr_tail": []
+    }
+  ],
+  "totals": {
+    "elapsed_s": 600.01
+  }
+}

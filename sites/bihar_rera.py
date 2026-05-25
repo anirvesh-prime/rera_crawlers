@@ -32,6 +32,7 @@ from core.checkpoint import reset_checkpoint
 from core.config import settings
 from core.crawler_base import download_response, generate_project_key, random_delay, safe_get, safe_post
 from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error
+from core.details_pool import get_detail_workers, process_details
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -910,13 +911,142 @@ def _fetch_page(page: int, form_fields: dict, logger: CrawlerLogger) -> Beautifu
 
 # ── Main entry point ──────────────────────────────────────────────────────────
 
+# ── Details phase (per-candidate worker) ──────────────────────────────────────
+
+def _process_bihar_candidate(
+    raw: dict,
+    detail_url: str,
+    current_page: int,
+    config: dict,
+    run_id: int,
+    site_id: str,
+    mode: str,
+    machine_name: str,
+    machine_ip: str,
+    logger: CrawlerLogger,
+) -> dict:
+    """Per-candidate worker — runs in the detail thread pool.
+
+    Fetches the Filanprint detail page via httpx, merges with listing data,
+    normalises, upserts, and processes documents.  Returns a counter-delta
+    dict aggregated by the orchestrator.
+    """
+    deltas = {
+        "projects_skipped": 0, "projects_new": 0, "projects_updated": 0,
+        "documents_uploaded": 0, "error_count": 0,
+    }
+    reg_no = raw.get("project_registration_no", "").strip()
+    if not reg_no:
+        deltas["error_count"] += 1
+        return deltas
+    key = generate_project_key(reg_no)
+    logger.set_project(
+        key=key, reg_no=reg_no,
+        url=detail_url or LISTING_URL, page=current_page,
+    )
+    try:
+        if mode == "daily_light" and get_project_by_key(key):
+            deltas["projects_skipped"] += 1
+            return deltas
+
+        detail_extra: dict = {}
+        if detail_url:
+            detail_resp = safe_get(detail_url, retries=2, logger=logger, verify=False)
+            if detail_resp and "Invalid Project ID" not in detail_resp.text:
+                detail_extra = _parse_detail_page(detail_resp.text)
+                logger.info(f"Detail parsed for {reg_no!r}", step="detail")
+            elif detail_resp:
+                logger.warning(
+                    f"Detail page returned 'Invalid Project ID' for {reg_no!r}",
+                    step="detail",
+                )
+            else:
+                logger.warning(f"Detail fetch failed for {reg_no!r}", step="detail")
+        else:
+            logger.warning(
+                f"No detail URL for listing page {current_page} ({reg_no!r})",
+                step="detail",
+            )
+
+        try:
+            merged: dict = {
+                **detail_extra,
+                "project_name":            raw["project_name"],
+                "project_registration_no": reg_no,
+                "promoter_name":           raw["promoter_name"],
+                "submitted_date":          raw["submitted_date"],
+                "project_location_raw": {
+                    **raw.get("project_location_raw", {}),
+                    **detail_extra.get("project_location_raw", {}),
+                    "state": config.get("state", "bihar").title(),
+                },
+                "project_state": config.get("state", "bihar").title(),
+                "domain": DOMAIN,
+                "url":    f"https://{DOMAIN}",
+                "state":  config.get("state", "Bihar"),
+                "is_live": True,
+                "data": merge_data_sections(
+                    detail_extra.get("data"),
+                    {"listing_address": raw.get("project_location_raw", {}).get("address", "")},
+                ),
+            }
+            merged = {k: v for k, v in merged.items() if v is not None}
+
+            normalized = normalize_project_payload(
+                merged, config,
+                machine_name=machine_name, machine_ip=machine_ip,
+            )
+            record  = ProjectRecord(**normalized)
+            db_dict = record.to_db_dict()
+            status  = upsert_project(db_dict)
+
+            if status == "new":
+                deltas["projects_new"] += 1
+                logger.info(f"New project: {reg_no}", step="upsert")
+            else:
+                deltas["projects_updated"] += 1
+                logger.info(f"Updated: {reg_no}", step="upsert")
+
+            uploaded_docs = detail_extra.get("uploaded_documents") or []
+            if uploaded_docs:
+                enriched_docs, doc_count = _process_documents(
+                    key, uploaded_docs, run_id, site_id, logger,
+                )
+                deltas["documents_uploaded"] += doc_count
+                if doc_count:
+                    doc_urls = [
+                        {"link": d["s3_link"], "type": d.get("type")}
+                        for d in enriched_docs if d.get("s3_link")
+                    ]
+                    upsert_project({
+                        "key": key,
+                        "uploaded_documents": enriched_docs,
+                        "document_urls": doc_urls,
+                    })
+        except ValidationError as exc:
+            deltas["error_count"] += 1
+            logger.error(f"Validation error for {reg_no}: {exc}", step="validate")
+            insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(exc),
+                               project_key=key, url=detail_url or LISTING_URL)
+        except Exception as exc:
+            deltas["error_count"] += 1
+            logger.error(f"Unexpected error for {reg_no}: {exc}", step="upsert")
+            insert_crawl_error(run_id, site_id, "CRAWLER_EXCEPTION", str(exc),
+                               project_key=key, url=detail_url or LISTING_URL)
+    finally:
+        logger.clear_project()
+    return deltas
+
+
+# ── Main entry point ──────────────────────────────────────────────────────────
+
 def run(config: dict, run_id: int, mode: str) -> dict:
     logger = CrawlerLogger(config["id"], run_id)
     counters = dict(projects_found=0, projects_new=0, projects_updated=0,
                     projects_skipped=0, documents_uploaded=0, error_count=0)
     machine_name, machine_ip = get_machine_context()
+    site_id       = config["id"]
     item_limit    = settings.CRAWL_ITEM_LIMIT or 0  # 0 = unlimited
-    items_processed = 0
     t_run = time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
@@ -965,7 +1095,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         counters["error_count"] += 1
         return counters
 
-    stop_all     = False
     logger.warning(
         f"Step timing [search]: {time.monotonic()-t0:.2f}s"
         f"  pages={len(listing_pages)}"
@@ -973,160 +1102,69 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         step="timing",
     )
 
+    # ── Phase A counters: project_found enumerated from listing parser ───────
+    for payload in listing_pages:
+        counters["projects_found"] += len(payload["rows"])
+        logger.info(
+            f"Page {payload['page']}: {len(payload['rows'])} projects",
+            step="listing",
+        )
+
+    # ── Phase B: flatten candidates and process in parallel ──────────────────
+    candidates: list[tuple[dict, str, int]] = []  # (raw, detail_url, page)
     for payload in listing_pages:
         current_page = payload["page"]
         rows = payload["rows"]
         detail_urls = payload["detail_urls"]
-        counters["projects_found"] += len(rows)
-        logger.info(f"Page {current_page}: {len(rows)} projects", step="listing")
-
         for row_idx, raw in enumerate(rows):
-            reg_no = raw.get("project_registration_no", "").strip()
-
-            if stop_all:
-                # Past-cap: still extract each reg_no so it is genuinely seen.
-                if reg_no:
-                    generate_project_key(reg_no)
-                continue
-
-            if item_limit and items_processed >= item_limit:
-                logger.info(f"Item limit {item_limit} reached — continuing listing walk for projects_found", step="listing")
-                stop_all = True
-                if reg_no:
-                    generate_project_key(reg_no)
-                continue
-
-            # Count every row toward the limit BEFORE skip checks so daily_light
-            # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
-            items_processed += 1
-
+            reg_no = (raw.get("project_registration_no") or "").strip()
             if not reg_no:
-                counters["error_count"] += 1
                 continue
-
-            key = generate_project_key(reg_no)
-            detail_url: str = ""
-            if row_idx < len(detail_urls) and detail_urls[row_idx]:
-                detail_url = detail_urls[row_idx]
-
-            # ── daily_light: skip projects already in the DB ──────────────────
-            if mode == "daily_light" and get_project_by_key(key):
-                counters["projects_skipped"] += 1
-                continue
-
-            logger.set_project(
-                key=key,
-                reg_no=reg_no,
-                url=detail_url or LISTING_URL,
-                page=current_page,
+            detail_url = (
+                detail_urls[row_idx]
+                if row_idx < len(detail_urls) and detail_urls[row_idx]
+                else ""
             )
-            try:
+            candidates.append((raw, detail_url, current_page))
+            if item_limit and len(candidates) >= item_limit:
+                break
+        if item_limit and len(candidates) >= item_limit:
+            break
 
-                # ── Step 3: Fetch & parse detail page ────────────────────────────
-                # Use global positional alignment: detail_url_list[global_idx]
-                # matches the listing row at (listing_page, row_idx).
-                detail_extra: dict = {}
-                if detail_url:
-                    detail_resp = safe_get(detail_url, retries=2, logger=logger, verify=False)
-                    if detail_resp and "Invalid Project ID" not in detail_resp.text:
-                        detail_extra = _parse_detail_page(detail_resp.text)
-                        logger.info(f"Detail parsed for {reg_no!r}", step="detail")
-                    elif detail_resp:
-                        logger.warning(
-                            f"Detail page returned 'Invalid Project ID' for {reg_no!r}",
-                            step="detail",
-                        )
-                    else:
-                        logger.warning(f"Detail fetch failed for {reg_no!r}", step="detail")
-                else:
-                    logger.warning(
-                        f"No detail URL for listing page {current_page} row {row_idx} ({reg_no!r})",
-                        step="detail",
-                    )
+    if not candidates:
+        reset_checkpoint(config["id"], mode)
+        logger.info(f"Bihar RERA complete (no candidates): {counters}", step="done")
+        logger.timing("total_run", time.monotonic() - t_run)
+        return counters
 
-                # ── Step 4: Merge listing + detail, upsert ───────────────────────
-                try:
-                    # listing fields win for the core identifiers; detail fills gaps
-                    merged: dict = {
-                        **detail_extra,
-                        # listing fields always take priority for these
-                        "project_name":            raw["project_name"],
-                        "project_registration_no": reg_no,
-                        "promoter_name":           raw["promoter_name"],
-                        "submitted_date":          raw["submitted_date"],
-                        # merge location: detail loc_raw is richer; listing address as fallback
-                        "project_location_raw": {
-                            **raw.get("project_location_raw", {}),
-                            **detail_extra.get("project_location_raw", {}),
-                            "state": config.get("state", "bihar").title(),
-                        },
-                        "project_state": config.get("state", "bihar").title(),
-                        "domain": DOMAIN,
-                        # Store the canonical base domain as url (matches sample).
-                        # The Filanprint detail URL is a session-specific popup URL
-                        # that is not stable across crawls.
-                        "url":    f"https://{DOMAIN}",
-                        "state":  config.get("state", "Bihar"),
-                        "is_live": True,
-                        # merge data sub-dicts
-                        "data": merge_data_sections(
-                            detail_extra.get("data"),
-                            {"listing_address": raw.get("project_location_raw", {}).get("address", "")},
-                        ),
-                    }
-                    # Remove None values to avoid overwriting good DB data with nulls
-                    merged = {k: v for k, v in merged.items() if v is not None}
+    # Bihar's Filanprint document server is fragile under load — capping at 3
+    # workers keeps per-document GET latency under the 60 s timeout that would
+    # otherwise erase the parallel-fetch speedup.
+    n_workers = min(get_detail_workers(), 3)
+    logger.info(
+        f"Phase B: parallel detail fetch ({len(candidates)} candidates, "
+        f"{n_workers} workers)",
+        step="detail_fetch",
+    )
+    tB = time.monotonic()
 
-                    normalized = normalize_project_payload(
-                        merged, config,
-                        machine_name=machine_name,
-                        machine_ip=machine_ip,
-                    )
-                    record  = ProjectRecord(**normalized)
-                    db_dict = record.to_db_dict()
-                    status  = upsert_project(db_dict)
+    def _worker(_idx: int, item: tuple[dict, str, int]) -> dict:
+        raw, detail_url, current_page = item
+        return _process_bihar_candidate(
+            raw, detail_url, current_page, config, run_id, site_id, mode,
+            machine_name, machine_ip, logger,
+        )
 
-                    if status == "new":
-                        counters["projects_new"] += 1
-                        logger.info(f"New project: {reg_no}", step="upsert")
-                    else:
-                        counters["projects_updated"] += 1
-                        logger.info(f"Updated: {reg_no}", step="upsert")
-
-                    # ── Step 5: Process documents (weekly_deep or new projects) ──
-                    # Spec §13: process_documents() → download → md5 → S3 upload
-                    uploaded_docs = detail_extra.get("uploaded_documents") or []
-                    if uploaded_docs:
-                        enriched_docs, doc_count = _process_documents(
-                            key, uploaded_docs, run_id, config["id"], logger,
-                        )
-                        counters["documents_uploaded"] += doc_count
-                        if doc_count:
-                            # Write enriched uploaded_documents + derived document_urls back
-                            doc_urls = [
-                                {"link": d["s3_link"], "type": d.get("type")}
-                                for d in enriched_docs if d.get("s3_link")
-                            ]
-                            upsert_project({
-                                "key": key,
-                                "uploaded_documents": enriched_docs,
-                                "document_urls": doc_urls,
-                            })
-
-                except ValidationError as exc:
-                    counters["error_count"] += 1
-                    logger.error(f"Validation error for {reg_no}: {exc}", step="validate")
-                    insert_crawl_error(run_id, config["id"], "VALIDATION_FAILED", str(exc),
-                                       project_key=key, url=detail_url or LISTING_URL)
-                except Exception as exc:
-                    counters["error_count"] += 1
-                    logger.error(f"Unexpected error for {reg_no}: {exc}", step="upsert")
-                    insert_crawl_error(run_id, config["id"], "CRAWLER_EXCEPTION", str(exc),
-                                       project_key=key, url=detail_url or LISTING_URL)
-            finally:
-                logger.clear_project()
-
-            random_delay(*delay_range)
+    results = process_details(candidates, _worker, n_workers=n_workers)
+    for _idx, deltas, exc in results:
+        if exc is not None:
+            counters["error_count"] += 1
+            logger.exception("Worker raised", exc, step="project_loop")
+            continue
+        for k, v in (deltas or {}).items():
+            counters[k] = counters.get(k, 0) + v
+    logger.timing("details", time.monotonic() - tB,
+                  items=len(candidates), workers=n_workers)
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Bihar RERA complete: {counters}", step="done")

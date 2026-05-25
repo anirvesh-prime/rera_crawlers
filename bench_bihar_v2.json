@@ -1,0 +1,51 @@
+{
+  "started_at": "2026-05-24T22:24:55Z",
+  "item_limit": 10,
+  "max_pages": 2,
+  "results": [
+    {
+      "site": "bihar_rera",
+      "status": "completed",
+      "elapsed_s": 78.13,
+      "max_pages": 2,
+      "item_limit": 10,
+      "stdout_tail": [
+        "",
+        "================================================================",
+        "  RERA Crawler Orchestrator",
+        "  Mode      : weekly_deep",
+        "  Execution : sequential",
+        "  Workers   : 1",
+        "  Item Limit: 10",
+        "  Host      : Anirveshs-MacBook-Air.local",
+        "  States    : bihar_rera",
+        "  Started   : 2026-05-24 22:24:56 UTC",
+        "  *** TEST MODE: S3 uploads and DB writes are SKIPPED ***",
+        "================================================================",
+        "",
+        "\u2192 [bihar_rera]  Bihar RERA",
+        "  found=10    new=1     updated=9     skipped=0     docs=48    errors=0    (77.4s)",
+        "",
+        "================================================================",
+        "  TOTALS    found=10    new=1     updated=9     skipped=0     docs=48    errors=0    (77.4s)",
+        "================================================================",
+        ""
+      ],
+      "stderr_tail": [
+        "[INFO] [bihar_rera] [upsert] [reg=BRERAP00915-1/608/R-602/2019] [key=4419546165574447489] Updated: BRERAP00915-1/608/R-602/2019",
+        "[INFO] [bihar_rera] [upsert] [reg=BRERAP12755_001/56/R-1702/2024] [key=8654989726679846870] Updated: BRERAP12755_001/56/R-1702/2024",
+        "[INFO] [bihar_rera] [upsert] [reg=BRERAP187328070625271029E00] [key=12583144421226088060] Updated: BRERAP187328070625271029E00",
+        "[INFO] [bihar_rera] [upsert] [reg=BRERAP00824-1/812/R-564/2019] [key=4035778647053573611] Updated: BRERAP00824-1/812/R-564/2019",
+        "[INFO] [bihar_rera] [upsert] [reg=BRERAP00558-2/801/R-584/2019] [key=8443391736863997737] Updated: BRERAP00558-2/801/R-584/2019",
+        "[INFO] [bihar_rera] [upsert] [reg=BRERAP14746-5/100/R-1767/2024] [key=17194320045772910746] Updated: BRERAP14746-5/100/R-1767/2024",
+        "[INFO] [bihar_rera] [upsert] [reg=BRERAP00559-1/397/R-466/2019] [key=14133030355745912033] New project: BRERAP00559-1/397/R-466/2019",
+        "[INFO] [bihar_rera] [timing] [reg=BRERAP05734-1/994/R-766/2019] Timing [details]: 67.82s",
+        "[INFO] [bihar_rera] [timing] [reg=BRERAP05734-1/994/R-766/2019] Timing [total_run]: 77.29s",
+        "[INFO] [orchestrator] [timing] Timing [total_run]: 77.37s"
+      ]
+    }
+  ],
+  "totals": {
+    "elapsed_s": 78.13
+  }
+}

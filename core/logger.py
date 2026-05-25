@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 import traceback as tb_module
 from datetime import datetime, timezone
 from pathlib import Path
@@ -148,8 +149,12 @@ class CrawlerLogger:
             self._logger.addHandler(DbLogHandler(run_id, site_id))
 
         if not hasattr(self._logger, "_crawler_logger_state"):
+            # `ctx` is now per-thread so detail-fetch workers do not corrupt
+            # each other's project context.  `touched_keys` / `touched_key_set`
+            # / `key_summary_logged` remain process-wide as they represent
+            # the union of all projects seen during the run.
             self._logger._crawler_logger_state = {
-                "ctx": {},
+                "ctx_tls": threading.local(),
                 "touched_keys": [],
                 "touched_key_set": set(),
                 "key_summary_logged": False,
@@ -167,6 +172,18 @@ class CrawlerLogger:
             return
         key_set.add(project_key)
         self._state["touched_keys"].append(project_key)
+
+    def _ctx(self) -> dict:
+        """Return the per-thread project-context dict, creating it if absent."""
+        tls = self._state["ctx_tls"]
+        ctx = getattr(tls, "ctx", None)
+        if ctx is None:
+            ctx = {}
+            tls.ctx = ctx
+        return ctx
+
+    def _set_ctx(self, ctx: dict) -> None:
+        self._state["ctx_tls"].ctx = ctx
 
     def _extract_context(self, extra: dict | None) -> tuple[dict, dict]:
         remaining = dict(extra or {})
@@ -186,17 +203,18 @@ class CrawlerLogger:
     def set_project(self, *, key: str | None = None, reg_no: str | None = None,
                     url: str | None = None, page: int | None = None):
         """Set per-project context — included in every subsequent log call."""
-        self._state["ctx"] = {k: v for k, v in {
+        new_ctx = {k: v for k, v in {
             "project_key": key, "registration_no": reg_no,
             "url": url, "page": page,
         }.items() if v is not None}
-        self._register_touched_key(self._state["ctx"].get("project_key"))
+        self._set_ctx(new_ctx)
+        self._register_touched_key(new_ctx.get("project_key"))
 
     def clear_project(self):
         """Clear project context and flush buffered DB log entries.
         Called after every project is fully processed, ensuring logs reach
         the database in near-real-time rather than only at process exit."""
-        self._state["ctx"] = {}
+        self._set_ctx({})
         self._flush_db()
 
     def _flush_db(self) -> None:
@@ -234,9 +252,11 @@ class CrawlerLogger:
     def _log(self, level: int, message: str, step: str | None = None,
              traceback: str | None = None, extra: dict | None = None):
         ctx_updates, extra_payload = self._extract_context(extra)
+        current_ctx = self._ctx()
         if ctx_updates:
-            self._state["ctx"] = {**self._state["ctx"], **ctx_updates}
-        ctx = dict(self._state["ctx"])
+            current_ctx = {**current_ctx, **ctx_updates}
+            self._set_ctx(current_ctx)
+        ctx = dict(current_ctx)
         self._register_touched_key(ctx.get("project_key"))
 
         console_msg = message
@@ -274,8 +294,8 @@ class CrawlerLogger:
         touched_keys = list(self._state["touched_keys"])
         shown_keys = touched_keys[:limit]
         remaining = max(0, len(touched_keys) - len(shown_keys))
-        previous_ctx = dict(self._state["ctx"])
-        self._state["ctx"] = {}
+        previous_ctx = dict(self._ctx())
+        self._set_ctx({})
         try:
             if shown_keys:
                 self.info(
@@ -286,7 +306,7 @@ class CrawlerLogger:
                 self.info("Run key summary (0/0 shown): no project keys logged", step=step)
             self.info(f"Remaining keys not shown: {remaining}", step=step)
         finally:
-            self._state["ctx"] = previous_ctx
+            self._set_ctx(previous_ctx)
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -352,7 +372,7 @@ class CrawlerLogger:
             s3_key:          S3 object key (set on success).
             file_size_bytes: Downloaded file size (set on success).
         """
-        project_key = self._state["ctx"].get("project_key")
+        project_key = self._ctx().get("project_key")
 
         self._log(
             logging.INFO,

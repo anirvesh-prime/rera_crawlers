@@ -1,0 +1,51 @@
+{
+  "started_at": "2026-05-24T22:20:05Z",
+  "item_limit": 10,
+  "max_pages": 2,
+  "results": [
+    {
+      "site": "karnataka_rera",
+      "status": "completed",
+      "elapsed_s": 135.57,
+      "max_pages": 2,
+      "item_limit": 10,
+      "stdout_tail": [
+        "",
+        "================================================================",
+        "  RERA Crawler Orchestrator",
+        "  Mode      : weekly_deep",
+        "  Execution : sequential",
+        "  Workers   : 1",
+        "  Item Limit: 10",
+        "  Host      : Anirveshs-MacBook-Air.local",
+        "  States    : karnataka_rera",
+        "  Started   : 2026-05-24 22:20:05 UTC",
+        "  *** TEST MODE: S3 uploads and DB writes are SKIPPED ***",
+        "================================================================",
+        "",
+        "\u2192 [karnataka_rera]  Karnataka RERA",
+        "  found=9632  new=9     updated=0     skipped=1     docs=127   errors=0    (135.4s)",
+        "",
+        "================================================================",
+        "  TOTALS    found=9632  new=9     updated=0     skipped=1     docs=127   errors=0    (135.4s)",
+        "================================================================",
+        ""
+      ],
+      "stderr_tail": [
+        "[INFO] [karnataka_rera] [upsert] [reg=PRM/KA/RERA/1251/310/PR/130526/008653] [key=8645377541799647520] Skipped: ACK/KA/RERA/1251/310/PR/080526/010235",
+        "[WARNING] [karnataka_rera] [reg=ACK/KA/RERA/1268/378/PR/080526/010233] POST attempt 1/2 failed (timeout=30.0s): multiple Transfer-Encoding headers",
+        "[INFO] [karnataka_rera] [upsert] [reg=PRM/KA/RERA/1268/380/PR/160526/008664] [key=12046140300258709826] New: ACK/KA/RERA/1268/380/PR/060526/010226",
+        "[INFO] [karnataka_rera] [upsert] [reg=PRM/KA/RERA/1268/378/PR/210526/008670] [key=16825200481634710459] New: ACK/KA/RERA/1268/378/PR/080526/010233",
+        "[WARNING] [karnataka_rera] [documents] Document download empty or failed",
+        "[INFO] [karnataka_rera] [upsert] [reg=PRM/KA/RERA/1250/303/PR/220526/008674] [key=11546454828100477564] New: ACK/KA/RERA/1250/303/PR/060526/010225",
+        "[INFO] [karnataka_rera] [upsert] [reg=PRM/KA/RERA/1257/334/PR/150526/008657] [key=17760160881849929019] New: ACK/KA/RERA/1257/334/PR/040526/010219",
+        "[INFO] [karnataka_rera] [timing] [reg=PRM/KA/RERA/1248/469/PR/050723/006033] Timing [details]: 128.51s",
+        "[INFO] [karnataka_rera] [timing] [reg=PRM/KA/RERA/1248/469/PR/050723/006033] Timing [total_run]: 135.33s",
+        "[INFO] [orchestrator] [timing] Timing [total_run]: 135.40s"
+      ]
+    }
+  ],
+  "totals": {
+    "elapsed_s": 135.57
+  }
+}

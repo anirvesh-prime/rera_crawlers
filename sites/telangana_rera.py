@@ -34,6 +34,7 @@ from core.crawler_base import (
     safe_get,
 )
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
+from core.details_pool import get_detail_workers, process_details
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord

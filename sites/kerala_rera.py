@@ -23,6 +23,7 @@ from pydantic import ValidationError
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.crawler_base import PlaywrightSession, generate_project_key, random_delay, safe_get
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
+from core.details_pool import get_detail_workers, process_details
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -1565,6 +1566,192 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 
 # ── Main run() ────────────────────────────────────────────────────────────────
 
+# ── Lister phase ──────────────────────────────────────────────────────────────
+
+def _collect_listing_cards(
+    start_page: int,
+    effective_end: int,
+    first_page_soup: BeautifulSoup,
+    logger: CrawlerLogger,
+    delay_min: float,
+    delay_max: float,
+    site_id: str,
+    run_id: int,
+    mode: str,
+) -> tuple[list[tuple[int, dict]], int]:
+    """
+    Walk the explore-projects listing pages and return every parseable card.
+
+    Returns (cards_with_page, error_count) where cards_with_page is a list of
+    (page_num, card_dict) tuples ordered as the listing is walked.  No detail
+    work, DB upserts or document downloads happen here — this is the pure
+    listing phase that feeds the parallel details phase.
+    """
+    cards_with_page: list[tuple[int, dict]] = []
+    error_count = 0
+    for page_num in range(start_page, effective_end + 1):
+        logger.info(f"Listing page {page_num}/{effective_end}", step="listing")
+        if page_num == start_page:
+            page_soup = first_page_soup
+        else:
+            random_delay(delay_min, delay_max)
+            page_soup = _get_explore_page(page_num, logger)
+            if not page_soup:
+                logger.error(f"Failed page {page_num}", step="listing")
+                error_count += 1
+                save_checkpoint(site_id, mode, page_num, None, run_id)
+                continue
+        cards = _parse_explore_cards(page_soup)
+        logger.info(f"  {len(cards)} project cards on page {page_num}", step="listing")
+        for card in cards:
+            if card.get("cert_no_from_card"):
+                cards_with_page.append((page_num, card))
+        save_checkpoint(site_id, mode, page_num, None, run_id)
+    return cards_with_page, error_count
+
+
+# ── Details phase (per-card worker) ───────────────────────────────────────────
+
+def _process_card(
+    page_num: int,
+    card: dict,
+    config: dict,
+    run_id: int,
+    site_id: str,
+    mode: str,
+    machine_name: str,
+    machine_ip: str,
+    logger: CrawlerLogger,
+) -> dict:
+    """
+    Per-card worker called by ``process_details``.
+
+    Performs the whole detail-page → normalize → upsert → document pipeline
+    for one project card and returns a small counter-delta dict the main
+    thread folds into the run counters.  All DB and httpx clients used in
+    here are safe to share across threads; Playwright is intentionally
+    disabled in parallel mode (``_handle_document`` falls back to direct
+    GETs, which is what production runs hit in practice anyway).
+    """
+    deltas = {
+        "projects_skipped": 0, "projects_new": 0, "projects_updated": 0,
+        "documents_uploaded": 0, "error_count": 0,
+    }
+    cert_no = card["cert_no_from_card"]
+    key = generate_project_key(cert_no)
+    logger.set_project(key=key, reg_no=cert_no, url=card["detail_url"], page=page_num)
+    try:
+        if mode == "daily_light" and get_project_by_key(key):
+            logger.info("Skipping — already in DB (daily_light)", step="skip")
+            deltas["projects_skipped"] += 1
+            return deltas
+
+        logger.info("Fetching detail page", step="detail_fetch")
+        detail_data = _scrape_detail_page(card["detail_url"], logger)
+        if not detail_data:
+            logger.error("Detail page returned no data", step="detail_fetch")
+            deltas["error_count"] += 1
+            return deltas
+
+        doc_links = detail_data.pop("_doc_links", [])
+        preview_docs = detail_data.get("uploaded_documents")
+        detail_data.pop("_available_units", None)
+        detail_data.pop("_total_units", None)
+
+        if not detail_data.get("project_name") and card.get("project_name"):
+            detail_data["project_name"] = card["project_name"]
+
+        if not detail_data.get("project_registration_no"):
+            logger.error("Detail page missing project_registration_no — skipping",
+                         step="detail_fetch")
+            deltas["error_count"] += 1
+            return deltas
+        detail_data["key"] = key
+        detail_data["state"] = config["state"]
+        detail_data["project_state"] = config["state"]
+        detail_data["domain"] = DOMAIN
+        detail_data["config_id"] = config["config_id"]
+        detail_data["crawl_machine_ip"] = machine_ip
+        detail_data["machine_name"] = machine_name
+        detail_data["is_live"] = True
+        detail_data["data"] = merge_data_sections(
+            {"listing_card": card, "detail_url": card["detail_url"]},
+            detail_data.get("data"),
+        )
+
+        logger.info("Normalizing and validating", step="normalize")
+        try:
+            normalized = normalize_project_payload(
+                detail_data, config, machine_name=machine_name, machine_ip=machine_ip)
+            record  = ProjectRecord(**normalized)
+            db_dict = apply_kerala_legacy_shape(record.to_db_dict())
+        except (ValidationError, ValueError) as ve:
+            logger.warning("Validation failed — using raw fallback", step="normalize",
+                           error=str(ve))
+            insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(ve),
+                               project_key=key, url=card["detail_url"],
+                               raw_data=detail_data)
+            deltas["error_count"] += 1
+            db_dict = apply_kerala_legacy_shape(
+                normalize_project_payload(
+                    {**detail_data, "data": merge_data_sections(
+                        detail_data.get("data"), {"validation_fallback": True})},
+                    config, machine_name=machine_name, machine_ip=machine_ip,
+                )
+            )
+
+        logger.info("Upserting to DB", step="db_upsert")
+        action = upsert_project(db_dict)
+        if action == "new":
+            deltas["projects_new"] += 1
+        else:
+            deltas["projects_updated"] += 1
+        logger.info(f"DB result: {action}", step="db_upsert")
+
+        queued_docs = _document_queue(doc_links, preview_docs)
+        logger.info(f"Downloading {len(queued_docs)} documents", step="documents")
+        uploaded_doc_results: list[dict] = []
+        doc_name_counts: dict[str, int] = {}
+        for doc in queued_docs:
+            selected_doc = select_document_for_download(
+                config["state"], doc, doc_name_counts, domain=DOMAIN)
+            if not selected_doc:
+                continue
+            # browser_session=None — parallel workers cannot safely share a
+            # Playwright session, so we always use the httpx fallback path
+            # in _handle_document (production runs hit this path anyway).
+            uploaded_doc = _handle_document(
+                db_dict["key"], selected_doc, run_id, site_id, logger,
+                browser_session=None, page_cache=None,
+            )
+            if uploaded_doc:
+                uploaded_doc_results.append(uploaded_doc)
+                deltas["documents_uploaded"] += 1
+
+        uploaded_documents = build_kerala_legacy_uploaded_documents(
+            preview_docs, doc_links, uploaded_doc_results)
+        if uploaded_documents:
+            upsert_project({
+                "key": db_dict["key"],
+                "url": db_dict["url"],
+                "state": db_dict["state"],
+                "domain": db_dict["domain"],
+                "project_registration_no": db_dict["project_registration_no"],
+                "uploaded_documents": uploaded_documents,
+                "document_urls": build_document_urls(uploaded_documents),
+            })
+    except Exception as exc:
+        logger.exception("Project processing failed", exc, step="project_loop")
+        insert_crawl_error(run_id, site_id, "PROJECT_ERROR", str(exc),
+                           project_key=key, url=card["detail_url"])
+        deltas["error_count"] += 1
+    finally:
+        logger.clear_project()
+    return deltas
+
+
+# ── Main run() ────────────────────────────────────────────────────────────────
+
 def run(config: dict, run_id: int, mode: str) -> dict:
     site_id = config["id"]
     logger = CrawlerLogger(site_id, run_id)
@@ -1583,197 +1770,76 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     logger.timing("sentinel", time.monotonic() - t0)
 
     item_limit = settings.CRAWL_ITEM_LIMIT or 0  # 0 = unlimited
-    items_processed = 0
 
     checkpoint = load_checkpoint(site_id, mode)
-    # Resume from the page AFTER the last completed one — the saved page was
-    # already fully processed, so re-starting there would duplicate work.
     start_page = (checkpoint["last_page"] + 1) if checkpoint else 1
     if checkpoint:
         logger.info(f"Resuming from checkpoint page {start_page}")
 
     delay_min, delay_max = config.get("rate_limit_delay", (2, 4))
 
-    # Get total pages from page 1
+    # ── Phase A: Lister — collect every card across listing pages ────────────
     t0 = time.monotonic()
-    soup = _get_explore_page(1, logger)
+    soup = _get_explore_page(start_page, logger)
     if not soup:
-        insert_crawl_error(run_id, site_id, "HTTP_ERROR", "Could not fetch explore-projects page 1")
+        insert_crawl_error(run_id, site_id, "HTTP_ERROR",
+                           f"Could not fetch explore-projects page {start_page}")
         counts["error_count"] += 1
         return counts
-
     total_pages = _get_total_pages(soup)
-    max_pages = settings.MAX_PAGES  # None = unlimited
+    max_pages = settings.MAX_PAGES
     effective_end = (min(total_pages, start_page + max_pages - 1)
                      if max_pages else total_pages)
     logger.info(
-        f"Total listing pages: {total_pages} | crawling up to page {effective_end} "
+        f"Total listing pages: {total_pages} | crawling {start_page}–{effective_end} "
         f"| item_limit={item_limit or 'unlimited'}",
+        step="listing",
     )
-    first_page_cards = _parse_explore_cards(soup)
-    logger.timing("search", time.monotonic() - t0, rows=len(first_page_cards))
+    cards_with_page, lister_errors = _collect_listing_cards(
+        start_page, effective_end, soup, logger,
+        delay_min, delay_max, site_id, run_id, mode,
+    )
+    counts["projects_found"] = len(cards_with_page)
+    counts["error_count"] += lister_errors
+    logger.timing("search", time.monotonic() - t0,
+                  pages=effective_end - start_page + 1,
+                  rows=len(cards_with_page))
+
+    # ── Phase B: Details — parallel per-card processing ──────────────────────
+    # Slice off only the cards that need processing.  Remaining cards stay
+    # counted in projects_found so the listing parser is exercised end-to-end.
+    to_process = cards_with_page[:item_limit] if item_limit else cards_with_page
+    if not to_process:
+        reset_checkpoint(site_id, mode)
+        logger.info("Kerala RERA crawl finished (no items to process)", **counts)
+        logger.timing("total_run", time.monotonic() - t_run)
+        return counts
 
     machine_name, machine_ip = get_machine_context()
-    # When item_limit is hit we stop processing further projects but continue
-    # walking listing pages so projects_found reflects every project Kerala
-    # lists (not just those processed before the cap).
-    done_processing = False
-    print_preview_pages: dict[str, Any] = {}
+    n_workers = get_detail_workers()
+    logger.info(
+        f"Phase B: parallel detail fetch ({len(to_process)} cards, {n_workers} workers)",
+        step="detail_fetch",
+    )
+    t0 = time.monotonic()
 
-    with PlaywrightSession(headless=True) as browser_session:
-        for page_num in range(start_page, effective_end + 1):
-            logger.info(f"Listing page {page_num}/{effective_end}")
+    def _worker(idx: int, item: tuple[int, dict]) -> dict:
+        page_num, card = item
+        return _process_card(
+            page_num, card, config, run_id, site_id, mode,
+            machine_name, machine_ip, logger,
+        )
 
-            page_soup = soup if page_num == 1 else None
-            if page_num > 1:
-                random_delay(delay_min, delay_max)
-                page_soup = _get_explore_page(page_num, logger)
-                if not page_soup:
-                    logger.error(f"Failed page {page_num}")
-                    counts["error_count"] += 1
-                    save_checkpoint(site_id, mode, page_num, None, run_id)
-                    continue
-
-            cards = _parse_explore_cards(page_soup)
-            logger.info(f"  {len(cards)} project cards on page {page_num}")
-
-            for card in cards:
-                cert_no = card.get("cert_no_from_card")
-                if not cert_no:
-                    continue
-                # Always count every parseable card toward projects_found so
-                # the dashboard reports the full state listing total even when
-                # CRAWL_ITEM_LIMIT halts further detail processing.
-                counts["projects_found"] += 1
-                if done_processing or (item_limit and items_processed >= item_limit):
-                    if not done_processing:
-                        logger.info(
-                            f"Item limit {item_limit} reached — counting only",
-                            step="listing",
-                        )
-                    done_processing = True
-                    continue
-                # Count every card toward the limit BEFORE skip checks so daily_light
-                # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
-                items_processed += 1
-
-                key = generate_project_key(cert_no)
-                logger.set_project(key=key, reg_no=cert_no, url=card["detail_url"], page=page_num)
-
-                if mode == "daily_light" and get_project_by_key(key):
-                    logger.info("Skipping — already in DB (daily_light)", step="skip")
-                    counts["projects_skipped"] += 1
-                    logger.clear_project()
-                    continue
-
-                try:
-                    random_delay(delay_min, delay_max)
-                    logger.info("Fetching detail page", step="detail_fetch")
-                    detail_data = _scrape_detail_page(card["detail_url"], logger)
-                    if not detail_data:
-                        logger.error("Detail page returned no data", step="detail_fetch")
-                        counts["error_count"] += 1
-                        continue
-
-                    doc_links = detail_data.pop("_doc_links", [])
-                    preview_docs = detail_data.get("uploaded_documents")
-                    detail_data.pop("_available_units", None)
-                    detail_data.pop("_total_units", None)
-
-                    if not detail_data.get("project_name") and card.get("project_name"):
-                        detail_data["project_name"] = card["project_name"]
-
-                    final_reg = detail_data.get("project_registration_no")
-                    if not final_reg:
-                        logger.error(
-                            "Detail page missing project_registration_no — skipping",
-                            step="detail_fetch",
-                        )
-                        counts["error_count"] += 1
-                        continue
-                    # Re-use the listing-derived key so the DB record is found by the
-                    # same key that daily_light will query on subsequent crawls.
-                    # Recomputing from final_reg would drift the key when the detail
-                    # reg_no differs from the listing card cert_no (whitespace/case),
-                    # leaving daily_light to re-fetch every detail page forever.
-                    detail_data["key"] = key
-                    detail_data["state"] = config["state"]
-                    detail_data["project_state"] = config["state"]
-                    detail_data["domain"] = DOMAIN
-                    detail_data["config_id"] = config["config_id"]
-                    detail_data["crawl_machine_ip"] = machine_ip
-                    detail_data["machine_name"] = machine_name
-                    detail_data["is_live"] = True
-                    detail_data["data"] = merge_data_sections(
-                        {"listing_card": card, "detail_url": card["detail_url"]},
-                        detail_data.get("data"),
-                    )
-
-                    logger.info("Normalizing and validating", step="normalize")
-                    try:
-                        normalized = normalize_project_payload(detail_data, config, machine_name=machine_name, machine_ip=machine_ip)
-                        record  = ProjectRecord(**normalized)
-                        db_dict = apply_kerala_legacy_shape(record.to_db_dict())
-                    except (ValidationError, ValueError) as ve:
-                        logger.warning("Validation failed — using raw fallback", step="normalize",
-                                       error=str(ve))
-                        insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(ve),
-                                           project_key=key, url=card["detail_url"], raw_data=detail_data)
-                        counts["error_count"] += 1
-                        db_dict = apply_kerala_legacy_shape(
-                            normalize_project_payload(
-                                {**detail_data, "data": merge_data_sections(detail_data.get("data"), {"validation_fallback": True})},
-                                config, machine_name=machine_name, machine_ip=machine_ip,
-                            )
-                        )
-
-                    logger.info("Upserting to DB", step="db_upsert")
-                    action = upsert_project(db_dict)
-                    if action == "new": counts["projects_new"] += 1
-                    else:               counts["projects_updated"] += 1
-                    logger.info(f"DB result: {action}", step="db_upsert")
-
-                    queued_docs = _document_queue(doc_links, preview_docs)
-                    logger.info(f"Downloading {len(queued_docs)} documents", step="documents")
-                    uploaded_doc_results: list[dict] = []
-                    doc_name_counts: dict[str, int] = {}
-                    for doc in queued_docs:
-                        selected_doc = select_document_for_download(config["state"], doc, doc_name_counts, domain=DOMAIN)
-                        if selected_doc:
-                            uploaded_doc = _handle_document(
-                                db_dict["key"],
-                                selected_doc,
-                                run_id,
-                                site_id,
-                                logger,
-                                browser_session=browser_session,
-                                page_cache=print_preview_pages,
-                            )
-                            if uploaded_doc:
-                                uploaded_doc_results.append(uploaded_doc)
-                                counts["documents_uploaded"] += 1
-                    uploaded_documents = build_kerala_legacy_uploaded_documents(preview_docs, doc_links, uploaded_doc_results)
-
-                    if uploaded_documents:
-                        upsert_project({
-                            "key": db_dict["key"],
-                            "url": db_dict["url"],
-                            "state": db_dict["state"],
-                            "domain": db_dict["domain"],
-                            "project_registration_no": db_dict["project_registration_no"],
-                            "uploaded_documents": uploaded_documents,
-                            "document_urls": build_document_urls(uploaded_documents),
-                        })
-
-                except Exception as exc:
-                    logger.exception("Project processing failed", exc, step="project_loop")
-                    insert_crawl_error(run_id, site_id, "PROJECT_ERROR", str(exc),
-                                       project_key=key, url=card["detail_url"])
-                    counts["error_count"] += 1
-                finally:
-                    logger.clear_project()
-
-            save_checkpoint(site_id, mode, page_num, None, run_id)
+    results = process_details(to_process, _worker, n_workers=n_workers)
+    for _idx, deltas, exc in results:
+        if exc is not None:
+            counts["error_count"] += 1
+            logger.exception("Worker raised", exc, step="project_loop")
+            continue
+        for k, v in (deltas or {}).items():
+            counts[k] = counts.get(k, 0) + v
+    logger.timing("details", time.monotonic() - t0,
+                  items=len(to_process), workers=n_workers)
 
     reset_checkpoint(site_id, mode)
     logger.info("Kerala RERA crawl finished", **counts)

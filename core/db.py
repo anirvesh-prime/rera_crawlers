@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 
@@ -22,8 +23,16 @@ log = logging.getLogger(__name__)
 # ── Per-process persistent connection ────────────────────────────────────────
 # ProcessPoolExecutor gives each crawler its own OS process, so this module-
 # level variable is private to that process — no cross-process sharing occurs.
+#
+# Within a single process, multiple detail-fetch threads (see
+# core.details_pool) may race on the same connection.  psycopg connections are
+# *not* thread-safe — concurrent statements on one connection corrupt protocol
+# state.  `_db_lock` serializes every public entry point that touches the
+# connection so that detail workers can safely call upsert_project /
+# get_project_by_key / upsert_document while their HTTP I/O runs in parallel.
 _conn: "psycopg.Connection | None" = None
 _schema_ensured: bool = False
+_db_lock = threading.RLock()
 
 # ── Comparison constants (mirrors production DataComparator) ──────────────────
 
@@ -426,7 +435,7 @@ def insert_crawl_run(site_id: str, run_type: str) -> int:
     if settings.TEST_MODE and not settings.TEST_MODE_LOG_TO_DB:
         log.info("[TEST MODE] Skipping insert_crawl_run — returning sentinel run_id=-1")
         return -1
-    with get_connection() as conn:
+    with _db_lock, get_connection() as conn:
         row = conn.execute(
             """
             INSERT INTO crawl_runs (site_id, run_type, status, started_at)
@@ -449,7 +458,7 @@ def update_crawl_run(
     if settings.TEST_MODE and not settings.TEST_MODE_LOG_TO_DB:
         return
     counts = counts or {}
-    with get_connection() as conn:
+    with _db_lock, get_connection() as conn:
         conn.execute(
             """
             UPDATE crawl_runs SET
@@ -494,7 +503,7 @@ def insert_crawl_error(
 ):
     if settings.TEST_MODE and not settings.TEST_MODE_LOG_TO_DB:
         return
-    with get_connection() as conn:
+    with _db_lock, get_connection() as conn:
         conn.execute(
             """
             INSERT INTO crawl_errors (run_id, site_id, project_key, error_type, error_message, url, raw_data)
@@ -508,7 +517,7 @@ def insert_crawl_error(
 # crawl_checkpoints
 
 def get_checkpoint(site_id: str, run_type: str) -> dict | None:
-    with get_connection() as conn:
+    with _db_lock, get_connection() as conn:
         return conn.execute(
             "SELECT * FROM crawl_checkpoints WHERE site_id = %s AND run_type = %s",
             (site_id, run_type),
@@ -518,7 +527,7 @@ def get_checkpoint(site_id: str, run_type: str) -> dict | None:
 def set_checkpoint(site_id: str, run_type: str, last_page: int, last_project_key: str | None, run_id: int):
     if settings.TEST_MODE:
         return
-    with get_connection() as conn:
+    with _db_lock, get_connection() as conn:
         conn.execute(
             """
             INSERT INTO crawl_checkpoints (site_id, run_type, last_page, last_project_key, last_run_id, updated_at)
@@ -537,7 +546,7 @@ def set_checkpoint(site_id: str, run_type: str, last_page: int, last_project_key
 def clear_checkpoint(site_id: str, run_type: str):
     if settings.TEST_MODE:
         return
-    with get_connection() as conn:
+    with _db_lock, get_connection() as conn:
         conn.execute(
             "DELETE FROM crawl_checkpoints WHERE site_id = %s AND run_type = %s",
             (site_id, run_type),
@@ -548,12 +557,12 @@ def clear_checkpoint(site_id: str, run_type: str):
 # projects
 
 def get_project_by_key(key: str) -> dict | None:
-    with get_connection() as conn:
+    with _db_lock, get_connection() as conn:
         return conn.execute("SELECT * FROM rera_projects WHERE key = %s", (key,)).fetchone()
 
 
 def get_document_by_type(project_key: str, document_type: str) -> dict | None:
-    with get_connection() as conn:
+    with _db_lock, get_connection() as conn:
         return conn.execute(
             """
             SELECT *
@@ -583,74 +592,75 @@ def upsert_project(data: dict[str, Any]) -> str:
     reflects what *would* have happened) but no writes are executed.
     """
     key = data["key"]
-    conn = get_connection()
+    with _db_lock:
+        conn = get_connection()
 
-    # Skip row-level locking in test mode — we won't write, so no need to lock.
-    select_sql = (
-        "SELECT * FROM rera_projects WHERE key = %s"
-        if settings.TEST_MODE
-        else "SELECT * FROM rera_projects WHERE key = %s FOR UPDATE"
-    )
+        # Skip row-level locking in test mode — we won't write, so no need to lock.
+        select_sql = (
+            "SELECT * FROM rera_projects WHERE key = %s"
+            if settings.TEST_MODE
+            else "SELECT * FROM rera_projects WHERE key = %s FOR UPDATE"
+        )
 
-    with conn.transaction():
-        existing = conn.execute(select_sql, (key,)).fetchone()
+        with conn.transaction():
+            existing = conn.execute(select_sql, (key,)).fetchone()
 
-        if existing is None:
+            if existing is None:
+                if not settings.TEST_MODE:
+                    _insert_project(data, conn)
+                return "new"
+
+            item = dict(data)          # working copy (null-preservation writes back here)
+            updated_fields: list[str] = []
+
+            for column, new_val in list(item.items()):
+                if column in _COMPARE_IGNORE:
+                    continue
+                if column not in existing:
+                    continue
+
+                old_val = existing[column]
+
+                # Null-preservation: new crawl missed a value → keep DB value
+                if _is_none_equiv(new_val) and not _is_none_equiv(old_val):
+                    item[column] = old_val
+                    continue
+
+                if _is_none_equiv(new_val):
+                    continue  # both empty — not a change
+
+                if _field_differs(column, old_val, new_val):
+                    updated_fields.append(column)
+
+            if not updated_fields:
+                if not settings.TEST_MODE:
+                    _touch_project(key, conn,
+                                   machine_name=data.get("machine_name"),
+                                   crawl_machine_ip=data.get("crawl_machine_ip"))
+                return "skipped"
+
+            # Build old_updates history entry (stores old values for changed fields)
+            old_updates: list[dict] = _parse_old_updates(existing.get("old_updates"))
+            new_entry: dict = {"updated_on": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S.%f%z")}
+            for field in updated_fields:
+                if field in ("old_updates", "last_updated", "updated_fields"):
+                    continue
+                old_v = existing.get(field)
+                if not _is_none_equiv(old_v):
+                    new_entry[field] = str(old_v)
+            if len(new_entry) > 1:
+                old_updates.append(new_entry)
+
+            # Keep most recent MAX_UPDATES_HISTORY entries
+            old_updates = sorted(
+                [u for u in old_updates if isinstance(u, dict) and "updated_on" in u and len(u) > 1],
+                key=lambda x: x.get("updated_on", ""),
+                reverse=True,
+            )[:_MAX_UPDATES_HISTORY]
+
             if not settings.TEST_MODE:
-                _insert_project(data, conn)
-            return "new"
-
-        item = dict(data)          # working copy (null-preservation writes back here)
-        updated_fields: list[str] = []
-
-        for column, new_val in list(item.items()):
-            if column in _COMPARE_IGNORE:
-                continue
-            if column not in existing:
-                continue
-
-            old_val = existing[column]
-
-            # Null-preservation: new crawl missed a value → keep DB value
-            if _is_none_equiv(new_val) and not _is_none_equiv(old_val):
-                item[column] = old_val
-                continue
-
-            if _is_none_equiv(new_val):
-                continue  # both empty — not a change
-
-            if _field_differs(column, old_val, new_val):
-                updated_fields.append(column)
-
-        if not updated_fields:
-            if not settings.TEST_MODE:
-                _touch_project(key, conn,
-                               machine_name=data.get("machine_name"),
-                               crawl_machine_ip=data.get("crawl_machine_ip"))
-            return "skipped"
-
-        # Build old_updates history entry (stores old values for changed fields)
-        old_updates: list[dict] = _parse_old_updates(existing.get("old_updates"))
-        new_entry: dict = {"updated_on": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S.%f%z")}
-        for field in updated_fields:
-            if field in ("old_updates", "last_updated", "updated_fields"):
-                continue
-            old_v = existing.get(field)
-            if not _is_none_equiv(old_v):
-                new_entry[field] = str(old_v)
-        if len(new_entry) > 1:
-            old_updates.append(new_entry)
-
-        # Keep most recent MAX_UPDATES_HISTORY entries
-        old_updates = sorted(
-            [u for u in old_updates if isinstance(u, dict) and "updated_on" in u and len(u) > 1],
-            key=lambda x: x.get("updated_on", ""),
-            reverse=True,
-        )[:_MAX_UPDATES_HISTORY]
-
-        if not settings.TEST_MODE:
-            _update_project_fields(key, item, updated_fields, old_updates, conn)
-        return "updated"
+                _update_project_fields(key, item, updated_fields, old_updates, conn)
+            return "updated"
 
 
 def _parse_old_updates(raw: Any) -> list[dict]:
@@ -759,31 +769,32 @@ def bulk_insert_logs(entries: list[dict]) -> None:
     if not entries or (settings.TEST_MODE and not settings.TEST_MODE_LOG_TO_DB):
         return
     try:
-        conn = get_connection()
-        with conn.transaction():
-            with conn.cursor() as cur:
-                cur.executemany(
-                    """
-                    INSERT INTO crawl_logs
-                        (run_id, site_id, level, message, project_key,
-                         registration_no, step, traceback, extra)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    """,
-                    [
-                        (
-                            e.get("run_id"),
-                            e.get("site_id"),
-                            e.get("level"),
-                            e.get("message"),
-                            e.get("project_key"),
-                            e.get("registration_no"),
-                            e.get("step"),
-                            e.get("traceback"),
-                            json.dumps(e.get("extra") or {}),
-                        )
-                        for e in entries
-                    ],
-                )
+        with _db_lock:
+            conn = get_connection()
+            with conn.transaction():
+                with conn.cursor() as cur:
+                    cur.executemany(
+                        """
+                        INSERT INTO crawl_logs
+                            (run_id, site_id, level, message, project_key,
+                             registration_no, step, traceback, extra)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        [
+                            (
+                                e.get("run_id"),
+                                e.get("site_id"),
+                                e.get("level"),
+                                e.get("message"),
+                                e.get("project_key"),
+                                e.get("registration_no"),
+                                e.get("step"),
+                                e.get("traceback"),
+                                json.dumps(e.get("extra") or {}),
+                            )
+                            for e in entries
+                        ],
+                    )
     except Exception:
         pass  # never let logging break the crawler
 
@@ -801,27 +812,28 @@ def bulk_insert_document_events(entries: list[dict]) -> None:
         return
 
     try:
-        conn = get_connection()
-        with conn.transaction():
-            with conn.cursor() as cur:
-                cur.executemany(
-                    """
-                    INSERT INTO crawl_document_events
-                        (run_id, site_id, project_key, document_type,
-                         original_url, s3_key, file_size_bytes, status, extra)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                    """,
-                    [
-                        (
-                            e.get("run_id"), e.get("site_id"),
-                            e.get("project_key"), e.get("document_type"),
-                            e.get("original_url"), e.get("s3_key"),
-                            e.get("file_size_bytes"), e.get("status"),
-                            json.dumps(e.get("extra") or {}),
-                        )
-                        for e in entries
-                    ],
-                )
+        with _db_lock:
+            conn = get_connection()
+            with conn.transaction():
+                with conn.cursor() as cur:
+                    cur.executemany(
+                        """
+                        INSERT INTO crawl_document_events
+                            (run_id, site_id, project_key, document_type,
+                             original_url, s3_key, file_size_bytes, status, extra)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """,
+                        [
+                            (
+                                e.get("run_id"), e.get("site_id"),
+                                e.get("project_key"), e.get("document_type"),
+                                e.get("original_url"), e.get("s3_key"),
+                                e.get("file_size_bytes"), e.get("status"),
+                                json.dumps(e.get("extra") or {}),
+                            )
+                            for e in entries
+                        ],
+                    )
     except Exception:
         pass  # never let logging break the crawler
 
@@ -852,59 +864,60 @@ def upsert_document(
     In TEST_MODE the read and comparison still run so the return value
     reflects what *would* have happened, but no writes are executed.
     """
-    conn = get_connection()
+    with _db_lock:
+        conn = get_connection()
 
-    # Skip row-level locking in test mode — we won't write, so no need to lock.
-    select_sql = (
-        """
-        SELECT * FROM rera_project_documents
-        WHERE project_key = %s AND original_url = %s
-        """
-        if settings.TEST_MODE
-        else """
-        SELECT * FROM rera_project_documents
-        WHERE project_key = %s AND original_url = %s
-        FOR UPDATE
-        """
-    )
+        # Skip row-level locking in test mode — we won't write, so no need to lock.
+        select_sql = (
+            """
+            SELECT * FROM rera_project_documents
+            WHERE project_key = %s AND original_url = %s
+            """
+            if settings.TEST_MODE
+            else """
+            SELECT * FROM rera_project_documents
+            WHERE project_key = %s AND original_url = %s
+            FOR UPDATE
+            """
+        )
 
-    with conn.transaction():
-        existing = conn.execute(select_sql, (project_key, original_url)).fetchone()
+        with conn.transaction():
+            existing = conn.execute(select_sql, (project_key, original_url)).fetchone()
 
-        if existing is None:
-            if not settings.TEST_MODE:
-                conn.execute(
-                    """
-                    INSERT INTO rera_project_documents
+            if existing is None:
+                if not settings.TEST_MODE:
+                    conn.execute(
+                        """
+                        INSERT INTO rera_project_documents
+                            (project_key, document_type, original_url, s3_key, s3_bucket,
+                             file_name, md5_checksum, file_size_bytes)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        """,
                         (project_key, document_type, original_url, s3_key, s3_bucket,
-                         file_name, md5_checksum, file_size_bytes)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    """,
-                    (project_key, document_type, original_url, s3_key, s3_bucket,
-                     file_name, md5_checksum, file_size_bytes),
-                )
-            return "uploaded"
+                         file_name, md5_checksum, file_size_bytes),
+                    )
+                return "uploaded"
 
-        if (
-            existing["md5_checksum"] != md5_checksum
-            or existing["s3_key"] != s3_key
-            or existing["file_name"] != file_name
-        ):
+            if (
+                existing["md5_checksum"] != md5_checksum
+                or existing["s3_key"] != s3_key
+                or existing["file_name"] != file_name
+            ):
+                if not settings.TEST_MODE:
+                    conn.execute(
+                        """
+                        UPDATE rera_project_documents
+                        SET s3_key = %s, file_name = %s, md5_checksum = %s,
+                            file_size_bytes = %s, uploaded_at = now()
+                        WHERE id = %s
+                        """,
+                        (s3_key, file_name, md5_checksum, file_size_bytes, existing["id"]),
+                    )
+                return "updated"
+
             if not settings.TEST_MODE:
                 conn.execute(
-                    """
-                    UPDATE rera_project_documents
-                    SET s3_key = %s, file_name = %s, md5_checksum = %s,
-                        file_size_bytes = %s, uploaded_at = now()
-                    WHERE id = %s
-                    """,
-                    (s3_key, file_name, md5_checksum, file_size_bytes, existing["id"]),
+                    "UPDATE rera_project_documents SET last_verified = now() WHERE id = %s",
+                    (existing["id"],),
                 )
-            return "updated"
-
-        if not settings.TEST_MODE:
-            conn.execute(
-                "UPDATE rera_project_documents SET last_verified = now() WHERE id = %s",
-                (existing["id"],),
-            )
-        return "skipped"
+            return "skipped"

@@ -233,11 +233,21 @@ def _extract_rj_table_rows(page) -> list[dict]:
     return rows
 
 
-def _scrape_project_list_playwright(logger: CrawlerLogger) -> list[dict]:
+def _scrape_project_list_playwright(
+    logger: CrawlerLogger,
+    *,
+    max_pages: int | None = None,
+    enough_rows: int | None = None,
+) -> list[dict]:
     """
     Navigate the Rajasthan RERA Angular SPA listing page and extract all projects.
     Returns list of dicts with keys: reg_no, project_name, promoter_name,
     project_type, district, application_no, approved_on, status.
+
+    When ``max_pages`` is set the walker stops after N listing pages.  When
+    ``enough_rows`` is set it stops once that many rows have been collected.
+    Both gates exist so test runs honour CRAWL_ITEM_LIMIT / MAX_PAGES instead
+    of paginating through ~100 pages of projects (>500 s wall-clock).
     """
     projects: list[dict] = []
 
@@ -287,6 +297,19 @@ def _scrape_project_list_playwright(logger: CrawlerLogger) -> list[dict]:
             _page_num    = 1
             _stall_guard = 0    # consecutive pages with no new rows
             while True:
+                if max_pages is not None and _page_num >= max_pages:
+                    logger.info(
+                        f"max_pages={max_pages} reached — stopping pagination",
+                        step="listing",
+                    )
+                    break
+                if enough_rows is not None and len(projects) >= enough_rows:
+                    logger.info(
+                        f"enough_rows={enough_rows} reached "
+                        f"(have {len(projects)}) — stopping pagination",
+                        step="listing",
+                    )
+                    break
                 try:
                     next_locator = page.locator(_NEXT_SEL)
                     if next_locator.count() == 0:
@@ -1225,23 +1248,26 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     resume_after_key = checkpoint.get("last_project_key")
     resume_pending   = bool(resume_after_key)
 
-    # Phase 1: collect project list via Playwright listing scrape
+    # ── Phase A: Lister — collect project list via Playwright listing scrape ─
+    # Honour MAX_PAGES / CRAWL_ITEM_LIMIT during the walk itself so test runs
+    # don't paginate through every page of the state listing (~100 pages,
+    # 500 s wall-clock).  When neither is set we walk the full listing.
     t0 = time.monotonic()
-    listed_projects = _scrape_project_list_playwright(logger)
+    list_max_pages = settings.MAX_PAGES if settings.MAX_PAGES else None
+    list_enough = item_limit if item_limit else None
+    listed_projects = _scrape_project_list_playwright(
+        logger, max_pages=list_max_pages, enough_rows=list_enough,
+    )
     if not listed_projects:
         return counts
-    # projects_found must reflect the total Rajasthan listing (all projects in
-    # the state) regardless of CRAWL_ITEM_LIMIT — slice the work list afterwards.
     counts["projects_found"] = len(listed_projects)
     total_listing = len(listed_projects)
     if item_limit:
         listed_projects = listed_projects[:item_limit]
-        logger.info(f"Rajasthan: CRAWL_ITEM_LIMIT={item_limit} — {len(listed_projects)} of {total_listing} projects")
-    else:
-        max_pages = settings.MAX_PAGES
-        if max_pages:
-            listed_projects = listed_projects[:max_pages * 50]
-            logger.info(f"Rajasthan: limiting to {len(listed_projects)} of {total_listing} projects (max_pages={max_pages})")
+        logger.info(
+            f"Rajasthan: CRAWL_ITEM_LIMIT={item_limit} — "
+            f"{len(listed_projects)} of {total_listing} projects",
+        )
     logger.timing("search", time.monotonic() - t0, rows=total_listing)
 
     # httpx session is used only for document downloads
