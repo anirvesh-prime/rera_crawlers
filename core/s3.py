@@ -61,6 +61,7 @@ def upload_document(project_key: str, filename: str, data: bytes, dry_run: bool 
     s3_key = build_s3_key(project_key, filename)
 
     if dry_run:
+        log.info("[TEST MODE] skipped S3 upload key=%s size=%d", s3_key, len(data))
         return s3_key
 
     try:

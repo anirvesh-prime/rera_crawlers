@@ -167,10 +167,10 @@ def _extract_status_update(qpr_url: str) -> list[dict]:
         normalized = _normalize_date_str(end_date_str)
         if not normalized:
             continue
-        entry: dict = {"date_of_reporting": normalized}
+        entry: dict = {"date_of_reporting": normalized}  # FIELD: status_update[].date_of_reporting <- cells[2] end_date normalized
         # If 4th column contains a form (View button), the promoter filed a QPR
         if len(cells) > 3 and cells[3].find("form"):
-            entry["updated"] = True
+            entry["updated"] = True  # FIELD: status_update[].updated <- True when cells[3] contains <form>
         status_updates.append(entry)
     return status_updates
 
@@ -270,19 +270,19 @@ def _parse_listing_rows(soup: BeautifulSoup, listing_url: str) -> list[dict]:
         )
 
         results.append({
-            "project_registration_no": project_id,
-            "acknowledgement_no": cell_text(1),
-            "project_name": cell_text(3),
-            "promoter_name": cell_text(4),
-            "project_location_raw_address": cell_text(5),
-            "project_city": cell_text(6).upper(),
-            "authority_type": cell_text(7),
-            "detail_url": detail_href or fallback_detail,
-            "internal_id": internal_id,
-            "estimated_finish_date": estimated_finish,
-            "cert_url": cert_url,
-            "qpr_url": qpr_url,
-            "_listing_url": listing_url,
+            "project_registration_no": project_id,                            # FIELD: project_registration_no <- listing col 2 <span> Project ID
+            "acknowledgement_no": cell_text(1),                               # FIELD: acknowledgement_no <- listing col 1
+            "project_name": cell_text(3),                                     # FIELD: project_name <- listing col 3
+            "promoter_name": cell_text(4),                                    # FIELD: promoter_name <- listing col 4
+            "project_location_raw_address": cell_text(5),                     # FIELD: project_location_raw.raw_address <- listing col 5
+            "project_city": cell_text(6).upper(),                             # FIELD: project_city <- listing col 6 uppercased
+            "authority_type": cell_text(7),                                   # FIELD: data.authority_type <- listing col 7
+            "detail_url": detail_href or fallback_detail,                     # FIELD: url <- listing col 8 detail link (or fallback from internal_id)
+            "internal_id": internal_id,                                       # FIELD: internal_id <- regex /project_preview_open/(\d+) on detail_href
+            "estimated_finish_date": estimated_finish,                        # FIELD: estimated_finish_date <- listing col 9 normalized
+            "cert_url": cert_url,                                             # FIELD: data.rc <- listing col 10 view_certificate link
+            "qpr_url": qpr_url,                                               # FIELD: data.qp_url <- listing col 11 quarterly link
+            "_listing_url": listing_url,                                      # FIELD: data.listing_url <- listing page URL argument
         })
 
     return results
@@ -477,10 +477,10 @@ def _extract_documents(soup: BeautifulSoup, detail_url: str) -> list[dict]:
             seen_urls.add(link_url)
 
             docs.append({
-                "type": doc_type,
-                "link": link_url,
-                "dated_on": _normalize_date_str(upload_date),
-                "updated": True,
+                "type": doc_type,                               # FIELD: uploaded_documents[].type <- cells[1] in document table row
+                "link": link_url,                               # FIELD: uploaded_documents[].link <- first non-JS <a href> in row
+                "dated_on": _normalize_date_str(upload_date),   # FIELD: uploaded_documents[].dated_on <- cells[2] normalized
+                "updated": True,                                # FIELD: uploaded_documents[].updated <- constant True
             })
 
     return docs
@@ -502,17 +502,17 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:
     text = soup.get_text(separator="\n", strip=True)
     kv   = _extract_kv_from_tables(soup)
 
-    out: dict[str, Any] = {"url": detail_url}
+    out: dict[str, Any] = {"url": detail_url}  # FIELD: url <- detail_url argument
 
     # ── Header: submission date, applicant type, project status ──────────────
     m = re.search(r"Submission Date\s*:?\s*(\d{2}-\d{2}-\d{4}(?:\s+\d{2}:\d{2}:\d{2}\s*(?:AM|PM)?)?)", text, re.I)
     if m:
-        out["submitted_date"] = _normalize_date_str(m.group(1).strip())
+        out["submitted_date"] = _normalize_date_str(m.group(1).strip())  # FIELD: submitted_date <- "Submission Date" regex in page text
 
     # Haryana labels project lifecycle status as "Project Type:" in the header
     m = re.search(r"Project Type\s*:\s*(ONGOING|COMPLETED|LAPSED|REVOKED|NEW)\b", text, re.I)
     if m:
-        out["status_of_the_project"] = m.group(1).strip().upper()
+        out["status_of_the_project"] = m.group(1).strip().upper()  # FIELD: status_of_the_project <- "Project Type:" regex in page text
 
     # ── Part A: Company name and registered address ───────────────────────────
     # The company name is the value in the KV table for the matching label.
@@ -567,12 +567,12 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:
 
     if company_name:
         out["promoters_details"] = {
-            "name": company_name,
-            "pan_no": kv.get("Pan No", kv.get("Pan No.", "")),
-            "cin_no": kv.get("CIN No", kv.get("CIN No.", "")),
+            "name": company_name,                                   # FIELD: promoters_details.name <- kv "Name and registered address" / Promoter Name fallbacks
+            "pan_no": kv.get("Pan No", kv.get("Pan No.", "")),      # FIELD: promoters_details.pan_no <- kv "Pan No"/"Pan No."
+            "cin_no": kv.get("CIN No", kv.get("CIN No.", "")),      # FIELD: promoters_details.cin_no <- kv "CIN No"/"CIN No."
         }
     if company_address:
-        out["promoter_address_raw"] = {"raw_address": company_address}
+        out["promoter_address_raw"] = {"raw_address": company_address}  # FIELD: promoter_address_raw.raw_address <- value of "(Annex...)" row
 
     # Contact details
     # Build a lowercase-key lookup for flexible matching
@@ -604,53 +604,53 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:
     email    = (kv.get("Email ID") or kv.get("Email Id") or kv.get("Email")
                 or kv_lower.get("email id") or kv_lower.get("email"))
     website  = kv.get("Website") or kv_lower.get("website")
-    if landline: contact["telephone_no"] = landline
-    if mobile:   contact["phone"] = mobile
-    if email:    contact["email"] = email
-    if website:  contact["website"] = website
+    if landline: contact["telephone_no"] = landline  # FIELD: promoter_contact_details.telephone_no <- _clean_phone_val(kv "Phone(Landline)")
+    if mobile:   contact["phone"] = mobile           # FIELD: promoter_contact_details.phone <- _clean_phone_val(kv "Phone(Mobile)"/"Mobile No")
+    if email:    contact["email"] = email            # FIELD: promoter_contact_details.email <- kv "Email ID"/"Email Id"/"Email"
+    if website:  contact["website"] = website        # FIELD: promoter_contact_details.website <- kv "Website"
     if contact:
-        out["promoter_contact_details"] = contact
+        out["promoter_contact_details"] = contact    # FIELD: promoter_contact_details <- assembled contact dict (landline/mobile/email/website)
 
     # ── Part A: Persons (directors + authorized signatory + contact person) ───
     persons_data = _parse_persons_section(text)
     if persons_data.get("directors"):
-        out["co_promoter_details"] = persons_data["directors"]
+        out["co_promoter_details"] = persons_data["directors"]            # FIELD: co_promoter_details <- _parse_persons_section directors list
     if persons_data.get("authorized_rep"):
-        out["authorised_signatory_details"] = persons_data["authorized_rep"]
+        out["authorised_signatory_details"] = persons_data["authorized_rep"]  # FIELD: authorised_signatory_details <- _parse_persons_section authorized_rep
     if persons_data.get("contact_person"):
-        out["members_details"] = persons_data["contact_person"]
+        out["members_details"] = persons_data["contact_person"]           # FIELD: members_details <- _parse_persons_section contact_person
 
     # Fallback: derive promoter_contact_details from authorized rep if not found above
     if not out.get("promoter_contact_details") and persons_data.get("authorized_rep"):
         auth = persons_data["authorized_rep"]
         fb_contact = {k: v for k, v in {"phone": auth.get("phone"), "email": auth.get("email")}.items() if v}
         if fb_contact:
-            out["promoter_contact_details"] = fb_contact
+            out["promoter_contact_details"] = fb_contact  # FIELD: promoter_contact_details <- fallback from authorized_rep phone/email
 
     # ── Part B: Construction area (extract before land_area_details is built) ──
     construction_area_key = next(
         (k for k in kv if "land area to be used for construction" in k.lower()), None
     )
     if construction_area_key:
-        out["construction_area"] = _float_val(kv[construction_area_key])
+        out["construction_area"] = _float_val(kv[construction_area_key])  # FIELD: construction_area <- kv "land area to be used for construction" (float)
 
     # ── Part B: Land area ─────────────────────────────────────────────────────
     land_area_raw = kv.get("1. Land area of the project") or kv.get("Land area of the project")
     if land_area_raw:
-        out["land_area"] = _float_val(land_area_raw)
+        out["land_area"] = _float_val(land_area_raw)  # FIELD: land_area <- kv "1. Land area of the project"/"Land area of the project"
     else:
         m = re.search(r"Land area of the project\s+([\d,\.]+)\s*\(", text, re.I)
         if m:
-            out["land_area"] = _float_val(m.group(1))
+            out["land_area"] = _float_val(m.group(1))  # FIELD: land_area <- regex "Land area of the project" in page text
     if out.get("land_area") is not None:
         land_area_details: dict[str, Any] = {
-            "land_area": str(out["land_area"]),
-            "land_area_unit": "Sqr/mtrs",
+            "land_area": str(out["land_area"]),                    # FIELD: land_area_details.land_area <- str(out["land_area"])
+            "land_area_unit": "Sqr/mtrs",                          # FIELD: land_area_details.land_area_unit <- constant "Sqr/mtrs"
         }
         if out.get("construction_area") is not None:
-            land_area_details["construction_area"] = out["construction_area"]
-            land_area_details["construction_area_unit"] = "Square Meters"
-        out["land_area_details"] = land_area_details
+            land_area_details["construction_area"] = out["construction_area"]  # FIELD: land_area_details.construction_area <- out["construction_area"]
+            land_area_details["construction_area_unit"] = "Square Meters"      # FIELD: land_area_details.construction_area_unit <- constant "Square Meters"
+        out["land_area_details"] = land_area_details  # FIELD: land_area_details <- assembled land_area_details dict
 
     # License number (various label formats)
     lic_key = next((k for k in kv if any(
@@ -658,15 +658,15 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:
                                         "rera license", "rera licence", "permit no", "dtcp")
     )), None)
     if lic_key:
-        out["_license_no"] = kv[lic_key]
-        out["alternative_rera_ids"] = [kv[lic_key]]
+        out["_license_no"] = kv[lic_key]                  # FIELD: _license_no <- kv license/licence/permit/dtcp label
+        out["alternative_rera_ids"] = [kv[lic_key]]       # FIELD: alternative_rera_ids <- [kv license label value]
     else:
         # Regex fallback for license number in text
         m_lic = re.search(r"(?:License|Licence)\s*(?:No\.?|Number)\s*:?\s*([\w/\-]+)", text, re.I)
         if m_lic:
             lic_val = m_lic.group(1).strip()
-            out["_license_no"] = lic_val
-            out["alternative_rera_ids"] = [lic_val]
+            out["_license_no"] = lic_val                  # FIELD: _license_no <- regex "License/Licence No" in page text
+            out["alternative_rera_ids"] = [lic_val]       # FIELD: alternative_rera_ids <- [regex license value]
 
     # ── Part C: Project cost ──────────────────────────────────────────────────
     cost_key = next((k for k in kv if "Estimated cost of the project" in k), None)
@@ -674,14 +674,14 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:
     if cost_key:
         total_cost_str = kv[cost_key]
         # Normalise to lowercase-lakhs format: "17436.9 lakhs"
-        cost_detail["total_project_cost"] = re.sub(r"Lakhs", "lakhs", total_cost_str, flags=re.I)
+        cost_detail["total_project_cost"] = re.sub(r"Lakhs", "lakhs", total_cost_str, flags=re.I)  # FIELD: project_cost_detail.total_project_cost <- kv "Estimated cost of the project" (lakhs lc)
         total_rupees = _lakhs_to_rupees(total_cost_str)
         if total_rupees:
-            cost_detail["estimated_project_cost"] = total_rupees
+            cost_detail["estimated_project_cost"] = total_rupees  # FIELD: project_cost_detail.estimated_project_cost <- kv "Estimated cost of the project" lakhs->rupees
 
     land_cost_key = next((k for k in kv if "Cost of the land" in k), None)
     if land_cost_key:
-        cost_detail["cost_of_land"] = _lakhs_to_rupees(kv[land_cost_key])
+        cost_detail["cost_of_land"] = _lakhs_to_rupees(kv[land_cost_key])  # FIELD: project_cost_detail.cost_of_land <- kv "Cost of the land" lakhs->rupees
 
     construction_cost_key = next((k for k in kv if "cost of construction" in k.lower()), None)
     infra_cost_key = next((k for k in kv if "cost of infrastructure" in k.lower()), None)
@@ -690,27 +690,28 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:
     if const_rupees is not None or infra_rupees is not None:
         total_construction = (const_rupees or 0) + (infra_rupees or 0)
         total_lakhs = total_construction / 100_000
-        cost_detail["construction_cost"] = f"{total_lakhs:.1f} lakhs"
+        cost_detail["construction_cost"] = f"{total_lakhs:.1f} lakhs"  # FIELD: project_cost_detail.construction_cost <- (kv construction + infrastructure) sum in lakhs
     elif construction_cost_key:
-        cost_detail["construction_cost"] = kv[construction_cost_key]
+        cost_detail["construction_cost"] = kv[construction_cost_key]  # FIELD: project_cost_detail.construction_cost <- kv "cost of construction"
 
     if cost_detail:
         if "construction_cost" in cost_detail:
+            # FIELD: project_cost_detail.estimated_construction_cost <- cost_detail.construction_cost renamed (Lakhs->lakhs)
             cost_detail["estimated_construction_cost"] = re.sub(
                 r"Lakhs", "lakhs", cost_detail.pop("construction_cost"), flags=re.I
             )
-        out["project_cost_detail"] = cost_detail
+        out["project_cost_detail"] = cost_detail  # FIELD: project_cost_detail <- assembled cost_detail dict
 
     # ── Part B-X: Date fields from KV ─────────────────────────────────────────
     # Start Date (commencement)
     start_key = next((k for k in kv if k.strip().lower() == "start date"), None)
     if start_key:
-        out["estimated_commencement_date"] = _normalize_date_str(kv[start_key])
+        out["estimated_commencement_date"] = _normalize_date_str(kv[start_key])  # FIELD: estimated_commencement_date <- kv "Start date" normalized
 
     # Revised date of completion → actual_finish_date
     revised_key = next((k for k in kv if "revised date of completion" in k.lower()), None)
     if revised_key:
-        out["actual_finish_date"] = _normalize_date_str(kv[revised_key])
+        out["actual_finish_date"] = _normalize_date_str(kv[revised_key])  # FIELD: actual_finish_date <- kv "revised date of completion" normalized
 
     # Construction completion percentage
     pct_key = next(
@@ -719,8 +720,9 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:
     if pct_key:
         try:
             pct = int(float(kv[pct_key]))
+            # FIELD: construction_progress <- single entry built from kv "percentage completion"
             out["construction_progress"] = [
-                {"title": "total_completion_percentage", "progress_percentage": pct}
+                {"title": "total_completion_percentage", "progress_percentage": pct}  # FIELD: construction_progress[].title/progress_percentage <- const + kv pct
             ]
         except (ValueError, TypeError):
             pass
@@ -728,18 +730,18 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:
     # ── Part C: Units table → building_details ────────────────────────────────
     units = _extract_units_table(soup)
     if units:
-        out["building_details"] = units
+        out["building_details"] = units  # FIELD: building_details <- _extract_units_table(soup)
 
     # ── Part C: Facilities table → provided_faciltiy ──────────────────────────
     facilities = _extract_facilities_table(soup)
     if facilities:
-        out["provided_faciltiy"] = facilities
+        out["provided_faciltiy"] = facilities  # FIELD: provided_faciltiy <- _extract_facilities_table(soup)
 
     # ── Part C-X: Financial info (flats constructed/booked) ───────────────────
     m = re.search(r"No\.\s+of\s+Flats[^0-9]*constructed\s+([\d,]+)", text, re.I)
     if m:
         try:
-            out["_flats_constructed"] = int(m.group(1).replace(",", ""))
+            out["_flats_constructed"] = int(m.group(1).replace(",", ""))  # FIELD: _flats_constructed <- regex "No. of Flats ... constructed" in page text
         except ValueError:
             pass
 
@@ -748,7 +750,7 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:
     m = re.search(r"No\.\s+of\s+Flats[^0-9]*constructed\s+([\d,]+)", text, re.I)
     if m:
         try:
-            out["number_of_residential_units"] = int(m.group(1).replace(",", ""))
+            out["number_of_residential_units"] = int(m.group(1).replace(",", ""))  # FIELD: number_of_residential_units <- regex "No. of Flats constructed"
         except ValueError:
             pass
 
@@ -766,17 +768,17 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:
         if val:
             bank[schema_key] = val
     if bank:
-        out["bank_details"] = bank
+        out["bank_details"] = bank  # FIELD: bank_details <- assembled bank dict from kv bank_keys mapping
 
     # ── Documents section ─────────────────────────────────────────────────────
     docs = _extract_documents(soup, detail_url)
     if docs:
-        out["uploaded_documents"] = docs
+        out["uploaded_documents"] = docs  # FIELD: uploaded_documents <- _extract_documents(soup, detail_url)
 
     # ── Raw safety net ────────────────────────────────────────────────────────
     out["data"] = {
-        "govt_type": "state",
-        "is_processed": False,
+        "govt_type": "state",       # FIELD: data.govt_type <- constant "state"
+        "is_processed": False,      # FIELD: data.is_processed <- constant False
     }
 
     return {k: v for k, v in out.items() if v not in (None, "", {}, [])}
@@ -832,19 +834,19 @@ def _parse_persons_section(text: str) -> dict:
         pan     = _extract(r"PAN No\.?\s*([A-Z]{3,5}[X0-9]{3,5}[A-Z])")
 
         entry: dict = {}
-        if name:     entry["name"]         = name
-        if role:     entry["role"]         = role
-        if address:  entry["present_address"] = address
-        if mobile:   entry["phone"]        = mobile.strip()
-        if email:    entry["email"]        = email
-        if pan:      entry["pan_no"]       = pan
+        if name:     entry["name"]         = name           # FIELD: co_promoter_details|authorised_signatory_details|members_details .name <- "Name :" regex
+        if role:     entry["role"]         = role           # FIELD: co_promoter_details|authorised_signatory_details|members_details .role <- person block header role
+        if address:  entry["present_address"] = address     # FIELD: co_promoter_details|authorised_signatory_details|members_details .present_address <- "Residential Address" regex
+        if mobile:   entry["phone"]        = mobile.strip() # FIELD: co_promoter_details|authorised_signatory_details|members_details .phone <- "Phone (Mobile)" regex
+        if email:    entry["email"]        = email          # FIELD: co_promoter_details|authorised_signatory_details|members_details .email <- "E-mail/Email ID" regex
+        if pan:      entry["pan_no"]       = pan            # FIELD: co_promoter_details|authorised_signatory_details|members_details .pan_no <- "PAN No." regex
 
         if not entry:
             continue
 
         role_lower = role.lower()
         if "contact person" in role_lower:
-            contact_person = {**entry, "position": "Contact person"}
+            contact_person = {**entry, "position": "Contact person"}  # FIELD: members_details.position <- constant "Contact person"
         elif "authoris" in role_lower or "authoriz" in role_lower:
             authorized_rep = entry
         else:
@@ -906,24 +908,24 @@ def _merge_stub_and_detail(stub: dict, detail: dict, config_id: int) -> dict:
     # Base payload from stub
     city = stub.get("project_city") or None
     payload: dict[str, Any] = {
-        "project_registration_no": project_registration_no,
-        "acknowledgement_no": stub.get("acknowledgement_no") or None,
-        "project_name": stub.get("project_name") or detail.get("project_name"),
-        "promoter_name": stub.get("promoter_name") or None,
-        "project_city": city,
+        "project_registration_no": project_registration_no,                  # FIELD: project_registration_no <- stub["project_registration_no"]
+        "acknowledgement_no": stub.get("acknowledgement_no") or None,        # FIELD: acknowledgement_no <- stub acknowledgement_no
+        "project_name": stub.get("project_name") or detail.get("project_name"),  # FIELD: project_name <- stub project_name or detail project_name
+        "promoter_name": stub.get("promoter_name") or None,                  # FIELD: promoter_name <- stub promoter_name
+        "project_city": city,                                                # FIELD: project_city <- stub project_city
         "project_location_raw": {
-            "taluk":       city,
-            "district":    city,
-            "raw_address": stub.get("project_location_raw_address"),
+            "taluk":       city,                                             # FIELD: project_location_raw.taluk <- stub project_city
+            "district":    city,                                             # FIELD: project_location_raw.district <- stub project_city
+            "raw_address": stub.get("project_location_raw_address"),         # FIELD: project_location_raw.raw_address <- stub project_location_raw_address
         },
-        "state": "haryana",
-        "domain": DOMAIN,
-        "config_id": config_id,
-        "url": detail.get("url") or stub.get("detail_url"),
+        "state": "haryana",                                                  # FIELD: state <- constant "haryana"
+        "domain": DOMAIN,                                                    # FIELD: domain <- module constant DOMAIN
+        "config_id": config_id,                                              # FIELD: config_id <- config_id argument
+        "url": detail.get("url") or stub.get("detail_url"),                  # FIELD: url <- detail.url or stub.detail_url
     }
 
     # Dates from listing
-    payload["estimated_finish_date"] = stub.get("estimated_finish_date")
+    payload["estimated_finish_date"] = stub.get("estimated_finish_date")  # FIELD: estimated_finish_date <- stub estimated_finish_date
 
     # Enrich from detail page (non-None values overwrite stub)
     detail_fields = [
@@ -952,12 +954,14 @@ def _merge_stub_and_detail(stub: dict, detail: dict, config_id: int) -> dict:
     if qpr_url:
         status_updates = _extract_status_update(qpr_url)
         if status_updates:
-            payload["status_update"] = status_updates
+            payload["status_update"] = status_updates  # FIELD: status_update <- _extract_status_update(qpr_url)
 
     listing_docs: list[dict] = []
     if cert_url:
+        # FIELD: uploaded_documents[].type/link <- constant "Rera Registration Certificate 1" + stub cert_url
         listing_docs.append({"type": "Rera Registration Certificate 1", "link": cert_url})
     if qpr_url:
+        # FIELD: uploaded_documents[].type/link <- constant "Quarterly Progress Report" + stub qpr_url / _build_qpr_url
         listing_docs.append({"type": "Quarterly Progress Report", "link": qpr_url})
 
     if listing_docs:
@@ -965,23 +969,23 @@ def _merge_stub_and_detail(stub: dict, detail: dict, config_id: int) -> dict:
         existing_links = {d.get("link") for d in existing_docs}
         # Prepend as a block so the listing order (cert first, QPR second) is preserved
         to_prepend = [doc for doc in listing_docs if doc.get("link") not in existing_links]
-        payload["uploaded_documents"] = to_prepend + existing_docs
+        payload["uploaded_documents"] = to_prepend + existing_docs  # FIELD: uploaded_documents <- listing cert/qpr docs prepended to detail uploaded_documents
 
     # Authority metadata + listing-level references inside data blob
     data_blob: dict = payload.get("data") or {}
-    data_blob["authority_type"] = stub.get("authority_type")
-    data_blob["listing_url"]    = stub.get("_listing_url")
+    data_blob["authority_type"] = stub.get("authority_type")  # FIELD: data.authority_type <- stub authority_type
+    data_blob["listing_url"]    = stub.get("_listing_url")    # FIELD: data.listing_url <- stub _listing_url
     # Registration certificate and QPR URLs surfaced in the data blob
     if cert_url:
-        data_blob["rc"] = cert_url
+        data_blob["rc"] = cert_url        # FIELD: data.rc <- stub cert_url
     if qpr_url:
-        data_blob["qp_url"] = qpr_url
+        data_blob["qp_url"] = qpr_url     # FIELD: data.qp_url <- stub qpr_url or _build_qpr_url(reg_no)
     # Land/construction area units (mirrors land_area_details for convenience)
     if payload.get("land_area") is not None:
-        data_blob["land_area_unit"] = "Sqr/mtrs"
+        data_blob["land_area_unit"] = "Sqr/mtrs"            # FIELD: data.land_area_unit <- constant "Sqr/mtrs"
     if payload.get("construction_area") is not None:
-        data_blob["construction_area_unit"] = "Square Meters"
-    payload["data"] = data_blob
+        data_blob["construction_area_unit"] = "Square Meters"  # FIELD: data.construction_area_unit <- constant "Square Meters"
+    payload["data"] = data_blob  # FIELD: data <- assembled data_blob dict
 
     return payload
 
@@ -1198,7 +1202,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                 # ── Merge stub + detail → normalized payload ──────────────────────
                 raw_payload = _merge_stub_and_detail(stub, detail, config_id)
-                raw_payload["is_live"] = True
+                raw_payload["is_live"] = True  # FIELD: is_live <- constant True
                 payload = normalize_project_payload(
                     raw_payload,
                     config,
@@ -1236,11 +1240,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         )
                         if not selected:
                             _entry: dict = {
-                                "link": doc.get("url") or doc.get("link"),
-                                "type": clean_string(doc.get("label") or doc.get("type") or "document") or "document",
+                                "link": doc.get("url") or doc.get("link"),                                              # FIELD: uploaded_documents[].link <- doc.url or doc.link
+                                "type": clean_string(doc.get("label") or doc.get("type") or "document") or "document",  # FIELD: uploaded_documents[].type <- cleaned doc.label/type or "document"
                             }
                             if doc.get("dated_on"):
-                                _entry["dated_on"] = doc["dated_on"]
+                                _entry["dated_on"] = doc["dated_on"]  # FIELD: uploaded_documents[].dated_on <- doc.dated_on
                             persisted_docs.append(_entry)
                             continue
                         result = _handle_document(project_key, selected, run_id, site_id, logger)
@@ -1249,22 +1253,22 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                             persisted_docs.append(result)
                         else:
                             _entry = {
-                                "link": selected.get("url") or selected.get("link"),
-                                "type": clean_string(selected.get("label") or selected.get("type") or "document") or "document",
+                                "link": selected.get("url") or selected.get("link"),                                              # FIELD: uploaded_documents[].link <- selected.url or selected.link
+                                "type": clean_string(selected.get("label") or selected.get("type") or "document") or "document",  # FIELD: uploaded_documents[].type <- cleaned selected.label/type or "document"
                             }
                             if selected.get("dated_on"):
-                                _entry["dated_on"] = selected["dated_on"]
+                                _entry["dated_on"] = selected["dated_on"]  # FIELD: uploaded_documents[].dated_on <- selected.dated_on
                             persisted_docs.append(_entry)
 
                 if persisted_docs:
                     upsert_project({
-                        "key": db_dict["key"],
-                        "url": db_dict["url"],
-                        "state": db_dict["state"],
-                        "domain": db_dict["domain"],
-                        "project_registration_no": db_dict["project_registration_no"],
-                        "uploaded_documents": persisted_docs,
-                        "document_urls": build_document_urls(persisted_docs),
+                        "key": db_dict["key"],                                            # FIELD: key <- db_dict["key"]
+                        "url": db_dict["url"],                                            # FIELD: url <- db_dict["url"]
+                        "state": db_dict["state"],                                        # FIELD: state <- db_dict["state"]
+                        "domain": db_dict["domain"],                                      # FIELD: domain <- db_dict["domain"]
+                        "project_registration_no": db_dict["project_registration_no"],    # FIELD: project_registration_no <- db_dict["project_registration_no"]
+                        "uploaded_documents": persisted_docs,                             # FIELD: uploaded_documents <- persisted_docs list
+                        "document_urls": build_document_urls(persisted_docs),             # FIELD: document_urls <- build_document_urls(persisted_docs)
                     })
 
                 # ── Checkpoint ───────────────────────────────────────────────────

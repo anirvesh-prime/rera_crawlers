@@ -138,15 +138,15 @@ def _parse_address(raw_text: str) -> dict:
     """
     text = re.sub(r"\s+", " ", raw_text).strip().rstrip(". ").strip()
     parts = [p.strip() for p in text.split(",") if p.strip()]
-    result: dict = {"raw_address": text.lower()}
+    result: dict = {"raw_address": text.lower()}  # FIELD: project_location_raw.raw_address <- lowercased input text
     if len(parts) >= 2:
-        result["state"] = parts[-2].lower()
+        result["state"] = parts[-2].lower()  # FIELD: project_location_raw.state <- second-to-last comma-part lowercased
     if len(parts) >= 3:
-        result["city"] = parts[-3].lower()
+        result["city"] = parts[-3].lower()  # FIELD: project_location_raw.city <- third-to-last comma-part lowercased
     if len(parts) >= 1:
         pin = parts[-1].strip(" .")
         if pin.isdigit() and len(pin) == 6:
-            result["pincode"] = pin
+            result["pincode"] = pin  # FIELD: project_location_raw.pincode <- last comma-part if 6-digit numeric
     return result
 
 
@@ -173,10 +173,10 @@ def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
             profile_a = tds[-1].find("a", href=True)
             detail_url = _abs_url(profile_a["href"]) if profile_a else ""
             rows.append({
-                "project_name": _clean(tds[2].get_text(separator=" ")),
-                "project_registration_no": reg_no,
-                "address": _clean(tds[3].get_text(separator=" ")),
-                "detail_url": detail_url,
+                "project_name": _clean(tds[2].get_text(separator=" ")),           # FIELD: project_name <- listing row tds[2]
+                "project_registration_no": reg_no,                                  # FIELD: project_registration_no <- listing row tds[1]
+                "address": _clean(tds[3].get_text(separator=" ")),                  # FIELD: address <- listing row tds[3]
+                "detail_url": detail_url,                                           # FIELD: detail_url <- listing row last td "View Profile" <a> href
             })
         break  # found the right table
     return rows
@@ -262,13 +262,17 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
         lng_val = _safe_float(re.sub(r"[NSEW]", "", lng_str, flags=re.IGNORECASE))
         # Portal swaps labels: "Project Latitude" = East (longitude), "Project Longitude" = North (latitude)
         if lat_val and lng_val:
+            # FIELD: project_location_raw.processed_latitude <- "Project Longitude" label value (portal labels swapped)
             loc_raw["processed_latitude"]  = lng_val   # "Project Longitude" field = North = true latitude
+            # FIELD: project_location_raw.processed_longitude <- "Project Latitude" label value (portal labels swapped)
             loc_raw["processed_longitude"] = lat_val   # "Project Latitude"  field = East  = true longitude
         elif lat_val or lng_val:
             # If only one is available, use directional hint
             if lat_val:
+                # FIELD: project_location_raw.processed_longitude <- "Project Latitude" label value (East)
                 loc_raw["processed_longitude"] = lat_val  # East = true longitude
             if lng_val:
+                # FIELD: project_location_raw.processed_latitude <- "Project Longitude" label value (North)
                 loc_raw["processed_latitude"] = lng_val   # North = true latitude
 
     # ── Promoter name (Builder Details label in Section 2) ────────────────
@@ -278,6 +282,7 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
     contact: dict | None = None
     mobile = _f("mobile", "mobile no", "mobile number")
     if email or mobile:
+        # FIELD: promoter_contact_details.email/mobile <- email & mobile label values (truthy only)
         contact = {k: v for k, v in {"email": email, "mobile": mobile}.items() if v}
 
 
@@ -299,7 +304,7 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
                 href = _abs_url(a_tag["href"]) if a_tag else BASE_URL + "/FirstLevel/ViewDocument"
                 display_label = _clean(label_cell.get_text())
                 if label_text not in _collected_doc_labels:
-                    docs.append({"link": href, "type": display_label})
+                    docs.append({"link": href, "type": display_label})  # FIELD: uploaded_documents.link/type <- two-col table value-cell <a> href & label-cell text
                     _collected_doc_labels.add(label_text)
 
     # Strategy B: New layout — Bootstrap div.row with <label> key + <a> link
@@ -314,7 +319,7 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
             href = _abs_url(a_tag["href"]) if a_tag else BASE_URL + "/FirstLevel/ViewDocument"
             display_label = _clean(labels[0].get_text()).rstrip(":")
             if label_text not in _collected_doc_labels:
-                docs.append({"link": href, "type": display_label})
+                docs.append({"link": href, "type": display_label})  # FIELD: uploaded_documents.link/type <- div.row <a> href & first <label> text
                 _collected_doc_labels.add(label_text)
 
     # Strategy C: New layout — single merged <td> containing inline dev-doc links
@@ -340,6 +345,7 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
                         if a_tag and a_tag.get("href") and current_label:
                             lbl_lower = current_label.lower()
                             if lbl_lower in _DEV_DOC_LABELS and lbl_lower not in _collected_doc_labels:
+                                # FIELD: uploaded_documents.link/type <- inline dev-doc <span><a> href & preceding NavigableString label
                                 docs.append({"link": _abs_url(a_tag["href"]), "type": current_label})
                                 _collected_doc_labels.add(lbl_lower)
                         current_label = ""  # reset after consuming link
@@ -403,7 +409,7 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
             for i, cell in enumerate(cells):
                 a = cell.find("a", href=True)
                 if a and ("ViewDocument" in a["href"] or "Photo" in a["href"]):
-                    rec["photo"] = _abs_url(a["href"])
+                    rec["photo"] = _abs_url(a["href"])  # FIELD: co_promoter_details.photo <- row cell <a href> matching ViewDocument/Photo
                     break
             if rec and rec.get("name"):
                 co_promoters.append(rec)
@@ -427,15 +433,21 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
             if len(cells) >= 5:
                 # 5-col layout: Account Type | Bank Name | Account No | Account Holder Name | IFSC Code
                 rec: dict = {}
+                # FIELD: bank_details.bank_name <- 5-col bank table cells[1]
                 if cells[1]: rec["bank_name"]    = cells[1]  # Bank Name (e.g. CANARA BANK)
+                # FIELD: bank_details.account_no <- 5-col bank table cells[2]
                 if cells[2]: rec["account_no"]   = cells[2]  # Account Number
+                # FIELD: bank_details.account_name <- 5-col bank table cells[3]
                 if cells[3]: rec["account_name"] = cells[3]  # Account Holder Name
+                # FIELD: bank_details.IFSC <- 5-col bank table cells[4]
                 if cells[4]: rec["IFSC"]         = cells[4]  # IFSC Code (e.g. CNRB0004902)
                 if rec:
                     bank_rows.append(rec)
             elif len(cells) >= 3:
+                # FIELD: bank_details.IFSC/account_no/account_name <- 3-col bank table cells[0..2]
                 bank_rows.append({"IFSC": cells[0], "account_no": cells[1], "account_name": cells[2]})
             else:
+                # FIELD: bank_details.account_no/account_name <- 2-col bank table cells[0..1]
                 bank_rows.append({"account_no": cells[0], "account_name": cells[1]})
         if bank_rows:
             bank_details = bank_rows
@@ -500,7 +512,7 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
                     rec[field] = v
             # Add inferred role if not already present
             if inferred_role and not rec.get("role"):
-                rec["role"] = inferred_role
+                rec["role"] = inferred_role  # FIELD: professional_information.role <- inferred from table header text
             if rec and rec.get("name"):
                 prof_all_rows.append(rec)
     # Deduplicate by (name, email), keeping the LAST occurrence.
@@ -542,11 +554,11 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
                 continue
             rec: dict = {}
             if flat_idx < len(vals) and vals[flat_idx]:
-                rec["flat_name"] = vals[flat_idx]
+                rec["flat_name"] = vals[flat_idx]  # FIELD: building_details.flat_name <- row cell at flat_idx (header contains "flat")
             if carpet_idx < len(vals) and vals[carpet_idx]:
-                rec["carpet_area"] = vals[carpet_idx]
+                rec["carpet_area"] = vals[carpet_idx]  # FIELD: building_details.carpet_area <- row cell at carpet_idx (header contains "carpet")
             if sold_idx is not None and sold_idx < len(vals) and vals[sold_idx]:
-                rec["sold_status"] = vals[sold_idx]
+                rec["sold_status"] = vals[sold_idx]  # FIELD: building_details.sold_status <- row cell at sold_idx (header contains "sold")
             if rec.get("flat_name"):
                 bldg_rows.append(rec)
         if bldg_rows:
@@ -589,7 +601,7 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
             for i, cell in enumerate(cells_raw):
                 a = cell.find("a", href=True)
                 if a and "ViewDocument" in a["href"]:
-                    rec["sale_deed"] = _abs_url(a["href"])
+                    rec["sale_deed"] = _abs_url(a["href"])  # FIELD: land_detail.sale_deed <- row cell <a href> containing "ViewDocument"
                     break
             if rec:
                 land_rows.append(rec)
@@ -609,38 +621,38 @@ def _parse_detail_page(html: str, detail_url: str) -> dict:  # noqa: C901
     estimated_cost = _f("estimated project cost", "project estimated cost", "project cost", "total project cost")
     project_cost: dict | None = None
     if estimated_cost:
-        project_cost = {"estimated_project_cost": estimated_cost}
+        project_cost = {"estimated_project_cost": estimated_cost}  # FIELD: project_cost_detail.estimated_project_cost <- estimated_cost label value
 
     # ── Promoter entity details ───────────────────────────────────────────
     promoters_det: dict | None = None
     pdet: dict = {}
     if pan_no:
-        pdet["pan_no"] = pan_no
+        pdet["pan_no"] = pan_no  # FIELD: promoters_details.pan_no <- "PAN No." label value
     if firm_reg_no:
-        pdet["registration_no"] = firm_reg_no
+        pdet["registration_no"] = firm_reg_no  # FIELD: promoters_details.registration_no <- "Firm Registration No." label value
     if pdet:
         promoters_det = pdet
 
     return {
-        "project_name":               project_name or None,
-        "project_type":               project_type or None,
-        "project_registration_no":    reg_no_text or None,
-        "promoter_name":              promoter_name or None,
-        "actual_commencement_date":   permit_from or None,
-        "estimated_finish_date":      permit_to or None,
-        "project_location_raw":       loc_raw or None,
-        "promoter_contact_details":   contact,
-        "promoters_details":          promoters_det,
-        "bank_details":               bank_details,
-        "co_promoter_details":        co_promoters or None,
-        "professional_information":   professionals,
-        "building_details":           building_details,
-        "land_detail":                land_detail,
-        "project_cost_detail":        project_cost,
-        "uploaded_documents":         docs or None,
-        "data": {
-            "govt_type": "state",
-            "is_processed": False,
+        "project_name":               project_name or None,                  # FIELD: project_name <- "Project Name" label value
+        "project_type":               project_type or None,                  # FIELD: project_type <- "Project Type" label value
+        "project_registration_no":    reg_no_text or None,                   # FIELD: project_registration_no <- regex JHARERA/... on detail headings
+        "promoter_name":              promoter_name or None,                 # FIELD: promoter_name <- "Builder Details" label value
+        "actual_commencement_date":   permit_from or None,                   # FIELD: actual_commencement_date <- "Permit Valid From" label value
+        "estimated_finish_date":      permit_to or None,                     # FIELD: estimated_finish_date <- "Permit Valid To" label value
+        "project_location_raw":       loc_raw or None,                       # FIELD: project_location_raw <- _parse_address + coord dict
+        "promoter_contact_details":   contact,                               # FIELD: promoter_contact_details <- email/mobile contact dict
+        "promoters_details":          promoters_det,                         # FIELD: promoters_details <- pan_no/registration_no pdet dict
+        "bank_details":               bank_details,                          # FIELD: bank_details <- bank/account/IFSC table rows
+        "co_promoter_details":        co_promoters or None,                  # FIELD: co_promoter_details <- partners/directors table rows
+        "professional_information":   professionals,                         # FIELD: professional_information <- contractor/architect/engineer tables (deduped)
+        "building_details":           building_details,                      # FIELD: building_details <- flat/floor/carpet table rows
+        "land_detail":                land_detail,                           # FIELD: land_detail <- plot/khata table rows (deduped)
+        "project_cost_detail":        project_cost,                          # FIELD: project_cost_detail <- estimated_project_cost dict
+        "uploaded_documents":         docs or None,                          # FIELD: uploaded_documents <- Section 1/5 docs collected from strategies A/B/C
+        "data": {                                                            # FIELD: data <- nested govt_type/is_processed literal dict
+            "govt_type": "state",                                            # FIELD: data.govt_type <- literal "state"
+            "is_processed": False,                                           # FIELD: data.is_processed <- literal False
         },
     }
 
@@ -769,6 +781,7 @@ def _process_documents(
                 md5_checksum=md5,
                 file_size_bytes=len(data),
             )
+            # FIELD: uploaded_documents.link/s3_link/updated <- original url, S3 url, upload-marker (overrides selected)
             enriched.append({**selected, "link": url, "s3_link": s3_url, "updated": True})
             upload_count += 1
             logger.info(f"Document uploaded: {doc_type!r}", s3_key=s3_key, step="documents")
@@ -883,19 +896,21 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                     merged: dict = {
                         **detail_extra,
                         # Listing fields always win for core identity
+                        # FIELD: project_name <- listing raw["project_name"], fallback detail_extra["project_name"]
                         "project_name":            raw["project_name"] or detail_extra.get("project_name"),
-                        "project_registration_no": reg_no,
-                        "project_location_raw": {
+                        "project_registration_no": reg_no,  # FIELD: project_registration_no <- listing reg_no
+                        "project_location_raw": {  # FIELD: project_location_raw <- listing address merged with detail loc dict
+                            # FIELD: project_location_raw.raw_address <- listing raw["address"] lowercased
                             **{"raw_address": raw.get("address", "").lower()},
                             **(detail_extra.get("project_location_raw") or {}),
                         },
-                        "domain": DOMAIN,
-                        "url":    detail_url,
-                        "state":  config.get("state", "jharkhand"),
-                        "is_live": True,
-                        "data": merge_data_sections(
+                        "domain": DOMAIN,                              # FIELD: domain <- DOMAIN module constant
+                        "url":    detail_url,                          # FIELD: url <- raw detail_url or LISTING_URL fallback
+                        "state":  config.get("state", "jharkhand"),    # FIELD: state <- config["state"] or "jharkhand" default
+                        "is_live": True,                               # FIELD: is_live <- literal True
+                        "data": merge_data_sections(                   # FIELD: data <- merge_data_sections(detail.data, {listing_address})
                             detail_extra.get("data"),
-                            {"listing_address": raw.get("address", "")},
+                            {"listing_address": raw.get("address", "")},  # FIELD: data.listing_address <- listing raw["address"]
                         ),
                     }
                     merged = {k: v for k, v in merged.items() if v is not None}
@@ -924,13 +939,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                         )
                         counters["documents_uploaded"] += doc_count
                         upsert_project({
-                            "key": key,
-                            "url": db_dict["url"],
-                            "state": db_dict["state"],
-                            "domain": db_dict["domain"],
-                            "project_registration_no": db_dict["project_registration_no"],
-                            "uploaded_documents": enriched_docs,
-                            "document_urls": build_document_urls(enriched_docs),
+                            "key": key,                                                       # FIELD: key <- generate_project_key(reg_no)
+                            "url": db_dict["url"],                                            # FIELD: url <- db_dict["url"]
+                            "state": db_dict["state"],                                        # FIELD: state <- db_dict["state"]
+                            "domain": db_dict["domain"],                                      # FIELD: domain <- db_dict["domain"]
+                            "project_registration_no": db_dict["project_registration_no"],    # FIELD: project_registration_no <- db_dict["project_registration_no"]
+                            "uploaded_documents": enriched_docs,                              # FIELD: uploaded_documents <- _process_documents enriched list
+                            "document_urls": build_document_urls(enriched_docs),              # FIELD: document_urls <- build_document_urls(enriched_docs)
                         })
 
                 except ValidationError as exc:

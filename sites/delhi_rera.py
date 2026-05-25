@@ -473,16 +473,16 @@ def _parse_project_page(html: str) -> dict:
     # ── Header: promoter URL, cert PDF, last updated ──────────────────────────
     promo_a = main.find("a", href=lambda h: h and "promoter_page" in str(h))
     if promo_a:
-        result["promoter_page_url"] = _abs(promo_a["href"])
+        result["promoter_page_url"] = _abs(promo_a["href"])   # FIELD: promoter_page_url <- main <a href*="promoter_page">
 
     cert_a = main.find("a", href=lambda h: h and "certification_document" in str(h))
     if cert_a:
-        result["registration_cert_url"] = _abs(cert_a["href"])
+        result["registration_cert_url"] = _abs(cert_a["href"])   # FIELD: registration_cert_url <- main <a href*="certification_document">
 
     for span in main.find_all("span"):
         txt = span.get_text(strip=True)
         if txt.startswith("Last Updated on"):
-            result["last_updated"] = txt.replace("Last Updated on :", "").strip()
+            result["last_updated"] = txt.replace("Last Updated on :", "").strip()   # FIELD: last_updated <- main <span> starting "Last Updated on"
             break
 
     # ── Helper: parse col-md-3/col-md-9 label-value rows ─────────────────────
@@ -564,13 +564,13 @@ def _parse_project_page(html: str) -> dict:
         kv = _kv(s3)
         cost_detail: dict = {}
         if kv.get("Cost of construction"):
-            cost_detail["estimated_construction_cost"] = kv["Cost of construction"]
+            cost_detail["estimated_construction_cost"] = kv["Cost of construction"]   # FIELD: project_cost_detail.estimated_construction_cost <- scroll3 kv "Cost of construction"
         if kv.get("Cost of project"):
-            cost_detail["estimated_project_cost"] = kv["Cost of project"]
+            cost_detail["estimated_project_cost"] = kv["Cost of project"]   # FIELD: project_cost_detail.estimated_project_cost <- scroll3 kv "Cost of project"
         if kv.get("Total cost of project"):
-            cost_detail["total_project_cost"] = kv["Total cost of project"]
+            cost_detail["total_project_cost"] = kv["Total cost of project"]   # FIELD: project_cost_detail.total_project_cost <- scroll3 kv "Total cost of project"
         if cost_detail:
-            result["project_cost_detail"] = cost_detail
+            result["project_cost_detail"] = cost_detail   # FIELD: project_cost_detail <- scroll3 cost_detail dict
 
     # ── scroll5: Facilities & Amenities table ─────────────────────────────────
     s5 = main.find(id="scroll5")
@@ -588,7 +588,7 @@ def _parse_project_page(html: str) -> dict:
                     "name": name, "detail": detail, "status": status,
                 }.items() if v})
         if amenities:
-            result["amenities"] = amenities
+            result["amenities"] = amenities   # FIELD: amenities <- scroll5 table rows (name/detail/status)
 
     # ── scroll6: Project Entity (CA, Architects, Engineers, etc.) ────────────
     s6 = main.find(id="scroll6")
@@ -624,7 +624,7 @@ def _parse_project_page(html: str) -> dict:
             if len(entry) > 1:   # has at least one field besides "type"
                 professionals.append(entry)
         if professionals:
-            result["professional_information"] = professionals
+            result["professional_information"] = professionals   # FIELD: professional_information <- scroll6 tabs CA/Architect/Engineer/etc.
 
     # ── scroll4: Project Approval — Encumbrance + Sanction Plan ─────────────
     # scroll4 has two tables:
@@ -688,7 +688,7 @@ def _parse_project_page(html: str) -> dict:
         # Append scroll4 docs (Sanction Plan, Encumbrance) after scroll7 docs
         proj_docs.extend(scroll4_docs)
         if proj_docs:
-            result["uploaded_documents"] = proj_docs
+            result["uploaded_documents"] = proj_docs   # FIELD: uploaded_documents <- scroll7 + scroll4 doc rows
 
     # ── jssor_1: Project image slider ─────────────────────────────────────────
     # The jssor_1 div contains <img data-u="image" src="..."> for each project
@@ -703,7 +703,7 @@ def _parse_project_page(html: str) -> dict:
                 seen_imgs.add(src)
                 img_urls.append(src if src.startswith("http") else urljoin(BASE_URL, src))
         if img_urls:
-            result["project_images"] = img_urls
+            result["project_images"] = img_urls   # FIELD: project_images <- jssor_1 img[data-u=image] src
 
     # ── scroll8: Tower/Floor inventory ───────────────────────────────────────
     # Each tower is ONE top-level table whose <tbody> has 5 rows:
@@ -800,7 +800,7 @@ def _parse_project_page(html: str) -> dict:
 
             towers.append(tower)
         if towers:
-            result["tower_inventory"] = towers
+            result["tower_inventory"] = towers   # FIELD: tower_inventory <- scroll8 top-level tower tables
 
     return {k: v for k, v in result.items() if v not in (None, "", [], {})}
 
@@ -903,18 +903,18 @@ def _parse_row(tr: Tag) -> dict | None:
 
     loc_raw: dict = {}
     if location_str:
-        loc_raw["raw_address"] = location_str
+        loc_raw["raw_address"] = location_str   # FIELD: project_location_raw.raw_address <- proj_kv "location"
         pin_m = _PIN_RE.search(location_str)
         if pin_m:
-            loc_raw["pin_code"] = pin_m.group(1)
+            loc_raw["pin_code"] = pin_m.group(1)   # FIELD: project_location_raw.pin_code <- _PIN_RE on location_str
 
     prom_addr_raw: dict = {}
     if promoter_addr:
-        prom_addr_raw["registered_address"] = promoter_addr
+        prom_addr_raw["registered_address"] = promoter_addr   # FIELD: promoter_address_raw.registered_address <- promo_kv "address"
         if not loc_raw.get("pin_code"):
             pin_m = _PIN_RE.search(promoter_addr)
             if pin_m:
-                loc_raw["pin_code"] = pin_m.group(1)
+                loc_raw["pin_code"] = pin_m.group(1)   # FIELD: project_location_raw.pin_code <- _PIN_RE fallback on promoter_addr
 
     docs: list[dict] = []
     if cert_url:
@@ -924,28 +924,28 @@ def _parse_row(tr: Tag) -> dict | None:
 
     data_snap: dict = {}
     if promoter_email:
-        data_snap["email"] = promoter_email
+        data_snap["email"] = promoter_email   # FIELD: data.email <- promo_kv "email"
     if cert_url:
-        data_snap["link"] = cert_url
+        data_snap["link"] = cert_url   # FIELD: data.link <- reg_td span.file a[href]
 
     out: dict = {
-        "project_registration_no":  reg_no,
-        "project_name":             project_name or None,
-        "promoter_name":            promoter_name or None,
-        "status_of_the_project":    const_status,
-        "estimated_finish_date":    valid_until,
-        "project_location_raw":     loc_raw or None,
-        "promoter_address_raw":     prom_addr_raw or None,
-        "promoter_contact_details": contact or None,
-        "uploaded_documents":       docs or None,
-        "data":                     data_snap or None,
+        "project_registration_no":  reg_no,                  # FIELD: project_registration_no <- _REG_NO_RE on reg_td text
+        "project_name":             project_name or None,    # FIELD: project_name <- proj_kv "name"
+        "promoter_name":            promoter_name or None,   # FIELD: promoter_name <- promo_kv "name"
+        "status_of_the_project":    const_status,            # FIELD: status_of_the_project <- reg_kv "construction status"
+        "estimated_finish_date":    valid_until,             # FIELD: estimated_finish_date <- reg_td span.date-display-single
+        "project_location_raw":     loc_raw or None,         # FIELD: project_location_raw <- loc_raw dict (location_str + pin)
+        "promoter_address_raw":     prom_addr_raw or None,   # FIELD: promoter_address_raw <- prom_addr_raw dict (promo_kv "address")
+        "promoter_contact_details": contact or None,         # FIELD: promoter_contact_details <- {email,phone} from promo_kv
+        "uploaded_documents":       docs or None,            # FIELD: uploaded_documents <- cert PDF + QPR history links
+        "data":                     data_snap or None,       # FIELD: data <- {email,link} from promoter/cert
         # Secondary-fetch URLs (used by run() to enrich each project):
-        "_directors_url":           directors_url,     # → co_promoter_details / members_details
-        "_qpr_url":                 qpr_url,           # kept for reference / fallback
-        "_project_page_url":        project_page_url,  # → project details (direct, no QPR hop needed)
+        "_directors_url":           directors_url,     # → co_promoter_details / members_details  # FIELD: _directors_url <- promo_td first <a> href
+        "_qpr_url":                 qpr_url,           # kept for reference / fallback  # FIELD: _qpr_url <- qpr_td non-project_page <a> href
+        "_project_page_url":        project_page_url,  # → project details (direct, no QPR hop needed)  # FIELD: _project_page_url <- qpr_td a[href*=project_page/]
     }
     if ext_cert:
-        out["extension_certificate"] = ext_cert   # stored in data jsonb via normalizer
+        out["extension_certificate"] = ext_cert   # stored in data jsonb via normalizer  # FIELD: extension_certificate <- reg_kv "extension certificate"
     return {k: v for k, v in out.items() if v not in (None, "", [], {})}
 
 
@@ -1388,11 +1388,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     if dir_resp:
                         directors = _parse_directors_page(dir_resp.text)
                         if directors:
-                            row["co_promoter_details"] = [
+                            row["co_promoter_details"] = [   # FIELD: co_promoter_details <- _parse_directors_page entries minus photo
                                 {k: v for k, v in d.items() if k != "photo"}
                                 for d in directors
                             ]
-                            row["members_details"] = directors
+                            row["members_details"] = directors   # FIELD: members_details <- _parse_directors_page (full entries incl. photo)
                             logger.info(
                                 f"Fetched {len(directors)} director(s) for {reg_no}",
                                 step="directors",
@@ -1421,7 +1421,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         if fetch_qpr and not row.get("status_update"):
                             qpr_history = _parse_qpr_history(qpr_resp.text)
                             if qpr_history:
-                                row["status_update"] = qpr_history
+                                row["status_update"] = qpr_history   # FIELD: status_update <- _parse_qpr_history rows
                                 logger.info(
                                     f"Fetched {len(qpr_history)} QPR entries for {reg_no}",
                                     step="qpr_history",
@@ -1432,7 +1432,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     if qpr_resp:
                         qpr_history = _parse_qpr_history(qpr_resp.text)
                         if qpr_history:
-                            row["status_update"] = qpr_history
+                            row["status_update"] = qpr_history   # FIELD: status_update <- _parse_qpr_history rows
                             logger.info(
                                 f"Fetched {len(qpr_history)} QPR entries for {reg_no}",
                                 step="qpr_history",
@@ -1474,7 +1474,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                                     row[k] = v
                             if proj_docs:
                                 existing = row.get("uploaded_documents") or []
-                                row["uploaded_documents"] = existing + proj_docs
+                                row["uploaded_documents"] = existing + proj_docs   # FIELD: uploaded_documents <- listing docs + _parse_project_page docs
                             logger.info(
                                 f"Fetched {proj_page_url} ({len(proj_detail)} fields)"
                                 f" for {reg_no}",
@@ -1486,10 +1486,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 try:
                     payload: dict = {
                         **row,
-                        "url":    proj_page_url or page_url,
-                        "domain": DOMAIN,
-                        "state":  config.get("state", "delhi"),
-                        "is_live": True,
+                        "url":    proj_page_url or page_url,            # FIELD: url <- proj_page_url or listing page_url
+                        "domain": DOMAIN,                               # FIELD: domain <- DOMAIN constant
+                        "state":  config.get("state", "delhi"),         # FIELD: state <- config "state" (default "delhi")
+                        "is_live": True,                                # FIELD: is_live <- literal True
                     }
                     payload = {k: v for k, v in payload.items() if v not in (None, "", [], {})}
 
@@ -1517,13 +1517,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         )
                         counters["documents_uploaded"] += doc_count
                         upsert_project({
-                            "key":                key,
-                            "url":                db_dict["url"],
-                            "state":              db_dict["state"],
-                            "domain":             db_dict["domain"],
-                            "project_registration_no": db_dict["project_registration_no"],
-                            "uploaded_documents": enriched,
-                            "document_urls":      build_document_urls(enriched),
+                            "key":                key,                                       # FIELD: key <- generate_project_key(reg_no)
+                            "url":                db_dict["url"],                            # FIELD: url <- db_dict["url"]
+                            "state":              db_dict["state"],                          # FIELD: state <- db_dict["state"]
+                            "domain":             db_dict["domain"],                         # FIELD: domain <- db_dict["domain"]
+                            "project_registration_no": db_dict["project_registration_no"],   # FIELD: project_registration_no <- db_dict["project_registration_no"]
+                            "uploaded_documents": enriched,                                  # FIELD: uploaded_documents <- _process_documents enriched list
+                            "document_urls":      build_document_urls(enriched),             # FIELD: document_urls <- build_document_urls(enriched)
                         })
 
                 except ValidationError as exc:

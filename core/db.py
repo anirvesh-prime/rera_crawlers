@@ -454,9 +454,19 @@ def _log_extracted_fields(data: Mapping[str, Any]) -> None:
 
 # crawl_runs
 
+def _log_test_skip(op: str, **fields: Any) -> None:
+    """Emit a single ``[TEST MODE] skipped <op>`` line so tester output makes
+    it unambiguous that nothing was written to the database.  In production
+    (cron) runs the root logger has no handler, so the call is a no-op."""
+    if not settings.TEST_MODE:
+        return
+    extra = " ".join(f"{k}={v}" for k, v in fields.items() if v is not None)
+    log.info("[TEST MODE] skipped %s%s", op, (" " + extra) if extra else "")
+
+
 def insert_crawl_run(site_id: str, run_type: str) -> int:
     if settings.TEST_MODE and not settings.TEST_MODE_LOG_TO_DB:
-        log.info("[TEST MODE] Skipping insert_crawl_run — returning sentinel run_id=-1")
+        _log_test_skip("insert_crawl_run", site=site_id, run_type=run_type)
         return -1
     with _db_lock, get_connection() as conn:
         row = conn.execute(
@@ -479,6 +489,7 @@ def update_crawl_run(
     notes: str | None = None,
 ):
     if settings.TEST_MODE and not settings.TEST_MODE_LOG_TO_DB:
+        _log_test_skip("update_crawl_run", run_id=run_id, status=status)
         return
     counts = counts or {}
     with _db_lock, get_connection() as conn:
@@ -525,6 +536,8 @@ def insert_crawl_error(
     raw_data: dict | None = None,
 ):
     if settings.TEST_MODE and not settings.TEST_MODE_LOG_TO_DB:
+        _log_test_skip("insert_crawl_error", site=site_id,
+                       error_type=error_type, project_key=project_key)
         return
     with _db_lock, get_connection() as conn:
         conn.execute(
@@ -549,6 +562,8 @@ def get_checkpoint(site_id: str, run_type: str) -> dict | None:
 
 def set_checkpoint(site_id: str, run_type: str, last_page: int, last_project_key: str | None, run_id: int):
     if settings.TEST_MODE:
+        _log_test_skip("set_checkpoint", site=site_id, run_type=run_type,
+                       last_page=last_page, last_project_key=last_project_key)
         return
     with _db_lock, get_connection() as conn:
         conn.execute(
@@ -568,6 +583,7 @@ def set_checkpoint(site_id: str, run_type: str, last_page: int, last_project_key
 
 def clear_checkpoint(site_id: str, run_type: str):
     if settings.TEST_MODE:
+        _log_test_skip("clear_checkpoint", site=site_id, run_type=run_type)
         return
     with _db_lock, get_connection() as conn:
         conn.execute(
@@ -633,6 +649,9 @@ def upsert_project(data: dict[str, Any]) -> str:
             if existing is None:
                 if not settings.TEST_MODE:
                     _insert_project(data, conn)
+                else:
+                    _log_test_skip("insert rera_projects", key=key,
+                                   reg=data.get("registration_no") or data.get("rera_no"))
                 return "new"
 
             item = dict(data)          # working copy (null-preservation writes back here)
@@ -662,6 +681,9 @@ def upsert_project(data: dict[str, Any]) -> str:
                     _touch_project(key, conn,
                                    machine_name=data.get("machine_name"),
                                    crawl_machine_ip=data.get("crawl_machine_ip"))
+                else:
+                    _log_test_skip("touch rera_projects (no changes)", key=key,
+                                   reg=data.get("registration_no") or data.get("rera_no"))
                 return "skipped"
 
             # Build old_updates history entry (stores old values for changed fields)
@@ -685,6 +707,10 @@ def upsert_project(data: dict[str, Any]) -> str:
 
             if not settings.TEST_MODE:
                 _update_project_fields(key, item, updated_fields, old_updates, conn)
+            else:
+                _log_test_skip("update rera_projects", key=key,
+                               reg=data.get("registration_no") or data.get("rera_no"),
+                               changed_fields=",".join(updated_fields))
             return "updated"
 
 
@@ -921,6 +947,10 @@ def upsert_document(
                         (project_key, document_type, original_url, s3_key, s3_bucket,
                          file_name, md5_checksum, file_size_bytes),
                     )
+                else:
+                    _log_test_skip("insert rera_project_documents",
+                                   project_key=project_key, document_type=document_type,
+                                   file_name=file_name)
                 return "uploaded"
 
             if (
@@ -938,6 +968,10 @@ def upsert_document(
                         """,
                         (s3_key, file_name, md5_checksum, file_size_bytes, existing["id"]),
                     )
+                else:
+                    _log_test_skip("update rera_project_documents",
+                                   project_key=project_key, document_type=document_type,
+                                   file_name=file_name)
                 return "updated"
 
             if not settings.TEST_MODE:
@@ -945,4 +979,7 @@ def upsert_document(
                     "UPDATE rera_project_documents SET last_verified = now() WHERE id = %s",
                     (existing["id"],),
                 )
+            else:
+                _log_test_skip("touch rera_project_documents (no changes)",
+                               project_key=project_key, document_type=document_type)
             return "skipped"

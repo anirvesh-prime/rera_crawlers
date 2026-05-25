@@ -265,19 +265,19 @@ def _extract_listing_rows(html: str, district: str) -> list[dict]:
         reg_no = reg_nos[idx] if idx < len(reg_nos) else None
         promo_reg = promoter_regs[idx] if idx < len(promoter_regs) else None
         rows.append({
-            "acknowledgement_no": ack_no,
+            "acknowledgement_no": ack_no,                                                 # FIELD: acknowledgement_no <- listing JS appNo
             # Use the real registration number; None means it wasn't on the
             # listing page and the detail page must supply it (fallback only).
-            "project_registration_no": reg_no,
-            "project_name": project_names[idx] if idx < len(project_names) else None,
-            "promoter_name": promoter_names[idx] if idx < len(promoter_names) else None,
-            "promoter_registration_no": promo_reg,
-            "project_city": district.upper(),
-            "project_location_raw": {"district": district},
+            "project_registration_no": reg_no,                                            # FIELD: project_registration_no <- applicationNameList1 / localObj regNo
+            "project_name": project_names[idx] if idx < len(project_names) else None,     # FIELD: project_name <- applicationNameList3
+            "promoter_name": promoter_names[idx] if idx < len(promoter_names) else None,  # FIELD: promoter_name <- applicationNameList4
+            "promoter_registration_no": promo_reg,                                        # FIELD: promoter_registration_no <- applicationNameList2
+            "project_city": district.upper(),                                             # FIELD: project_city <- searched district (upper)
+            "project_location_raw": {"district": district},                               # FIELD: project_location_raw.district <- searched district
             "data": {
-                "search_district": district,
-                "promoter_registration_no": promo_reg,
-                "listing_fallback": True,
+                "search_district": district,                                              # FIELD: data.search_district <- searched district
+                "promoter_registration_no": promo_reg,                                    # FIELD: data.promoter_registration_no <- applicationNameList2
+                "listing_fallback": True,                                                 # FIELD: data.listing_fallback <- literal True
             },
         })
     return rows
@@ -418,11 +418,11 @@ def _extract_header_fields(soup: BeautifulSoup) -> dict[str, str]:
         label = m.group(1).strip().lower()
         value = m.group(2).strip()
         if "project name" in label:
-            result["project_name"] = value
+            result["project_name"] = value                        # FIELD: project_name <- detail <span class="user_name"> "project name"
         elif "acknowledgement" in label:
-            result["acknowledgement_no"] = value
+            result["acknowledgement_no"] = value                  # FIELD: acknowledgement_no <- detail <span class="user_name"> "acknowledgement"
         elif "registration" in label:
-            result["project_registration_no"] = value
+            result["project_registration_no"] = value             # FIELD: project_registration_no <- detail <span class="user_name"> "registration"
     return result
 
 
@@ -504,11 +504,11 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
 
     # ── 2. Apply listing metadata (approved_on, status) ─────────────────────
     if meta.get("approved_on_date") and not out.get("approved_on_date"):
-        out["approved_on_date"] = meta["approved_on_date"]
+        out["approved_on_date"] = meta["approved_on_date"]              # FIELD: approved_on_date <- listing meta "approved on" column
     if meta.get("status_of_the_project") and not out.get("status_of_the_project"):
-        out["status_of_the_project"] = meta["status_of_the_project"]
+        out["status_of_the_project"] = meta["status_of_the_project"]    # FIELD: status_of_the_project <- listing meta "status" column
     if meta.get("project_type_listing") and not out.get("project_type"):
-        out["project_type"] = meta["project_type_listing"]
+        out["project_type"] = meta["project_type_listing"]              # FIELD: project_type <- listing meta "project type" column
 
     # ── 3. Parse date fields ─────────────────────────────────────────────────
     for f in ("actual_commencement_date", "estimated_commencement_date",
@@ -526,7 +526,7 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
             for h1 in soup.find_all("h1")
         )
         if completion_applied:
-            out["actual_finish_date"] = out["estimated_finish_date"]
+            out["actual_finish_date"] = out["estimated_finish_date"]    # FIELD: actual_finish_date <- copy of estimated_finish_date when "applied for completion"
 
     # ── 4. Land area — find "X Acres, Y Gunta/ Z Sq Mtr(s)" pattern in table cells
     land_area_m2: float | None = None
@@ -540,12 +540,12 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
     if land_area_m2 is None and out.get("land_area"):
         land_area_m2 = _safe_float(str(out.get("land_area")))
     if land_area_m2 is not None:
-        out["land_area"] = land_area_m2
-        out["land_area_details"] = {
-            "land_area": str(round(land_area_m2)),
-            "land_area_unit": None,
-            "construction_area": None,
-            "construction_area_unit": None,
+        out["land_area"] = land_area_m2                       # FIELD: land_area <- regex td "Sq Mtrs" or _safe_float fallback
+        out["land_area_details"] = {                          # FIELD: land_area_details <- nested land area dict
+            "land_area": str(round(land_area_m2)),            # FIELD: land_area_details.land_area <- round(land_area_m2)
+            "land_area_unit": None,                           # FIELD: land_area_details.land_area_unit <- None
+            "construction_area": None,                        # FIELD: land_area_details.construction_area <- None
+            "construction_area_unit": None,                   # FIELD: land_area_details.construction_area_unit <- None
         }
 
     # ── 5. Project location ──────────────────────────────────────────────────
@@ -553,13 +553,13 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
     # Prefer the full project address string; fall back to village name
     project_address = _pop_mapped("_project_address", "project address")
     loc: dict = {k: v for k, v in {
-        "district":               district,
-        "taluk":                  _pop_mapped("_taluk", "taluk"),
-        "pin_code":               _pop_mapped("_pin_code", "pin code"),
-        "latitude":               _pop_mapped("_latitude", "latitude"),
-        "longitude":              _pop_mapped("_longitude", "longitude"),
-        "survey_resurvey_number": _pop_mapped("_survey_no", "survey / resurvey number"),
-        "raw_address":            project_address or _pop_mapped("_village", "village"),
+        "district":               district,                                              # FIELD: project_location_raw.district <- _pop_mapped("_district", "district")
+        "taluk":                  _pop_mapped("_taluk", "taluk"),                        # FIELD: project_location_raw.taluk <- _pop_mapped("_taluk", "taluk")
+        "pin_code":               _pop_mapped("_pin_code", "pin code"),                  # FIELD: project_location_raw.pin_code <- _pop_mapped("_pin_code", "pin code")
+        "latitude":               _pop_mapped("_latitude", "latitude"),                  # FIELD: project_location_raw.latitude <- _pop_mapped("_latitude", "latitude")
+        "longitude":              _pop_mapped("_longitude", "longitude"),                # FIELD: project_location_raw.longitude <- _pop_mapped("_longitude", "longitude")
+        "survey_resurvey_number": _pop_mapped("_survey_no", "survey / resurvey number"), # FIELD: project_location_raw.survey_resurvey_number <- _pop_mapped("_survey_no")
+        "raw_address":            project_address or _pop_mapped("_village", "village"), # FIELD: project_location_raw.raw_address <- project_address or village
     }.items() if v}
     for coord_key, store_key in (("latitude", "processed_latitude"),
                                  ("longitude", "processed_longitude")):
@@ -568,23 +568,23 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
             if fv is not None:
                 loc[store_key] = fv
     if loc:
-        out["project_location_raw"] = loc
+        out["project_location_raw"] = loc            # FIELD: project_location_raw <- filtered loc dict above
     if district:
-        out["project_city"] = district.upper()
+        out["project_city"] = district.upper()       # FIELD: project_city <- district.upper()
     if loc.get("pin_code"):
-        out["project_pin_code"] = loc["pin_code"]
+        out["project_pin_code"] = loc["pin_code"]    # FIELD: project_pin_code <- loc["pin_code"]
 
     # ── 6. Promoter address ──────────────────────────────────────────────────
     prom_addr: dict = {}
     # Primary: Bootstrap grid "promoter address" field
     for key in ("promoter address",):
         if kv.get(key):
-            prom_addr["raw_address"] = kv[key]
+            prom_addr["raw_address"] = kv[key]          # FIELD: promoter_address_raw.raw_address <- kv["promoter address"]
             break
     if not prom_addr.get("raw_address"):
         for key in grid_kv:
             if "promoter" in key and "address" in key:
-                prom_addr["raw_address"] = grid_kv[key]
+                prom_addr["raw_address"] = grid_kv[key] # FIELD: promoter_address_raw.raw_address <- grid_kv key containing "promoter"+"address"
                 break
     # Location sub-fields (may come from promoter section of the grid)
     for sub, labels in [
@@ -600,26 +600,27 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
                 break
     # Karnataka is always the state for this portal
     if not prom_addr.get("state"):
-        prom_addr["state"] = "Karnataka"
+        prom_addr["state"] = "Karnataka"                            # FIELD: promoter_address_raw.state <- literal "Karnataka"
     if prom_addr:
-        out["promoter_address_raw"] = prom_addr
+        out["promoter_address_raw"] = prom_addr                     # FIELD: promoter_address_raw <- assembled prom_addr dict
 
     # ── 7. Promoter contact (website) ────────────────────────────────────────
     website = _pop_mapped("_website", "website", "promoter website")
     if website:
-        out["promoter_contact_details"] = {"website": website}
+        # FIELD: promoter_contact_details <- nested {"website": website}
+        out["promoter_contact_details"] = {"website": website}      # FIELD: promoter_contact_details.website <- _pop_mapped("_website", "website", "promoter website")
 
     # ── 8. Promoters details (GST, PAN, trade reg, objective) ────────────────
     pd_dict: dict = {
-        "gst_no":          _pop_mapped("_gst_no", "gst no", "gstin"),
-        "pan_no":          _pop_mapped("_pan_no", "pan no", "pan"),
-        "registration_no": _pop_mapped("_trade_reg_no", "trade licence / registration no",
+        "gst_no":          _pop_mapped("_gst_no", "gst no", "gstin"),                        # FIELD: promoters_details.gst_no <- _pop_mapped("_gst_no", "gst no", "gstin")
+        "pan_no":          _pop_mapped("_pan_no", "pan no", "pan"),                          # FIELD: promoters_details.pan_no <- _pop_mapped("_pan_no", "pan no", "pan")
+        "registration_no": _pop_mapped("_trade_reg_no", "trade licence / registration no",   # FIELD: promoters_details.registration_no <- _pop_mapped("_trade_reg_no", ...)
                                        "registration number"),
-        "objective":       _pop_mapped("_objective", "objective"),
+        "objective":       _pop_mapped("_objective", "objective"),                           # FIELD: promoters_details.objective <- _pop_mapped("_objective", "objective")
     }
     pd_dict = {k: v for k, v in pd_dict.items() if v}
     if pd_dict:
-        out["promoters_details"] = pd_dict
+        out["promoters_details"] = pd_dict                          # FIELD: promoters_details <- filtered pd_dict
 
     # ── 9. Bank details ──────────────────────────────────────────────────────
     # Bank section uses "state" which can conflict; grab it from grid before popping
@@ -627,38 +628,38 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
     bank_district = grid_kv.get("district", district)
     bank_pin = grid_kv.get("pin code", "")
     bank: dict = {
-        "bank_name":    _pop_mapped("_bank_name", "bank name"),
-        "account_no":   _pop_mapped("_account_no", "account no", "account no.(70% account)"),
-        "account_name": _pop_mapped("_account_name", "account name"),
-        "IFSC":         _pop_mapped("_ifsc", "ifsc", "ifsc code"),
-        "branch":       _pop_mapped("_branch", "branch"),
+        "bank_name":    _pop_mapped("_bank_name", "bank name"),                              # FIELD: bank_details.bank_name <- _pop_mapped("_bank_name", "bank name")
+        "account_no":   _pop_mapped("_account_no", "account no", "account no.(70% account)"),# FIELD: bank_details.account_no <- _pop_mapped("_account_no", "account no", ...)
+        "account_name": _pop_mapped("_account_name", "account name"),                        # FIELD: bank_details.account_name <- _pop_mapped("_account_name", "account name")
+        "IFSC":         _pop_mapped("_ifsc", "ifsc", "ifsc code"),                           # FIELD: bank_details.IFSC <- _pop_mapped("_ifsc", "ifsc", "ifsc code")
+        "branch":       _pop_mapped("_branch", "branch"),                                    # FIELD: bank_details.branch <- _pop_mapped("_branch", "branch")
     }
     if bank_state:
-        bank["state"] = bank_state
+        bank["state"] = bank_state                          # FIELD: bank_details.state <- grid_kv["state"]
     if bank_district:
-        bank["district"] = bank_district
+        bank["district"] = bank_district                    # FIELD: bank_details.district <- grid_kv["district"] or location district
     if bank_pin:
-        bank["pin_code"] = bank_pin
+        bank["pin_code"] = bank_pin                         # FIELD: bank_details.pin_code <- grid_kv["pin code"]
     bank = {k: v for k, v in bank.items() if v}
     if bank:
-        out["bank_details"] = bank
+        out["bank_details"] = bank                          # FIELD: bank_details <- filtered bank dict
 
     # ── 10. Project cost ─────────────────────────────────────────────────────
     cost: dict = {
-        "cost_of_land": _pop_mapped(
+        "cost_of_land": _pop_mapped(                                                         # FIELD: project_cost_detail.cost_of_land <- _pop_mapped("_cost_of_land", "cost of land", ...)
             "_cost_of_land", "cost of land",
             "cost of land (inr) (c1)( as certified by ca in form 1 )"),
-        "estimated_construction_cost": _pop_mapped(
+        "estimated_construction_cost": _pop_mapped(                                          # FIELD: project_cost_detail.estimated_construction_cost <- _pop_mapped("_est_construction_cost", ...)
             "_est_construction_cost", "estimated construction cost",
             "cost of layout development (inr) (c2)( as certified by ca in form 1 )",
             "total construction cost"),
-        "total_project_cost": _pop_mapped(
+        "total_project_cost": _pop_mapped(                                                   # FIELD: project_cost_detail.total_project_cost <- _pop_mapped("_total_project_cost", ...)
             "_total_project_cost", "total project cost",
             "total project cost (inr) (c1+c2)"),
     }
     cost = {k: v for k, v in cost.items() if v}
     if cost:
-        out["project_cost_detail"] = cost
+        out["project_cost_detail"] = cost                   # FIELD: project_cost_detail <- filtered cost dict
 
     # ── 11. Building / plot details ──────────────────────────────────────────
     # New page: "Development Details ( Plot Dimension wise break up )" h1
@@ -683,7 +684,7 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
             if flat_type and flat_type.lower() not in skip_keys:
                 bd.append({"flat_type": flat_type, "total_area": total_area})
         if bd:
-            out["building_details"] = bd
+            out["building_details"] = bd                    # FIELD: building_details <- list of {flat_type,total_area} from plot/unit table
 
     # ── 11b. Proposed timeline — parse "Project Schedule" table ──────────────
     sched_rows = _parse_section_table(soup, ["project schedule"])
@@ -704,7 +705,7 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
                 ),
             })
         if timeline:
-            out["proposed_timeline"] = timeline
+            out["proposed_timeline"] = timeline             # FIELD: proposed_timeline <- list of {title,status,proposed_end_date} from "Project Schedule" table
 
     # ── 12. Professional information ─────────────────────────────────────────
     # New page uses separate h1 sections per role; collect them all
@@ -748,7 +749,7 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
             if e.get("name"):
                 profs.append(e)
     if profs:
-        out["professional_information"] = profs
+        out["professional_information"] = profs             # FIELD: professional_information <- list of professional role entries
 
     # ── 13. Co-promoter / land-owner details ─────────────────────────────────
     crows = _parse_section_table(soup, ["co-promoter", "co promoter", "land owner"])
@@ -773,23 +774,23 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
                 }.items() if v}
                 colist.append(e)
         if colist:
-            out["co_promoter_details"] = colist
+            out["co_promoter_details"] = colist             # FIELD: co_promoter_details <- list of co-promoter/land-owner entries from section table
 
     # ── 14. Authorised signatory ─────────────────────────────────────────────
     # New page: name from grid KV; addresses from tr/td KV
     sg_name = grid_kv.get("name of authorized signatory", "")
     if sg_name:
         sg = {
-            "name":              sg_name,
-            "pan_no":            grid_kv.get("pan", ""),
-            "present_address":   td_kv.get("present address", ""),
-            "official_address":  td_kv.get("official address", ""),
-            "permanent_address": td_kv.get("permanent address", ""),
+            "name":              sg_name,                                # FIELD: authorised_signatory_details.name <- grid_kv["name of authorized signatory"]
+            "pan_no":            grid_kv.get("pan", ""),                 # FIELD: authorised_signatory_details.pan_no <- grid_kv["pan"]
+            "present_address":   td_kv.get("present address", ""),       # FIELD: authorised_signatory_details.present_address <- td_kv["present address"]
+            "official_address":  td_kv.get("official address", ""),      # FIELD: authorised_signatory_details.official_address <- td_kv["official address"]
+            "permanent_address": td_kv.get("permanent address", ""),     # FIELD: authorised_signatory_details.permanent_address <- td_kv["permanent address"]
         }
-        sg["raw_address"] = (sg.get("present_address") or sg.get("official_address") or "")
+        sg["raw_address"] = (sg.get("present_address") or sg.get("official_address") or "")  # FIELD: authorised_signatory_details.raw_address <- present_address or official_address
         sg = {k: v for k, v in sg.items() if v}
         if sg.get("name"):
-            out["authorised_signatory_details"] = sg
+            out["authorised_signatory_details"] = sg                     # FIELD: authorised_signatory_details <- filtered sg dict
 
     # ── 15. Construction progress (total completion %) ───────────────────────
     total_pct = _pop_mapped("_total_completion_pct", "total completion percentage",
@@ -802,7 +803,7 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
     if total_pct:
         if "%" not in total_pct:
             total_pct = f"{total_pct} %"
-        out["construction_progress"] = [
+        out["construction_progress"] = [                                                 # FIELD: construction_progress <- single-element list with total completion %
             {"title": "total_completion_percentage", "progress_percentage": total_pct}
         ]
 
@@ -821,15 +822,15 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
             seen_img_urls.add(full_url)
             images.append(full_url)
     if images:
-        out["project_images"] = images
+        out["project_images"] = images                       # FIELD: project_images <- list of img src URLs with alt containing "photo"
 
     # ── 17. Raw data snapshot ────────────────────────────────────────────────
-    out["data"] = {
-        "district":                    search_district,
-        "START_PAGE":                  str(start_page),
-        "project_district":            district.upper() if district else "",
-        "total_completion_percentage": total_pct or "",
-        "status":                      meta.get("status_of_the_project", ""),
+    out["data"] = {                                                                       # FIELD: data <- raw snapshot dict
+        "district":                    search_district,                                   # FIELD: data.district <- search_district arg
+        "START_PAGE":                  str(start_page),                                   # FIELD: data.START_PAGE <- start_page arg (str)
+        "project_district":            district.upper() if district else "",              # FIELD: data.project_district <- district.upper() or ""
+        "total_completion_percentage": total_pct or "",                                   # FIELD: data.total_completion_percentage <- total_pct
+        "status":                      meta.get("status_of_the_project", ""),             # FIELD: data.status <- meta["status_of_the_project"]
     }
 
     return out
@@ -970,13 +971,13 @@ def _extract_documents(html: str, reg_no: str) -> list[dict]:
                 parent_td, row_cells, section_heading, link_text
             )
 
-        docs.append({"link": full_url, "type": doc_type})
+        docs.append({"link": full_url, "type": doc_type})  # FIELD: uploaded_documents[].link <- href, uploaded_documents[].type <- _doc_label_from_row
 
     # Auto-add registration certificate for approved projects
     if reg_no:
         cert_link = f"{CERT_URL}?CER_NO={reg_no}"
         if cert_link not in seen_links:
-            docs.append({"link": cert_link, "type": "Rera Registration Certificate 1"})
+            docs.append({"link": cert_link, "type": "Rera Registration Certificate 1"})  # FIELD: uploaded_documents[].link <- CERT_URL?CER_NO=reg_no, type <- literal
 
     return docs
 
