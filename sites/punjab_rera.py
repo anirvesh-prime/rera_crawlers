@@ -152,19 +152,20 @@ def _parse_detail_page(
     result: dict = {}
 
     # ── Direct text / date fields ─────────────────────────────────────────────
-    result["project_type"] = _find_by_label(soup, "Type of Project")
-    result["status_of_the_project"] = _find_by_label(soup, "Project Status")
+    result["project_type"] = _find_by_label(soup, "Type of Project")  # FIELD: project_type <- label "Type of Project"
+    result["status_of_the_project"] = _find_by_label(soup, "Project Status")  # FIELD: status_of_the_project <- label "Project Status"
+    # FIELD: actual_commencement_date <- label "Project Start Date"
     result["actual_commencement_date"] = _find_by_label(soup, "Project Start Date")
     result["estimated_finish_date"] = _find_by_label(
         soup,
         "Proposed/ Expected Date of Project Completion as specified in Form B",
         "Proposed/ Expected Date of Project Completion",
-    )
+    )  # FIELD: estimated_finish_date <- label "Proposed/ Expected Date of Project Completion"
     result["project_description"] = _find_by_label(
         soup,
         "Specification Details of Proposed Project as per the Brochure/ Prospectus",
         "Specification Details",
-    )
+    )  # FIELD: project_description <- label "Specification Details"
 
     # ── Project location raw (plot_no from khasra table + raw_address) ────────
     plot_no = None
@@ -186,13 +187,14 @@ def _parse_detail_page(
     if district:
         loc_raw["district"] = district
     if loc_raw:
-        result["project_location_raw"] = loc_raw
+        result["project_location_raw"] = loc_raw  # FIELD: project_location_raw <- loc_raw {plot_no, raw_address, district}
 
     # ── Project cost ──────────────────────────────────────────────────────────
     cost_str = _find_by_label(soup, "Project Cost (in rupees)")
     if cost_str:
         cost_digits = re.sub(r"[^\d.]", "", cost_str.split("(")[0].strip())
         try:
+            # FIELD: project_cost_detail.total_project_cost <- label "Project Cost (in rupees)"
             result["project_cost_detail"] = {"total_project_cost": float(cost_digits)}
         except (ValueError, TypeError):
             pass
@@ -207,13 +209,13 @@ def _parse_detail_page(
         land_digits = re.sub(r"[^\d.]", "", land_str.split("(")[0].strip())
         try:
             land_val = float(land_digits)
-            result["land_area"] = land_val
-            result["construction_area"] = land_val
+            result["land_area"] = land_val  # FIELD: land_area <- land_val (label "Total Area of Land...")
+            result["construction_area"] = land_val  # FIELD: construction_area <- land_val (label "Total Area of Land...")
             result["land_area_details"] = {
-                "land_area": land_val,
-                "land_area_unit": "(in sqr mtrs)",
-                "construction_area": land_val,
-                "construction_area_unit": "(in sqr mtrs)",
+                "land_area": land_val,  # FIELD: land_area_details.land_area <- land_val (label "Total Area of Land...")
+                "land_area_unit": "(in sqr mtrs)",  # FIELD: land_area_details.land_area_unit <- literal "(in sqr mtrs)"
+                "construction_area": land_val,  # FIELD: land_area_details.construction_area <- land_val (label "Total Area of Land...")
+                "construction_area_unit": "(in sqr mtrs)",  # FIELD: land_area_details.construction_area_unit <- literal "(in sqr mtrs)"
             }
         except (ValueError, TypeError):
             pass
@@ -242,7 +244,7 @@ def _parse_detail_page(
             contact["email"] = email
         if phone:
             contact["mobile no"] = phone
-        result["promoter_contact_details"] = contact
+        result["promoter_contact_details"] = contact  # FIELD: promoter_contact_details <- contact {email, mobile no}
 
     # ── Promoter experience ───────────────────────────────────────────────────
     exp_state = _find_by_label(
@@ -255,9 +257,9 @@ def _parse_detail_page(
         "Years of Experience of Promoter in Real Estate Development in Other",
     )
     if exp_state or exp_other:
-        result["promoters_details"] = {
-            "experience_state": exp_state,
-            "experience_outside_state": exp_other,
+        result["promoters_details"] = {  # FIELD: promoters_details <- exp_state / exp_other
+            "experience_state": exp_state,  # FIELD: promoters_details.experience_state <- exp_state
+            "experience_outside_state": exp_other,  # FIELD: promoters_details.experience_outside_state <- exp_other
         }
 
     # ── Bank details ──────────────────────────────────────────────────────────
@@ -279,7 +281,7 @@ def _parse_detail_page(
             bank["account_name"] = acct_holder
         if bank_addr:
             bank["address"] = bank_addr
-        result["bank_details"] = [bank]
+        result["bank_details"] = [bank]  # FIELD: bank_details <- [bank] dict from labels "Bank Name"/"Branch Name"/...
 
     # ── Construction progress (internal + external infrastructure tables) ──────
     cp: list[dict] = []
@@ -299,7 +301,7 @@ def _parse_detail_page(
                 if len(cells) >= 5 and cells[1]:
                     cp.append({"title": _ws(cells[1]), "progress_percentage": _ws(cells[4])})
     if cp:
-        result["construction_progress"] = cp
+        result["construction_progress"] = cp  # FIELD: construction_progress <- cp from "Internal/External Infrastructure" tables
 
     # ── Building details (apartment/plot sub-table; uses <td> not <th> headers) ─
     def _area_str(raw: str) -> str | None:
@@ -328,7 +330,7 @@ def _parse_detail_page(
                     "balcony_area": _area_str(cells[6]) if len(cells) > 6 else None,
                 })
     if bd:
-        result["building_details"] = bd
+        result["building_details"] = bd  # FIELD: building_details <- bd from "Type of Apartment"/"Carpet Area" table
 
     # ── Professional information ──────────────────────────────────────────────
     prof_list: list[dict] = []
@@ -373,7 +375,7 @@ def _parse_detail_page(
                         prof_list.append(prof)
                 i += 1
     if prof_list:
-        result["professional_information"] = prof_list
+        result["professional_information"] = prof_list  # FIELD: professional_information <- prof_list from "Name of Professional" table
 
     # ── Co-promoter details ───────────────────────────────────────────────────
     _QTR_LETTER: dict[str, str] = {"F": "FirstQTR", "S": "SecondQTR", "T": "ThirdQTR", "L": "FourthQTR"}
@@ -421,12 +423,12 @@ def _parse_detail_page(
         co_name = _ws(" ".join(name_parts))
         co_addr = _ws(" ".join(addr_parts))
         if co_name:
-            result["co_promoter_details"] = {
-                "name": co_name,
-                **({"email": co_email} if co_email else {}),
-                **({"mobile": co_mobile} if co_mobile else {}),
-                **({"present_address": co_addr} if co_addr else {}),
-                "raw_data": span_html,
+            result["co_promoter_details"] = {  # FIELD: co_promoter_details <- mailto <span> in detail HTML
+                "name": co_name,  # FIELD: co_promoter_details.name <- co_name from span text
+                **({"email": co_email} if co_email else {}),  # FIELD: co_promoter_details.email <- co_email from mailto link
+                **({"mobile": co_mobile} if co_mobile else {}),  # FIELD: co_promoter_details.mobile <- co_mobile from "Mobile Phone:" line
+                **({"present_address": co_addr} if co_addr else {}),  # FIELD: co_promoter_details.present_address <- co_addr
+                "raw_data": span_html,  # FIELD: co_promoter_details.raw_data <- span_html (entire span HTML)
             }
         break
 
@@ -447,13 +449,13 @@ def _parse_detail_page(
                     })
             break
     if lit_rows:
-        result["complaints_litigation_details"] = lit_rows
+        result["complaints_litigation_details"] = lit_rows  # FIELD: complaints_litigation_details <- lit_rows from "Case Title" table
     else:
         # No table rows; check the label — "Nil" means no litigation
         lit_val = _find_by_label(soup, "Litigation(s) related to Project")
         if lit_val is not None:
             # Use count=0 so the normalizer doesn't strip the empty dict
-            result["complaints_litigation_details"] = [{"count": 0}]
+            result["complaints_litigation_details"] = [{"count": 0}]  # FIELD: complaints_litigation_details <- [{count: 0}] (no litigation rows)
 
     # ── Status update (quarterly progress reports) ────────────────────────────
     _QTR_LETTER_MAP: dict[str, str] = {
@@ -513,7 +515,7 @@ def _parse_detail_page(
             status_updates.append(entry)
         break
     if status_updates:
-        result["status_update"] = status_updates
+        result["status_update"] = status_updates  # FIELD: status_update <- status_updates from "Quarter Name"/"Quarter Year" table
 
     # ── Uploaded documents ────────────────────────────────────────────────────
     uploaded: list[dict] = []
@@ -559,16 +561,16 @@ def _parse_detail_page(
         uploaded.append(doc)
 
     if uploaded:
-        result["uploaded_documents"] = uploaded
+        result["uploaded_documents"] = uploaded  # FIELD: uploaded_documents <- uploaded list from all <a href> on detail page
 
     # ── data extras (project/promo IDs, units) ────────────────────────────────
-    result["data"] = {
-        "project_id":             project_id,
-        "promo_id":               promoter_id,
-        "promo_type":             promoter_type,
-        "govt_type":              "state",
-        "land_area_unit":         "(in sqr mtrs)",
-        "construction_area_unit": "(in sqr mtrs)",
+    result["data"] = {  # FIELD: data <- function args + literals
+        "project_id":             project_id,  # FIELD: data.project_id <- function arg project_id
+        "promo_id":               promoter_id,  # FIELD: data.promo_id <- function arg promoter_id
+        "promo_type":             promoter_type,  # FIELD: data.promo_type <- function arg promoter_type
+        "govt_type":              "state",  # FIELD: data.govt_type <- literal "state"
+        "land_area_unit":         "(in sqr mtrs)",  # FIELD: data.land_area_unit <- literal "(in sqr mtrs)"
+        "construction_area_unit": "(in sqr mtrs)",  # FIELD: data.construction_area_unit <- literal "(in sqr mtrs)"
     }
 
     return {k: v for k, v in result.items() if v not in (None, "", [], {})}
@@ -1070,15 +1072,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         f"&inPromoterType={row.get('promoter_type')}"
                     )
                     payload: dict = {
-                        "project_name": row.get("project_name"),
-                        "promoter_name": row.get("promoter_name"),
-                        "project_registration_no": reg_no,
+                        "project_name": row.get("project_name"),  # FIELD: project_name <- row.get("project_name") listing col 2
+                        "promoter_name": row.get("promoter_name"),  # FIELD: promoter_name <- row.get("promoter_name") listing col 3
+                        "project_registration_no": reg_no,  # FIELD: project_registration_no <- reg_no (listing col 4)
                         **detail_fields,
-                        "project_location_raw": loc_raw,
-                        "domain": DOMAIN,
-                        "url": detail_url,
-                        "state": config.get("state", "Punjab"),
-                        "is_live": True,
+                        "project_location_raw": loc_raw,  # FIELD: project_location_raw <- loc_raw (detail + listing district)
+                        "domain": DOMAIN,  # FIELD: domain <- DOMAIN constant
+                        "url": detail_url,  # FIELD: url <- detail_url f-string
+                        "state": config.get("state", "Punjab"),  # FIELD: state <- config.get("state", "Punjab")
+                        "is_live": True,  # FIELD: is_live <- literal True
                     }
 
                     t0 = time.monotonic()
@@ -1176,13 +1178,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         if uploaded_documents:
                             t0 = time.monotonic()
                             upsert_project({
-                                "key": key,
-                                "url": detail_url,
-                                "state": db_dict["state"],
-                                "domain": db_dict["domain"],
-                                "project_registration_no": reg_no,
-                                "uploaded_documents": uploaded_documents,
-                                "document_urls": build_document_urls(uploaded_documents),
+                                "key": key,  # FIELD: key <- generate_project_key(reg_no)
+                                "url": detail_url,  # FIELD: url <- detail_url f-string
+                                "state": db_dict["state"],  # FIELD: state <- db_dict["state"]
+                                "domain": db_dict["domain"],  # FIELD: domain <- db_dict["domain"]
+                                "project_registration_no": reg_no,  # FIELD: project_registration_no <- reg_no
+                                "uploaded_documents": uploaded_documents,  # FIELD: uploaded_documents <- uploaded_documents var
+                                "document_urls": build_document_urls(uploaded_documents),  # FIELD: document_urls <- build_document_urls()
                             })
                             logger.warning(
                                 f"Step timing [doc_db_upsert]: {time.monotonic()-t0:.2f}s",

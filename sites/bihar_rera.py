@@ -577,42 +577,49 @@ def _parse_detail_page(html: str) -> dict:
 
     out: dict = {
         # project info
-        "project_type":              _f(proj_kv, "project type"),
-        "status_of_the_project":     _f(proj_kv, "project status"),
+        "project_type":              _f(proj_kv, "project type"),  # FIELD: project_type <- proj_kv label "project type"
+        "status_of_the_project":     _f(proj_kv, "project status"),  # FIELD: status_of_the_project <- proj_kv label "project status"
+        # FIELD: project_description <- proj_kv label "project description"
         "project_description":       _f(proj_kv, "project description"),
+        # FIELD: estimated_commencement_date <- proj_kv label "project start date"
         "estimated_commencement_date": _f(proj_kv, "project start date"),
-        "estimated_finish_date":     _f(proj_kv, "project end date"),
-        "land_area":                 land_area_val,
-        "construction_area":         const_area_val,
-        "land_area_details":         land_area_details,
+        "estimated_finish_date":     _f(proj_kv, "project end date"),  # FIELD: estimated_finish_date <- proj_kv label "project end date"
+        "land_area":                 land_area_val,  # FIELD: land_area <- _safe_float(land_area_raw)
+        "construction_area":         const_area_val,  # FIELD: construction_area <- _safe_float(const_area_raw)
+        "land_area_details":         land_area_details,  # FIELD: land_area_details <- land_area_details local dict
+        # FIELD: total_floor_area_under_residential <- covered_area_val when const_area_val is empty
         "total_floor_area_under_residential": covered_area_val if covered_area_val and not const_area_val else None,
         # location
-        "project_location_raw": {k: v for k, v in loc_raw.items() if v},
-        "project_city":          _f(loc_kv, "city/town"),
-        "project_pin_code":      pin_code or None,
+        "project_location_raw": {k: v for k, v in loc_raw.items() if v},  # FIELD: project_location_raw <- filtered loc_raw dict
+        "project_city":          _f(loc_kv, "city/town"),  # FIELD: project_city <- loc_kv label "city/town"
+        "project_pin_code":      pin_code or None,  # FIELD: project_pin_code <- pin_code var (loc_kv or contact_kv)
         # promoter / contact
-        "promoter_contact_details": contact or None,
-        "promoter_address_raw":     addr or None,
+        "promoter_contact_details": contact or None,  # FIELD: promoter_contact_details <- contact local dict
+        "promoter_address_raw":     addr or None,  # FIELD: promoter_address_raw <- addr local dict
         # promoter entity metadata
-        "promoters_details": prom_details or None,
+        "promoters_details": prom_details or None,  # FIELD: promoters_details <- prom_details local dict
         # structured
-        "bank_details":          bank or None,
-        "members_details":       members or None,
-        "professional_information": vendors or None,
-        "building_details":      buildings or None,
+        "bank_details":          bank or None,  # FIELD: bank_details <- bank local dict
+        "members_details":       members or None,  # FIELD: members_details <- members from GV_Member rows
+        "professional_information": vendors or None,  # FIELD: professional_information <- vendors from GV_Vendor rows
+        "building_details":      buildings or None,  # FIELD: building_details <- buildings from GV_Building rows
         # documents
-        "uploaded_documents": docs or None,
+        "uploaded_documents": docs or None,  # FIELD: uploaded_documents <- docs list (GV_Doc + reg cert)
         # project cost — values must be strings per schema
-        "project_cost_detail": {
+        "project_cost_detail": {  # FIELD: project_cost_detail <- filtered dict comp over _safe_float values
             k: str(v) for k, v in {
+                # FIELD: project_cost_detail.estimated_construction_cost <- proj_kv "estimated cost of development (in lakh)"
                 "estimated_construction_cost": _safe_float(_f(proj_kv, "estimated cost of development (in lakh)")),
+                # FIELD: project_cost_detail.cost_of_land <- proj_kv "estimated cost of land (in lakh)"
                 "cost_of_land":               _safe_float(_f(proj_kv, "estimated cost of land (in lakh)")),
             }.items() if v is not None
         },
         # data JSONB — only Bihar-allowed keys: link, type, govt_type, land_area_unit, construction_area_unit
-        "data": {
-            "govt_type":              "state",
+        "data": {  # FIELD: data <- govt_type + area unit literals
+            "govt_type":              "state",  # FIELD: data.govt_type <- literal "state"
+            # FIELD: data.land_area_unit <- literal "Total Area of Land (Sq mt)" when land_area_val
             "land_area_unit":         "Total Area of Land (Sq mt)" if land_area_val else None,
+            # FIELD: data.construction_area_unit <- literal "Total Builtup Area (Sq. Mtr.)" when const_area_val
             "construction_area_unit": "Total Builtup Area (Sq. Mtr.)" if const_area_val else None,
         },
     }
@@ -622,9 +629,10 @@ def _parse_detail_page(html: str) -> dict:
         None,
     )
     if reg_cert_url:
-        out["data"]["link"] = reg_cert_url
-        out["data"]["type"] = "Registration Certificate"
+        out["data"]["link"] = reg_cert_url  # FIELD: data.link <- reg_cert_url (Registration_Certificate PDF)
+        out["data"]["type"] = "Registration Certificate"  # FIELD: data.type <- literal "Registration Certificate"
     # Strip None-valued keys from nested dicts
+    # FIELD: project_cost_detail <- filtered re-assignment dropping None values
     out["project_cost_detail"] = {k: v for k, v in out["project_cost_detail"].items() if v is not None}
     return out
 
@@ -887,11 +895,12 @@ def _parse_page_rows(soup: BeautifulSoup) -> list[dict]:
         if not reg_no or reg_no.isdigit():
             continue
         projects.append({
-            "project_name":            cells[0].get_text(separator=" ", strip=True),
-            "project_registration_no": reg_no,
-            "promoter_name":           cells[2].get_text(separator=" ", strip=True),
+            "project_name":            cells[0].get_text(separator=" ", strip=True),  # FIELD: project_name <- listing row cells[0] text
+            "project_registration_no": reg_no,  # FIELD: project_registration_no <- listing row cells[1] text (reg_no var)
+            "promoter_name":           cells[2].get_text(separator=" ", strip=True),  # FIELD: promoter_name <- listing row cells[2] text
+            # FIELD: project_location_raw <- {"address": listing row cells[3] text}
             "project_location_raw":    {"address": cells[3].get_text(separator=" ", strip=True)},
-            "submitted_date":          cells[4].get_text(strip=True),
+            "submitted_date":          cells[4].get_text(strip=True),  # FIELD: submitted_date <- listing row cells[4] text
         })
     return projects
 
@@ -971,21 +980,21 @@ def _process_bihar_candidate(
         try:
             merged: dict = {
                 **detail_extra,
-                "project_name":            raw["project_name"],
-                "project_registration_no": reg_no,
-                "promoter_name":           raw["promoter_name"],
-                "submitted_date":          raw["submitted_date"],
-                "project_location_raw": {
+                "project_name":            raw["project_name"],  # FIELD: project_name <- raw["project_name"] from listing row
+                "project_registration_no": reg_no,  # FIELD: project_registration_no <- reg_no var from listing row
+                "promoter_name":           raw["promoter_name"],  # FIELD: promoter_name <- raw["promoter_name"] from listing row
+                "submitted_date":          raw["submitted_date"],  # FIELD: submitted_date <- raw["submitted_date"] from listing row
+                "project_location_raw": {  # FIELD: project_location_raw <- merge of raw + detail_extra + state
                     **raw.get("project_location_raw", {}),
                     **detail_extra.get("project_location_raw", {}),
-                    "state": config.get("state", "bihar").title(),
+                    "state": config.get("state", "bihar").title(),  # FIELD: project_location_raw.state <- config["state"] titled
                 },
-                "project_state": config.get("state", "bihar").title(),
-                "domain": DOMAIN,
-                "url":    f"https://{DOMAIN}",
-                "state":  config.get("state", "Bihar"),
-                "is_live": True,
-                "data": merge_data_sections(
+                "project_state": config.get("state", "bihar").title(),  # FIELD: project_state <- config["state"] titled
+                "domain": DOMAIN,  # FIELD: domain <- DOMAIN constant
+                "url":    f"https://{DOMAIN}",  # FIELD: url <- f"https://{DOMAIN}"
+                "state":  config.get("state", "Bihar"),  # FIELD: state <- config["state"]
+                "is_live": True,  # FIELD: is_live <- literal True
+                "data": merge_data_sections(  # FIELD: data <- merge_data_sections(detail_extra.data, listing_address)
                     detail_extra.get("data"),
                     {"listing_address": raw.get("project_location_raw", {}).get("address", "")},
                 ),
@@ -1019,9 +1028,9 @@ def _process_bihar_candidate(
                         for d in enriched_docs if d.get("s3_link")
                     ]
                     upsert_project({
-                        "key": key,
-                        "uploaded_documents": enriched_docs,
-                        "document_urls": doc_urls,
+                        "key": key,  # FIELD: key <- generate_project_key(reg_no)
+                        "uploaded_documents": enriched_docs,  # FIELD: uploaded_documents <- enriched_docs from _process_documents
+                        "document_urls": doc_urls,  # FIELD: document_urls <- doc_urls built from enriched s3_link entries
                     })
         except ValidationError as exc:
             deltas["error_count"] += 1

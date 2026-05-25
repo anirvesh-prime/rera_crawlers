@@ -237,15 +237,15 @@ def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
             detail_url = f"{DETAIL_BASE}?{enc}"
 
         rows.append({
-            "project_registration_no": reg_id,
-            "project_name":            _cell(cells, _COL_NAME),
-            "place":                   _cell(cells, _COL_PLACE),
-            "project_type":            _cell(cells, _COL_TYPE),
-            "status_of_the_project":   _cell(cells, _COL_STATUS),
-            "approved_on_date":        _cell(cells, _COL_APPROVED),
-            "estimated_finish_date":   _cell(cells, _COL_FINISH),
-            "enc":                     enc,
-            "detail_url":              detail_url,
+            "project_registration_no": reg_id,                          # FIELD: project_registration_no <- listing cells[_COL_REG_ID]
+            "project_name":            _cell(cells, _COL_NAME),         # FIELD: project_name <- _cell(cells, _COL_NAME)
+            "place":                   _cell(cells, _COL_PLACE),        # FIELD: place <- _cell(cells, _COL_PLACE)
+            "project_type":            _cell(cells, _COL_TYPE),         # FIELD: project_type <- _cell(cells, _COL_TYPE)
+            "status_of_the_project":   _cell(cells, _COL_STATUS),       # FIELD: status_of_the_project <- _cell(cells, _COL_STATUS)
+            "approved_on_date":        _cell(cells, _COL_APPROVED),     # FIELD: approved_on_date <- _cell(cells, _COL_APPROVED)
+            "estimated_finish_date":   _cell(cells, _COL_FINISH),       # FIELD: estimated_finish_date <- _cell(cells, _COL_FINISH)
+            "enc":                     enc,                             # FIELD: enc <- openProject() onclick token
+            "detail_url":              detail_url,                      # FIELD: detail_url <- f"{DETAIL_BASE}?{enc}"
         })
 
     return rows
@@ -892,8 +892,8 @@ def _scrape_detail_page(soup: BeautifulSoup, detail_url: str) -> dict:
     # ── End-date: both actual and estimated finish dates come from lblendDate ─
     end_date_raw = raw.pop("_end_date_raw", None)
     if end_date_raw:
-        raw.setdefault("actual_finish_date",    end_date_raw)
-        raw.setdefault("estimated_finish_date", end_date_raw)
+        raw.setdefault("actual_finish_date",    end_date_raw)  # FIELD: actual_finish_date <- _end_date_raw (lblendDate)
+        raw.setdefault("estimated_finish_date", end_date_raw)  # FIELD: estimated_finish_date <- _end_date_raw (lblendDate)
 
     # ── Location ──────────────────────────────────────────────────────────────
     district  = raw.pop("_district", None)
@@ -931,24 +931,24 @@ def _scrape_detail_page(soup: BeautifulSoup, detail_url: str) -> dict:
         if v is not None:
             loc_dict[k] = v
     if loc_dict:
-        raw["project_location_raw"] = loc_dict
+        raw["project_location_raw"] = loc_dict  # FIELD: project_location_raw <- loc_dict (taluk/village/district/lat/lon/locality/pin_code/raw_address/exact_location)
 
     # ── Promoter address ──────────────────────────────────────────────────────
     promoter_location_bits = {"village": village, "district": district, "locality": locality}
     addr_dict: dict = {}
     if any(v for v in promoter_location_bits.values()):
-        addr_dict["state"] = PROJECT_STATE
+        addr_dict["state"] = PROJECT_STATE  # FIELD: promoter_address_raw.state <- PROJECT_STATE constant
     for k, v in promoter_location_bits.items():
         if v is not None:
             addr_dict[k] = v
     if addr_dict:
-        raw["promoter_address_raw"] = addr_dict
+        raw["promoter_address_raw"] = addr_dict  # FIELD: promoter_address_raw <- addr_dict (state/village/district/locality)
 
     # ── Promoter contact ──────────────────────────────────────────────────────
     email = raw.pop("_promoter_email", None)
     phone = raw.pop("_promoter_phone", None)
     if email or phone:
-        raw["promoter_contact_details"] = {k: v for k, v in {"email": email, "phone": phone}.items() if v}
+        raw["promoter_contact_details"] = {k: v for k, v in {"email": email, "phone": phone}.items() if v}  # FIELD: promoter_contact_details <- {email: _promoter_email, phone: _promoter_phone}
 
     # ── Promoters details (firm) ───────────────────────────────────────────────
     pan_no    = raw.pop("_pan_no", None)
@@ -959,7 +959,7 @@ def _scrape_detail_page(soup: BeautifulSoup, detail_url: str) -> dict:
         if v is not None:
             pd[k] = v
     if pd:
-        raw["promoters_details"] = pd
+        raw["promoters_details"] = pd  # FIELD: promoters_details <- pd (pan_no/type_of_firm/registration_no)
 
     # ── Land & construction ───────────────────────────────────────────────────
     # AP RERA always uses Sq.m; the page shows bare numbers (no unit suffix).
@@ -970,17 +970,17 @@ def _scrape_detail_page(soup: BeautifulSoup, detail_url: str) -> dict:
     land_val  = _parse_float_val(land_raw)
     const_val = _parse_float_val(const_raw)
     if land_val is not None:
-        raw["land_area"] = land_val
+        raw["land_area"] = land_val  # FIELD: land_area <- _parse_float_val(_land_area_raw / lblareaofland)
     if const_val is not None:
-        raw["construction_area"] = const_val
-        raw["total_floor_area_under_residential"] = const_val
+        raw["construction_area"] = const_val  # FIELD: construction_area <- _parse_float_val(_construction_area_raw / lbltotbuilduparea)
+        raw["total_floor_area_under_residential"] = const_val  # FIELD: total_floor_area_under_residential <- _parse_float_val(_construction_area_raw)
     if land_val is not None or const_val is not None:
-        raw["land_area_details"] = {
+        raw["land_area_details"] = {  # FIELD: land_area_details <- inner literal (formatted land/construction values + units)
             k: v for k, v in {
-                "land_area":               f"{land_val:.2f}"  if land_val  is not None else None,
-                "land_area_unit":          _AP_AREA_UNIT      if land_val  is not None else None,
-                "construction_area":       f"{const_val:.2f}" if const_val is not None else None,
-                "construction_area_unit":  _AP_AREA_UNIT      if const_val is not None else None,
+                "land_area":               f"{land_val:.2f}"  if land_val  is not None else None,  # FIELD: land_area_details.land_area <- f"{land_val:.2f}"
+                "land_area_unit":          _AP_AREA_UNIT      if land_val  is not None else None,  # FIELD: land_area_details.land_area_unit <- _AP_AREA_UNIT "Sq.m"
+                "construction_area":       f"{const_val:.2f}" if const_val is not None else None,  # FIELD: land_area_details.construction_area <- f"{const_val:.2f}"
+                "construction_area_unit":  _AP_AREA_UNIT      if const_val is not None else None,  # FIELD: land_area_details.construction_area_unit <- _AP_AREA_UNIT "Sq.m"
             }.items() if v is not None
         }
 
@@ -990,29 +990,29 @@ def _scrape_detail_page(soup: BeautifulSoup, detail_url: str) -> dict:
     cost_total = raw.pop("_total_project_cost", None)
     cost_dict: dict = {}
     for k, v in {
-        "cost_of_land": cost_land,
-        "estimated_construction_cost": cost_const,
-        "total_project_cost": cost_total,
+        "cost_of_land": cost_land,  # FIELD: project_cost_detail.cost_of_land <- _cost_of_land (lbllndcost)
+        "estimated_construction_cost": cost_const,  # FIELD: project_cost_detail.estimated_construction_cost <- _estimated_construction_cost (lblestconcost)
+        "total_project_cost": cost_total,  # FIELD: project_cost_detail.total_project_cost <- _total_project_cost (lbltotprjcost)
     }.items():
         if v is not None:
             cost_dict[k] = v
     if cost_dict:
-        raw["project_cost_detail"] = cost_dict
+        raw["project_cost_detail"] = cost_dict  # FIELD: project_cost_detail <- cost_dict
 
     # ── Data blob (ancillary fields) ──────────────────────────────────────────
     data_blob: dict = {}
     for k, v in {
-        "unbuilt_area":          unbuilt,
-        "end_date":              end_date_raw,
-        "land_area_unit":        _AP_AREA_UNIT if land_val is not None else None,
-        "construction_area_unit": _AP_AREA_UNIT if const_val is not None else None,
-        "project_district":      district,
-        "govt_type":             "state",
+        "unbuilt_area":          unbuilt,  # FIELD: data.unbuilt_area <- _unbuilt_area (lblopnarea)
+        "end_date":              end_date_raw,  # FIELD: data.end_date <- _end_date_raw (lblendDate)
+        "land_area_unit":        _AP_AREA_UNIT if land_val is not None else None,  # FIELD: data.land_area_unit <- _AP_AREA_UNIT "Sq.m"
+        "construction_area_unit": _AP_AREA_UNIT if const_val is not None else None,  # FIELD: data.construction_area_unit <- _AP_AREA_UNIT "Sq.m"
+        "project_district":      district,  # FIELD: data.project_district <- _district (lblprjdist)
+        "govt_type":             "state",  # FIELD: data.govt_type <- literal "state"
     }.items():
         if v is not None:
             data_blob[k] = v
     if data_blob:
-        raw["data"] = data_blob
+        raw["data"] = data_blob  # FIELD: data <- data_blob
 
     # ── Authorised Signatory ──────────────────────────────────────────────────
     as_name  = raw.pop("_as_name", None)
@@ -1020,39 +1020,39 @@ def _scrape_detail_page(soup: BeautifulSoup, detail_url: str) -> dict:
     as_email = raw.pop("_as_email", None)
     as_dict  = {k: v for k, v in {"name": as_name, "email": as_email, "phone": as_phone}.items() if v}
     if as_dict:
-        raw["authorised_signatory_details"] = as_dict
+        raw["authorised_signatory_details"] = as_dict  # FIELD: authorised_signatory_details <- as_dict (lblASName/lblASEmail/lblASMobile)
 
     # ── Building details ──────────────────────────────────────────────────────
     bd = _parse_building_details(soup)
     if bd:
-        raw["building_details"] = bd
-        raw["number_of_residential_units"] = len(bd)
+        raw["building_details"] = bd  # FIELD: building_details <- _parse_building_details(soup)
+        raw["number_of_residential_units"] = len(bd)  # FIELD: number_of_residential_units <- len(_parse_building_details(soup))
 
     comm_bd = _parse_commercial_units(soup)
     # Prefer the explicit page label value (captured by label extraction into
     # raw["number_of_commercial_units"] via _LABEL_MAP) over counting rows from
     # the commercial-unit table parser, which can false-match other tables.
     if "number_of_commercial_units" not in raw:
-        raw["number_of_commercial_units"] = len(comm_bd) if comm_bd else 0
+        raw["number_of_commercial_units"] = len(comm_bd) if comm_bd else 0  # FIELD: number_of_commercial_units <- len(_parse_commercial_units(soup)) or 0
 
     # ── Professionals / Members ───────────────────────────────────────────────
     pi = _parse_professionals(soup)
     if pi:
-        raw["professional_information"] = pi
+        raw["professional_information"] = pi  # FIELD: professional_information <- _parse_professionals(soup)
 
     md = _parse_members(soup)
     if md:
-        raw["members_details"] = md
+        raw["members_details"] = md  # FIELD: members_details <- _parse_members(soup)
 
     # ── Status update (amenity progress + building snapshot) ─────────────────
     amenities = _parse_amenity_status(soup)
     if amenities or bd:
         status_entry: dict = {}
         if amenities:
-            status_entry["amenity_detail"] = amenities
+            status_entry["amenity_detail"] = amenities  # FIELD: status_update.amenity_detail <- _parse_amenity_status(soup)
         if bd:
-            status_entry["building_details"] = bd
-        raw["status_update"] = [status_entry]
+            status_entry["building_details"] = bd  # FIELD: status_update.building_details <- _parse_building_details(soup)
+        raw["status_update"] = [status_entry]  # FIELD: status_update <- [status_entry]
 
     # ── Documents ─────────────────────────────────────────────────────────────
     docs = _parse_documents(soup, detail_url)
@@ -1061,10 +1061,10 @@ def _scrape_detail_page(soup: BeautifulSoup, detail_url: str) -> dict:
         "building_details", "land_area", "construction_area",
         "project_cost_detail", "number_of_residential_units",
     )):
-        raw["uploaded_documents"] = docs
+        raw["uploaded_documents"] = docs  # FIELD: uploaded_documents <- _parse_documents(soup, detail_url)
 
-    raw["url"] = detail_url
-    raw["project_state"] = PROJECT_STATE
+    raw["url"] = detail_url  # FIELD: url <- detail_url parameter
+    raw["project_state"] = PROJECT_STATE  # FIELD: project_state <- PROJECT_STATE constant "Andhra Pradesh"
     return raw
 
 
@@ -1367,26 +1367,26 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 detail_data = _scrape_detail_page(detail_soup, detail_url)
 
                 # Fill in listing-level data where detail didn't provide it
-                detail_data.setdefault("project_registration_no", reg_no)
-                detail_data.setdefault("project_name",          row.get("project_name"))
-                detail_data.setdefault("project_type",          row.get("project_type"))
-                detail_data.setdefault("status_of_the_project", row.get("status_of_the_project"))
-                detail_data.setdefault("approved_on_date",      row.get("approved_on_date"))
-                detail_data.setdefault("estimated_finish_date", row.get("estimated_finish_date"))
+                detail_data.setdefault("project_registration_no", reg_no)  # FIELD: project_registration_no <- listing reg_no fallback
+                detail_data.setdefault("project_name",          row.get("project_name"))  # FIELD: project_name <- listing row["project_name"] fallback
+                detail_data.setdefault("project_type",          row.get("project_type"))  # FIELD: project_type <- listing row["project_type"] fallback
+                detail_data.setdefault("status_of_the_project", row.get("status_of_the_project"))  # FIELD: status_of_the_project <- listing row["status_of_the_project"] fallback
+                detail_data.setdefault("approved_on_date",      row.get("approved_on_date"))  # FIELD: approved_on_date <- listing row["approved_on_date"] fallback
+                detail_data.setdefault("estimated_finish_date", row.get("estimated_finish_date"))  # FIELD: estimated_finish_date <- listing row["estimated_finish_date"] fallback
 
                 # Core metadata
-                detail_data["state"]            = config["state"]
-                detail_data["project_state"]    = PROJECT_STATE
-                detail_data["domain"]           = DOMAIN
-                detail_data["config_id"]        = config_id
-                detail_data["crawl_machine_ip"] = machine_ip
-                detail_data["machine_name"]     = machine_name
-                detail_data["key"]              = project_key
-                detail_data["is_live"]          = True
+                detail_data["state"]            = config["state"]  # FIELD: state <- config["state"]
+                detail_data["project_state"]    = PROJECT_STATE  # FIELD: project_state <- PROJECT_STATE constant
+                detail_data["domain"]           = DOMAIN  # FIELD: domain <- DOMAIN constant "rera.ap.gov.in"
+                detail_data["config_id"]        = config_id  # FIELD: config_id <- config.get("config_id")
+                detail_data["crawl_machine_ip"] = machine_ip  # FIELD: crawl_machine_ip <- get_machine_context()
+                detail_data["machine_name"]     = machine_name  # FIELD: machine_name <- get_machine_context()
+                detail_data["key"]              = project_key  # FIELD: key <- generate_project_key(reg_no)
+                detail_data["is_live"]          = True  # FIELD: is_live <- literal True
 
                 # Merge raw data blob with listing info
                 existing_data = detail_data.pop("data", None) or {}
-                detail_data["data"] = merge_data_sections(
+                detail_data["data"] = merge_data_sections(  # FIELD: data <- merge_data_sections(existing_data, {"listing_row": row})
                     existing_data,
                     {"listing_row": {k: v for k, v in row.items() if k != "enc"}},
                 )
@@ -1405,7 +1405,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                                        project_key=project_key, url=detail_url)
                     counts["error_count"] += 1
                     try:
-                        detail_data["data"] = merge_data_sections(
+                        detail_data["data"] = merge_data_sections(  # FIELD: data <- merge_data_sections(existing, {"validation_fallback": True})
                             detail_data.get("data"), {"validation_fallback": True}
                         )
                         db_dict = normalize_project_payload(
@@ -1443,13 +1443,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                 if uploaded_results:
                     upsert_project({
-                        "key":                    db_dict["key"],
-                        "url":                    db_dict.get("url"),
-                        "state":                  db_dict["state"],
-                        "domain":                 db_dict.get("domain"),
-                        "project_registration_no": db_dict["project_registration_no"],
-                        "uploaded_documents":     uploaded_results,
-                        "document_urls":          build_document_urls(uploaded_results),
+                        "key":                    db_dict["key"],  # FIELD: key <- db_dict["key"]
+                        "url":                    db_dict.get("url"),  # FIELD: url <- db_dict.get("url")
+                        "state":                  db_dict["state"],  # FIELD: state <- db_dict["state"]
+                        "domain":                 db_dict.get("domain"),  # FIELD: domain <- db_dict.get("domain")
+                        "project_registration_no": db_dict["project_registration_no"],  # FIELD: project_registration_no <- db_dict["project_registration_no"]
+                        "uploaded_documents":     uploaded_results,  # FIELD: uploaded_documents <- uploaded_results from _handle_document
+                        "document_urls":          build_document_urls(uploaded_results),  # FIELD: document_urls <- build_document_urls(uploaded_results)
                     })
 
                 done_keys.add(project_key)
