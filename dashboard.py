@@ -400,6 +400,10 @@ _TEMPLATE = """<!DOCTYPE html>
     .test-log .lvl-ERROR { color:#f85149; }
     .test-log .lvl-WARNING { color:#d29922; }
     .test-log .lvl-DEBUG { color:#6e7681; }
+    .test-log .fld-hdr  { color:#7ee787; font-weight:600; }
+    .test-log .fld-name { color:#79c0ff; }
+    .test-log .fld-sep  { color:#6e7681; }
+    .test-log .fld-val  { color:#7ee787; }
   </style>
 </head>
 <body>
@@ -835,14 +839,57 @@ _TEMPLATE = """<!DOCTYPE html>
 
   function appendLogChunk(chunk) {
     if (!chunk) return;
-    // Colorize known level tokens (tab-separated formatter: ts \\t file:line \\t LEVEL \\t msg)
+    // Tab-separated formatter: ts \\t file:line \\t LEVEL \\t msg
     const lines = chunk.split("\\n");
     const frag = document.createDocumentFragment();
     for (const raw of lines) {
       if (raw === "" && raw === lines[lines.length - 1]) continue;
       const span = document.createElement("span");
-      const m = raw.match(/\\t(ERROR|WARNING|DEBUG)\\t/);
-      if (m) span.className = "lvl-" + m[1];
+      const lvl = raw.match(/\\t(ERROR|WARNING|DEBUG)\\t/);
+      if (lvl) {
+        span.className = "lvl-" + lvl[1];
+        span.textContent = raw + "\\n";
+        frag.appendChild(span);
+        continue;
+      }
+      // Field-dump rows from core/db.py:_log_extracted_fields are INFO and
+      // come in two shapes — colorize so they pop out of the stream:
+      //   ...\\tINFO\\t─── extracted project REG (key=K) ───
+      //   ...\\tINFO\\t  field_name | value
+      const tabIdx = raw.indexOf("\\tINFO\\t");
+      if (tabIdx >= 0) {
+        const prefix = raw.slice(0, tabIdx + 6);
+        const msg    = raw.slice(tabIdx + 6);
+        if (msg.startsWith("─── extracted project")) {
+          span.appendChild(document.createTextNode(prefix));
+          const hdr = document.createElement("span");
+          hdr.className = "fld-hdr";
+          hdr.textContent = msg;
+          span.appendChild(hdr);
+          span.appendChild(document.createTextNode("\\n"));
+          frag.appendChild(span);
+          continue;
+        }
+        const fm = msg.match(/^  ([^|]+?) \\| ([\\s\\S]*)$/);
+        if (fm) {
+          span.appendChild(document.createTextNode(prefix + "  "));
+          const n = document.createElement("span");
+          n.className = "fld-name";
+          n.textContent = fm[1];
+          span.appendChild(n);
+          const s = document.createElement("span");
+          s.className = "fld-sep";
+          s.textContent = " | ";
+          span.appendChild(s);
+          const v = document.createElement("span");
+          v.className = "fld-val";
+          v.textContent = fm[2];
+          span.appendChild(v);
+          span.appendChild(document.createTextNode("\\n"));
+          frag.appendChild(span);
+          continue;
+        }
+      }
       span.textContent = raw + "\\n";
       frag.appendChild(span);
     }

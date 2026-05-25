@@ -258,10 +258,10 @@ def _parse_promoter_details(soup: BeautifulSoup) -> dict:
     name = norm.get("name") or ""
 
     return {
-        "promoter_name": name or None,
-        "promoter_contact_details": contact or None,
-        "promoter_address_raw": addr_raw or None,
-        "promoters_details": {"name": name, "type_of_firm": promoter_type} if promoter_type else None,
+        "promoter_name": name or None,  # FIELD: promoter_name <- promoter norm "name"
+        "promoter_contact_details": contact or None,  # FIELD: promoter_contact_details <- promoter norm mobile/email
+        "promoter_address_raw": addr_raw or None,  # FIELD: promoter_address_raw <- promoter norm correspondence/permanent address
+        "promoters_details": {"name": name, "type_of_firm": promoter_type} if promoter_type else None,  # FIELD: promoters_details <- {name, type_of_firm} when promoter_type set
     }
 
 
@@ -279,17 +279,17 @@ def _parse_project_details(soup: BeautifulSoup) -> dict:
         or norm.get("name of the project")
     )
     if pname and pname not in ("-NA-", "NA", "N/A", "-"):
-        out["project_name"] = pname
+        out["project_name"] = pname  # FIELD: project_name <- proj norm "project name"/"name of (the) project"
 
     # Status
     status = norm.get("project status") or norm.get("status")
     if status:
-        out["status_of_the_project"] = status
+        out["status_of_the_project"] = status  # FIELD: status_of_the_project <- proj norm "project status"/"status"
 
     # Description
     desc = norm.get("project description") or norm.get("description")
     if desc:
-        out["project_description"] = desc
+        out["project_description"] = desc  # FIELD: project_description <- proj norm "project description"/"description"
 
     # Areas
     land_raw = norm.get("total land area")
@@ -297,18 +297,18 @@ def _parse_project_details(soup: BeautifulSoup) -> dict:
     land = _parse_area(land_raw)
     built = _parse_area(built_raw)
     if land is not None:
-        out["land_area"] = land
+        out["land_area"] = land  # FIELD: land_area <- _parse_area(proj norm "total land area")
     if built is not None:
-        out["construction_area"] = built
+        out["construction_area"] = built  # FIELD: construction_area <- _parse_area(proj norm "total built-up area")
 
     # Land area details — always use 2 decimal places for consistency
     land_unit = "sq m"
     if land is not None or built is not None:
-        out["land_area_details"] = {
-            "land_area": f"{land:.2f}" if land is not None else "0.00",
-            "land_area_unit": land_unit,
-            "construction_area": f"{built:.2f}" if built is not None else "0.00",
-            "construction_area_unit": land_unit,
+        out["land_area_details"] = {  # FIELD: land_area_details <- nested dict from parsed land/built areas
+            "land_area": f"{land:.2f}" if land is not None else "0.00",  # FIELD: land_area_details.land_area <- land formatted 2dp
+            "land_area_unit": land_unit,  # FIELD: land_area_details.land_area_unit <- literal "sq m"
+            "construction_area": f"{built:.2f}" if built is not None else "0.00",  # FIELD: land_area_details.construction_area <- built formatted 2dp
+            "construction_area_unit": land_unit,  # FIELD: land_area_details.construction_area_unit <- literal "sq m"
         }
 
     # Costs — strip any trailing "lakh" the site may already include before
@@ -329,7 +329,7 @@ def _parse_project_details(soup: BeautifulSoup) -> dict:
     if total_cost:
         cost_detail["total_project_cost"] = _cost_val(total_cost)
     if cost_detail:
-        out["project_cost_detail"] = cost_detail
+        out["project_cost_detail"] = cost_detail  # FIELD: project_cost_detail <- est/land/total cost dict from proj norm
 
     # Dates
     commence_raw = (
@@ -340,7 +340,7 @@ def _parse_project_details(soup: BeautifulSoup) -> dict:
         or norm.get("estimated commencement date")
     )
     if commence_raw:
-        out["estimated_commencement_date"] = _normalize_dd_mm_yyyy(commence_raw) or commence_raw
+        out["estimated_commencement_date"] = _normalize_dd_mm_yyyy(commence_raw) or commence_raw  # FIELD: estimated_commencement_date <- proj norm "(proposed) date of commencement"
 
     # Land detail
     khata = norm.get("khata no.") or norm.get("khata no")
@@ -351,7 +351,7 @@ def _parse_project_details(soup: BeautifulSoup) -> dict:
     if mouza and mouza not in ("-NA-",):
         land_det["mouza"] = mouza
     if land_det:
-        out["land_detail"] = land_det
+        out["land_detail"] = land_det  # FIELD: land_detail <- khata/mouza dict from proj norm
 
     # Location raw
     loc: dict = {}
@@ -383,7 +383,7 @@ def _parse_project_details(soup: BeautifulSoup) -> dict:
     if lon:
         loc["longitude"] = lon + " deg" if "deg" not in lon else lon
     if loc:
-        out["project_location_raw"] = loc
+        out["project_location_raw"] = loc  # FIELD: project_location_raw <- tehsil/khasra/locality/address/lat/lon dict
 
     # Completion period → data field
     comp_years = norm.get("period of completion", "")
@@ -394,8 +394,8 @@ def _parse_project_details(soup: BeautifulSoup) -> dict:
         yr_m = re.search(r"(\d+)\s*years?\s*(\d+)\s*months?",
                          " ".join(lv.values()), re.I)
     if yr_m:
-        out["_completion_year"] = yr_m.group(1)
-        out["_completion_month"] = yr_m.group(2)
+        out["_completion_year"] = yr_m.group(1)  # FIELD: _completion_year <- regex group(1) "X years Y months" (popped into data.completion_year)
+        out["_completion_month"] = yr_m.group(2)  # FIELD: _completion_month <- regex group(2) "X years Y months" (popped into data.completion_month)
 
     return out
 
@@ -590,11 +590,11 @@ def _extract_documents(soup: BeautifulSoup) -> list[dict]:
                     if doc_key in seen_doc_keys:
                         continue
                     seen_doc_keys.add(doc_key)
-                    docs.append({"type": label, "link": full_url, "updated": True})
+                    docs.append({"type": label, "link": full_url, "updated": True})  # FIELD: uploaded_documents[].type/link/updated <- ViewOpenFile anchor in doc row
 
             if not uploaded and doc_type not in seen_placeholder_types:
                 seen_placeholder_types.add(doc_type)
-                docs.append({"type": doc_type})
+                docs.append({"type": doc_type})  # FIELD: uploaded_documents[].type <- doc row label (no upload yet)
 
     return docs
 
@@ -674,10 +674,10 @@ def _handle_document(
         logger.info("Document uploaded", label=label, s3_key=s3_key, step="documents")
         logger.log_document(label, url, "uploaded", s3_key=s3_key, file_size_bytes=len(content))
         return {
-            "type": label,
-            "link": url,
-            "s3_link": s3_url,
-            "updated": True,
+            "type": label,  # FIELD: uploaded_documents[].type <- doc label
+            "link": url,  # FIELD: uploaded_documents[].link <- source doc URL
+            "s3_link": s3_url,  # FIELD: uploaded_documents[].s3_link <- S3 URL after upload_document
+            "updated": True,  # FIELD: uploaded_documents[].updated <- literal True
         }
     except Exception as exc:
         logger.warning(f"Document download failed [{label}]: {exc}")
@@ -766,11 +766,11 @@ def _sentinel_check(
         # Merge (same ordering as run())
         fresh = {**promoter, **proj_data}
         if bank:
-            fresh["bank_details"] = bank
+            fresh["bank_details"] = bank  # FIELD: bank_details <- _parse_bank_details(bank_soup)
         if professionals:
-            fresh["professional_information"] = professionals
+            fresh["professional_information"] = professionals  # FIELD: professional_information <- _parse_professionals(prof_soup)
         if docs:
-            fresh["uploaded_documents"] = docs
+            fresh["uploaded_documents"] = docs  # FIELD: uploaded_documents <- _extract_documents(docs_soup)
         if inventory:
             fresh.update(inventory)
 
@@ -779,11 +779,11 @@ def _sentinel_check(
         m_type     = _m("ProjectTypeNm", "ProjectType", "projectType", "type")
         m_validity = _m("ValidUpto", "validupto", "valid_upto")
         if m_name and not fresh.get("project_name"):
-            fresh["project_name"] = m_name
+            fresh["project_name"] = m_name  # FIELD: project_name <- marker ProjectName/title/name
         if m_type and not fresh.get("project_type"):
-            fresh["project_type"] = m_type
+            fresh["project_type"] = m_type  # FIELD: project_type <- marker ProjectTypeNm/ProjectType/projectType/type
         if m_validity and not fresh.get("estimated_finish_date"):
-            fresh["estimated_finish_date"] = _normalize_dd_mm_yyyy(m_validity) or m_validity
+            fresh["estimated_finish_date"] = _normalize_dd_mm_yyyy(m_validity) or m_validity  # FIELD: estimated_finish_date <- marker ValidUpto/validupto/valid_upto
         # Derive estimated_commencement_date from finish date minus period of completion
         comp_year_s = fresh.pop("_completion_year", None)
         comp_month_s = fresh.pop("_completion_month", None)
@@ -807,7 +807,7 @@ def _sentinel_check(
                         months=int(comp_month_s or 0),
                     )
                     commence_dt = finish_dt - delta
-                    fresh["estimated_commencement_date"] = (
+                    fresh["estimated_commencement_date"] = (  # FIELD: estimated_commencement_date <- finish_dt (ValidUpto) - period of completion
                         commence_dt.strftime("%Y-%m-%d 00:00:00+00:00")
                     )
             except Exception:
@@ -816,10 +816,10 @@ def _sentinel_check(
         if not fresh.get("number_of_residential_units"):
             flats = inventory.get("total_units") or inventory.get("residential_units")
             if flats:
-                fresh["number_of_residential_units"] = flats
+                fresh["number_of_residential_units"] = flats  # FIELD: number_of_residential_units <- inventory total_units/residential_units
 
         # project_state is injected from config in run(), not scraped from the portal
-        fresh["project_state"] = config.get("state", "Himachal Pradesh")
+        fresh["project_state"] = config.get("state", "Himachal Pradesh")  # FIELD: project_state <- config "state" (default "Himachal Pradesh")
 
     except Exception as exc:
         logger.error(f"Sentinel: fetch/parse error — {exc}", step="sentinel")
@@ -945,15 +945,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                 # Pull internal completion year/month out of proj_data
                 data_extras: dict = {
-                    "govt_type": "state",
-                    "arrived_date": datetime.now(tz=UTC).isoformat(),
+                    "govt_type": "state",  # FIELD: data.govt_type <- literal "state"
+                    "arrived_date": datetime.now(tz=UTC).isoformat(),  # FIELD: data.arrived_date <- datetime.now(UTC).isoformat()
                 }
                 comp_year = proj_data.pop("_completion_year", None)
                 comp_month = proj_data.pop("_completion_month", None)
                 if comp_year:
-                    data_extras["completion_year"] = comp_year
+                    data_extras["completion_year"] = comp_year  # FIELD: data.completion_year <- proj_data popped "_completion_year"
                 if comp_month:
-                    data_extras["completion_month"] = comp_month
+                    data_extras["completion_month"] = comp_month  # FIELD: data.completion_month <- proj_data popped "_completion_month"
 
                 # Merge location: prefer parsed detail, fill gaps from marker
                 loc: dict = proj_data.pop("project_location_raw", None) or {}
@@ -991,7 +991,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 # Flats count: prefer inventory, fall back to marker
                 flats_count = inventory.get("total_units") or inventory.get("residential_units")
                 if flats_count:
-                    data_extras["flats"] = str(flats_count)
+                    data_extras["flats"] = str(flats_count)  # FIELD: data.flats <- inventory total_units/residential_units
 
                 # Promoter contact fallback from marker (MobileNo / EmailId)
                 promoter_contact = promoter.get("promoter_contact_details") or {}
@@ -1004,31 +1004,31 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                 # Construction area from marker if not found in project details
                 if m_area and proj_data.get("construction_area") is None:
-                    proj_data["construction_area"] = _parse_area(m_area)
+                    proj_data["construction_area"] = _parse_area(m_area)  # FIELD: construction_area <- _parse_area(marker Area) fallback
 
                 # Approved date from marker RegDate
                 if m_reg_date and not proj_data.get("approved_on_date"):
-                    proj_data["approved_on_date"] = _normalize_dd_mm_yyyy(m_reg_date) or m_reg_date
+                    proj_data["approved_on_date"] = _normalize_dd_mm_yyyy(m_reg_date) or m_reg_date  # FIELD: approved_on_date <- marker RegDate
 
                 # Assemble payload
                 payload: dict = {
-                    "key": key,
-                    "project_registration_no": reg_no,
-                    "project_name": m_name or None,
-                    "project_type": m_type or None,
-                    "promoter_name": promoter.get("promoter_name") or m_promoter or None,
-                    "promoter_address_raw": promoter.get("promoter_address_raw"),
-                    "promoter_contact_details": promoter_contact or None,
-                    "promoters_details": promoter.get("promoters_details"),
-                    "state": config["state"],
-                    "project_state": config["state"],
-                    "domain": DOMAIN,
-                    "config_id": config.get("config_id"),
-                    "url": PUBLIC_DASHBOARD_URL,
-                    "is_live": True,
-                    "machine_name": machine_name,
-                    "crawl_machine_ip": machine_ip,
-                    "data": data_extras,
+                    "key": key,  # FIELD: key <- generate_project_key(reg_no)
+                    "project_registration_no": reg_no,  # FIELD: project_registration_no <- qs_map registration number
+                    "project_name": m_name or None,  # FIELD: project_name <- marker ProjectName/title/name
+                    "project_type": m_type or None,  # FIELD: project_type <- marker ProjectTypeNm/ProjectType/projectType/type
+                    "promoter_name": promoter.get("promoter_name") or m_promoter or None,  # FIELD: promoter_name <- promoter parser, fallback marker PromoterName
+                    "promoter_address_raw": promoter.get("promoter_address_raw"),  # FIELD: promoter_address_raw <- _parse_promoter_details
+                    "promoter_contact_details": promoter_contact or None,  # FIELD: promoter_contact_details <- promoter parser + marker MobileNo/EmailId
+                    "promoters_details": promoter.get("promoters_details"),  # FIELD: promoters_details <- _parse_promoter_details
+                    "state": config["state"],  # FIELD: state <- config "state"
+                    "project_state": config["state"],  # FIELD: project_state <- config "state"
+                    "domain": DOMAIN,  # FIELD: domain <- constant DOMAIN ("hprera.nic.in")
+                    "config_id": config.get("config_id"),  # FIELD: config_id <- config "config_id"
+                    "url": PUBLIC_DASHBOARD_URL,  # FIELD: url <- constant PUBLIC_DASHBOARD_URL
+                    "is_live": True,  # FIELD: is_live <- literal True
+                    "machine_name": machine_name,  # FIELD: machine_name <- get_machine_context()
+                    "crawl_machine_ip": machine_ip,  # FIELD: crawl_machine_ip <- get_machine_context()
+                    "data": data_extras,  # FIELD: data <- data_extras dict (govt_type/arrived_date/completion_*/flats)
                 }
 
                 # Overlay project detail fields (don't overwrite keys already set)
@@ -1037,29 +1037,29 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         payload[fld] = val
 
                 if loc:
-                    payload["project_location_raw"] = loc
+                    payload["project_location_raw"] = loc  # FIELD: project_location_raw <- merged loc (proj_data + marker Latitude/Longitude/Address)
                 if bank:
-                    payload["bank_details"] = bank
+                    payload["bank_details"] = bank  # FIELD: bank_details <- _parse_bank_details(bank_soup)
                 if professionals:
-                    payload["professional_information"] = professionals
+                    payload["professional_information"] = professionals  # FIELD: professional_information <- _parse_professionals(prof_soup)
 
                 res_units = inventory.get("residential_units")
                 com_units = inventory.get("commercial_units")
                 # If residential_units wasn't classified by keyword matching, fall
                 # back to flats_count (total_units / residential_units from inventory).
                 if res_units:
-                    payload["number_of_residential_units"] = res_units
+                    payload["number_of_residential_units"] = res_units  # FIELD: number_of_residential_units <- inventory residential_units
                 elif flats_count:
-                    payload["number_of_residential_units"] = flats_count
+                    payload["number_of_residential_units"] = flats_count  # FIELD: number_of_residential_units <- inventory total_units (fallback)
                 if com_units:
-                    payload["number_of_commercial_units"] = com_units
+                    payload["number_of_commercial_units"] = com_units  # FIELD: number_of_commercial_units <- inventory commercial_units
 
                 if docs:
-                    payload["uploaded_documents"] = docs
+                    payload["uploaded_documents"] = docs  # FIELD: uploaded_documents <- _extract_documents(docs_soup)
 
                 # Date: validity from marker as estimated_finish_date fallback
                 if m_validity and not payload.get("estimated_finish_date"):
-                    payload["estimated_finish_date"] = (
+                    payload["estimated_finish_date"] = (  # FIELD: estimated_finish_date <- marker ValidUpto
                         _normalize_dd_mm_yyyy(m_validity) or m_validity
                     )
 
@@ -1085,7 +1085,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                                 months=int(comp_month or 0),
                             )
                             commence_dt = finish_dt - delta
-                            payload["estimated_commencement_date"] = (
+                            payload["estimated_commencement_date"] = (  # FIELD: estimated_commencement_date <- finish_dt (ValidUpto) - period of completion
                                 commence_dt.strftime("%Y-%m-%d 00:00:00+00:00")
                             )
                     except Exception:
@@ -1101,7 +1101,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         "project_name missing — falling back to registration number",
                         reg_no=reg_no, step="normalize",
                     )
-                    payload["project_name"] = reg_no
+                    payload["project_name"] = reg_no  # FIELD: project_name <- fallback to registration number
 
                 # Normalize and validate
                 logger.info("Normalizing and validating", step="normalize")
