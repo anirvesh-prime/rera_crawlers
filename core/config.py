@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     # (rera_projects, rera_project_documents, checkpoints) and S3 uploads
     # remain skipped.  No effect when TEST_MODE is False.
     TEST_MODE_LOG_TO_DB: bool = False
+    # --tester flag: implies --test (no S3 / no DB writes of any kind) and
+    # routes verbose, per-field logs to stdout so the dashboard tester can
+    # show what the crawler is extracting in real time.  Never set in cron.
+    CRAWLER_TESTER: bool = False
     CRAWL_ITEM_LIMIT: int = 0        # 0 = unlimited
     CRAWL_DELAY_SCALE: float = 1.0   # scales random crawler throttling delays
     SCRAPE_DETAILS: bool = True      # set False to skip detail-page fetches

@@ -110,11 +110,11 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
         txt = span.get_text(separator=" ", strip=True)
         m = re.search(r"RERA Registration No\.\s*:?\s*(\S+)", txt, re.I)
         if m:
-            out["project_registration_no"] = m.group(1).strip()
+            out["project_registration_no"] = m.group(1).strip()  # FIELD: project_registration_no <- span.reg "RERA Registration No"
         m2 = re.search(r"Registration Type\s*:?\s*(.+)", txt, re.I)
         if m2:
             reg_type = m2.group(1).strip()
-            out.setdefault("promoters_details", {})["type_of_firm"] = reg_type
+            out.setdefault("promoters_details", {})["type_of_firm"] = reg_type  # FIELD: promoters_details.type_of_firm <- span.reg "Registration Type"
             raw["promoter_type"] = reg_type
 
     # ── Project name and promoter from header ─────────────────────────────────
@@ -124,14 +124,14 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
         if name_div:
             h1 = name_div.find("h1")
             if h1:
-                out["project_name"] = h1.get_text(strip=True)
+                out["project_name"] = h1.get_text(strip=True)  # FIELD: project_name <- detail header col-md-9 <h1>
         profile_box = detail_header.find("div", class_="profile_box")
         if profile_box:
             h1 = profile_box.find("h1")
             if h1:
                 promoter = h1.get_text(separator=" ", strip=True).split("Applicant")[0].strip()
-                out["promoter_name"] = promoter
-                out.setdefault("promoters_details", {})["name"] = promoter
+                out["promoter_name"] = promoter  # FIELD: promoter_name <- profile_box <h1> split on "Applicant"
+                out.setdefault("promoters_details", {})["name"] = promoter  # FIELD: promoters_details.name <- profile_box <h1> split on "Applicant"
 
     # ── Project image from profile box ───────────────────────────────────────
     profile_box = soup.find("div", class_="profile_box")
@@ -140,7 +140,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
         if img and img.get("src"):
             src = img["src"]
             img_url = src if src.startswith("http") else (BASE_URL + "/" + src.lstrip("/"))
-            out["project_images"] = [img_url]
+            out["project_images"] = [img_url]  # FIELD: project_images <- profile_box <img> src
 
     # ── Bootstrap grid key-value pairs ───────────────────────────────────────
     # Only process rows whose direct children have col-* classes (not wrapper rows
@@ -173,20 +173,20 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
                     # Land area
                     if ll == "total area of project land":
                         try:
-                            out["land_area"] = float(value)
+                            out["land_area"] = float(value)  # FIELD: land_area <- raw label "total area of project land"
                         except ValueError:
                             pass
                     # Construction area
                     if "total covered area" in ll:
                         try:
-                            out["construction_area"] = float(value)
+                            out["construction_area"] = float(value)  # FIELD: construction_area <- raw label "total covered area"
                         except ValueError:
                             pass
                     # Project cost
                     if ll == "estimated cost of project":
-                        out["project_cost_detail"] = {
-                            "total_project_cost": value,
-                            "estimated_project_cost": value,
+                        out["project_cost_detail"] = {  # FIELD: project_cost_detail <- raw label "estimated cost of project"
+                            "total_project_cost": value,  # FIELD: project_cost_detail.total_project_cost <- "estimated cost of project" value
+                            "estimated_project_cost": value,  # FIELD: project_cost_detail.estimated_project_cost <- "estimated cost of project" value
                         }
                 i += 2
             else:
@@ -197,7 +197,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
         if "Project Description" in h1.get_text():
             nxt = h1.find_next("p")
             if nxt:
-                out["project_description"] = nxt.get_text(strip=True)
+                out["project_description"] = nxt.get_text(strip=True)  # FIELD: project_description <- <p> after <h1> "Project Description"
             break
 
     # ── Location raw: build raw_address ──────────────────────────────────────
@@ -218,7 +218,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
         if raw_address:
             location_raw["raw_address"] = raw_address
             raw["raw_address"] = raw_address
-        out["project_location_raw"] = location_raw
+        out["project_location_raw"] = location_raw  # FIELD: project_location_raw <- location_raw dict (state/district/taluk/village)
 
     # ── Tables ────────────────────────────────────────────────────────────────
     tables = soup.find_all("table")
@@ -237,9 +237,9 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
         rows0 = _table_rows(tables[0])
         if rows0:
             contact = rows0[0]
-            out["promoter_contact_details"] = {
-                "email": contact.get("E-mail", ""),
-                "phone": contact.get("Mobile", ""),
+            out["promoter_contact_details"] = {  # FIELD: promoter_contact_details <- tables[0] first row (applicant contact)
+                "email": contact.get("E-mail", ""),  # FIELD: promoter_contact_details.email <- tables[0] "E-mail" column
+                "phone": contact.get("Mobile", ""),  # FIELD: promoter_contact_details.phone <- tables[0] "Mobile" column
             }
             raw["applicant_table"] = rows0
 
@@ -256,7 +256,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
                 except ValueError:
                     pass
         if residential_units:
-            out["number_of_residential_units"] = residential_units
+            out["number_of_residential_units"] = residential_units  # FIELD: number_of_residential_units <- sum of tables[1] "No of Inventory"
 
     # Tables 4 + 5: architects and structural engineers
     professional_info = []
@@ -285,7 +285,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
                 "address": row.get("Address", ""),
             })
     if professional_info:
-        out["professional_information"] = professional_info
+        out["professional_information"] = professional_info  # FIELD: professional_information <- architect_table + engineer_table rows
 
     # ── Document links ────────────────────────────────────────────────────────
     doc_links = []
@@ -318,19 +318,19 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
                 if title and pct:
                     progress.append({"title": title, "progress_percentage": pct})
     if progress:
-        out["status_update"] = {"construction_progress": progress}
+        out["status_update"] = {"construction_progress": progress}  # FIELD: status_update <- progress list from Building Details panel
 
     # ── land_area_details ─────────────────────────────────────────────────────
-    out["land_area_details"] = {k: v for k, v in {
-        "land_area":              str(out["land_area"]) if out.get("land_area") is not None else None,
-        "land_area_unit":         "sq Mtr" if out.get("land_area") is not None else None,
-        "construction_area":      str(out["construction_area"]) if out.get("construction_area") is not None else None,
-        "construction_area_unit": "Sq Mtr" if out.get("construction_area") is not None else None,
+    out["land_area_details"] = {k: v for k, v in {  # FIELD: land_area_details <- composed from out.land_area / construction_area
+        "land_area":              str(out["land_area"]) if out.get("land_area") is not None else None,  # FIELD: land_area_details.land_area <- str(out["land_area"])
+        "land_area_unit":         "sq Mtr" if out.get("land_area") is not None else None,  # FIELD: land_area_details.land_area_unit <- literal "sq Mtr"
+        "construction_area":      str(out["construction_area"]) if out.get("construction_area") is not None else None,  # FIELD: land_area_details.construction_area <- str(out["construction_area"])
+        "construction_area_unit": "Sq Mtr" if out.get("construction_area") is not None else None,  # FIELD: land_area_details.construction_area_unit <- literal "Sq Mtr"
     }.items() if v is not None}
 
     raw["land_area_unit"] = "sq Mtr"
-    out["data"] = raw
-    out["_doc_links"] = doc_links
+    out["data"] = raw  # FIELD: data <- raw dict (source_url + label/value pairs)
+    out["_doc_links"] = doc_links  # FIELD: _doc_links <- doc_links list (download/DOC_ID anchors)
     return out
 
 
@@ -698,24 +698,24 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 continue
 
             data: dict = {
-                "key":                     key,
-                "state":                   config["state"],
-                "project_state":           config["state"],
-                "project_registration_no": reg_no,
-                "project_name":            card.get("project_name") or None,
-                "promoter_name":           card.get("promoter_name") or None,
-                "domain":                  DOMAIN,
-                "config_id":               config["config_id"],
-                "url":                     card.get("detail_url") or HOME_URL,
-                "is_live":                 True,
-                "machine_name":            machine_name,
-                "crawl_machine_ip":        machine_ip,
+                "key":                     key,  # FIELD: key <- generate_project_key(reg_no)
+                "state":                   config["state"],  # FIELD: state <- config["state"]
+                "project_state":           config["state"],  # FIELD: project_state <- config["state"]
+                "project_registration_no": reg_no,  # FIELD: project_registration_no <- listing card reg_no
+                "project_name":            card.get("project_name") or None,  # FIELD: project_name <- listing card project_name
+                "promoter_name":           card.get("promoter_name") or None,  # FIELD: promoter_name <- listing card promoter_name
+                "domain":                  DOMAIN,  # FIELD: domain <- module DOMAIN constant
+                "config_id":               config["config_id"],  # FIELD: config_id <- config["config_id"]
+                "url":                     card.get("detail_url") or HOME_URL,  # FIELD: url <- card detail_url or HOME_URL
+                "is_live":                 True,  # FIELD: is_live <- literal True
+                "machine_name":            machine_name,  # FIELD: machine_name <- get_machine_context()
+                "crawl_machine_ip":        machine_ip,  # FIELD: crawl_machine_ip <- get_machine_context()
             }
 
             if card.get("promoter_type") or card.get("promoter_name"):
-                data["promoters_details"] = {k: v for k, v in {
-                    "type_of_firm": card.get("promoter_type"),
-                    "name":         card.get("promoter_name"),
+                data["promoters_details"] = {k: v for k, v in {  # FIELD: promoters_details <- listing card promoter_type/promoter_name
+                    "type_of_firm": card.get("promoter_type"),  # FIELD: promoters_details.type_of_firm <- card promoter_type
+                    "name":         card.get("promoter_name"),  # FIELD: promoters_details.name <- card promoter_name
                 }.items() if v}
 
             doc_links: list[dict] = []
@@ -730,26 +730,26 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 # Use properly-cased state name from location_raw (e.g. "Goa" not "goa")
                 loc = data.get("project_location_raw") or {}
                 if isinstance(loc, dict) and loc.get("state"):
-                    data["project_state"] = loc["state"]
+                    data["project_state"] = loc["state"]  # FIELD: project_state <- project_location_raw["state"] (properly-cased)
 
                 # Build raw_address for data JSONB
                 loc = data.get("project_location_raw") or {}
                 _raw_addr = loc.get("raw_address") if isinstance(loc, dict) else None
                 promoter_type = (data.get("promoters_details") or {}).get("type_of_firm")
-                data["data"] = merge_data_sections(
+                data["data"] = merge_data_sections(  # FIELD: data <- merge_data_sections of existing data + extras
                     data.get("data"),
                     {
-                        "govt_type":      "state",
-                        "raw_address":    _raw_addr,
-                        "promoter_type":  promoter_type,
-                        "land_area_unit": "sq Mtr",
+                        "govt_type":      "state",  # FIELD: data.govt_type <- literal "state"
+                        "raw_address":    _raw_addr,  # FIELD: data.raw_address <- project_location_raw.raw_address
+                        "promoter_type":  promoter_type,  # FIELD: data.promoter_type <- promoters_details.type_of_firm
+                        "land_area_unit": "sq Mtr",  # FIELD: data.land_area_unit <- literal "sq Mtr"
                     },
                 )
                 # Use submitted_date as approved_on_date if missing
                 if not data.get("approved_on_date") and data.get("submitted_date"):
                     pass  # submitted_date is the registration date for Goa
             else:
-                data["data"] = {"govt_type": "state"}
+                data["data"] = {"govt_type": "state"}  # FIELD: data <- {"govt_type": "state"} when no detail_url
 
             logger.info("Normalizing", step="normalize")
             try:
@@ -791,13 +791,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
             if uploaded_documents:
                 upsert_project({
-                    "key":                     db_dict["key"],
-                    "url":                     db_dict["url"],
-                    "state":                   db_dict["state"],
-                    "domain":                  db_dict["domain"],
-                    "project_registration_no": db_dict["project_registration_no"],
-                    "uploaded_documents":      uploaded_documents,
-                    "document_urls":           build_document_urls(uploaded_documents),
+                    "key":                     db_dict["key"],  # FIELD: key <- db_dict["key"]
+                    "url":                     db_dict["url"],  # FIELD: url <- db_dict["url"]
+                    "state":                   db_dict["state"],  # FIELD: state <- db_dict["state"]
+                    "domain":                  db_dict["domain"],  # FIELD: domain <- db_dict["domain"]
+                    "project_registration_no": db_dict["project_registration_no"],  # FIELD: project_registration_no <- db_dict["project_registration_no"]
+                    "uploaded_documents":      uploaded_documents,  # FIELD: uploaded_documents <- list built from _handle_document results
+                    "document_urls":           build_document_urls(uploaded_documents),  # FIELD: document_urls <- build_document_urls(uploaded_documents)
                 })
 
             done_regs.add(reg_no)

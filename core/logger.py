@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 import threading
 import traceback as tb_module
 from datetime import datetime, timezone
@@ -17,6 +18,35 @@ _DOCUMENT_EVENT_FLUSH_SIZE = 50  # flush document-event buffer after this many e
 #   db_upsert / upsert  — successful DB writes (core crawl output)
 #   timing              — phase elapsed-time measurements (performance observability)
 _WRITE_STEPS = frozenset({"db_upsert", "upsert", "timing"})
+
+_TESTER_ROOT_CONFIGURED = False
+_TESTER_ROOT_LOCK = threading.Lock()
+
+
+def _configure_tester_root_logger() -> None:
+    """Install a single verbose stdout handler on the root logger.
+
+    Used only by the dashboard tester (CRAWLER_TESTER=1).  CrawlerLogger
+    instances skip their per-instance handlers in tester mode so every
+    record — including third-party libs and ``logging.getLogger(__name__)``
+    calls inside core.db etc. — propagates to this handler.  Output mirrors
+    the legacy crawler format: ``<ts> <file:line> <LEVEL> <message>``.
+    """
+    global _TESTER_ROOT_CONFIGURED
+    if _TESTER_ROOT_CONFIGURED:
+        return
+    with _TESTER_ROOT_LOCK:
+        if _TESTER_ROOT_CONFIGURED:
+            return
+        root = logging.getLogger()
+        root.setLevel(logging.DEBUG)
+        handler = logging.StreamHandler(stream=sys.stdout)
+        handler.setLevel(logging.DEBUG)
+        handler.setFormatter(logging.Formatter(
+            "%(asctime)s\t%(filename)s:%(lineno)d\t%(levelname)s\t%(message)s"
+        ))
+        root.addHandler(handler)
+        _TESTER_ROOT_CONFIGURED = True
 
 
 class _WriteStepFilter(logging.Filter):
@@ -133,7 +163,11 @@ class CrawlerLogger:
         self._logger = logging.getLogger(f"rera.{site_id}.{run_id}")
         self._logger.setLevel(logging.DEBUG)
 
-        if not self._logger.handlers:
+        if settings.CRAWLER_TESTER:
+            # Tester mode: skip all per-instance handlers and let records
+            # propagate to the verbose root handler.  No DB / JSONL writes.
+            _configure_tester_root_logger()
+        elif not self._logger.handlers:
             ch = logging.StreamHandler()
             ch.setLevel(logging.INFO)      # filter controls what actually appears
             ch.addFilter(_WriteStepFilter())  # WARNING+ always; INFO only for write steps

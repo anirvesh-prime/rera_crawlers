@@ -122,6 +122,18 @@ def parse_args() -> argparse.Namespace:
             "test run is visible on the dashboard."
         ),
     )
+    parser.add_argument(
+        "--tester",
+        action="store_true",
+        default=False,
+        help=(
+            "Dashboard tester mode: implies --test (no S3 / no DB writes), forces "
+            "sequential execution, requires exactly one --site, and routes every "
+            "INFO/DEBUG record to stdout including per-field dumps of every "
+            "extracted project.  Intended only for the dashboard 'Test Crawler' "
+            "button — never use in cron."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -211,6 +223,17 @@ def apply_runtime_overrides(args: argparse.Namespace) -> int:
     if getattr(args, "test_logs", False):
         args.test = True
 
+    # --tester implies --test and enables verbose console logging via
+    # CRAWLER_TESTER.  No log-table writes either (test_logs stays off).
+    if getattr(args, "tester", False):
+        args.test = True
+        os.environ["CRAWLER_TESTER"] = "true"
+        settings.CRAWLER_TESTER = True
+        # Trigger root-logger setup in the parent process so banner/print
+        # output from this module is also visible in tester mode.
+        from core.logger import _configure_tester_root_logger
+        _configure_tester_root_logger()
+
     if getattr(args, "test", False):
         os.environ["TEST_MODE"] = "true"
         os.environ["DRY_RUN_S3"] = "true"
@@ -251,9 +274,13 @@ def main():
         print("[ERROR] No sites selected to run.")
         return
 
+    if getattr(args, "tester", False) and len(sites) != 1:
+        print("[ERROR] --tester requires exactly one --site")
+        return
+
     ensure_playwright_browsers(sites)
 
-    parallel = not args.sequential and len(sites) > 1
+    parallel = not args.sequential and not getattr(args, "tester", False) and len(sites) > 1
 
     started = datetime.now(timezone.utc)
     host = socket.gethostname()
@@ -286,7 +313,9 @@ def main():
     print(f"  States    : {', '.join(site_ids)}")
     print(f"  Started   : {started.strftime('%Y-%m-%d %H:%M:%S UTC')}")
     if getattr(args, "test", False):
-        if getattr(args, "test_logs", False):
+        if getattr(args, "tester", False):
+            print(f"  *** TESTER MODE (--tester): no DB / S3 writes; verbose console logging ***")
+        elif getattr(args, "test_logs", False):
             print(f"  *** TEST MODE (--test-logs): S3 uploads + data writes SKIPPED; log tables WRITTEN ***")
         else:
             print(f"  *** TEST MODE: S3 uploads and DB writes are SKIPPED ***")

@@ -199,40 +199,42 @@ def _parse_detail_page(detail_url: str, listing_row: dict, logger: CrawlerLogger
     # ── Registration number ───────────────────────────────────────────────────
     reg_m = _REG_RE.search(resp.text)
     if reg_m:
-        out["project_registration_no"] = reg_m.group(0)
+        out["project_registration_no"] = reg_m.group(0)  # FIELD: project_registration_no <- regex PCGRERA\w+ in detail page text
 
     # ── Basic form fields ─────────────────────────────────────────────────────
-    out["project_name"]  = _field(soup, "ctl00$ContentPlaceHolder1$txt_proj_name")
-    out["project_type"]  = _field(soup, "ctl00$ContentPlaceHolder1$DropDownList5")
+    out["project_name"]  = _field(soup, "ctl00$ContentPlaceHolder1$txt_proj_name")  # FIELD: project_name <- input txt_proj_name
+    out["project_type"]  = _field(soup, "ctl00$ContentPlaceHolder1$DropDownList5")  # FIELD: project_type <- input DropDownList5
+    # FIELD: project_state <- select State_Name (fallback "Chhattisgarh")
     out["project_state"] = _select_val(soup, "ctl00$ContentPlaceHolder1$State_Name") or "Chhattisgarh"
 
     raw_end = _field(soup, "ctl00$ContentPlaceHolder1$txtenddate")
-    out["estimated_finish_date"] = _parse_date(raw_end, _DATE_FMT)
+    out["estimated_finish_date"] = _parse_date(raw_end, _DATE_FMT)  # FIELD: estimated_finish_date <- _parse_date(input txtenddate)
     # Also expose raw string so run() can use it for data["data"]["end_date"]
     # (storing the parsed datetime in that field loses information and causes
     # a format mismatch with the expected raw-string representation).
-    out["_raw_end_date"] = raw_end
+    out["_raw_end_date"] = raw_end  # FIELD: _raw_end_date <- input txtenddate (raw string)
 
     ecoc = _field(soup, "ctl00$ContentPlaceHolder1$txtecoc")
     ecol = _field(soup, "ctl00$ContentPlaceHolder1$txtecol")
     if ecoc or ecol:
-        out["project_cost_detail"] = {
-            "estimated_construction_cost": ecoc,
-            "cost_of_land":                ecol,
+        out["project_cost_detail"] = {  # FIELD: project_cost_detail <- dict literal {construction_cost, cost_of_land}
+            "estimated_construction_cost": ecoc,  # FIELD: project_cost_detail.estimated_construction_cost <- input txtecoc
+            "cost_of_land":                ecol,  # FIELD: project_cost_detail.cost_of_land <- input txtecol
         }
 
     # ── Promoter / contact ────────────────────────────────────────────────────
-    out["promoter_name"] = _field(soup, "ctl00$ContentPlaceHolder1$txt_p_name")
+    out["promoter_name"] = _field(soup, "ctl00$ContentPlaceHolder1$txt_p_name")  # FIELD: promoter_name <- input txt_p_name
     preg_addr = _field(soup, "ctl00$ContentPlaceHolder1$txt_p_registeredaddress")
     if preg_addr:
-        out["promoter_address_raw"] = {"registered_address": preg_addr}
+        out["promoter_address_raw"] = {"registered_address": preg_addr}  # FIELD: promoter_address_raw <- {registered_address: txt_p_registeredaddress}
     email = _field(soup, "ctl00$ContentPlaceHolder1$txt_pemail")
     phone = _field(soup, "ctl00$ContentPlaceHolder1$txt_pmobile")
     if email or phone:
+        # FIELD: promoter_contact_details <- {email: txt_pemail, phone: txt_pmobile} (non-empty)
         out["promoter_contact_details"] = {k: v for k, v in {"email": email, "phone": phone}.items() if v}
     firm_type = _select_val(soup, "ctl00$ContentPlaceHolder1$DropDownList1")
     promoter_name = out.get("promoter_name") or listing_row.get("project_name", "")
-    out["promoters_details"] = {"name": promoter_name, "type_of_firm": firm_type}
+    out["promoters_details"] = {"name": promoter_name, "type_of_firm": firm_type}  # FIELD: promoters_details <- {name, type_of_firm: DropDownList1}
 
     # ── Bank details ──────────────────────────────────────────────────────────
     bank = {
@@ -243,7 +245,7 @@ def _parse_detail_page(detail_url: str, listing_row: dict, logger: CrawlerLogger
         "IFSC":         _field(soup, "ctl00$ContentPlaceHolder1$TextBox6"),
     }
     if any(bank.values()):
-        out["bank_details"] = {k: v for k, v in bank.items() if v}
+        out["bank_details"] = {k: v for k, v in bank.items() if v}  # FIELD: bank_details <- bank dict TextBox2-6 (non-empty values)
 
     # ── Location (merge listing map data + detail page selects) ───────────────
     district = _select_val(soup, "ctl00$ContentPlaceHolder1$District_Name") or listing_row.get("district")
@@ -257,7 +259,7 @@ def _parse_detail_page(detail_url: str, listing_row: dict, logger: CrawlerLogger
         loc["longitude"]          = str(lon)
         loc["processed_latitude"] = lat
         loc["processed_longitude"] = lon
-    out["project_location_raw"] = {k: v for k, v in loc.items() if v}
+    out["project_location_raw"] = {k: v for k, v in loc.items() if v}  # FIELD: project_location_raw <- loc dict (state/district/taluk/addr/lat/lon)
 
     return out
 
@@ -275,19 +277,20 @@ def _parse_quarterly_data(soup: BeautifulSoup, resp_text: str) -> dict:
         # Approved on date = start date of first quarterly entry
         if data:
             first_from = data[0][0] if data[0] else ""
-            out["approved_on_date"] = _parse_date(first_from, _DATE_FMT2)
+            out["approved_on_date"] = _parse_date(first_from, _DATE_FMT2)  # FIELD: approved_on_date <- grid_status first row "From Date"
         # Status = last row's Project Status column
         last = data[-1] if data else []
         if last:
+            # FIELD: status_of_the_project <- grid_status last row "Project Status" col
             try: out["status_of_the_project"] = last[headers.index("Project Status")]
             except (ValueError, IndexError): pass
             try:
                 to_date = last[1]
                 pct     = last[headers.index("Completion(%)")]
-                out["construction_progress"] = [{
-                    "title":              "total_completion_percentage",
-                    "date_of_reporting":  _parse_date(to_date, _DATE_FMT2),
-                    "progress_percentage": pct,
+                out["construction_progress"] = [{  # FIELD: construction_progress <- [grid_status last row To Date + Completion(%)]
+                    "title":              "total_completion_percentage",  # FIELD: construction_progress[].title <- literal
+                    "date_of_reporting":  _parse_date(to_date, _DATE_FMT2),  # FIELD: construction_progress[].date_of_reporting <- last row To Date
+                    "progress_percentage": pct,  # FIELD: construction_progress[].progress_percentage <- last row "Completion(%)" col
                 }]
             except (ValueError, IndexError):
                 pass
@@ -342,7 +345,7 @@ def _parse_quarterly_data(soup: BeautifulSoup, resp_text: str) -> dict:
                 building_details.append(entry)
 
     if building_details:
-        out["building_details"] = building_details
+        out["building_details"] = building_details  # FIELD: building_details <- [_brief_row_to_detail() from grid_brief_plot rows]
 
     # ── number_of_residential_units from grid_brief_plot (Total Plots column) ─
     if len(all_rows) > 1:
@@ -351,8 +354,8 @@ def _parse_quarterly_data(soup: BeautifulSoup, resp_text: str) -> dict:
             last_data = all_rows[-1]
             total = last_data[h.index(col_total)]
             if total.isdigit():
-                out["number_of_residential_units"] = int(total)
-                out["_total_unit"] = total
+                out["number_of_residential_units"] = int(total)  # FIELD: number_of_residential_units <- int(grid_brief_plot last row "Total Plots")
+                out["_total_unit"] = total  # FIELD: _total_unit <- grid_brief_plot last row "Total Plots" col
         except (ValueError, IndexError):
             pass
 
@@ -366,7 +369,7 @@ def _parse_quarterly_data(soup: BeautifulSoup, resp_text: str) -> dict:
         land_detail["encumbrance_certificate"] = _abs_link(a["href"])
         break
     if land_detail:
-        out["land_detail"] = land_detail
+        out["land_detail"] = land_detail  # FIELD: land_detail <- {no_of_plots, encumbrance_certificate ENUM_ link}
 
     # ── Professional team details ─────────────────────────────────────────────
     professionals: list[dict] = []
@@ -389,7 +392,7 @@ def _parse_quarterly_data(soup: BeautifulSoup, resp_text: str) -> dict:
     if arch_name:
         professionals.append({"name": arch_name, "role": "Architect", "registration_no": arch_lic})
     if professionals:
-        out["professional_information"] = professionals
+        out["professional_information"] = professionals  # FIELD: professional_information <- [CA/Engineer/Architect lbl_* spans]
 
     # ── Provided facility (Single_gv_ProjectList Particulars column) ──────────
     gvp_rows = _table_rows(soup, "ContentPlaceHolder1_Single_gv_ProjectList")
@@ -398,11 +401,12 @@ def _parse_quarterly_data(soup: BeautifulSoup, resp_text: str) -> dict:
             part_idx = gvp_rows[0].index("Particulars")
             parts = [r[part_idx] for r in gvp_rows[1:] if len(r) > part_idx and r[part_idx]]
             if parts:
-                out["provided_faciltiy"] = {"facility": " ".join(parts)}
+                out["provided_faciltiy"] = {"facility": " ".join(parts)}  # FIELD: provided_faciltiy <- Single_gv_ProjectList "Particulars" joined
         except ValueError:
             pass
 
     # ── land_area_details (always include even when null values) ──────────────
+    # FIELD: land_area_details <- always {construction_area: None, construction_area_unit: None}
     out["land_area_details"] = {"construction_area": None, "construction_area_unit": None}
 
     # ── status_update ─────────────────────────────────────────────────────────
@@ -470,7 +474,7 @@ def _parse_quarterly_data(soup: BeautifulSoup, resp_text: str) -> dict:
     if gv_progress:
         status_update["construction_progress"] = gv_progress
     if status_update:
-        out["status_update"] = status_update
+        out["status_update"] = status_update  # FIELD: status_update <- {plot_detail, building_details, construction_progress}
 
     return out
 
@@ -887,16 +891,16 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 continue
 
             data: dict = {
-                "key":                     key,
-                "state":                   config["state"],
-                "project_registration_no": reg_no,
-                "project_name":            stub.get("project_name"),
-                "domain":                  DOMAIN,
-                "config_id":               config["config_id"],
-                "url":                     detail_url or LISTING_URL,
-                "is_live":                 True,
-                "machine_name":            machine_name,
-                "crawl_machine_ip":        machine_ip,
+                "key":                     key,  # FIELD: key <- generate_project_key(reg_no)
+                "state":                   config["state"],  # FIELD: state <- config["state"]
+                "project_registration_no": reg_no,  # FIELD: project_registration_no <- listing stub reg_no
+                "project_name":            stub.get("project_name"),  # FIELD: project_name <- listing stub title
+                "domain":                  DOMAIN,  # FIELD: domain <- DOMAIN constant
+                "config_id":               config["config_id"],  # FIELD: config_id <- config["config_id"]
+                "url":                     detail_url or LISTING_URL,  # FIELD: url <- detail_url or LISTING_URL
+                "is_live":                 True,  # FIELD: is_live <- literal True
+                "machine_name":            machine_name,  # FIELD: machine_name <- get_machine_context()
+                "crawl_machine_ip":        machine_ip,  # FIELD: crawl_machine_ip <- get_machine_context()
             }
 
             doc_links: list[dict] = []
@@ -921,18 +925,18 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     doc_links  = _parse_documents(soup2, resp2.text)
                     images     = _parse_images(soup2)
                     if images:
-                        data["project_images"] = images
+                        data["project_images"] = images  # FIELD: project_images <- _parse_images(soup2)
 
                     total_unit = qdata.get("_total_unit")
                     # Use the raw end-date string (e.g. "30-04-2022") rather
                     # than the parsed datetime so the stored value matches the
                     # site's original representation.
                     raw_end_date = data.pop("_raw_end_date", "") or data.get("estimated_finish_date", "")
-                    data["data"] = merge_data_sections({
-                        "govt_type":               "state",
-                        "total_unit":              total_unit,
-                        "construction_area_unit":  "sq.metre",
-                        "end_date":                raw_end_date,
+                    data["data"] = merge_data_sections({  # FIELD: data <- merge_data_sections({...})
+                        "govt_type":               "state",  # FIELD: data.govt_type <- literal "state"
+                        "total_unit":              total_unit,  # FIELD: data.total_unit <- qdata["_total_unit"]
+                        "construction_area_unit":  "sq.metre",  # FIELD: data.construction_area_unit <- literal "sq.metre"
+                        "end_date":                raw_end_date,  # FIELD: data.end_date <- _raw_end_date or estimated_finish_date
                     })
 
             logger.info("Normalizing and validating", step="normalize")
@@ -955,9 +959,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             # {"construction_area": None, "construction_area_unit": None} to {}
             # → None via clean_json, so we inject it post-normalization.
             if not db_dict.get("land_area_details"):
-                db_dict["land_area_details"] = {
-                    "construction_area": None,
-                    "construction_area_unit": None,
+                db_dict["land_area_details"] = {  # FIELD: land_area_details <- fallback {None, None} post-normalize
+                    "construction_area": None,  # FIELD: land_area_details.construction_area <- literal None
+                    "construction_area_unit": None,  # FIELD: land_area_details.construction_area_unit <- literal None
                 }
 
             action = upsert_project(db_dict)
@@ -986,13 +990,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
             if uploaded_documents:
                 upsert_project({
-                    "key":                     db_dict["key"],
-                    "url":                     db_dict["url"],
-                    "state":                   db_dict["state"],
-                    "domain":                  db_dict["domain"],
-                    "project_registration_no": db_dict["project_registration_no"],
-                    "uploaded_documents":      uploaded_documents,
-                    "document_urls":           build_document_urls(uploaded_documents),
+                    "key":                     db_dict["key"],  # FIELD: key <- db_dict["key"]
+                    "url":                     db_dict["url"],  # FIELD: url <- db_dict["url"]
+                    "state":                   db_dict["state"],  # FIELD: state <- db_dict["state"]
+                    "domain":                  db_dict["domain"],  # FIELD: domain <- db_dict["domain"]
+                    "project_registration_no": db_dict["project_registration_no"],  # FIELD: project_registration_no <- db_dict
+                    "uploaded_documents":      uploaded_documents,  # FIELD: uploaded_documents <- _handle_document() results
+                    "document_urls":           build_document_urls(uploaded_documents),  # FIELD: document_urls <- build_document_urls()
                 })
 
             done_regs.add(reg_no)

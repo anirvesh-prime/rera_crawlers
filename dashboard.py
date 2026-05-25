@@ -18,6 +18,7 @@ import re
 import signal
 import subprocess
 import sys
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -392,6 +393,13 @@ _TEMPLATE = """<!DOCTYPE html>
     .run-result { font-size:.72rem; font-family:monospace; background:#0d1117;
                    border:1px solid #30363d; border-radius:4px; padding:8px;
                    margin-top:10px; word-break:break-all; }
+    .test-log { background:#0d1117; color:#e6edf3; border:1px solid #30363d;
+                 border-radius:4px; padding:10px; font-family:Menlo,Consolas,monospace;
+                 font-size:.72rem; line-height:1.35; height:55vh; overflow-y:auto;
+                 white-space:pre-wrap; word-break:break-word; margin:0; }
+    .test-log .lvl-ERROR { color:#f85149; }
+    .test-log .lvl-WARNING { color:#d29922; }
+    .test-log .lvl-DEBUG { color:#6e7681; }
   </style>
 </head>
 <body>
@@ -420,8 +428,8 @@ _TEMPLATE = """<!DOCTYPE html>
     {% endif %}
   </div>
   <div class="d-flex align-items-center gap-2">
-    <button type="button" class="btn btn-run" data-bs-toggle="modal" data-bs-target="#runModal">
-      ▶ Run Crawlers
+    <button type="button" class="btn btn-run" data-bs-toggle="modal" data-bs-target="#testModal">
+      🧪 Test Crawler
     </button>
     <button type="button" class="btn btn-stop" data-bs-toggle="modal" data-bs-target="#killModal">
       ■ Stop Crawlers
@@ -692,93 +700,57 @@ _TEMPLATE = """<!DOCTYPE html>
   </div><!-- /.row -->
 </div><!-- /.container-fluid -->
 
-{# ── Run Crawlers modal ───────────────────────────────────────────────── #}
-<div class="modal fade" id="runModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+{# ── Test Crawler modal ───────────────────────────────────────────────── #}
+<div class="modal fade" id="testModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">▶ Run Crawlers</h5>
+        <h5 class="modal-title">🧪 Test Crawler <span style="font-size:.7rem;color:#8b949e;font-weight:400;">— verbose, single-site, no DB / S3 writes</span></h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <form id="runForm">
-
-          <div class="mb-3">
-            <label class="form-label d-block mb-2">Mode</label>
-            <div class="form-check form-check-inline">
-              <input class="form-check-input" type="radio" name="mode" id="modeDaily" value="daily_light" checked>
-              <label class="form-check-label" for="modeDaily">daily_light</label>
+        <form id="testForm" class="mb-2">
+          <div class="row g-3 align-items-end">
+            <div class="col-md-5">
+              <label class="form-label">Site</label>
+              <select class="form-select" id="testSite">
+                {% for site in sites %}
+                <option value="{{ site.id }}" {% if not site.enabled %}data-disabled="1"{% endif %}>
+                  {{ site.name }}{% if not site.enabled %} (disabled){% endif %}
+                </option>
+                {% endfor %}
+              </select>
             </div>
-            <div class="form-check form-check-inline">
-              <input class="form-check-input" type="radio" name="mode" id="modeWeekly" value="weekly_deep">
-              <label class="form-check-label" for="modeWeekly">weekly_deep</label>
+            <div class="col-md-3">
+              <label class="form-label">Mode</label>
+              <select class="form-select" id="testMode">
+                <option value="daily_light" selected>daily_light</option>
+                <option value="weekly_deep">weekly_deep</option>
+              </select>
             </div>
-          </div>
-
-          <hr>
-
-          <div class="mb-3">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <label class="form-label mb-0">Sites</label>
-              <div>
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="sitesAll">All enabled</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary" id="sitesNone">Clear</button>
-              </div>
+            <div class="col-md-2">
+              <label class="form-label">Item limit</label>
+              <input type="number" class="form-control" id="testItemLimit" min="1" value="3">
             </div>
-            <div class="form-check mb-2">
-              <input class="form-check-input" type="checkbox" id="runAllSites" checked>
-              <label class="form-check-label" for="runAllSites">
-                Run all enabled sites (default)
-              </label>
-            </div>
-            <div class="site-list" id="siteList">
-              {% for site in sites %}
-              <div class="form-check">
-                <input class="form-check-input site-checkbox" type="checkbox"
-                       value="{{ site.id }}" id="site_{{ site.id }}"
-                       data-enabled="{{ '1' if site.enabled else '0' }}">
-                <label class="form-check-label" for="site_{{ site.id }}">
-                  {{ site.name }}
-                  <span style="font-size:.65rem;color:#8b949e;">{{ site.id }}</span>
-                  {% if not site.enabled %}<span class="badge bg-none ms-1">disabled</span>{% endif %}
-                </label>
-              </div>
-              {% endfor %}
+            <div class="col-md-2 d-grid">
+              <button type="button" class="btn btn-run" id="testStart">▶ Start</button>
             </div>
           </div>
-
-          <hr>
-
-          <div class="row g-3">
-            <div class="col-md-6">
-              <div class="form-check mb-2">
-                <input class="form-check-input" type="checkbox" id="useItemLimit" checked>
-                <label class="form-check-label" for="useItemLimit">
-                  Apply item limit
-                </label>
-              </div>
-              <input type="number" class="form-control" id="itemLimit" min="1" value="10">
-              <div style="font-size:.68rem;color:#8b949e;margin-top:4px;">
-                Caps each crawler to N projects. Uncheck to run unlimited.
-              </div>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">&nbsp;</label>
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="testLogs" checked>
-                <label class="form-check-label" for="testLogs">
-                  --test-logs <span style="font-size:.7rem;color:#8b949e;">(skip writes, keep logs)</span>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <div id="runResult" class="run-result" style="display:none;"></div>
         </form>
+
+        <div class="d-flex justify-content-between align-items-center mb-1" style="font-size:.72rem;color:#8b949e;">
+          <div id="testStatus">Idle</div>
+          <div>
+            <label style="margin-right:8px;"><input type="checkbox" id="testAutoScroll" checked> auto-scroll</label>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="testClear">Clear</button>
+            <button type="button" class="btn btn-sm btn-stop" id="testStop" disabled>■ Stop</button>
+          </div>
+        </div>
+
+        <pre id="testLog" class="test-log"></pre>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-run" id="runSubmit">▶ Start run</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -826,90 +798,157 @@ _TEMPLATE = """<!DOCTYPE html>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 (function() {
-  const runAll = document.getElementById("runAllSites");
-  const siteList = document.getElementById("siteList");
-  const useItemLimit = document.getElementById("useItemLimit");
-  const itemLimit = document.getElementById("itemLimit");
-  const resultBox = document.getElementById("runResult");
-  const submitBtn = document.getElementById("runSubmit");
-
-  function syncSiteList() {
-    siteList.style.opacity = runAll.checked ? "0.5" : "1";
-    siteList.querySelectorAll(".site-checkbox").forEach(cb => cb.disabled = runAll.checked);
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"
+    })[c]);
   }
-  runAll.addEventListener("change", syncSiteList);
-  syncSiteList();
 
-  useItemLimit.addEventListener("change", () => {
-    itemLimit.disabled = !useItemLimit.checked;
-  });
+  // ── Test Crawler modal ───────────────────────────────────────────────
+  const testModalEl   = document.getElementById("testModal");
+  const testSite      = document.getElementById("testSite");
+  const testMode      = document.getElementById("testMode");
+  const testItemLimit = document.getElementById("testItemLimit");
+  const testStartBtn  = document.getElementById("testStart");
+  const testStopBtn   = document.getElementById("testStop");
+  const testClearBtn  = document.getElementById("testClear");
+  const testStatus    = document.getElementById("testStatus");
+  const testLog       = document.getElementById("testLog");
+  const testAutoScroll = document.getElementById("testAutoScroll");
 
-  document.getElementById("sitesAll").addEventListener("click", () => {
-    runAll.checked = false; syncSiteList();
-    siteList.querySelectorAll(".site-checkbox").forEach(cb => {
-      cb.checked = cb.dataset.enabled === "1";
-    });
-  });
-  document.getElementById("sitesNone").addEventListener("click", () => {
-    runAll.checked = false; syncSiteList();
-    siteList.querySelectorAll(".site-checkbox").forEach(cb => cb.checked = false);
-  });
+  let testJobId = null;
+  let testOffset = 0;
+  let testPollTimer = null;
+  let testIsRunning = false;
 
-  // Auto-refresh every 60s, but skip if a modal is open or a run is in flight.
+  // Auto-refresh page every 60s unless a modal is open or a test is in flight.
   setInterval(() => {
     if (document.querySelector(".modal.show")) return;
-    if (submitBtn.disabled) return;
+    if (testIsRunning) return;
     window.location.reload();
   }, 60000);
 
-  submitBtn.addEventListener("click", async () => {
-    const mode = document.querySelector("input[name=mode]:checked").value;
-    let sites = "all";
-    if (!runAll.checked) {
-      sites = Array.from(siteList.querySelectorAll(".site-checkbox:checked")).map(cb => cb.value);
-      if (sites.length === 0) {
-        resultBox.style.display = "block";
-        resultBox.style.color = "#f85149";
-        resultBox.textContent = "Select at least one site, or check \\"Run all enabled sites\\".";
+  function setTestStatus(text, color) {
+    testStatus.textContent = text;
+    testStatus.style.color = color || "#8b949e";
+  }
+
+  function appendLogChunk(chunk) {
+    if (!chunk) return;
+    // Colorize known level tokens (tab-separated formatter: ts \\t file:line \\t LEVEL \\t msg)
+    const lines = chunk.split("\\n");
+    const frag = document.createDocumentFragment();
+    for (const raw of lines) {
+      if (raw === "" && raw === lines[lines.length - 1]) continue;
+      const span = document.createElement("span");
+      const m = raw.match(/\\t(ERROR|WARNING|DEBUG)\\t/);
+      if (m) span.className = "lvl-" + m[1];
+      span.textContent = raw + "\\n";
+      frag.appendChild(span);
+    }
+    testLog.appendChild(frag);
+    if (testAutoScroll.checked) testLog.scrollTop = testLog.scrollHeight;
+  }
+
+  async function pollTestLog() {
+    if (!testJobId) return;
+    try {
+      const res = await fetch("/api/test/log?job_id=" + encodeURIComponent(testJobId) +
+                              "&offset=" + testOffset);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setTestStatus("Log fetch error: " + (data.error || res.statusText), "#f85149");
         return;
       }
+      const data = await res.json();
+      if (data.chunk) {
+        appendLogChunk(data.chunk);
+        testOffset = data.offset;
+      }
+      if (!data.running) {
+        stopPolling();
+        const exit = (data.exit_code !== null && data.exit_code !== undefined)
+                      ? " (exit " + data.exit_code + ")" : "";
+        setTestStatus("Finished" + exit, data.exit_code === 0 ? "#3fb950" : "#d29922");
+        testStartBtn.disabled = false;
+        testStopBtn.disabled = true;
+        testIsRunning = false;
+      }
+    } catch (err) {
+      setTestStatus("Poll failed: " + err, "#f85149");
     }
+  }
+
+  function startPolling() {
+    if (testPollTimer) clearInterval(testPollTimer);
+    testPollTimer = setInterval(pollTestLog, 800);
+  }
+
+  function stopPolling() {
+    if (testPollTimer) { clearInterval(testPollTimer); testPollTimer = null; }
+  }
+
+  testStartBtn.addEventListener("click", async () => {
     const payload = {
-      mode,
-      sites,
-      item_limit: useItemLimit.checked ? parseInt(itemLimit.value, 10) : null,
-      test_logs: document.getElementById("testLogs").checked,
+      site: testSite.value,
+      mode: testMode.value,
+      item_limit: parseInt(testItemLimit.value, 10) || null,
     };
-
-    submitBtn.disabled = true;
-    submitBtn.textContent = "Starting…";
-    resultBox.style.display = "block";
-    resultBox.style.color = "#8b949e";
-    resultBox.textContent = "Starting run…";
-
+    testStartBtn.disabled = true;
+    testStartBtn.textContent = "Starting…";
+    setTestStatus("Starting…", "#8b949e");
+    testLog.textContent = "";
+    testOffset = 0;
     try {
-      const res = await fetch("/api/run", {
+      const res = await fetch("/api/test/start", {
         method: "POST",
         headers: {"Content-Type": "application/json"},
         body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) {
-        resultBox.style.color = "#f85149";
-        resultBox.textContent = "Error: " + (data.error || res.statusText);
-      } else {
-        resultBox.style.color = "#3fb950";
-        resultBox.innerHTML = "✓ Started (PID " + data.pid + ")<br>" +
-                              "Log: " + data.logfile + "<br>" +
-                              "<span style=\\"color:#8b949e;\\">" + data.cmd + "</span>";
+        setTestStatus("Start failed: " + (data.error || res.statusText), "#f85149");
+        testStartBtn.disabled = false;
+        testStartBtn.textContent = "▶ Start";
+        return;
       }
+      testJobId = data.job_id;
+      testIsRunning = true;
+      testStopBtn.disabled = false;
+      setTestStatus("Running (PID " + data.pid + ") · " + escapeHtml(data.cmd), "#d29922");
+      startPolling();
     } catch (err) {
-      resultBox.style.color = "#f85149";
-      resultBox.textContent = "Request failed: " + err;
+      setTestStatus("Request failed: " + err, "#f85149");
+      testStartBtn.disabled = false;
     } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = "▶ Start run";
+      testStartBtn.textContent = "▶ Start";
     }
+  });
+
+  testStopBtn.addEventListener("click", async () => {
+    if (!testJobId) return;
+    testStopBtn.disabled = true;
+    setTestStatus("Stopping…", "#d29922");
+    try {
+      await fetch("/api/test/stop", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({job_id: testJobId}),
+      });
+    } catch (err) {
+      setTestStatus("Stop failed: " + err, "#f85149");
+    }
+  });
+
+  testClearBtn.addEventListener("click", () => { testLog.textContent = ""; });
+
+  testModalEl.addEventListener("hidden.bs.modal", () => {
+    // Keep the background process alive but stop polling while the
+    // modal is hidden so we don't waste cycles.  Polling resumes on reopen.
+    stopPolling();
+  });
+  testModalEl.addEventListener("shown.bs.modal", () => {
+    if (testJobId && testIsRunning) startPolling();
   });
 
   // ── Stop Crawlers modal ──────────────────────────────────────────────
@@ -920,12 +959,6 @@ _TEMPLATE = """<!DOCTYPE html>
   const killAllBtn = document.getElementById("killAll");
   const killRefreshBtn = document.getElementById("killRefresh");
   let killPollTimer = null;
-
-  function escapeHtml(s) {
-    return String(s).replace(/[&<>"']/g, c => ({
-      "&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"
-    })[c]);
-  }
 
   async function loadRunning() {
     try {
@@ -1027,30 +1060,40 @@ def index():
     )
 
 
-@app.route("/api/run", methods=["POST"])
-def api_run():
-    """Kick off run_crawlers.py as a detached background process.
+# ── Test Crawler (single-site verbose tester) ────────────────────────────────
+# Only one tester runs at a time process-wide.  State is held in memory because
+# the dashboard is a single-process Flask app; if/when it is replicated this
+# will need to move to a shared store (Redis, disk, etc.).
+_TESTER_LOCK = threading.Lock()
+_TESTER_JOBS: dict[str, dict] = {}
+_CURRENT_TESTER_JOB: str | None = None
 
-    Accepts JSON: { mode, sites: [] | "all", item_limit: null|int, test_logs: bool }.
-    Returns: { pid, logfile, cmd } on success.
+
+def _current_tester_job() -> dict | None:
+    job_id = _CURRENT_TESTER_JOB
+    return _TESTER_JOBS.get(job_id) if job_id else None
+
+
+@app.route("/api/test/start", methods=["POST"])
+def api_test_start():
+    """Launch a single-site verbose crawler test (no DB / S3 writes).
+
+    Accepts JSON: { site: <id>, mode: <mode>, item_limit: null|int }.
+    Returns: { job_id, pid, logfile, cmd } on success.
+
+    Only one tester runs at a time.  Starting a new one while another is
+    still alive returns 409.
     """
+    global _CURRENT_TESTER_JOB
     payload = request.get_json(silent=True) or {}
+
+    site_id = str(payload.get("site", ""))
+    if site_id not in _SITE_IDS:
+        return jsonify({"error": f"Unknown site id: {site_id!r}"}), 400
 
     mode = str(payload.get("mode", "daily_light"))
     if mode not in _VALID_MODES:
         return jsonify({"error": f"Invalid mode: {mode}"}), 400
-
-    sites_arg = payload.get("sites", "all")
-    selected_sites: list[str] = []
-    if sites_arg != "all":
-        if not isinstance(sites_arg, list):
-            return jsonify({"error": "sites must be a list of site ids or \"all\""}), 400
-        for sid in sites_arg:
-            if not isinstance(sid, str) or sid not in _SITE_IDS:
-                return jsonify({"error": f"Unknown site id: {sid}"}), 400
-            selected_sites.append(sid)
-        if not selected_sites:
-            return jsonify({"error": "No sites selected"}), 400
 
     item_limit = payload.get("item_limit")
     if item_limit is not None:
@@ -1061,44 +1104,129 @@ def api_run():
         if item_limit <= 0:
             return jsonify({"error": "item_limit must be greater than 0"}), 400
 
-    test_logs = bool(payload.get("test_logs", False))
+    with _TESTER_LOCK:
+        active = _current_tester_job()
+        if active and active["proc"].poll() is None:
+            return jsonify({"error": "Another tester is already running",
+                            "job_id": active["job_id"], "pid": active["proc"].pid}), 409
 
-    cmd: list[str] = [sys.executable, "run_crawlers.py", "--mode", mode]
-    for sid in selected_sites:
-        cmd.extend(["--site", sid])
-    if item_limit is not None:
-        cmd.extend(["--item-limit", str(item_limit)])
-    if test_logs:
-        cmd.append("--test-logs")
+        cmd: list[str] = [
+            sys.executable, "-u", "run_crawlers.py",
+            "--tester", "--site", site_id, "--mode", mode,
+        ]
+        if item_limit is not None:
+            cmd.extend(["--item-limit", str(item_limit)])
 
-    _LOGS_DIR.mkdir(parents=True, exist_ok=True)
-    logfile = _LOGS_DIR / f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+        _LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        logfile = _LOGS_DIR / f"tester_{site_id}_{ts}.log"
 
-    env = os.environ.copy()
-    env["PYTHONHASHSEED"] = "0"
-    env["PYTHONUNBUFFERED"] = "1"
+        env = os.environ.copy()
+        env["PYTHONHASHSEED"] = "0"
+        env["PYTHONUNBUFFERED"] = "1"
+        env["CRAWLER_TESTER"] = "true"
 
-    try:
-        log_fh = open(logfile, "ab", buffering=0)
-        proc = subprocess.Popen(
-            cmd,
-            cwd=str(_PROJECT_ROOT),
-            stdout=log_fh,
-            stderr=subprocess.STDOUT,
-            stdin=subprocess.DEVNULL,
-            env=env,
-            start_new_session=True,
-            close_fds=True,
-        )
-        log_fh.close()
-    except Exception as exc:
-        return jsonify({"error": f"Failed to start: {exc}"}), 500
+        try:
+            log_fh = open(logfile, "ab", buffering=0)
+            proc = subprocess.Popen(
+                cmd,
+                cwd=str(_PROJECT_ROOT),
+                stdout=log_fh,
+                stderr=subprocess.STDOUT,
+                stdin=subprocess.DEVNULL,
+                env=env,
+                start_new_session=True,
+                close_fds=True,
+            )
+            log_fh.close()
+        except Exception as exc:
+            return jsonify({"error": f"Failed to start: {exc}"}), 500
+
+        job_id = f"tester-{ts}-{proc.pid}"
+        _TESTER_JOBS[job_id] = {
+            "job_id":  job_id,
+            "site_id": site_id,
+            "mode":    mode,
+            "cmd":     " ".join(cmd),
+            "logfile": logfile,
+            "proc":    proc,
+            "started": datetime.now(timezone.utc),
+        }
+        _CURRENT_TESTER_JOB = job_id
 
     return jsonify({
-        "pid": proc.pid,
+        "job_id":  job_id,
+        "pid":     proc.pid,
         "logfile": str(logfile.relative_to(_PROJECT_ROOT)),
-        "cmd": " ".join(cmd),
+        "cmd":     " ".join(cmd),
     })
+
+
+@app.route("/api/test/log")
+def api_test_log():
+    """Return the tester log content starting at byte ``offset``.
+
+    Query params: job_id (required), offset (default 0).
+    Returns: { chunk, offset, running, exit_code }.
+    """
+    job_id = request.args.get("job_id", "")
+    job = _TESTER_JOBS.get(job_id)
+    if not job:
+        return jsonify({"error": f"Unknown job_id: {job_id!r}"}), 404
+    try:
+        offset = int(request.args.get("offset", "0"))
+    except ValueError:
+        return jsonify({"error": "offset must be an integer"}), 400
+
+    logfile: Path = job["logfile"]
+    chunk = ""
+    new_offset = offset
+    try:
+        if logfile.exists():
+            with logfile.open("rb") as fh:
+                fh.seek(offset)
+                data = fh.read()
+                new_offset = offset + len(data)
+                chunk = data.decode("utf-8", errors="replace")
+    except Exception as exc:
+        return jsonify({"error": f"Failed to read log: {exc}"}), 500
+
+    proc: subprocess.Popen = job["proc"]
+    exit_code = proc.poll()
+    running = exit_code is None
+
+    return jsonify({
+        "chunk":     chunk,
+        "offset":    new_offset,
+        "running":   running,
+        "exit_code": exit_code,
+    })
+
+
+@app.route("/api/test/stop", methods=["POST"])
+def api_test_stop():
+    """Terminate a tester process by job_id (or the current tester if omitted)."""
+    payload = request.get_json(silent=True) or {}
+    job_id = payload.get("job_id") or _CURRENT_TESTER_JOB
+    job = _TESTER_JOBS.get(job_id) if job_id else None
+    if not job:
+        return jsonify({"error": "No such tester job"}), 404
+
+    proc: subprocess.Popen = job["proc"]
+    if proc.poll() is not None:
+        return jsonify({"stopped": False, "message": "Already finished",
+                        "exit_code": proc.returncode})
+
+    force = bool(payload.get("force"))
+    sig = signal.SIGKILL if force else signal.SIGTERM
+    try:
+        pgid = os.getpgid(proc.pid)
+        os.killpg(pgid, sig)
+    except ProcessLookupError:
+        return jsonify({"stopped": False, "message": "process gone"})
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+    return jsonify({"stopped": True, "signal": sig.name, "pid": proc.pid})
 
 
 def _list_running_crawlers() -> list[dict]:

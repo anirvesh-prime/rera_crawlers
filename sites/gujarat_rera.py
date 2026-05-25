@@ -326,11 +326,11 @@ def _extract_html_fields(lv: dict[str, str], proj_id: int) -> dict:
     email = _first_match(raw_email, r"[\w.+-]+@[\w.-]+\.[a-zA-Z]{2,}")
     contact: dict = {}
     if phone:
-        contact["phone"] = phone
+        contact["phone"] = phone                          # FIELD: promoter_contact_details.phone <- first 10+ digits from promoter mobile label
     if email:
-        contact["email"] = email
+        contact["email"] = email                          # FIELD: promoter_contact_details.email <- first email match from promoter email label
     if contact:
-        out["promoter_contact_details"] = contact
+        out["promoter_contact_details"] = contact         # FIELD: promoter_contact_details <- assembled contact dict
 
     # project_location_raw
     district = norm.get("district") or norm.get("district name", "")
@@ -349,31 +349,32 @@ def _extract_html_fields(lv: dict[str, str], proj_id: int) -> dict:
     tp_no    = norm.get("tp no", "")
     loc: dict = {}
     if plot_no:
-        loc["house_no_building_name"] = plot_no
+        loc["house_no_building_name"] = plot_no           # FIELD: project_location_raw.house_no_building_name <- norm "plot no"/"final plot no"
     if tp_no:
-        loc["tp_no"] = tp_no
+        loc["tp_no"] = tp_no                              # FIELD: project_location_raw.tp_no <- norm "tp no"
     if village:
-        loc["village"] = village
+        loc["village"] = village                          # FIELD: project_location_raw.village <- norm "village"/"moje"
     if sub_dist:
-        loc["taluk"] = sub_dist
+        loc["taluk"] = sub_dist                           # FIELD: project_location_raw.taluk <- norm "sub district"/"sub-district"
     elif taluka:
-        loc["taluk"] = taluka
+        loc["taluk"] = taluka                             # FIELD: project_location_raw.taluk <- norm "taluka"/"taluk" (fallback)
     if district:
-        loc["district"] = district
-        out["project_city"] = district
+        loc["district"] = district                        # FIELD: project_location_raw.district <- norm "district"/"district name"
+        out["project_city"] = district                    # FIELD: project_city <- norm "district"/"district name"
     if pin:
-        loc["pin_code"] = pin
-    loc["state"] = STATE
+        loc["pin_code"] = pin                             # FIELD: project_location_raw.pin_code <- norm "pin code"/"pincode" or 6-digit from address
+    loc["state"] = STATE                                  # FIELD: project_location_raw.state <- STATE constant ("Gujarat")
     # raw_address — base address string plus appended location components for full address.
     # Taluka takes priority over sub-district; state is uppercased to match reference format.
     if address:
         _taluk_part = sub_dist or taluka
         suffix_parts = [p for p in [_taluk_part, district, STATE.upper(), pin] if p]
+        # FIELD: project_location_raw.raw_address <- address + taluk/district/state/pin suffix
         loc["raw_address"] = (
             address + ", " + ", ".join(suffix_parts) if suffix_parts else address
         )
     if loc:
-        out["project_location_raw"] = loc
+        out["project_location_raw"] = loc                 # FIELD: project_location_raw <- assembled loc dict
 
     # project_cost_detail
     cost: dict = {}
@@ -386,25 +387,29 @@ def _extract_html_fields(lv: dict[str, str], proj_id: int) -> dict:
         # Strip commas and convert to float-compatible string
         cost_num = raw_cost.replace(",", "").split()[0]
         try:
-            cost["total_project_cost"] = f"{float(cost_num):.2f}"
-            cost.setdefault("estimated_project_cost", cost["total_project_cost"])
+            cost["total_project_cost"] = f"{float(cost_num):.2f}"                          # FIELD: project_cost_detail.total_project_cost <- norm cost label, float-formatted
+            cost.setdefault("estimated_project_cost", cost["total_project_cost"])          # FIELD: project_cost_detail.estimated_project_cost <- mirrors total_project_cost
         except (ValueError, TypeError):
-            cost["total_project_cost"] = raw_cost
+            cost["total_project_cost"] = raw_cost                                          # FIELD: project_cost_detail.total_project_cost <- raw cost string (float parse failed)
     if norm.get("estimated cost"):
-        cost.setdefault("estimated_project_cost", norm["estimated cost"])
+        cost.setdefault("estimated_project_cost", norm["estimated cost"])                  # FIELD: project_cost_detail.estimated_project_cost <- norm "estimated cost"
     if norm.get("cost of land"):
-        cost["cost_of_land"] = norm["cost of land"]
+        cost["cost_of_land"] = norm["cost of land"]                                        # FIELD: project_cost_detail.cost_of_land <- norm "cost of land"
     if cost:
-        out["project_cost_detail"] = cost
+        out["project_cost_detail"] = cost                                                  # FIELD: project_cost_detail <- assembled cost dict
 
     # promoters_details
     promo_type = norm.get("promoter type", "")
     if promo_type:
+        # FIELD: promoters_details <- dict literal with type_of_firm
+        # FIELD: promoters_details.type_of_firm <- norm "promoter type"
         out["promoters_details"] = {"type_of_firm": promo_type}
 
     # promoter_address_raw — from "Office Address" label in the promoter section
     office_addr = norm.get("office address", "")
     if office_addr:
+        # FIELD: promoter_address_raw <- dict literal with raw_address
+        # FIELD: promoter_address_raw.raw_address <- norm "office address"
         out["promoter_address_raw"] = {"raw_address": office_addr}
 
     # bank_details — from "Linked Bank Details" section
@@ -418,17 +423,17 @@ def _extract_html_fields(lv: dict[str, str], proj_id: int) -> dict:
     branch = norm.get("branch name") or norm.get("branch")
     acct_type = norm.get("account type") or norm.get("type of account")
     if bank_name:
-        bank["bank_name"] = bank_name
+        bank["bank_name"] = bank_name                     # FIELD: bank_details.bank_name <- norm "bank name"/"bank"
     if acct_no:
-        bank["account_no"] = acct_no
+        bank["account_no"] = acct_no                      # FIELD: bank_details.account_no <- norm "a/c number"/"account no"/variants
     if ifsc:
-        bank["IFSC"] = ifsc
+        bank["IFSC"] = ifsc                               # FIELD: bank_details.IFSC <- norm "ifsc code"/"ifsc"
     if branch:
-        bank["branch"] = branch
+        bank["branch"] = branch                           # FIELD: bank_details.branch <- norm "branch name"/"branch"
     if acct_type:
-        bank["account_type"] = acct_type
+        bank["account_type"] = acct_type                  # FIELD: bank_details.account_type <- norm "account type"/"type of account"
     if bank:
-        out["bank_details"] = bank
+        out["bank_details"] = bank                        # FIELD: bank_details <- assembled bank dict
 
     # land_area_details — derive from extracted area values + units from raw value strings
     # Unit is embedded in value strings like "1817.74 Sq Mtrs"; extract it with regex.
@@ -450,22 +455,23 @@ def _extract_html_fields(lv: dict[str, str], proj_id: int) -> dict:
         _, land_unit         = _split_num_unit(norm.get("total open area", ""))
         _, construction_unit = _split_num_unit(norm.get("total covered area", ""))
         if land_area_val:
+            # FIELD: land_area_details.land_area <- out["land_area"] as str (int when whole)
             lad["land_area"] = (
                 str(int(land_area_val)) if land_area_val == int(land_area_val)
                 else str(land_area_val)
             )
-            lad["land_area_unit"] = land_unit or "Sq Mtrs"
+            lad["land_area_unit"] = land_unit or "Sq Mtrs"           # FIELD: land_area_details.land_area_unit <- unit from "total open area" raw
         if construction_area_val:
-            lad["construction_area"] = construction_area_val
-            lad["construction_area_unit"] = construction_unit or "Sq Mtrs"
+            lad["construction_area"] = construction_area_val         # FIELD: land_area_details.construction_area <- out["construction_area"]
+            lad["construction_area_unit"] = construction_unit or "Sq Mtrs"  # FIELD: land_area_details.construction_area_unit <- unit from "total covered area" raw
         if lad:
-            out["land_area_details"] = lad
+            out["land_area_details"] = lad                           # FIELD: land_area_details <- assembled lad dict
 
     # Remove internal keys
     for k in [k for k in list(out) if k.startswith("_")]:
         del out[k]
 
-    out["project_state"] = STATE
+    out["project_state"] = STATE                                     # FIELD: project_state <- STATE constant ("Gujarat")
     return out
 
 
@@ -597,7 +603,7 @@ def _parse_overview_card(soup: BeautifulSoup) -> dict:
         label = re.sub(r"\s*\([^)]*\)\s*$", "", label).strip()
 
         if "project status" in label or label == "status":
-            out.setdefault("status_of_the_project", value)
+            out.setdefault("status_of_the_project", value)   # FIELD: status_of_the_project <- overview card <p> with "project status"/"status" label
     return out
 
 
@@ -657,9 +663,9 @@ def _parse_promoter_card(soup: BeautifulSoup) -> dict:
         if not val:
             continue
         if key == "contact":
-            contact["phone"] = val
+            contact["phone"] = val                         # FIELD: promoter_contact_details.phone <- promoter card <p> "Contact" value
         elif key == "email id":
-            contact["email"] = val
+            contact["email"] = val                         # FIELD: promoter_contact_details.email <- promoter card <p> "Email Id" value
         elif key == "address":
             addr_parts.append(val)
         elif key == "promoter type":
@@ -667,13 +673,15 @@ def _parse_promoter_card(soup: BeautifulSoup) -> dict:
         elif key == "promoter name":
             promo_name = val
     if contact:
-        out["promoter_contact_details"] = contact
+        out["promoter_contact_details"] = contact          # FIELD: promoter_contact_details <- assembled contact dict from promoter card
     if addr_parts:
+        # FIELD: promoter_address_raw <- dict literal with raw_address
+        # FIELD: promoter_address_raw.raw_address <- joined promoter card "Address" <p> values
         out["promoter_address_raw"] = {"raw_address": " ".join(addr_parts)}
     # Build promoters_details from card: include name and photo if available
     promo_details: dict = {}
     if promo_name:
-        promo_details["name"] = promo_name
+        promo_details["name"] = promo_name                 # FIELD: promoters_details.name <- promoter card <p> "Promoter Name" value
     # Photo is in a sibling div (col-sm-6 col-md-6 user)
     user_div = promo_div.find_parent("div")
     if user_div:
@@ -682,11 +690,11 @@ def _parse_promoter_card(soup: BeautifulSoup) -> dict:
             src = img["src"]
             if src.startswith("assets/"):
                 src = f"{BASE_URL}/{src}"
-            promo_details["photo"] = src
+            promo_details["photo"] = src                   # FIELD: promoters_details.photo <- <img src> in promoter card's parent div
     if promo_type:
-        promo_details["type_of_firm"] = promo_type
+        promo_details["type_of_firm"] = promo_type         # FIELD: promoters_details.type_of_firm <- promoter card <p> "Promoter Type" value
     if promo_details:
-        out["promoters_details"] = promo_details
+        out["promoters_details"] = promo_details           # FIELD: promoters_details <- assembled promo_details dict from promoter card
     return out
 
 
@@ -721,9 +729,9 @@ def _parse_partners(soup: BeautifulSoup) -> dict:
 
     out: dict = {}
     if co_promoters:
-        out["co_promoter_details"] = co_promoters
+        out["co_promoter_details"] = co_promoters          # FIELD: co_promoter_details <- avBox persons under "Partners" h2 (photo stripped)
     if signatories:
-        out["authorised_signatory_details"] = signatories
+        out["authorised_signatory_details"] = signatories  # FIELD: authorised_signatory_details <- avBox persons under "Signatory" h2 (reordered)
     return out
 
 
@@ -759,6 +767,7 @@ def _parse_professionals(soup: BeautifulSoup) -> dict:
                 # Record type-only entry for sections with no data (matches sample format)
                 professionals.append({"type": prof_type})
     if professionals:
+        # FIELD: professional_information <- avBox persons under "Professional" assoVenderBox h2
         return {"professional_information": professionals}
     return {}
 
@@ -785,6 +794,7 @@ def _parse_facilities(soup: BeautifulSoup) -> dict:
         # Field order matches sample: status first, then facility
         facilities.append({"status": status, "facility": name})
     if facilities:
+        # FIELD: provided_faciltiy <- caCol entries under Common Amenities caBox div
         return {"provided_faciltiy": facilities}
     return {}
 
@@ -876,6 +886,8 @@ def _fetch_document_tokens(page) -> list[dict]:
             if not uid or uid == "0" or uid in seen_uids:
                 continue
             seen_uids.add(uid)
+            # FIELD: uploaded_documents[].label <- DOM-walked label near a.dwnldBtn
+            # FIELD: uploaded_documents[].url <- VDMS_VIEW_DOC + captured uid
             docs.append({"label": label, "url": f"{VDMS_VIEW_DOC}/{uid}"})
 
     except Exception:
@@ -955,14 +967,14 @@ def _fetch_listing_stubs(page, logger: CrawlerLogger) -> list[dict]:
             continue
         reg_no = _clean(item.get("regNo") or "") or None
         stubs_by_id[proj_id] = {
-            "proj_id":                  proj_id,
-            "project_registration_no":  reg_no,
-            "project_name":             _clean(item.get("projectName") or "") or None,
-            "project_type":             _clean(item.get("projectType") or "") or None,
-            "promoter_name":            _clean(item.get("promoterName") or "") or None,
-            "project_city":             _clean(item.get("districtName") or "") or None,
-            "approved_on_date":         _normalize_date(item.get("approvedOn") or ""),
-            "estimated_finish_date":    _normalize_date(item.get("endDate") or ""),
+            "proj_id":                  proj_id,                                            # FIELD: proj_id <- bulk API item["projectRegId"]
+            "project_registration_no":  reg_no,                                             # FIELD: project_registration_no <- bulk API item["regNo"]
+            "project_name":             _clean(item.get("projectName") or "") or None,     # FIELD: project_name <- bulk API item["projectName"]
+            "project_type":             _clean(item.get("projectType") or "") or None,     # FIELD: project_type <- bulk API item["projectType"]
+            "promoter_name":            _clean(item.get("promoterName") or "") or None,    # FIELD: promoter_name <- bulk API item["promoterName"]
+            "project_city":             _clean(item.get("districtName") or "") or None,    # FIELD: project_city <- bulk API item["districtName"]
+            "approved_on_date":         _normalize_date(item.get("approvedOn") or ""),     # FIELD: approved_on_date <- bulk API item["approvedOn"]
+            "estimated_finish_date":    _normalize_date(item.get("endDate") or ""),        # FIELD: estimated_finish_date <- bulk API item["endDate"]
         }
 
     logger.info(f"Bulk enumeration: {len(stubs_by_id)} unique projects discovered")
@@ -1318,7 +1330,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 # reg_no is single-sourced from the enumeration stub above; it
                 # is NOT re-extracted from the detail page.  Stamp it onto data
                 # so downstream normalization sees a consistent value.
-                data["project_registration_no"] = reg_no
+                data["project_registration_no"] = reg_no   # FIELD: project_registration_no <- bulk enumeration stub reg_no (single source of truth)
 
                 # Enrich with fields from additional page sections (higher priority — overrides lv)
                 overview   = _parse_overview_card(soup)
@@ -1337,21 +1349,22 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                     lad_old: dict = data.get("land_area_details") or {}
                     lad: dict = {}
                     if land_area:
+                        # FIELD: land_area_details.land_area <- data["land_area"] as str (int when whole)
                         lad["land_area"] = (
                             str(int(land_area)) if land_area == int(land_area)
                             else str(land_area)
                         )
-                        lad["land_area_unit"] = lad_old.get("land_area_unit", "Sq Mtrs")
+                        lad["land_area_unit"] = lad_old.get("land_area_unit", "Sq Mtrs")               # FIELD: land_area_details.land_area_unit <- prior land_area_details unit (fallback "Sq Mtrs")
                     if construction_area:
-                        lad["construction_area"] = construction_area
-                        lad["construction_area_unit"] = lad_old.get("construction_area_unit", "Sq Mtrs")
+                        lad["construction_area"] = construction_area                                   # FIELD: land_area_details.construction_area <- data["construction_area"]
+                        lad["construction_area_unit"] = lad_old.get("construction_area_unit", "Sq Mtrs")  # FIELD: land_area_details.construction_area_unit <- prior unit (fallback "Sq Mtrs")
                     if lad:
-                        data["land_area_details"] = lad
+                        data["land_area_details"] = lad                                                # FIELD: land_area_details <- rebuilt lad dict (sample field order)
 
                 # building_details — parse the Flat Details table for per-block entries
                 flat_entries = _parse_flat_table(soup)
                 if flat_entries:
-                    data["building_details"] = flat_entries
+                    data["building_details"] = flat_entries                          # FIELD: building_details <- _parse_flat_table(soup) per-block entries
 
                     # Derive unit counts from the per-unit inventory if not already set
                     if not data.get("number_of_residential_units"):
@@ -1360,23 +1373,31 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                             if e.get("flat_type", "").lower() not in ("commercial", "office", "shop")
                         )
                         if res_count:
-                            data["number_of_residential_units"] = res_count
+                            data["number_of_residential_units"] = res_count          # FIELD: number_of_residential_units <- count of non-commercial flat_entries
                     if not data.get("number_of_commercial_units"):
                         com_count = sum(
                             1 for e in flat_entries
                             if e.get("flat_type", "").lower() in ("commercial", "office", "shop")
                         )
                         if com_count:
-                            data["number_of_commercial_units"] = com_count
+                            data["number_of_commercial_units"] = com_count           # FIELD: number_of_commercial_units <- count of commercial/office/shop flat_entries
 
 
                 data.update({
+                    # FIELD: key <- generate_project_key(reg_no)
+                    # FIELD: state <- config["state"]
                     "key": key, "state": config["state"],
+                    # FIELD: project_state <- STATE constant ("Gujarat")
+                    # FIELD: domain <- DOMAIN constant ("gujrera.gujarat.gov.in")
                     "project_state": STATE, "domain": DOMAIN,
+                    # FIELD: config_id <- config["config_id"]
+                    # FIELD: url <- base64-encoded project-preview detail URL
                     "config_id": config["config_id"], "url": detail_url,
+                    # FIELD: is_live <- literal True
+                    # FIELD: machine_name <- get_machine_context() hostname
                     "is_live": True, "machine_name": machine_name,
-                    "crawl_machine_ip": machine_ip,
-                    "project_registration_no": reg_no,
+                    "crawl_machine_ip": machine_ip,                                  # FIELD: crawl_machine_ip <- get_machine_context() IP
+                    "project_registration_no": reg_no,                               # FIELD: project_registration_no <- bulk enumeration stub reg_no
                 })
                 # Build extra fields for the data sub-dict so downstream consumers
                 # can read them without parsing nested schema structures.
@@ -1384,25 +1405,32 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 _lad = data.get("land_area_details") or {}
                 _act_start = (data.get("actual_commencement_date") or "").replace("+00:00", "").strip()
                 _extra_data: dict = {
+                    # FIELD: data.govt_type <- literal "state"
+                    # FIELD: data.is_processed <- literal False
                     "govt_type": "state", "is_processed": False,
+                    # FIELD: data.proj_reg_id <- enumeration stub proj_id
+                    # FIELD: data.project_id <- base64-encoded proj_id
                     "proj_reg_id": proj_id, "project_id": encoded_id,
-                    "detail_url": detail_url,
+                    "detail_url": detail_url,                                        # FIELD: data.detail_url <- base64-encoded project-preview detail URL
                 }
                 _n_units = (
                     (data.get("number_of_residential_units") or 0)
                     + (data.get("number_of_commercial_units") or 0)
                 )
                 if _n_units:
-                    _extra_data["no_of_units"] = str(_n_units)
+                    _extra_data["no_of_units"] = str(_n_units)                       # FIELD: data.no_of_units <- residential + commercial unit counts (str)
                 if _loc.get("raw_address"):
-                    _extra_data["raw_address"] = _loc["raw_address"]
+                    _extra_data["raw_address"] = _loc["raw_address"]                 # FIELD: data.raw_address <- project_location_raw.raw_address
                 if data.get("project_type"):
-                    _extra_data["type_of_units"] = data["project_type"]
+                    _extra_data["type_of_units"] = data["project_type"]              # FIELD: data.type_of_units <- data["project_type"]
                 # Use extracted units or fall back to known Gujarat RERA defaults
-                _extra_data["land_area_units"] = _lad.get("land_area_unit") or "Sq Mtrs"
+                _extra_data["land_area_units"] = _lad.get("land_area_unit") or "Sq Mtrs"          # FIELD: data.land_area_units <- land_area_details.land_area_unit (fallback "Sq Mtrs")
                 if _act_start:
-                    _extra_data["actual_start_date"] = _act_start
-                _extra_data["construction_units"] = _lad.get("construction_area_unit") or "in Sq. Mts."
+                    _extra_data["actual_start_date"] = _act_start                    # FIELD: data.actual_start_date <- actual_commencement_date without +00:00 suffix
+                _extra_data["construction_units"] = _lad.get("construction_area_unit") or "in Sq. Mts."  # FIELD: data.construction_units <- land_area_details.construction_area_unit (fallback "in Sq. Mts.")
+                # FIELD: data <- merged _extra_data + {source, label_values}
+                # FIELD: data.source <- literal "html_scrape"
+                # FIELD: data.label_values <- _extract_label_values(soup) raw lv dict
                 data["data"] = merge_data_sections(
                     _extra_data,
                     {"source": "html_scrape", "label_values": lv},
@@ -1448,11 +1476,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                             uploaded_docs.append({"link": doc.get("url"), "type": doc.get("label", "document")})
                     if uploaded_docs:
                         upsert_project({
+                            # FIELD: key <- db_dict["key"]
+                            # FIELD: url <- db_dict["url"]
                             "key": db_dict["key"], "url": db_dict["url"],
+                            # FIELD: state <- db_dict["state"]
+                            # FIELD: domain <- db_dict["domain"]
                             "state": db_dict["state"], "domain": db_dict["domain"],
-                            "project_registration_no": db_dict["project_registration_no"],
-                            "uploaded_documents": uploaded_docs,
-                            "document_urls": build_document_urls(uploaded_docs),
+                            "project_registration_no": db_dict["project_registration_no"],   # FIELD: project_registration_no <- db_dict["project_registration_no"]
+                            "uploaded_documents": uploaded_docs,                             # FIELD: uploaded_documents <- per-doc upload result entries
+                            "document_urls": build_document_urls(uploaded_docs),             # FIELD: document_urls <- build_document_urls(uploaded_docs)
                         })
 
                 save_checkpoint(site_id, mode, proj_id, key, run_id)

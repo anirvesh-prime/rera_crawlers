@@ -429,6 +429,29 @@ def _missing_required_project_fields(data: Mapping[str, Any]) -> list[str]:
     return missing
 
 
+def _log_extracted_fields(data: Mapping[str, Any]) -> None:
+    """Emit one INFO log line per field of an extracted project payload.
+
+    Used only when settings.CRAWLER_TESTER is True (dashboard tester).
+    The verbose dump lets operators see every field a crawler produced
+    for each project before any DB comparison runs.
+    """
+    reg = data.get("registration_no") or data.get("rera_no") or data.get("key") or "?"
+    log.info("─── extracted project %s (key=%s) ───", reg, data.get("key"))
+    for column in sorted(data.keys()):
+        value = data[column]
+        if isinstance(value, (dict, list)):
+            try:
+                rendered = json.dumps(value, ensure_ascii=False, default=str)
+            except Exception:
+                rendered = repr(value)
+        else:
+            rendered = "" if value is None else str(value)
+        if len(rendered) > 400:
+            rendered = rendered[:400] + f"… (+{len(rendered) - 400} chars)"
+        log.info("  %s | %s", column, rendered)
+
+
 # crawl_runs
 
 def insert_crawl_run(site_id: str, run_type: str) -> int:
@@ -592,6 +615,8 @@ def upsert_project(data: dict[str, Any]) -> str:
     reflects what *would* have happened) but no writes are executed.
     """
     key = data["key"]
+    if settings.CRAWLER_TESTER:
+        _log_extracted_fields(data)
     with _db_lock:
         conn = get_connection()
 
