@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import signal
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -364,6 +365,15 @@ _TEMPLATE = """<!DOCTYPE html>
     .btn-run { background:#1f6335; border-color:#238636; color:#e6edf3; font-size:.78rem;
                font-weight:600; padding:5px 14px; }
     .btn-run:hover { background:#2ea043; color:#fff; }
+    .btn-stop { background:#4a1212; border-color:#6e2424; color:#f85149; font-size:.78rem;
+                font-weight:600; padding:5px 14px; }
+    .btn-stop:hover { background:#6e2424; color:#fff; }
+    .running-row { display:flex; justify-content:space-between; align-items:center;
+                    background:#0d1117; border:1px solid #30363d; border-radius:6px;
+                    padding:8px 12px; margin-bottom:6px; }
+    .running-meta { font-size:.72rem; color:#8b949e; font-family:monospace;
+                     word-break:break-all; margin-top:2px; }
+    .running-pid { font-size:.82rem; font-weight:600; color:#e6edf3; font-family:monospace; }
     .modal-content { background:#161b22; color:#e6edf3; border:1px solid #30363d; }
     .modal-header, .modal-footer { border-color:#30363d; }
     .modal-title { font-size:.95rem; font-weight:700; color:#58a6ff; }
@@ -409,11 +419,14 @@ _TEMPLATE = """<!DOCTYPE html>
     </span>
     {% endif %}
   </div>
-  <div class="d-flex align-items-center gap-3">
+  <div class="d-flex align-items-center gap-2">
     <button type="button" class="btn btn-run" data-bs-toggle="modal" data-bs-target="#runModal">
       ▶ Run Crawlers
     </button>
-    <div style="font-size:.8rem;color:#8b949e;">
+    <button type="button" class="btn btn-stop" data-bs-toggle="modal" data-bs-target="#killModal">
+      ■ Stop Crawlers
+    </button>
+    <div class="ms-2" style="font-size:.8rem;color:#8b949e;">
       Refreshed {{ now.strftime('%Y-%m-%d %H:%M:%S') }} UTC
     </div>
   </div>
@@ -771,6 +784,45 @@ _TEMPLATE = """<!DOCTYPE html>
   </div>
 </div>
 
+{# ── Stop Crawlers modal ───────────────────────────────────────────────── #}
+<div class="modal fade" id="killModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" style="color:#f85149;">■ Stop Crawlers</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div style="font-size:.8rem;color:#8b949e;">
+            Lists live <code style="color:#d29922;">run_crawlers.py</code> orchestrators
+            (process-group leaders). Killing a row signals the orchestrator and all of its
+            worker processes via <code style="color:#d29922;">killpg</code>.
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-secondary" id="killRefresh">⟳ Refresh</button>
+        </div>
+
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="checkbox" id="killForce">
+          <label class="form-check-label" for="killForce">
+            Force kill (SIGKILL) — skip graceful shutdown
+          </label>
+        </div>
+
+        <div id="runningList" style="margin-top:10px;">
+          <div style="color:#8b949e;font-size:.8rem;">Loading…</div>
+        </div>
+
+        <div id="killResult" class="run-result" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-stop" id="killAll">■ Stop all</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 (function() {
@@ -858,6 +910,98 @@ _TEMPLATE = """<!DOCTYPE html>
       submitBtn.disabled = false;
       submitBtn.textContent = "▶ Start run";
     }
+  });
+
+  // ── Stop Crawlers modal ──────────────────────────────────────────────
+  const killModalEl = document.getElementById("killModal");
+  const runningList = document.getElementById("runningList");
+  const killResult = document.getElementById("killResult");
+  const killForce = document.getElementById("killForce");
+  const killAllBtn = document.getElementById("killAll");
+  const killRefreshBtn = document.getElementById("killRefresh");
+  let killPollTimer = null;
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;","\\"":"&quot;","'":"&#39;"
+    })[c]);
+  }
+
+  async function loadRunning() {
+    try {
+      const res = await fetch("/api/running");
+      const data = await res.json();
+      const rows = data.running || [];
+      if (rows.length === 0) {
+        runningList.innerHTML = '<div style="color:#8b949e;font-size:.8rem;">No running crawlers.</div>';
+        killAllBtn.disabled = true;
+        return;
+      }
+      killAllBtn.disabled = false;
+      runningList.innerHTML = rows.map(r => `
+        <div class="running-row">
+          <div style="flex:1;min-width:0;">
+            <div class="running-pid">PID ${r.pid} <span style="color:#8b949e;font-weight:400;">· elapsed ${escapeHtml(r.etime)}</span></div>
+            <div class="running-meta">${escapeHtml(r.cmd)}</div>
+          </div>
+          <button type="button" class="btn btn-stop btn-sm ms-2" data-pid="${r.pid}">Stop</button>
+        </div>
+      `).join("");
+      runningList.querySelectorAll("button[data-pid]").forEach(btn => {
+        btn.addEventListener("click", () => killOne(parseInt(btn.dataset.pid, 10), btn));
+      });
+    } catch (err) {
+      runningList.innerHTML = '<div style="color:#f85149;font-size:.8rem;">Failed to load: ' + escapeHtml(err) + '</div>';
+    }
+  }
+
+  async function postKill(payload, statusEl) {
+    statusEl.style.display = "block";
+    statusEl.style.color = "#8b949e";
+    statusEl.textContent = "Sending signal…";
+    try {
+      const res = await fetch("/api/kill", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        statusEl.style.color = "#f85149";
+        statusEl.textContent = "Error: " + (data.error || res.statusText);
+        return;
+      }
+      const killedPids = (data.killed || []).map(k => k.pid).join(", ") || "none";
+      const errParts = (data.errors || []).map(e => `${e.pid}: ${e.error}`);
+      statusEl.style.color = "#3fb950";
+      statusEl.innerHTML =
+        "Sent " + (data.signal || "signal") + " to PG of: " + escapeHtml(killedPids) +
+        (errParts.length ? "<br><span style=\\"color:#f85149;\\">errors: " + escapeHtml(errParts.join("; ")) + "</span>" : "") +
+        (data.message ? "<br><span style=\\"color:#8b949e;\\">" + escapeHtml(data.message) + "</span>" : "");
+      setTimeout(loadRunning, 600);
+    } catch (err) {
+      statusEl.style.color = "#f85149";
+      statusEl.textContent = "Request failed: " + err;
+    }
+  }
+
+  function killOne(pid, btn) {
+    btn.disabled = true; btn.textContent = "…";
+    postKill({pid, force: killForce.checked}, killResult);
+  }
+
+  killAllBtn.addEventListener("click", () => {
+    postKill({all: true, force: killForce.checked}, killResult);
+  });
+  killRefreshBtn.addEventListener("click", loadRunning);
+
+  killModalEl.addEventListener("show.bs.modal", () => {
+    killResult.style.display = "none";
+    loadRunning();
+    killPollTimer = setInterval(loadRunning, 5000);
+  });
+  killModalEl.addEventListener("hidden.bs.modal", () => {
+    if (killPollTimer) { clearInterval(killPollTimer); killPollTimer = null; }
   });
 })();
 </script>
@@ -955,6 +1099,96 @@ def api_run():
         "logfile": str(logfile.relative_to(_PROJECT_ROOT)),
         "cmd": " ".join(cmd),
     })
+
+
+def _list_running_crawlers() -> list[dict]:
+    """Return one entry per live run_crawlers.py orchestrator (process-group leader).
+
+    Excludes worker processes spawned by ProcessPoolExecutor, which share the
+    orchestrator's pgid but have multiprocessing helper cmdlines that do not
+    contain 'run_crawlers.py'.
+    """
+    try:
+        out = subprocess.check_output(
+            ["ps", "-eo", "pid=,pgid=,etime=,args="],
+            stderr=subprocess.DEVNULL, text=True, timeout=5,
+        )
+    except Exception:
+        return []
+    rows: list[dict] = []
+    for line in out.splitlines():
+        if "run_crawlers.py" not in line:
+            continue
+        parts = line.strip().split(None, 3)
+        if len(parts) < 4:
+            continue
+        try:
+            pid = int(parts[0])
+            pgid = int(parts[1])
+        except ValueError:
+            continue
+        # Only show process-group leaders (the orchestrator itself).
+        if pid != pgid:
+            continue
+        rows.append({
+            "pid": pid,
+            "pgid": pgid,
+            "etime": parts[2],
+            "cmd": parts[3],
+        })
+    return rows
+
+
+@app.route("/api/running")
+def api_running():
+    return jsonify({"running": _list_running_crawlers()})
+
+
+@app.route("/api/kill", methods=["POST"])
+def api_kill():
+    """Send SIGTERM (or SIGKILL with force=true) to a run_crawlers.py orchestrator.
+
+    Accepts JSON: { pid: int } or { all: true }. Optional: { force: true }.
+    Only PIDs returned by /api/running can be targeted, so this endpoint cannot
+    be used to signal arbitrary processes.
+    """
+    payload = request.get_json(silent=True) or {}
+    force = bool(payload.get("force"))
+    sig = signal.SIGKILL if force else signal.SIGTERM
+
+    running = _list_running_crawlers()
+    running_pids = {r["pid"] for r in running}
+
+    if payload.get("all"):
+        targets = sorted(running_pids)
+    else:
+        try:
+            pid = int(payload.get("pid"))
+        except (TypeError, ValueError):
+            return jsonify({"error": "pid must be an integer, or pass {\"all\": true}"}), 400
+        if pid not in running_pids:
+            return jsonify({"error": f"pid {pid} is not a tracked crawler orchestrator"}), 400
+        targets = [pid]
+
+    if not targets:
+        return jsonify({"killed": [], "errors": [], "signal": sig.name,
+                        "message": "No running crawlers"})
+
+    killed: list[dict] = []
+    errors: list[dict] = []
+    for pid in targets:
+        try:
+            pgid = os.getpgid(pid)
+            os.killpg(pgid, sig)
+            killed.append({"pid": pid, "pgid": pgid})
+        except ProcessLookupError:
+            errors.append({"pid": pid, "error": "not found"})
+        except PermissionError:
+            errors.append({"pid": pid, "error": "permission denied"})
+        except Exception as exc:
+            errors.append({"pid": pid, "error": str(exc)})
+
+    return jsonify({"killed": killed, "errors": errors, "signal": sig.name})
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
