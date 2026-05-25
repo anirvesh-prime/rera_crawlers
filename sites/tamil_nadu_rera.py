@@ -1650,11 +1650,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 continue
 
             counts["projects_found"] += 1
-            # Stop processing once item_limit is reached, but continue counting
-            # remaining listing rows toward projects_found so the count reflects
-            # all projects in the state (not just those processed).
+            # When item_limit is hit we stop the listing walk entirely —
+            # projects_found then reflects only the rows actually walked, not
+            # the full Tamil Nadu catalog.
             if item_limit and items_processed >= item_limit:
-                continue
+                break
             # Count every row toward the limit BEFORE skip checks so daily_light
             # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
             items_processed += 1
@@ -1797,6 +1797,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 url=year_url,
             )
             last_project_key = None
+
+        if item_limit and items_processed >= item_limit:
+            logger.info(
+                f"Item limit {item_limit} reached after year {year_label} — "
+                f"stopping listing walk",
+            )
+            break
 
     reset_checkpoint(site_id, mode)
     logger.info("Tamil Nadu RERA crawl complete", **counts)

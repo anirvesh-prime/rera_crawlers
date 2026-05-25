@@ -808,9 +808,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
     current_page = 1
     max_pages    = settings.MAX_PAGES
-    # When item_limit is hit we stop processing further projects but continue
-    # walking listing pages so projects_found reflects every project Jharkhand
-    # lists (not just those processed before the cap).
+    # When item_limit is hit we stop the listing walk entirely — projects_found
+    # then reflects only the pages actually walked, not the full Jharkhand catalog.
     done_processing = False
     t0 = time.monotonic()
     first_page_logged = False
@@ -838,10 +837,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             break
 
         for raw in rows:
-            if done_processing or (item_limit and items_processed >= item_limit):
-                if not done_processing:
-                    logger.info(f"Item limit {item_limit} reached — counting only",
-                                step="listing")
+            if item_limit and items_processed >= item_limit:
+                logger.info(f"Item limit {item_limit} reached — stopping listing walk",
+                            step="listing")
                 done_processing = True
                 break
             # Count every row toward the limit BEFORE skip checks so daily_light
@@ -948,11 +946,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             finally:
                 logger.clear_project()
 
-            # Skip per-row delay once we have stopped processing.
-            if not done_processing:
-                random_delay(*delay_range)
+            random_delay(*delay_range)
 
         # ── Advance pagination ────────────────────────────────────────────
+        if done_processing:
+            break
         if max_pages and current_page >= max_pages:
             logger.info(f"Reached max_pages={max_pages}, stopping", step="listing")
             break
@@ -960,10 +958,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             logger.info("No more pages", step="listing")
             break
         current_page += 1
-        # Skip artificial inter-page delays once we are only walking pages
-        # for the projects_found count (no detail-fetch happens past the cap).
-        if not done_processing:
-            random_delay(*delay_range)
+        random_delay(*delay_range)
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Jharkhand RERA complete: {counters}", step="done")

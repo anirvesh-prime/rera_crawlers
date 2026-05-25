@@ -1300,25 +1300,6 @@ def _collect_candidates(
     return candidates, total_found, last_district_idx
 
 
-def _count_past_cap_district(district: str) -> int:
-    """Walk every page of a district counting reg-nos.  Used by the parallel
-    past-cap walker so the listing parser is exercised end-to-end."""
-    total = 0
-    sp = 0
-    for _ in range(200):
-        html = _post_listing(district, sp, None)
-        if html is None:
-            return -1
-        acks = _extract_ack_nos(html)
-        if not acks:
-            break
-        for ack_no in acks:
-            generate_project_key(ack_no)
-        total += len(acks)
-        sp += len(acks)
-    return total
-
-
 # ── Details phase (per-candidate worker) ──────────────────────────────────────
 
 def _process_candidate(
@@ -1464,9 +1445,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     Karnataka RERA crawl: two-phase lister → parallel-details pipeline.
 
     Phase A (lister)  — walk districts sequentially, collecting up to
-                        CRAWL_ITEM_LIMIT listing rows.  Remaining districts
-                        are walked concurrently for the projects_found
-                        count (skipped in test mode for fast benchmarks).
+                        CRAWL_ITEM_LIMIT listing rows then stopping.
+                        projects_found reflects the rows actually walked,
+                        not the full state catalog.
     Phase B (details) — fan the collected rows out across DETAIL_WORKERS
                         threads; each worker runs the two-step detail
                         fetch, normalise, upsert and document download.
@@ -1539,40 +1520,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 counters[k] = counters.get(k, 0) + v
         logger.timing("details", time.monotonic() - tB,
                       items=len(candidates), workers=n_workers)
-
-    # ── Past-cap parallel listing walk ───────────────────────────────────────
-    # In test mode we skip this — it walks every remaining district just to
-    # bump projects_found, which roughly doubles benchmark wall-clock.  In
-    # production runs (TEST_MODE off) it still produces the full enumerate.
-    cap_hit = item_limit and len(candidates) >= item_limit
-    remaining_start = last_district_idx + 1
-    if cap_hit and remaining_start < len(districts) and not settings.TEST_MODE:
-        remaining_districts = districts[remaining_start:]
-        logger.info(
-            f"Past-cap parallel walk: {len(remaining_districts)} districts remaining",
-            step="listing",
-        )
-        max_workers = min(8, len(remaining_districts))
-        with ThreadPoolExecutor(max_workers=max_workers) as ex:
-            futures = {ex.submit(_count_past_cap_district, d): d
-                       for d in remaining_districts}
-            for fut in as_completed(futures):
-                d = futures[fut]
-                try:
-                    n = fut.result()
-                except Exception as exc:
-                    counters["error_count"] += 1
-                    insert_crawl_error(run_id, site_id, "CRAWLER_EXCEPTION",
-                                       str(exc), url=LISTING_URL)
-                    continue
-                if n < 0:
-                    counters["error_count"] += 1
-                else:
-                    counters["projects_found"] += n
-                    logger.info(
-                        f"  past-cap district {d!r}: {n} reg-nos",
-                        step="listing",
-                    )
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Karnataka RERA crawl complete: {counters}", step="done")

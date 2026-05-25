@@ -38,7 +38,6 @@ import base64
 import json as _json
 import re
 import time as _time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional
 
 import httpx
@@ -1239,9 +1238,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     )
 
     items_processed = 0
-    # When item_limit is hit we stop processing further projects but keep
-    # walking the listing pages so projects_found reflects every reg-no in the
-    # state and the listing parser is exercised end-to-end.
+    # When item_limit is hit we stop the page walk entirely — projects_found
+    # then reflects only the pages actually walked, not the full state catalog.
     processing_done = False
 
     # ── Page loop ────────────────────────────────────────────────────────────
@@ -1275,14 +1273,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
         # Every parsed card is a real reg-no enumerated from the listing.
         counters["projects_found"] += len(cards)
-        if processing_done:
-            # Hand off remaining pages to the parallel walker below.
-            break
 
         for raw in cards:
             if item_limit and items_processed >= item_limit:
                 logger.info(
-                    f"Item limit {item_limit} reached — continuing listing walk for projects_found",
+                    f"Item limit {item_limit} reached — stopping listing walk",
                     step="listing",
                 )
                 processing_done = True
@@ -1422,57 +1417,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 logger.clear_project()
 
         save_checkpoint(config["id"], mode, page_no, None, run_id)
+        if processing_done:
+            break
         random_delay(*delay_range)
-
-    # ── Past-cap parallel listing walk ───────────────────────────────────────
-    # Once processing_done is set we still need to enumerate every remaining
-    # page so projects_found reflects every reg-no in the state and the listing
-    # parser is exercised end-to-end.  Detail work and per-card processing are
-    # already disabled here, so we just need to fetch the page HTML and count
-    # cards — fan out concurrently to keep the past-cap walk under a minute.
-    last_visited = page_no if processing_done else end_page - 1
-    if processing_done and last_visited + 1 < end_page:
-        remaining = list(range(last_visited + 1, end_page))
-        logger.info(
-            f"Past-cap parallel walk: {len(remaining)} pages remaining",
-            step="listing",
-        )
-        max_workers = min(32, max(4, len(remaining)))
-
-        def _fetch_count(pno: int) -> int:
-            resp = safe_get(_url_for_page(pno), retries=2, logger=None)
-            if not resp:
-                return -1
-            cards = _parse_cards(BeautifulSoup(resp.text, "lxml"))
-            # Extract every reg_no so the listing parser is fully exercised
-            # and every registration number is actually seen (not just counted).
-            for raw in cards:
-                reg_no = raw.get("project_registration_no", "").strip()
-                if reg_no:
-                    generate_project_key(reg_no)
-            return len(cards)
-
-        empty_streak = 0
-        with ThreadPoolExecutor(max_workers=max_workers) as ex:
-            futures = {ex.submit(_fetch_count, pno): pno for pno in remaining}
-            for fut in as_completed(futures):
-                pno = futures[fut]
-                try:
-                    n = fut.result()
-                except Exception as exc:
-                    counters["error_count"] += 1
-                    insert_crawl_error(run_id, config["id"], "CRAWLER_EXCEPTION",
-                                       str(exc), _url_for_page(pno))
-                    continue
-                if n < 0:
-                    counters["error_count"] += 1
-                elif n == 0:
-                    empty_streak += 1
-                else:
-                    counters["projects_found"] += n
-        if empty_streak:
-            logger.info(f"Past-cap walk: {empty_streak} empty pages",
-                        step="listing")
 
     _shared_browser.close()
     _pw_instance.stop()

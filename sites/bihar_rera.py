@@ -82,8 +82,8 @@ def _collect_listing_pages(
     max_items: when set, stop after collecting this many URLs (for CRAWL_ITEM_LIMIT).
         Bihar's listing requires Playwright pagination with per-row popup
         clicks to surface detail URLs, so a full count-only walk would take
-        many minutes; we keep the cap on listing collection and accept that
-        projects_found in light mode reflects the rows actually walked.
+        many minutes; honouring the cap short-circuits the walk and
+        projects_found reflects only the rows actually collected.
     """
     links_sel = f"table#{_GRID_ID} tr td:first-child a"
     pages: list[dict] = []
@@ -1064,12 +1064,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
     # ── Step 1: Collect paginated listing rows + popup URLs via Playwright ──
     # daily_light only needs project_registration_no for the DB dedup check,
-    # never the detail URL — skip the per-project popup clicks entirely so the
-    # listing walk is fast even when projects_found has to span every page.
+    # never the detail URL — skip the per-project popup clicks entirely.
     capture_detail_urls = mode != "daily_light"
-    # In daily_light we walk every listing page (popup-clicks are off, so the
-    # walk is cheap) so projects_found enumerates every reg-no in the state.
-    listing_max_items = None if mode == "daily_light" else (item_limit or None)
+    # Honour item_limit uniformly across modes — projects_found reflects only
+    # the rows actually walked rather than the full Bihar catalog.
+    listing_max_items = item_limit or None
     t0 = time.monotonic()
     logger.info(
         f"Collecting paginated listing data via Playwright"

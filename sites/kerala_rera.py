@@ -1578,6 +1578,7 @@ def _collect_listing_cards(
     site_id: str,
     run_id: int,
     mode: str,
+    item_limit: int = 0,
 ) -> tuple[list[tuple[int, dict]], int]:
     """
     Walk the explore-projects listing pages and return every parseable card.
@@ -1586,6 +1587,10 @@ def _collect_listing_cards(
     (page_num, card_dict) tuples ordered as the listing is walked.  No detail
     work, DB upserts or document downloads happen here — this is the pure
     listing phase that feeds the parallel details phase.
+
+    When ``item_limit`` is set the page walk short-circuits as soon as enough
+    cards have been collected — ``projects_found`` then reflects only the
+    pages actually walked rather than the full state catalog.
     """
     cards_with_page: list[tuple[int, dict]] = []
     error_count = 0
@@ -1607,6 +1612,13 @@ def _collect_listing_cards(
             if card.get("cert_no_from_card"):
                 cards_with_page.append((page_num, card))
         save_checkpoint(site_id, mode, page_num, None, run_id)
+        if item_limit and len(cards_with_page) >= item_limit:
+            logger.info(
+                f"Item limit {item_limit} reached after page {page_num} "
+                f"({len(cards_with_page)} cards collected) — stopping listing walk",
+                step="listing",
+            )
+            break
     return cards_with_page, error_count
 
 
@@ -1798,6 +1810,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     cards_with_page, lister_errors = _collect_listing_cards(
         start_page, effective_end, soup, logger,
         delay_min, delay_max, site_id, run_id, mode,
+        item_limit=item_limit,
     )
     counts["projects_found"] = len(cards_with_page)
     counts["error_count"] += lister_errors
@@ -1806,8 +1819,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                   rows=len(cards_with_page))
 
     # ── Phase B: Details — parallel per-card processing ──────────────────────
-    # Slice off only the cards that need processing.  Remaining cards stay
-    # counted in projects_found so the listing parser is exercised end-to-end.
+    # The lister short-circuits at item_limit so cards_with_page already holds
+    # at most item_limit candidates; slice defensively in case the final page
+    # overshot the cap.
     to_process = cards_with_page[:item_limit] if item_limit else cards_with_page
     if not to_process:
         reset_checkpoint(site_id, mode)

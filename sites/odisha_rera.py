@@ -1140,8 +1140,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     done_regs: set[str] = set()
     item_limit   = settings.CRAWL_ITEM_LIMIT or 0
     items_processed = 0
-    # When item_limit is hit we keep paginating so projects_found enumerates
-    # every reg-no in Odisha and the listing parser is exercised end-to-end.
+    # When item_limit is hit we stop the listing walk entirely — projects_found
+    # then reflects only the pages actually walked, not the full Odisha catalog.
     processing_done = False
     max_pages: int | None = settings.MAX_PAGES
     machine_name, machine_ip = get_machine_context()
@@ -1213,21 +1213,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             for card in cards:
                 reg  = card["project_registration_no"]
 
-                if processing_done:
-                    # Past-cap: still extract and key the reg_no so it is seen.
-                    if reg:
-                        generate_project_key(reg)
-                    continue
-
                 if item_limit and items_processed >= item_limit:
                     logger.info(
-                        f"Item limit {item_limit} reached — continuing listing walk for projects_found",
+                        f"Item limit {item_limit} reached — stopping listing walk",
                         step="listing",
                     )
                     processing_done = True
-                    if reg:
-                        generate_project_key(reg)
-                    continue
+                    break
 
                 # Count every card toward the limit BEFORE skip checks so daily_light
                 # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
@@ -1538,6 +1530,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 except Exception as _nav_err:
                     logger.warning(f"Listing recovery failed: {_nav_err}")
                     break
+
+            if processing_done:
+                break
 
             _dismiss_modal(page)
             try:

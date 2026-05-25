@@ -334,8 +334,8 @@ def _goto_next_page(page: Any, fast: bool = False) -> bool:
     Returns True if a next-page link was found and clicked.
 
     When ``fast=True`` we skip the networkidle wait and use a tighter timeout
-    on the page-number watcher.  This is used for past-cap listing walks where
-    we only need the next page's HTML for row extraction (no detail work).
+    on the page-number watcher — useful when only the next page's HTML is
+    needed (no detail-page work).
     """
     try:
         current_page = _get_current_page(page)
@@ -1459,9 +1459,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             if not _goto_next_page(page):
                 break
 
-        # When item_limit is hit we keep paginating so projects_found reflects
-        # every reg-no in Telangana and the listing parser is exercised across
-        # every page.  processing_done short-circuits the per-row work only.
+        # When item_limit is hit we stop the listing walk entirely —
+        # projects_found then reflects only the pages actually walked, not the
+        # full Telangana catalog.
         processing_done = False
         current_page = start_page
 
@@ -1477,19 +1477,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 pp_url = row.get("print_preview_url")
 
                 if not pp_url:
-                    if not processing_done:
-                        counts["error_count"] += 1
-                    continue
-
-                if processing_done:
+                    counts["error_count"] += 1
                     continue
 
                 if item_limit and items_done >= item_limit:
                     logger.info(
-                        f"Item limit {item_limit} reached — continuing listing walk for projects_found"
+                        f"Item limit {item_limit} reached — stopping listing walk"
                     )
                     processing_done = True
-                    continue
+                    break
 
                 # Count every row toward the limit BEFORE skip checks so daily_light
                 # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
@@ -1710,10 +1706,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             save_checkpoint(site_id, mode, current_page, None, run_id)
 
             # ── Paginate ──────────────────────────────────────────────────────
+            if processing_done:
+                break
             if current_page < effective_end:
-                if not processing_done:
-                    random_delay(delay_min, delay_max)
-                if not _goto_next_page(page, fast=processing_done):
+                random_delay(delay_min, delay_max)
+                if not _goto_next_page(page):
                     logger.info("No next-page link found — stopping pagination")
                     break
 
