@@ -108,6 +108,44 @@ def _wait_for_loaders(page: Page, timeout: int = 25000) -> None:
     page.wait_for_timeout(800)
 
 
+def _wait_for_overview_hydrated(page: Page, timeout_ms: int = 30_000) -> bool:
+    """Wait until the project-details Overview tab has hydrated.
+
+    Angular renders the page skeleton on domcontentloaded, but the
+    label/strong pairs (project name, RERA reg no, financials, bank
+    fieldsets) only arrive in a later XHR. Wait for at least one
+    ``label.label-control`` (the selector ``_parse_label_values``
+    iterates over) before parsing, otherwise the sentinel sees an empty
+    form and coverage drops below threshold.
+    """
+    try:
+        page.wait_for_selector(
+            "label.label-control", state="attached", timeout=timeout_ms,
+        )
+        page.wait_for_timeout(1200)
+        return True
+    except Exception:
+        return False
+
+
+def _wait_for_label_text(page: Page, pattern: str, timeout_ms: int = 15_000) -> bool:
+    """Wait until any ``label.label-control`` matches a regex (case-insensitive).
+
+    Used to confirm a freshly clicked tab actually rendered its own labels
+    before BeautifulSoup parses ``page.content()``.
+    """
+    try:
+        page.wait_for_function(
+            "(re) => Array.from(document.querySelectorAll('label.label-control'))"
+            ".some(l => new RegExp(re, 'i').test((l.textContent || '').trim()))",
+            arg=pattern,
+            timeout=timeout_ms,
+        )
+        return True
+    except Exception:
+        return False
+
+
 # ── HTML parsing helpers ──────────────────────────────────────────────────────
 
 def _parse_label_values(container: BeautifulSoup) -> dict[str, str]:
@@ -949,8 +987,22 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger, _page: "Pa
     try:
         def _scrape_sentinel_tabs(sp) -> dict:
             """Navigate through Overview, Promoter Details, and Documents tabs."""
-            sp.goto(detail_url, wait_until="networkidle", timeout=60_000)
+            # The Odisha SPA never reaches networkidle (background long-polls),
+            # so wait on domcontentloaded and gate parsing on an actual selector
+            # that the Overview tab renders — otherwise the sentinel reads a
+            # half-hydrated DOM and coverage falls below the 80% threshold.
+            sp.goto(detail_url, wait_until="domcontentloaded", timeout=30_000)
+            if not _wait_for_overview_hydrated(sp, timeout_ms=30_000):
+                logger.warning(
+                    "Sentinel: Overview did not hydrate within 30s",
+                    step="sentinel",
+                )
             _wait_for_loaders(sp)
+            # Confirm a canonical Overview label is actually rendered before
+            # parsing — guards against the case where the wrapper renders but
+            # the inner XHR is still in flight.
+            _wait_for_label_text(sp, "rera regd|project name|estimated project cost",
+                                 timeout_ms=15_000)
             result = _parse_overview(BeautifulSoup(sp.content(), "lxml"))
             result.pop("_doc_links", None)
             result.pop("data", None)
@@ -962,6 +1014,13 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger, _page: "Pa
                 label="Promoter Details",
                 logger=logger,
             ):
+                # Wait until a promoter-specific label is in the DOM. Without
+                # this the parser reads stale Overview HTML and the sentinel
+                # loses promoter_name / promoter_address_raw / contact fields.
+                _wait_for_label_text(
+                    sp, "company name|registered office|gst no|entity",
+                    timeout_ms=15_000,
+                )
                 try:
                     promoter = _parse_promoter_tab(BeautifulSoup(sp.content(), "lxml"))
                     result.update({k: v for k, v in promoter.items()
@@ -976,6 +1035,14 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger, _page: "Pa
                 label="Documents",
                 logger=logger,
             ):
+                # Wait for at least one DMS document anchor before scraping.
+                try:
+                    sp.wait_for_selector(
+                        "a[href*='reraapps.odisha.gov.in/dms']",
+                        state="attached", timeout=15_000,
+                    )
+                except Exception:
+                    pass
                 try:
                     doc_links = _extract_doc_links(BeautifulSoup(sp.content(), "lxml"))
                     if doc_links:

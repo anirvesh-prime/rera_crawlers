@@ -13,11 +13,15 @@ On your local machine (SSH tunnel):
 from __future__ import annotations
 
 import argparse
+import os
 import re
+import subprocess
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, render_template_string
+from flask import Flask, jsonify, render_template_string, request
 
 load_dotenv()
 
@@ -27,7 +31,12 @@ from psycopg.rows import dict_row as _dict_row
 from core.config import settings
 from sites_config import SITES  # noqa: E402
 
-_SITES = [{"id": s["id"], "name": s["name"]} for s in SITES]
+_SITES = [{"id": s["id"], "name": s["name"], "enabled": bool(s.get("enabled"))} for s in SITES]
+_SITE_IDS = {s["id"] for s in _SITES}
+_VALID_MODES = {"daily_light", "weekly_deep", "full", "single", "incremental", "listing"}
+
+_PROJECT_ROOT = Path(__file__).resolve().parent
+_LOGS_DIR = _PROJECT_ROOT / "logs"
 
 app = Flask(__name__)
 
@@ -306,7 +315,6 @@ _TEMPLATE = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="refresh" content="60">
   <title>RERA Crawlers Dashboard</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <style>
@@ -353,6 +361,27 @@ _TEMPLATE = """<!DOCTYPE html>
     .sentinel-msg { font-size:.68rem; color:#d29922; margin-top:3px; font-style:italic; }
     .dur { font-size:.75rem; color:#8b949e; white-space:nowrap; }
     a.expand-toggle { font-size:.65rem; color:#58a6ff; text-decoration:none; cursor:pointer; }
+    .btn-run { background:#1f6335; border-color:#238636; color:#e6edf3; font-size:.78rem;
+               font-weight:600; padding:5px 14px; }
+    .btn-run:hover { background:#2ea043; color:#fff; }
+    .modal-content { background:#161b22; color:#e6edf3; border:1px solid #30363d; }
+    .modal-header, .modal-footer { border-color:#30363d; }
+    .modal-title { font-size:.95rem; font-weight:700; color:#58a6ff; }
+    .modal .form-label { font-size:.72rem; color:#8b949e; text-transform:uppercase;
+                          letter-spacing:.05em; font-weight:600; }
+    .modal .form-check-label { font-size:.82rem; color:#e6edf3; }
+    .modal .form-control, .modal .form-select { background:#0d1117; color:#e6edf3;
+                                                  border-color:#30363d; font-size:.85rem; }
+    .modal .form-control:focus, .modal .form-select:focus { background:#0d1117;
+                                                              color:#e6edf3; border-color:#58a6ff;
+                                                              box-shadow:none; }
+    .modal hr { border-color:#30363d; }
+    .site-list { max-height:240px; overflow-y:auto; background:#0d1117;
+                  border:1px solid #30363d; border-radius:6px; padding:8px 12px; }
+    .site-list .form-check { margin-bottom:2px; }
+    .run-result { font-size:.72rem; font-family:monospace; background:#0d1117;
+                   border:1px solid #30363d; border-radius:4px; padding:8px;
+                   margin-top:10px; word-break:break-all; }
   </style>
 </head>
 <body>
@@ -380,8 +409,13 @@ _TEMPLATE = """<!DOCTYPE html>
     </span>
     {% endif %}
   </div>
-  <div style="font-size:.8rem;color:#8b949e;">
-    Refreshed {{ now.strftime('%Y-%m-%d %H:%M:%S') }} UTC
+  <div class="d-flex align-items-center gap-3">
+    <button type="button" class="btn btn-run" data-bs-toggle="modal" data-bs-target="#runModal">
+      ▶ Run Crawlers
+    </button>
+    <div style="font-size:.8rem;color:#8b949e;">
+      Refreshed {{ now.strftime('%Y-%m-%d %H:%M:%S') }} UTC
+    </div>
   </div>
 </div>
 
@@ -644,6 +678,189 @@ _TEMPLATE = """<!DOCTYPE html>
 
   </div><!-- /.row -->
 </div><!-- /.container-fluid -->
+
+{# ── Run Crawlers modal ───────────────────────────────────────────────── #}
+<div class="modal fade" id="runModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">▶ Run Crawlers</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="runForm">
+
+          <div class="mb-3">
+            <label class="form-label d-block mb-2">Mode</label>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="mode" id="modeDaily" value="daily_light" checked>
+              <label class="form-check-label" for="modeDaily">daily_light</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input class="form-check-input" type="radio" name="mode" id="modeWeekly" value="weekly_deep">
+              <label class="form-check-label" for="modeWeekly">weekly_deep</label>
+            </div>
+          </div>
+
+          <hr>
+
+          <div class="mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label class="form-label mb-0">Sites</label>
+              <div>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="sitesAll">All enabled</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" id="sitesNone">Clear</button>
+              </div>
+            </div>
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="checkbox" id="runAllSites" checked>
+              <label class="form-check-label" for="runAllSites">
+                Run all enabled sites (default)
+              </label>
+            </div>
+            <div class="site-list" id="siteList">
+              {% for site in sites %}
+              <div class="form-check">
+                <input class="form-check-input site-checkbox" type="checkbox"
+                       value="{{ site.id }}" id="site_{{ site.id }}"
+                       data-enabled="{{ '1' if site.enabled else '0' }}">
+                <label class="form-check-label" for="site_{{ site.id }}">
+                  {{ site.name }}
+                  <span style="font-size:.65rem;color:#8b949e;">{{ site.id }}</span>
+                  {% if not site.enabled %}<span class="badge bg-none ms-1">disabled</span>{% endif %}
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <hr>
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="useItemLimit" checked>
+                <label class="form-check-label" for="useItemLimit">
+                  Apply item limit
+                </label>
+              </div>
+              <input type="number" class="form-control" id="itemLimit" min="1" value="10">
+              <div style="font-size:.68rem;color:#8b949e;margin-top:4px;">
+                Caps each crawler to N projects. Uncheck to run unlimited.
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">&nbsp;</label>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="testLogs" checked>
+                <label class="form-check-label" for="testLogs">
+                  --test-logs <span style="font-size:.7rem;color:#8b949e;">(skip writes, keep logs)</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div id="runResult" class="run-result" style="display:none;"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-run" id="runSubmit">▶ Start run</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+(function() {
+  const runAll = document.getElementById("runAllSites");
+  const siteList = document.getElementById("siteList");
+  const useItemLimit = document.getElementById("useItemLimit");
+  const itemLimit = document.getElementById("itemLimit");
+  const resultBox = document.getElementById("runResult");
+  const submitBtn = document.getElementById("runSubmit");
+
+  function syncSiteList() {
+    siteList.style.opacity = runAll.checked ? "0.5" : "1";
+    siteList.querySelectorAll(".site-checkbox").forEach(cb => cb.disabled = runAll.checked);
+  }
+  runAll.addEventListener("change", syncSiteList);
+  syncSiteList();
+
+  useItemLimit.addEventListener("change", () => {
+    itemLimit.disabled = !useItemLimit.checked;
+  });
+
+  document.getElementById("sitesAll").addEventListener("click", () => {
+    runAll.checked = false; syncSiteList();
+    siteList.querySelectorAll(".site-checkbox").forEach(cb => {
+      cb.checked = cb.dataset.enabled === "1";
+    });
+  });
+  document.getElementById("sitesNone").addEventListener("click", () => {
+    runAll.checked = false; syncSiteList();
+    siteList.querySelectorAll(".site-checkbox").forEach(cb => cb.checked = false);
+  });
+
+  // Auto-refresh every 60s, but skip if a modal is open or a run is in flight.
+  setInterval(() => {
+    if (document.querySelector(".modal.show")) return;
+    if (submitBtn.disabled) return;
+    window.location.reload();
+  }, 60000);
+
+  submitBtn.addEventListener("click", async () => {
+    const mode = document.querySelector("input[name=mode]:checked").value;
+    let sites = "all";
+    if (!runAll.checked) {
+      sites = Array.from(siteList.querySelectorAll(".site-checkbox:checked")).map(cb => cb.value);
+      if (sites.length === 0) {
+        resultBox.style.display = "block";
+        resultBox.style.color = "#f85149";
+        resultBox.textContent = "Select at least one site, or check \\"Run all enabled sites\\".";
+        return;
+      }
+    }
+    const payload = {
+      mode,
+      sites,
+      item_limit: useItemLimit.checked ? parseInt(itemLimit.value, 10) : null,
+      test_logs: document.getElementById("testLogs").checked,
+    };
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Starting…";
+    resultBox.style.display = "block";
+    resultBox.style.color = "#8b949e";
+    resultBox.textContent = "Starting run…";
+
+    try {
+      const res = await fetch("/api/run", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        resultBox.style.color = "#f85149";
+        resultBox.textContent = "Error: " + (data.error || res.statusText);
+      } else {
+        resultBox.style.color = "#3fb950";
+        resultBox.innerHTML = "✓ Started (PID " + data.pid + ")<br>" +
+                              "Log: " + data.logfile + "<br>" +
+                              "<span style=\\"color:#8b949e;\\">" + data.cmd + "</span>";
+      }
+    } catch (err) {
+      resultBox.style.color = "#f85149";
+      resultBox.textContent = "Request failed: " + err;
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "▶ Start run";
+    }
+  });
+})();
+</script>
 </body>
 </html>"""
 
@@ -664,6 +881,80 @@ def index():
         data_source=data.get("source", "unknown"),
         now=datetime.now(timezone.utc),
     )
+
+
+@app.route("/api/run", methods=["POST"])
+def api_run():
+    """Kick off run_crawlers.py as a detached background process.
+
+    Accepts JSON: { mode, sites: [] | "all", item_limit: null|int, test_logs: bool }.
+    Returns: { pid, logfile, cmd } on success.
+    """
+    payload = request.get_json(silent=True) or {}
+
+    mode = str(payload.get("mode", "daily_light"))
+    if mode not in _VALID_MODES:
+        return jsonify({"error": f"Invalid mode: {mode}"}), 400
+
+    sites_arg = payload.get("sites", "all")
+    selected_sites: list[str] = []
+    if sites_arg != "all":
+        if not isinstance(sites_arg, list):
+            return jsonify({"error": "sites must be a list of site ids or \"all\""}), 400
+        for sid in sites_arg:
+            if not isinstance(sid, str) or sid not in _SITE_IDS:
+                return jsonify({"error": f"Unknown site id: {sid}"}), 400
+            selected_sites.append(sid)
+        if not selected_sites:
+            return jsonify({"error": "No sites selected"}), 400
+
+    item_limit = payload.get("item_limit")
+    if item_limit is not None:
+        try:
+            item_limit = int(item_limit)
+        except (TypeError, ValueError):
+            return jsonify({"error": "item_limit must be an integer"}), 400
+        if item_limit <= 0:
+            return jsonify({"error": "item_limit must be greater than 0"}), 400
+
+    test_logs = bool(payload.get("test_logs", False))
+
+    cmd: list[str] = [sys.executable, "run_crawlers.py", "--mode", mode]
+    for sid in selected_sites:
+        cmd.extend(["--site", sid])
+    if item_limit is not None:
+        cmd.extend(["--item-limit", str(item_limit)])
+    if test_logs:
+        cmd.append("--test-logs")
+
+    _LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    logfile = _LOGS_DIR / f"run_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+
+    env = os.environ.copy()
+    env["PYTHONHASHSEED"] = "0"
+    env["PYTHONUNBUFFERED"] = "1"
+
+    try:
+        log_fh = open(logfile, "ab", buffering=0)
+        proc = subprocess.Popen(
+            cmd,
+            cwd=str(_PROJECT_ROOT),
+            stdout=log_fh,
+            stderr=subprocess.STDOUT,
+            stdin=subprocess.DEVNULL,
+            env=env,
+            start_new_session=True,
+            close_fds=True,
+        )
+        log_fh.close()
+    except Exception as exc:
+        return jsonify({"error": f"Failed to start: {exc}"}), 500
+
+    return jsonify({
+        "pid": proc.pid,
+        "logfile": str(logfile.relative_to(_PROJECT_ROOT)),
+        "cmd": " ".join(cmd),
+    })
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────
