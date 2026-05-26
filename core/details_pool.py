@@ -32,7 +32,7 @@ R = TypeVar("R")
 
 # Default worker count.  Tuned to match what most state portals allow before
 # throttling kicks in (3-6 simultaneous detail requests).  Configurable per
-# call so playwright-driven states can fall back to fewer workers.
+# call so selenium-driven states can fall back to fewer workers.
 DEFAULT_WORKERS = 6
 
 
@@ -97,7 +97,7 @@ def iter_in_chunks(seq: Sequence[T], chunk_size: int) -> Iterable[Sequence[T]]:
 
 class PagePool:
     """
-    Minimal pool of pre-created Playwright pages shared across detail workers.
+    Minimal pool of pre-created Selenium pages shared across detail workers.
 
     Each browser-driven state crawler (odisha, rajasthan, telangana) uses one
     detail page per worker thread.  Constructing pages is expensive (~300 ms)

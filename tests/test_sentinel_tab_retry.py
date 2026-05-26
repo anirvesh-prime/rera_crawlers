@@ -14,7 +14,7 @@ from core.sentinel_utils import click_tab_with_retry
 
 
 class _FakePage:
-    """Minimal stand-in for a Playwright Page tracking calls + scripted clicks."""
+    """Minimal stand-in for a Selenium Page tracking calls + scripted clicks."""
 
     def __init__(self, click_outcomes):
         # click_outcomes is a list of either None (success) or Exception (raise)

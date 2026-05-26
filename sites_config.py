@@ -6,7 +6,7 @@ To add a new site, append an entry and set enabled=False until tested.
 crawler_type options:
   'static'      - server-rendered HTML, use httpx + BeautifulSoup
   'api'         - Angular/SPA site with discoverable JSON API, use httpx directly
-  'playwright'  - pure JS SPA with no discoverable API, use Playwright
+  'selenium'  - pure JS SPA with no discoverable API, use Selenium
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ SITES: list[dict] = [
         "domain": "rera.kerala.gov.in",
         "listing_url": "https://rera.kerala.gov.in/explore-projects",
         "crawler_module": "sites.kerala_rera",
-        "crawler_type": "static",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
@@ -37,7 +37,7 @@ SITES: list[dict] = [
         "domain": "rera.rajasthan.gov.in",
         "listing_url": "https://rera.rajasthan.gov.in/ProjectList?status=3",
         "crawler_module": "sites.rajasthan_rera",
-        "crawler_type": "api",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (0.5, 1.5),
         "max_retries": 3,
@@ -54,7 +54,7 @@ SITES: list[dict] = [
         "domain": "rera.odisha.gov.in",
         "listing_url": "https://rera.odisha.gov.in/projects/project-list",
         "crawler_module": "sites.odisha_rera",
-        "crawler_type": "playwright",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (2, 5),
         "max_retries": 3,
@@ -69,7 +69,7 @@ SITES: list[dict] = [
         "domain": "prera.py.gov.in",
         "listing_url": "https://prera.py.gov.in/reraAppOffice/viewDefaulterProjects",
         "crawler_module": "sites.pondicherry_rera",
-        "crawler_type": "static",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
@@ -86,8 +86,8 @@ SITES: list[dict] = [
         "domain": "rera.bihar.gov.in",
         "listing_url": "https://rera.bihar.gov.in/RegisteredPP.aspx",
         "crawler_module": "sites.bihar_rera",
-        # Listing is server-rendered ASP.NET; detail pages use __doPostBack (Playwright).
-        "crawler_type": "playwright",
+        # Listing is server-rendered ASP.NET; detail pages use __doPostBack (Selenium).
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
@@ -102,7 +102,7 @@ SITES: list[dict] = [
         "domain": "rera.punjab.gov.in",
         "listing_url": "https://rera.punjab.gov.in/reraindex/publicview/projectinfo",
         "crawler_module": "sites.punjab_rera",
-        "crawler_type": "playwright",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
@@ -119,7 +119,7 @@ SITES: list[dict] = [
         "domain": "maharera.maharashtra.gov.in",
         "listing_url": "https://maharera.maharashtra.gov.in/projects-search-result",
         "crawler_module": "sites.maharashtra_rera",
-        "crawler_type": "static",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
@@ -140,7 +140,7 @@ SITES: list[dict] = [
         # Angular SPA — crawler uses the JSON API directly (sequential ID iteration).
         "listing_url": "https://gujrera.gujarat.gov.in/#/home-p/registered-project-listing",
         "crawler_module": "sites.gujarat_rera",
-        "crawler_type": "api",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (0.5, 1.5),
         "max_retries": 3,
@@ -159,7 +159,7 @@ SITES: list[dict] = [
         "domain": "rera.karnataka.gov.in",
         "listing_url": "https://rera.karnataka.gov.in/viewAllProjects",
         "crawler_module": "sites.karnataka_rera",
-        "crawler_type": "static",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (2, 5),
         "max_retries": 3,
@@ -174,7 +174,7 @@ SITES: list[dict] = [
         "domain": "haryanarera.gov.in",
         "listing_url": "https://haryanarera.gov.in/admincontrol/registered_projects/2",
         "crawler_module": "sites.haryana_rera",
-        "crawler_type": "static",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
@@ -189,7 +189,7 @@ SITES: list[dict] = [
         "domain": "rera.delhi.gov.in",
         "listing_url": "https://rera.delhi.gov.in/registered_promoters_list",
         "crawler_module": "sites.delhi_rera",
-        "crawler_type": "static",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
@@ -223,7 +223,7 @@ SITES: list[dict] = [
             "https://rera.tn.gov.in/cms/reg_projects_regularisationlayout_tamilnadu.php",
         ],
         "crawler_module": "sites.tamil_nadu_rera",
-        "crawler_type": "static",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (1, 3),
         "max_retries": 3,
@@ -240,7 +240,7 @@ SITES: list[dict] = [
         # Server-rendered MVC listing; pagination via ?page=N query param; detail via GET.
         "listing_url": "https://jharera.jharkhand.gov.in/Home/OnlineRegisteredProjectsList",
         "crawler_module": "sites.jharkhand_rera",
-        "crawler_type": "static",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
@@ -257,7 +257,7 @@ SITES: list[dict] = [
         # Detail pages use an encrypted 'enc' query-parameter URL.
         "listing_url": "https://rera.ap.gov.in/RERA/Views/Reports/ApprovedProjects.aspx",
         "crawler_module": "sites.andhra_pradesh_rera",
-        "crawler_type": "static",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
@@ -275,7 +275,7 @@ SITES: list[dict] = [
         # Detail pages: /Promoter_Reg_Only_View_Application_new.aspx?MyID={base64_id}
         "listing_url": "https://rera.cgstate.gov.in/Approved_project_List.aspx",
         "crawler_module": "sites.chhattisgarh_rera",
-        "crawler_type": "static",
+        "crawler_type": "selenium",
         "enabled": False,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
@@ -290,8 +290,9 @@ SITES: list[dict] = [
         "domain": "rera.goa.gov.in",
         "listing_url": "https://rera.goa.gov.in/reraApp/home",
         "crawler_module": "sites.goa_rera",
-        # Playwright needed: listing page has captcha; detail pages use httpx (no captcha).
-        "crawler_type": "playwright",
+        # Selenium needed: listing page has captcha; detail pages + document
+        # downloads go through Selenium (legacy government TLS).
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
@@ -309,7 +310,7 @@ SITES: list[dict] = [
         # Detail pages: /viewProjectDetailPage?projectID=N
         "listing_url": "https://reraonline.tripura.gov.in/viewApprovedProjects",
         "crawler_module": "sites.tripura_rera",
-        "crawler_type": "static",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
@@ -326,7 +327,7 @@ SITES: list[dict] = [
         # Detail pages: /project_details.php?procode=N
         "listing_url": "https://rera.wb.gov.in/district_project.php?dcode=0",
         "crawler_module": "sites.west_bengal_rera",
-        "crawler_type": "static",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (1, 3),
         "max_retries": 3,
@@ -343,7 +344,7 @@ SITES: list[dict] = [
         # Detail pages use an encrypted q-param PrintPreview URL.
         "listing_url": "https://rerait.telangana.gov.in/SearchList/Search",
         "crawler_module": "sites.telangana_rera",
-        "crawler_type": "playwright",
+        "crawler_type": "selenium",
         "enabled": False,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
@@ -364,7 +365,7 @@ SITES: list[dict] = [
         # Documents:    /project/view_uploaded_Document_open_public/{base64_id}
         "listing_url": "https://rera.assam.gov.in/admincontrol/registered_projects/1",
         "crawler_module": "sites.assam_rera",
-        "crawler_type": "static",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
@@ -384,7 +385,7 @@ SITES: list[dict] = [
         # Detail sections are separate AJAX endpoints keyed by encrypted 'qs' token.
         "listing_url": "https://hprera.nic.in/PublicDashboard",
         "crawler_module": "sites.himachal_pradesh_rera",
-        "crawler_type": "api",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (0.5, 1.5),
         "max_retries": 3,
@@ -408,7 +409,7 @@ SITES: list[dict] = [
         "listing_ajax_url": "https://www.rera.mp.gov.in/project-all-loop.php",
         "detail_base_url": "https://www.rera.mp.gov.in/view_project_details.php",
         "crawler_module": "sites.madhya_pradesh_rera",
-        "crawler_type": "static",
+        "crawler_type": "selenium",
         "enabled": False,
         "rate_limit_delay": (1, 3),
         "max_retries": 3,
@@ -434,7 +435,7 @@ SITES: list[dict] = [
         "listing_url": "https://ukrera.uk.gov.in/viewRegisteredProjects",
         "detail_base_url": "https://ukrera.uk.gov.in/viewProjectDetailPage",
         "crawler_module": "sites.uttarakhand_rera",
-        "crawler_type": "static",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
@@ -453,10 +454,10 @@ SITES: list[dict] = [
         # District-wise listing: frm_allprojectdistrictwise.aspx?districtname={district}
         # All 75 UP districts are iterated; each page is an ASP.NET WebForms GridView
         # with all projects for that district in the initial HTML response (no pagination).
-        # "View Detail" buttons use __doPostBack — Playwright is required for detail pages.
+        # "View Detail" buttons use __doPostBack — Selenium is required for detail pages.
         "listing_url": "https://www.up-rera.in/frm_allprojectdistrictwise.aspx",
         "crawler_module": "sites.uttar_pradesh_rera",
-        "crawler_type": "playwright",
+        "crawler_type": "selenium",
         "enabled": True,
         "rate_limit_delay": (2, 5),
         "max_retries": 3,

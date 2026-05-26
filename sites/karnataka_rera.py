@@ -38,12 +38,11 @@ import time
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import httpx
 from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import download_response, generate_project_key, random_delay, safe_get, safe_post
+from core.crawler_base import SeleniumSession, generate_project_key, random_delay
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.details_pool import get_detail_workers, process_details
 from core.document_policy import select_document_for_download
@@ -69,6 +68,47 @@ CERT_URL    = f"{BASE_URL}/certificate"
 PROJECT_URL = f"{BASE_URL}/projectViewDetails"   # canonical; no per-project URL path
 DOMAIN      = "rera.karnataka.gov.in"
 STATE_CODE  = "KA"
+
+
+# ── SeleniumSession wiring ────────────────────────────────────────────────────
+
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+def safe_get(url, *, logger=None, timeout=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
+    return _session().get(url, logger=logger, page_load_timeout=plt)
+
+
+def safe_post(url, *, data=None, headers=None, logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().post(url, data=data, headers=headers, logger=logger)
+
+
+def download_response(url, *, method="GET", data=None, headers=None,
+                      logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().download(url, method=method, data=data, headers=headers, logger=logger)
 
 # All 31 Karnataka districts as they appear in the portal's <select> options.
 # A district must be selected — blank search returns zero results.
@@ -629,7 +669,7 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
     bank_pin = grid_kv.get("pin code", "")
     bank: dict = {
         "bank_name":    _pop_mapped("_bank_name", "bank name"),                              # FIELD: bank_details.bank_name <- _pop_mapped("_bank_name", "bank name")
-        "account_no":   _pop_mapped("_account_no", "account no", "account no.(70% account)"),# FIELD: bank_details.account_no <- _pop_mapped("_account_no", "account no", ...)
+        "account_no":   _pop_mapped("_account_no", "account no", "account no.(70% account)"),  # FIELD: bank_details.account_no <- _pop_mapped("_account_no", "account no", ...)
         "account_name": _pop_mapped("_account_name", "account name"),                        # FIELD: bank_details.account_name <- _pop_mapped("_account_name", "account name")
         "IFSC":         _pop_mapped("_ifsc", "ifsc", "ifsc code"),                           # FIELD: bank_details.IFSC <- _pop_mapped("_ifsc", "ifsc", "ifsc code")
         "branch":       _pop_mapped("_branch", "branch"),                                    # FIELD: bank_details.branch <- _pop_mapped("_branch", "branch")
@@ -988,7 +1028,7 @@ _DOC_CONNECT_TIMEOUT = 10.0   # seconds to establish TCP connection
 _DOC_READ_TIMEOUT    = 20.0   # seconds between data chunks
 _DOC_TOTAL_TIMEOUT   = 60.0   # hard cap: total download time in seconds
 _DOC_MAX_BYTES       = 50 * 1024 * 1024  # 50 MB safety limit
-_MAX_DOC_WORKERS     = 5      # parallel document download threads
+_MAX_DOC_WORKERS     = 1      # serialised: single SeleniumSession driver is not thread-safe
 
 # psycopg connections are not thread-safe — serialise all DB writes from doc threads.
 _DB_LOCK = threading.Lock()
@@ -1000,7 +1040,7 @@ def _handle_document(
     run_id: int,
     site_id: str,
     logger: CrawlerLogger,
-    client: httpx.Client,
+    client=None,
 ) -> dict | None:
     """Download a document, upload to S3, and record it in rera_project_documents."""
     url = doc.get("link")
@@ -1009,16 +1049,9 @@ def _handle_document(
         return None
     filename = build_document_filename(doc)
     try:
-        doc_timeout = httpx.Timeout(
-            connect=_DOC_CONNECT_TIMEOUT,
-            read=_DOC_READ_TIMEOUT,
-            write=_DOC_READ_TIMEOUT,
-            pool=10.0,
-        )
         resp = download_response(
             url,
-            client=client,
-            timeout=doc_timeout,
+            logger=logger,
             total_timeout=_DOC_TOTAL_TIMEOUT,
             max_bytes=_DOC_MAX_BYTES,
         )
@@ -1049,7 +1082,7 @@ def _handle_document(
                 file_size_bytes=len(data),
             )
         logger.log_document(doc_type, url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
-        return {**doc, "s3_link": s3_url}
+        return {**doc, "s3_link": s3_url}  # FIELD: uploaded_documents[].s3_link <- get_s3_url(s3_key)
     except Exception as exc:
         logger.warning(f"Document handling error: {exc}", url=url, step="documents")
         with _DB_LOCK:
@@ -1075,30 +1108,23 @@ def _process_documents(
         if sel:
             selected_pairs.append((doc, sel))
         else:
-            skipped_entries.append({"link": doc.get("link"), "type": doc.get("type", "document")})
+            skipped_entries.append({"link": doc.get("link"), "type": doc.get("type", "document")})  # FIELD: uploaded_documents[].link/type <- skipped doc (policy-rejected) entry
     if not selected_pairs:
         return skipped_entries, 0
 
-    # ── Phase 2: parallel downloads ────────────────────────────────────────────
-    doc_timeout = httpx.Timeout(
-        connect=_DOC_CONNECT_TIMEOUT,
-        read=_DOC_READ_TIMEOUT,
-        write=_DOC_READ_TIMEOUT,
-        pool=10.0,
-    )
+    # ── Phase 2: downloads (serialised — single SeleniumSession driver) ────────
     dl_results: list[dict | None] = [None] * len(selected_pairs)
-    with httpx.Client(timeout=doc_timeout, follow_redirects=True) as client:
-        with ThreadPoolExecutor(max_workers=_MAX_DOC_WORKERS) as executor:
-            futures = {
-                executor.submit(_handle_document, project_key, sel, run_id, site_id, logger, client): i
-                for i, (_orig, sel) in enumerate(selected_pairs)
-            }
-            for fut in as_completed(futures):
-                idx = futures[fut]
-                try:
-                    dl_results[idx] = fut.result()
-                except Exception as exc:
-                    logger.warning(f"Doc thread error: {exc}", step="documents")
+    with ThreadPoolExecutor(max_workers=_MAX_DOC_WORKERS) as executor:
+        futures = {
+            executor.submit(_handle_document, project_key, sel, run_id, site_id, logger, None): i
+            for i, (_orig, sel) in enumerate(selected_pairs)
+        }
+        for fut in as_completed(futures):
+            idx = futures[fut]
+            try:
+                dl_results[idx] = fut.result()
+            except Exception as exc:
+                logger.warning(f"Doc thread error: {exc}", step="documents")
 
     # ── Phase 3: reassemble in original order ─────────────────────────────────
     upload_count = 0
@@ -1108,7 +1134,7 @@ def _process_documents(
             enriched.append(result)
             upload_count += 1
         else:
-            enriched.append({"link": orig.get("link"), "type": orig.get("type", "document")})
+            enriched.append({"link": orig.get("link"), "type": orig.get("type", "document")})  # FIELD: uploaded_documents[].link/type <- original doc (download failed, no s3_link)
     enriched.extend(skipped_entries)
     return enriched, upload_count
 
@@ -1387,15 +1413,15 @@ def _process_candidate(
 
         merged: dict = {
             **detail,
-            "acknowledgement_no": ack_no,
-            "url":    PROJECT_URL,
-            "domain": DOMAIN,
-            "state":  state,
-            "data":   merge_data_sections(detail.get("data"), {}),
-            "is_live": True,
+            "acknowledgement_no": ack_no,                              # FIELD: acknowledgement_no <- ack_no from listing_row
+            "url":    PROJECT_URL,                                     # FIELD: url <- module constant PROJECT_URL
+            "domain": DOMAIN,                                          # FIELD: domain <- module constant DOMAIN
+            "state":  state,                                           # FIELD: state <- state arg (config["state"])
+            "data":   merge_data_sections(detail.get("data"), {}),     # FIELD: data <- merge_data_sections(detail["data"], {})
+            "is_live": True,                                           # FIELD: is_live <- literal True
         }
         if uploaded_docs:
-            merged["uploaded_documents"] = uploaded_docs
+            merged["uploaded_documents"] = uploaded_docs               # FIELD: uploaded_documents <- _extract_documents result
         merged = {k: v for k, v in merged.items() if v is not None}
 
         try:
@@ -1420,9 +1446,9 @@ def _process_candidate(
                 deltas["documents_uploaded"] += doc_count
                 if doc_count:
                     upsert_project({
-                        "key": project_key,
-                        "uploaded_documents": enriched,
-                        "document_urls": build_document_urls(enriched),
+                        "key": project_key,                            # FIELD: key <- generate_project_key(reg_no)
+                        "uploaded_documents": enriched,                # FIELD: uploaded_documents <- enriched docs from _process_documents
+                        "document_urls": build_document_urls(enriched),  # FIELD: document_urls <- build_document_urls(enriched)
                     })
         except ValidationError as exc:
             deltas["error_count"] += 1
@@ -1442,16 +1468,25 @@ def _process_candidate(
 # ── Main entry point ──────────────────────────────────────────────────────────
 
 def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
     """
-    Karnataka RERA crawl: two-phase lister → parallel-details pipeline.
+    Karnataka RERA crawl: two-phase lister → details pipeline.
 
     Phase A (lister)  — walk districts sequentially, collecting up to
                         CRAWL_ITEM_LIMIT listing rows then stopping.
                         projects_found reflects the rows actually walked,
                         not the full state catalog.
-    Phase B (details) — fan the collected rows out across DETAIL_WORKERS
-                        threads; each worker runs the two-step detail
-                        fetch, normalise, upsert and document download.
+    Phase B (details) — process the collected rows through the two-step
+                        detail fetch, normalise, upsert and document download
+                        (serialised because the SeleniumSession driver is not
+                        thread-safe).
     """
     logger = CrawlerLogger(config["id"], run_id)
     counters = dict(
@@ -1494,12 +1529,15 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         step="listing",
     )
 
-    # ── Phase B: Details — parallel per-candidate processing ─────────────────
+    # ── Phase B: Details — serialised processing (single Selenium driver) ────
     if candidates:
-        n_workers = get_detail_workers()
+        # Force single-worker mode: the shared SeleniumSession is not safe to
+        # share across threads. Concurrent driver access produces interleaved
+        # navigations and lost cookies.
+        n_workers = 1
         logger.info(
-            f"Phase B: parallel detail fetch ({len(candidates)} candidates, "
-            f"{n_workers} workers)",
+            f"Phase B: serial detail fetch ({len(candidates)} candidates, "
+            f"{n_workers} worker)",
             step="detail_fetch",
         )
         tB = time.monotonic()

@@ -1,13 +1,13 @@
 """
 Telangana RERA Crawler — rerait.telangana.gov.in
-Type: Playwright (ASP.NET search form + CAPTCHA)
+Type: Selenium (ASP.NET search form + CAPTCHA)
 
 Strategy:
 - Submit the search form at /SearchList/Search with CAPTCHA solved via captcha_solver.
 - Parse the server-rendered results table; paginate via ASP.NET __doPostBack.
 - For each row: extract the encrypted q-param (PrintPreview URL) and the base64
   data_cert that encodes ProjectID / AppID / UserID.
-- Navigate to the PrintPreview page with Playwright; parse HTML for all fields.
+- Navigate to the PrintPreview page with Selenium; parse HTML for all fields.
 - Derive stable registration number from the detail page, falling back to TG-{AppID}.
 - Download selected documents and upload to S3.
 """
@@ -26,12 +26,11 @@ from pydantic import ValidationError
 from core.captcha_solver import captcha_to_text
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.crawler_base import (
-    PlaywrightSession,
-    download_response,
+    SeleniumSession,
+    SeleniumTimeout,
     generate_project_key,
-    get_legacy_ssl_context,
+    page_adapter,
     random_delay,
-    safe_get,
 )
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.details_pool import get_detail_workers, process_details
@@ -77,6 +76,42 @@ _CAPTCHA_SELECTORS = [
 
 # Regex to strip trailing colons / whitespace from label text
 _LABEL_RE = re.compile(r"[:.\s]+$")
+
+
+# ── SeleniumSession wiring ────────────────────────────────────────────────────
+
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+def safe_get(url, *, logger=None, timeout=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
+    return _session().get(url, logger=logger, page_load_timeout=plt)
+
+
+def download_response(url, *, logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().download(url, logger=logger)
+
 
 # ── Utility helpers ────────────────────────────────────────────────────────────
 
@@ -175,7 +210,7 @@ def _solve_captcha(page: Any, logger: CrawlerLogger) -> str | None:
 
     Strategy:
       1. element.screenshot() captures the rendered #captchaImage pixels via
-         Playwright — no CORS/canvas-taint issues.
+         Selenium — no CORS/canvas-taint issues.
       2. A brief 3.5 s stabilisation wait is required: the page JS
          auto-refreshes the CAPTCHA once ~2.5 s after load (no page reload,
          just a src change).  Capturing before this settles means solving the
@@ -735,7 +770,7 @@ def _fetch_print_preview_html(
     """
     Navigate to the PrintPreview page and return its HTML.
 
-    Accepts a reusable Playwright page (detail_page) rather than a browser so
+    Accepts a reusable Selenium page (detail_page) rather than a browser so
     the same page object is navigated for every project instead of creating and
     destroying a new page on each call.  This eliminates per-project page
     allocation overhead and halves the networkidle timeout (the Telangana
@@ -755,20 +790,17 @@ def _fetch_print_preview_html(
                 f"Fetching PrintPreview (attempt {attempt}/{max_retries})",
                 step="detail_fetch",
             )
-            detail_page.goto(pp_url, wait_until="domcontentloaded", timeout=_NAV_TIMEOUT_MS)
-            try:
-                detail_page.wait_for_load_state("networkidle", timeout=15_000)
-            except Exception:
-                pass  # networkidle timeout is non-fatal; content may still be complete
-
-            html = detail_page.content()
+            # Fetch via a dedicated request through the SeleniumSession so the
+            # listing page's navigational state on ``detail_page`` is preserved.
+            resp = _session().get(pp_url, logger=logger,
+                                  page_load_timeout=_NAV_TIMEOUT_MS / 1000)
+            html = resp.text if resp else ""
             if _is_valid_preview_html(html):
                 return html
 
-            landed = detail_page.url
             logger.warning(
                 f"PrintPreview returned invalid content "
-                f"(attempt {attempt}/{max_retries}, landed={landed!r}, "
+                f"(attempt {attempt}/{max_retries}, "
                 f"content_len={len(html)})",
                 step="detail_fetch",
             )
@@ -777,11 +809,6 @@ def _fetch_print_preview_html(
                 f"PrintPreview navigation error (attempt {attempt}/{max_retries}): {exc}",
                 step="detail_fetch",
             )
-            # Reset the page to a blank state so the next attempt starts clean.
-            try:
-                detail_page.goto("about:blank", timeout=5000)
-            except Exception:
-                pass
 
         if attempt < max_retries:
             time.sleep(2 * attempt)   # 2 s, 4 s before the 2nd and 3rd retry
@@ -817,18 +844,18 @@ def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
     data: dict[str, Any] = {}
 
     # ── Core fields (Project Information section) ─────────────────────────────
-    data["project_name"]          = proj_lv(r"project\s*name")
-    data["project_type"]          = proj_lv(r"project\s*type")
-    data["status_of_the_project"] = proj_lv(r"project\s*status", r"\bstatus\b")
-    data["project_registration_no"] = lv(r"plan\s*approval\s*number")
-    data["approved_on_date"]      = proj_lv(r"approved\s*date")
-    data["estimated_finish_date"] = proj_lv(
+    data["project_name"]          = proj_lv(r"project\s*name")  # FIELD: project_name <- proj_sec "project name" label
+    data["project_type"]          = proj_lv(r"project\s*type")  # FIELD: project_type <- proj_sec "project type" label
+    data["status_of_the_project"] = proj_lv(r"project\s*status", r"\bstatus\b")  # FIELD: status_of_the_project <- proj_sec project status/status label
+    data["project_registration_no"] = lv(r"plan\s*approval\s*number")  # FIELD: project_registration_no <- doc "plan approval number" label
+    data["approved_on_date"]      = proj_lv(r"approved\s*date")  # FIELD: approved_on_date <- proj_sec "approved date" label
+    data["estimated_finish_date"] = proj_lv(  # FIELD: estimated_finish_date <- proj_sec revised/proposed completion date
         r"revised\s*proposed\s*date",
         r"proposed\s*date.*completion",
         r"proposed.*completion",
     )
-    data["actual_finish_date"]          = proj_lv(r"actual.*complet")
-    data["estimated_commencement_date"] = proj_lv(r"commencement\s*date")
+    data["actual_finish_date"]          = proj_lv(r"actual.*complet")  # FIELD: actual_finish_date <- proj_sec "actual...completion" label
+    data["estimated_commencement_date"] = proj_lv(r"commencement\s*date")  # FIELD: estimated_commencement_date <- proj_sec "commencement date" label
 
     # ── Location (Address Details section — project location, not promoter) ───
     district   = addr_lv(r"district")
@@ -839,15 +866,15 @@ def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
 
     raw_addr_parts = [p for p in [locality, district, state_name,
                                    f"Pincode: {pin_code}" if pin_code else None] if p]
-    data["project_city"]      = district
-    data["project_pin_code"]  = pin_code
+    data["project_city"]      = district  # FIELD: project_city <- addr_sec "district" label
+    data["project_pin_code"]  = pin_code  # FIELD: project_pin_code <- addr_sec "pin code" label
     data["project_location_raw"] = {
-        "state":       state_name,
-        "district":    district,
-        "village":     village,
-        "locality":    locality,
-        "pin_code":    pin_code,
-        "raw_address": ", ".join(raw_addr_parts) if raw_addr_parts else None,
+        "state":       state_name,  # FIELD: project_location_raw.state <- addr_sec "state" label or "Telangana"
+        "district":    district,  # FIELD: project_location_raw.district <- addr_sec "district" label
+        "village":     village,  # FIELD: project_location_raw.village <- addr_sec "village"/"mandal" label
+        "locality":    locality,  # FIELD: project_location_raw.locality <- addr_sec "locality" label
+        "pin_code":    pin_code,  # FIELD: project_location_raw.pin_code <- addr_sec "pin code" label
+        "raw_address": ", ".join(raw_addr_parts) if raw_addr_parts else None,  # FIELD: project_location_raw.raw_address <- joined locality/district/state/pin
     }
 
     # ── Promoter (Promoter Information section) ───────────────────────────────
@@ -873,6 +900,7 @@ def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
         prom_lv(r"\blast\s*name\b", r"\bsurname\b")
         or _lv_for(prom_sec, r"PersonalInfoModel_IndivisualLName$")
     )
+    # FIELD: promoter_name <- prom_sec name (Individual first/middle/last or Org company)
     data["promoter_name"] = " ".join(filter(None, [first_name, middle_name, last_name])) or None
 
     # Address labels also diverge between Individual and Organization.  Look
@@ -911,26 +939,29 @@ def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
     prom_raw_parts = [p for p in [prom_house, prom_locality, prom_district, prom_state,
                                    f"Pincode: {prom_pin}" if prom_pin else None] if p]
     data["promoter_address_raw"] = {
+        # FIELD: promoter_address_raw.raw_address <- joined prom house/locality/district/state/pin
         "raw_address":            ", ".join(prom_raw_parts) if prom_raw_parts else None,
-        "district":               prom_district,
-        "locality":               prom_locality,
-        "pin_code":               prom_pin,
-        "state":                  prom_state,
-        "house_no_building_name": prom_house,
+        "district":               prom_district,  # FIELD: promoter_address_raw.district <- prom_sec district label/for-id
+        "locality":               prom_locality,  # FIELD: promoter_address_raw.locality <- prom_sec locality label/for-id
+        "pin_code":               prom_pin,  # FIELD: promoter_address_raw.pin_code <- prom_sec pin code label/for-id
+        "state":                  prom_state,  # FIELD: promoter_address_raw.state <- prom_sec state label/for-id or "Telangana"
+        "house_no_building_name": prom_house,  # FIELD: promoter_address_raw.house_no_building_name <- prom_sec house/building
     }
     phone = prom_lv(r"office\s*number", r"\bphone\b", r"\bmobile\b")
     email = prom_lv(r"e[-\s]?mail")
+    # FIELD: promoter_contact_details <- prom_sec phone + email labels (dict comp)
     data["promoter_contact_details"] = {k: v for k, v in {"phone": phone, "email": email}.items() if v}
 
     # The sample stores just the first-name fragment as promoters_details.name
+    # FIELD: promoters_details <- prom_sec promoter first-name only
     data["promoters_details"] = {"name": first_name} if first_name else None
 
     # ── Land / area ────────────────────────────────────────────────────────────
     # land_area: total land area from "Land Details" section
     # construction_area: approved built-up area from "Built-Up Area Details" section
     #   (distinct from Net Area in Land Details, which is land net of road widening)
-    data["land_area"]         = land_lv(r"total\s*area", r"land\s*area")
-    data["construction_area"] = (
+    data["land_area"]         = land_lv(r"total\s*area", r"land\s*area")  # FIELD: land_area <- land_sec "total area"/"land area" label
+    data["construction_area"] = (  # FIELD: construction_area <- built_sec/land_sec approved built-up area
         built_lv(r"approved.*built.*up", r"built[\s-]*up\s*area")
         or land_lv(r"approved.*built.*up", r"built[\s-]*up\s*area")
     )
@@ -938,10 +969,10 @@ def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
     land_area_unit  = "Total Area(In sqmts)"
     const_area_unit = "Approved Built up Area (In Sqmts)"
     data["land_area_details"] = {
-        "land_area":             data["land_area"],
-        "land_area_unit":        land_area_unit,
-        "construction_area":     data["construction_area"],
-        "construction_area_unit": const_area_unit,
+        "land_area":             data["land_area"],  # FIELD: land_area_details.land_area <- mirrors data["land_area"]
+        "land_area_unit":        land_area_unit,  # FIELD: land_area_details.land_area_unit <- constant "Total Area(In sqmts)"
+        "construction_area":     data["construction_area"],  # FIELD: land_area_details.construction_area <- mirrors data["construction_area"]
+        "construction_area_unit": const_area_unit,  # FIELD: land_area_details.construction_area_unit <- constant unit string
     } if data["land_area"] else None
 
     # ── Building / plot details table ─────────────────────────────────────────
@@ -994,7 +1025,7 @@ def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
                 if entry.get("flat_type") or entry.get("total_area"):
                     building_details.append(entry)
 
-    data["building_details"] = building_details or None
+    data["building_details"] = building_details or None  # FIELD: building_details <- plot/apartment tables parsed rows
 
     # ── Co-promoters (Land Owner / Investor table) ────────────────────────────
     # The table headers include "Promoter(Land Owner/ Investor)".
@@ -1011,7 +1042,7 @@ def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
                 # Skip repeated header rows (ASP.NET GridView repeats headers)
                 if name and not re.search(r"^promoter\s*name$", name, re.I):
                     co_promoters.append({"name": name})
-    data["co_promoter_details"] = co_promoters or None
+    data["co_promoter_details"] = co_promoters or None  # FIELD: co_promoter_details <- "Land Owner/Investor" table promoter names
 
     # ── Professionals ─────────────────────────────────────────────────────────
     professionals: list[dict] = []
@@ -1027,7 +1058,7 @@ def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
                 )
                 if name:
                     professionals.append({"name": name, "role": role or ""})
-    data["professional_information"] = professionals or None
+    data["professional_information"] = professionals or None  # FIELD: professional_information <- architect/engineer table name+role
 
     # ── Construction progress ─────────────────────────────────────────────────
     # The "Project Details" x_panel has a table:
@@ -1052,10 +1083,10 @@ def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
                 # Only include entries that have at least a remarks or progress value
                 if entry and ("remarks" in entry or "progress_percentage" in entry):
                     progress.append(entry)
-    data["construction_progress"] = progress or None
+    data["construction_progress"] = progress or None  # FIELD: construction_progress <- workdone/booked/percent tables
 
     # ── Status update ─────────────────────────────────────────────────────────
-    data["status_update"] = {"booking_details": []}
+    data["status_update"] = {"booking_details": []}  # FIELD: status_update.booking_details <- empty placeholder list
 
     # ── Documents ─────────────────────────────────────────────────────────────
     docs: list[dict] = []
@@ -1339,7 +1370,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     Lightweight sentinel for Telangana RERA.
 
     Telangana's PrintPreview URLs carry a session-scoped ``q`` parameter that is
-    only valid within the Playwright browser session that generated it.  They
+    only valid within the Selenium browser session that generated it.  They
     cannot be re-fetched via a plain httpx request, so any check that stores the
     sample URL and tries to GET it later will always receive an UnauthorizedPage
     redirect and fail — in production as well as in dry-run mode.
@@ -1386,11 +1417,19 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 # ── Main run() ────────────────────────────────────────────────────────────────
 
 def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
     """
     Main entry point for the Telangana RERA crawler.
 
     Flow:
-    1. Launch Playwright; navigate to /SearchList/Search.
+    1. Launch Selenium; navigate to /SearchList/Search.
     2. Solve CAPTCHA and submit search form (no filters → all registered projects).
     3. Parse listing rows from each page; paginate via ASP.NET postback.
     4. For each row: navigate to PrintPreview, parse detail HTML.
@@ -1424,12 +1463,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     if checkpoint:
         logger.info(f"Resuming from checkpoint page {start_page}")
 
-    with PlaywrightSession(headless=True, ignore_https_errors=True) as browser:
-        # ── Open search page ─────────────────────────────────────────────────
-        page = browser.new_page()
-        # One reusable detail page shared across all projects — avoids the
-        # per-project cost of creating and destroying a new browser page.
-        detail_page = browser.new_page()
+    # SeleniumSession provides one driver/window; the detail-fetch path now
+    # routes through ``_session().get()`` so the listing page state on
+    # ``page`` is never clobbered.  ``detail_page`` is kept only to satisfy
+    # any remaining call sites that pass it through; it aliases ``page``.
+    if True:
+        page = page_adapter(_session())
+        detail_page = page
         t0 = time.monotonic()
         try:
             logger.info("Navigating to Telangana RERA search page")
@@ -1542,7 +1582,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     # ── Store registration number (informational — not the key) ──
                     reg_no = _clean(detail_data.get("project_registration_no"))
                     if reg_no:
-                        detail_data["project_registration_no"] = reg_no
+                        detail_data["project_registration_no"] = reg_no  # FIELD: project_registration_no <- cleaned detail_data registration no
 
                     # ── Assemble document list ────────────────────────────────
                     raw_docs = _build_uploaded_documents(row, detail_data)
@@ -1560,18 +1600,18 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     doc_decoded = _compute_doc_decoded(raw_cert)
 
                     detail_data["data"] = {
-                        "data_cert": raw_cert,
-                        "govt_type": "state",
-                        "doc_decoded": doc_decoded,
-                        "is_processed": False,
-                        "land_area_unit": land_area_unit,
-                        "construction_area_unit": const_area_unit,
+                        "data_cert": raw_cert,  # FIELD: data.data_cert <- listing row data_cert (raw base64)
+                        "govt_type": "state",  # FIELD: data.govt_type <- constant "state"
+                        "doc_decoded": doc_decoded,  # FIELD: data.doc_decoded <- _compute_doc_decoded(raw_cert) stable params
+                        "is_processed": False,  # FIELD: data.is_processed <- constant False
+                        "land_area_unit": land_area_unit,  # FIELD: data.land_area_unit <- popped scratch "Total Area(In sqmts)"
+                        "construction_area_unit": const_area_unit,  # FIELD: data.construction_area_unit <- popped scratch unit string
                     }
                     detail_data["land_area_details"] = {
-                        "land_area": detail_data.get("land_area"),
-                        "land_area_unit": land_area_unit,
-                        "construction_area": detail_data.get("construction_area"),
-                        "construction_area_unit": const_area_unit,
+                        "land_area": detail_data.get("land_area"),  # FIELD: land_area_details.land_area <- mirrors detail_data["land_area"]
+                        "land_area_unit": land_area_unit,  # FIELD: land_area_details.land_area_unit <- popped scratch unit string
+                        "construction_area": detail_data.get("construction_area"),  # FIELD: land_area_details.construction_area <- mirrors detail_data["construction_area"]
+                        "construction_area_unit": const_area_unit,  # FIELD: land_area_details.construction_area_unit <- popped scratch unit string
                     }
 
                     # ── Key: project_name | promoter_name | state | doc_decoded ──
@@ -1628,16 +1668,16 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         continue
 
                     # ── Core metadata ─────────────────────────────────────────
-                    detail_data["key"]              = key
-                    detail_data["state"]            = STATE
-                    detail_data["project_state"]    = STATE
-                    detail_data["domain"]           = DOMAIN
-                    detail_data["config_id"]        = config.get("config_id")
-                    detail_data["crawl_machine_ip"] = machine_ip
-                    detail_data["machine_name"]     = machine_name
-                    detail_data["url"]              = pp_url or SEARCH_URL
-                    detail_data["is_live"]          = True
-                    detail_data["uploaded_documents"] = raw_docs or None
+                    detail_data["key"]              = key  # FIELD: key <- generate_project_key(project|promoter|state|doc_decoded)
+                    detail_data["state"]            = STATE  # FIELD: state <- constant "telangana"
+                    detail_data["project_state"]    = STATE  # FIELD: project_state <- constant "telangana"
+                    detail_data["domain"]           = DOMAIN  # FIELD: domain <- constant "rerait.telangana.gov.in"
+                    detail_data["config_id"]        = config.get("config_id")  # FIELD: config_id <- config.get("config_id")
+                    detail_data["crawl_machine_ip"] = machine_ip  # FIELD: crawl_machine_ip <- get_machine_context() IP
+                    detail_data["machine_name"]     = machine_name  # FIELD: machine_name <- get_machine_context() hostname
+                    detail_data["url"]              = pp_url or SEARCH_URL  # FIELD: url <- PrintPreview URL or SEARCH_URL fallback
+                    detail_data["is_live"]          = True  # FIELD: is_live <- constant True
+                    detail_data["uploaded_documents"] = raw_docs or None  # FIELD: uploaded_documents <- _build_uploaded_documents(row, detail_data)
 
                     # ── Normalize + validate ──────────────────────────────────
                     try:
@@ -1654,7 +1694,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                                            project_key=key, url=pp_url)
                         counts["error_count"] += 1
                         try:
-                            detail_data["data"] = merge_data_sections(
+                            detail_data["data"] = merge_data_sections(  # FIELD: data <- merge existing data with validation_fallback flag
                                 detail_data.get("data"), {"validation_fallback": True})
                             db_dict = normalize_project_payload(
                                 detail_data, config,
@@ -1685,12 +1725,14 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                     if uploaded_results:
                         upsert_project({
-                            "key":                    db_dict["key"],
-                            "url":                    db_dict.get("url"),
-                            "state":                  STATE,
-                            "domain":                 DOMAIN,
+                            "key":                    db_dict["key"],  # FIELD: key <- db_dict["key"]
+                            "url":                    db_dict.get("url"),  # FIELD: url <- db_dict.get("url")
+                            "state":                  STATE,  # FIELD: state <- constant "telangana"
+                            "domain":                 DOMAIN,  # FIELD: domain <- constant "rerait.telangana.gov.in"
+                            # FIELD: project_registration_no <- db_dict["project_registration_no"]
                             "project_registration_no": db_dict["project_registration_no"],
-                            "uploaded_documents":     uploaded_results,
+                            "uploaded_documents":     uploaded_results,  # FIELD: uploaded_documents <- accumulated upload results
+                            # FIELD: document_urls <- build_document_urls(uploaded_results)
                             "document_urls":          build_document_urls(uploaded_results),
                         })
 

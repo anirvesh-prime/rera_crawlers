@@ -1,12 +1,12 @@
 """
 Rajasthan RERA Crawler — rera.rajasthan.gov.in
-Type: Pure Playwright (Angular SPA listing + detail page HTML scraping)
+Type: Pure Selenium (Angular SPA listing + detail page HTML scraping)
 
 Strategy:
-- Phase 1: Use Playwright to navigate the Angular listing page
+- Phase 1: Use Selenium to navigate the Angular listing page
   (ProjectList?status=3) and enumerate all registered projects via
   DataTables HTML scraping.
-- Phase 2: For each project, navigate to the detail page with Playwright,
+- Phase 2: For each project, navigate to the detail page with Selenium,
   wait for the Angular SPA to fully render, then parse the rendered HTML
   with BeautifulSoup to extract structured fields.
 - Documents: collect all anchor/link elements pointing to PDFs or
@@ -20,15 +20,18 @@ import re
 import time
 from datetime import datetime, timezone, timedelta
 
-import httpx
-
 from pydantic import ValidationError
 
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
+from core.crawler_base import (
+    SeleniumSession,
+    SeleniumTimeout,
+    generate_project_key,
+    page_adapter,
+    random_delay,
+)
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -50,6 +53,41 @@ from core.config import settings
 # stored as midnight IST values, so we must interpret them in IST and then
 # write the result with a "+00:00" suffix (matching production convention).
 _IST = timezone(timedelta(hours=5, minutes=30))
+
+
+# ── SeleniumSession wiring ────────────────────────────────────────────────────
+
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+def safe_get(url, *, logger=None, timeout=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
+    return _session().get(url, logger=logger, page_load_timeout=plt)
+
+
+def download_response(url, *, logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().download(url, logger=logger)
 
 
 def _normalize_project_type(raw: str) -> str:
@@ -137,7 +175,7 @@ _UA = (
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
 
-# Playwright listing table field → schema field
+# Selenium listing table field → schema field
 _LIST_API_TO_FIELD: dict[str, str] = {
     "reg_no":         "project_registration_no",
     "project_name":   "project_name",
@@ -151,7 +189,7 @@ _LIST_API_TO_FIELD: dict[str, str] = {
 
 
 def _clean(text) -> str:
-    """Strip and collapse whitespace (used by the Playwright listing scraper)."""
+    """Strip and collapse whitespace (used by the Selenium listing scraper)."""
     if text is None:
         return ""
     return re.sub(r"\s+", " ", str(text)).strip()
@@ -233,7 +271,7 @@ def _extract_rj_table_rows(page) -> list[dict]:
     return rows
 
 
-def _scrape_project_list_playwright(
+def _scrape_project_list(
     logger: CrawlerLogger,
     *,
     max_pages: int | None = None,
@@ -252,105 +290,103 @@ def _scrape_project_list_playwright(
     projects: list[dict] = []
 
     try:
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
-            context = browser.new_context(
-                user_agent=(
-                    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-                )
-            )
-            page = context.new_page()
-            page.goto(LISTING_PAGE_URL, timeout=60_000)
+        page = page_adapter(_session())
+        page.goto(LISTING_PAGE_URL, timeout=60_000)
 
-            # Wait for Angular DataTable to render
+        # Wait for Angular DataTable to render
+        try:
+            page.wait_for_selector(
+                "table[datatable], table.dataTable, #project-list-table, table tbody tr",
+                timeout=30_000,
+            )
+        except Exception:
+            logger.warning("DataTables table not found — listing may be empty")
+            return projects
+        page.wait_for_load_state("networkidle", timeout=30_000)
+
+        # ── Extract rows then paginate through every page ─────────────────
+        # Selector covers: DataTables classic, Bootstrap 3/4/5,
+        # Angular Material (mat-paginator), and aria-label variants.
+        _NEXT_SEL = (
+            "a.paginate_button.next:not(.disabled), "
+            "li.paginate_button.next:not(.disabled) a, "
+            "li.next:not(.disabled) a, "
+            "a[aria-label='Next']:not(.disabled), "
+            "button[aria-label='Next page']:not([disabled]), "
+            "button[aria-label='next']:not([disabled]), "
+            "button.mat-mdc-paginator-navigation-next:not([disabled]), "
+            "button.mat-paginator-navigation-next:not([disabled]), "
+            ".pagination .next:not(.disabled) a, "
+            "a:has-text('Next'):not(.disabled)"
+        )
+
+        projects.extend(_extract_rj_table_rows(page))
+        logger.info(f"Page 1: {len(projects)} rows so far")
+
+        _page_num    = 1
+        _stall_guard = 0    # consecutive pages with no new rows
+        while True:
+            if max_pages is not None and _page_num >= max_pages:
+                logger.info(
+                    f"max_pages={max_pages} reached — stopping pagination",
+                    step="listing",
+                )
+                break
+            if enough_rows is not None and len(projects) >= enough_rows:
+                logger.info(
+                    f"enough_rows={enough_rows} reached "
+                    f"(have {len(projects)}) — stopping pagination",
+                    step="listing",
+                )
+                break
             try:
-                page.wait_for_selector(
-                    "table[datatable], table.dataTable, #project-list-table, table tbody tr",
-                    timeout=30_000,
-                )
-            except Exception:
-                logger.warning("DataTables table not found — listing may be empty")
-                browser.close()
-                return projects
-            page.wait_for_load_state("networkidle", timeout=30_000)
-
-            # ── Extract rows then paginate through every page ─────────────────
-            # Selector covers: DataTables classic, Bootstrap 3/4/5,
-            # Angular Material (mat-paginator), and aria-label variants.
-            _NEXT_SEL = (
-                "a.paginate_button.next:not(.disabled), "
-                "li.paginate_button.next:not(.disabled) a, "
-                "li.next:not(.disabled) a, "
-                "a[aria-label='Next']:not(.disabled), "
-                "button[aria-label='Next page']:not([disabled]), "
-                "button[aria-label='next']:not([disabled]), "
-                "button.mat-mdc-paginator-navigation-next:not([disabled]), "
-                "button.mat-paginator-navigation-next:not([disabled]), "
-                ".pagination .next:not(.disabled) a, "
-                "a:has-text('Next'):not(.disabled)"
-            )
-
-            projects.extend(_extract_rj_table_rows(page))
-            logger.info(f"Page 1: {len(projects)} rows so far")
-
-            _page_num    = 1
-            _stall_guard = 0    # consecutive pages with no new rows
-            while True:
-                if max_pages is not None and _page_num >= max_pages:
-                    logger.info(
-                        f"max_pages={max_pages} reached — stopping pagination",
-                        step="listing",
-                    )
+                next_locator = page.locator(_NEXT_SEL)
+                if next_locator.count() == 0:
+                    logger.info("No next-button found — pagination complete")
                     break
-                if enough_rows is not None and len(projects) >= enough_rows:
-                    logger.info(
-                        f"enough_rows={enough_rows} reached "
-                        f"(have {len(projects)}) — stopping pagination",
-                        step="listing",
-                    )
-                    break
+                next_btn = next_locator.first
+                # Use the underlying WebElement (Selenium) for .is_displayed() —
+                # locator.first returns the locator; resolve to an element here.
                 try:
-                    next_locator = page.locator(_NEXT_SEL)
-                    if next_locator.count() == 0:
-                        logger.info("No next-button found — pagination complete")
-                        break
-                    next_btn = next_locator.first
-                    if not next_btn.is_visible():
+                    next_el = next_btn._first_element()
+                    if not next_el.is_displayed():
                         logger.info("Next-button not visible — pagination complete")
                         break
-                    # Bootstrap wraps <a> in <li class="page-item disabled"> on the
-                    # last page — the link is visible but the parent blocks clicks.
-                    parent_li = next_btn.locator("xpath=..")
-                    if parent_li.count() and "disabled" in (parent_li.get_attribute("class") or ""):
+                    # Bootstrap wraps <a> in <li class="page-item disabled"> on
+                    # the last page — the link is visible but the parent
+                    # blocks clicks.
+                    from selenium.webdriver.common.by import By
+                    parent = next_el.find_element(By.XPATH, "..")
+                    if "disabled" in (parent.get_attribute("class") or ""):
                         logger.info("Next-button parent is disabled — pagination complete")
                         break
+                except Exception:
+                    pass
 
-                    _before = len(projects)
-                    next_btn.click()
-                    page.wait_for_load_state("networkidle", timeout=15_000)
-                    page.wait_for_timeout(1_000)
-                    new_rows = _extract_rj_table_rows(page)
-                    projects.extend(new_rows)
-                    _page_num += 1
-                    logger.info(f"Page {_page_num}: +{len(new_rows)} rows ({len(projects)} total)")
+                _before = len(projects)
+                next_btn.click()
+                page.wait_for_load_state("networkidle", timeout=15_000)
+                page.wait_for_timeout(1_000)
+                new_rows = _extract_rj_table_rows(page)
+                projects.extend(new_rows)
+                _page_num += 1
+                logger.info(f"Page {_page_num}: +{len(new_rows)} rows ({len(projects)} total)")
 
-                    # Guard: stop if no new data arrived (disabled button stayed
-                    # visible, or click had no effect).
-                    if len(projects) == _before:
-                        _stall_guard += 1
-                        if _stall_guard >= 2:
-                            logger.warning("Pagination stalled (no new rows) — stopping")
-                            break
-                    else:
-                        _stall_guard = 0
-                except Exception as e:
-                    logger.warning(f"Pagination stopped: {e}")
-                    break
+                # Guard: stop if no new data arrived (disabled button stayed
+                # visible, or click had no effect).
+                if len(projects) == _before:
+                    _stall_guard += 1
+                    if _stall_guard >= 2:
+                        logger.warning("Pagination stalled (no new rows) — stopping")
+                        break
+                else:
+                    _stall_guard = 0
+            except Exception as e:
+                logger.warning(f"Pagination stopped: {e}")
+                break
 
-            browser.close()
     except Exception as exc:
-        logger.error(f"Playwright listing scrape failed: {exc}")
+        logger.error(f"Selenium listing scrape failed: {exc}")
 
     logger.info(f"Rajasthan page inspection: found {len(projects)} projects")
     return projects
@@ -546,14 +582,14 @@ def _parse_viewproject_html(soup: BeautifulSoup) -> dict:  # noqa: C901
         bank: dict = {}
         for k, v in kv.items():
             n = k.lower()
-            if "bank name" in n:           bank["bank_name"]    = v
-            elif "branch name" in n:       bank["branch"]        = v
-            elif "ifsc" in n:              bank["IFSC"]          = v
-            elif "a/c number" in n:        bank["account_no"]    = v
-            elif "account holder" in n:    bank["account_name"]  = v
-            elif "bank address" in n:      bank["address"]       = v
+            if "bank name" in n:           bank["bank_name"]    = v  # FIELD: bank_details.bank_name <- bank_tbl label "bank name"
+            elif "branch name" in n:       bank["branch"]        = v  # FIELD: bank_details.branch <- bank_tbl label "branch name"
+            elif "ifsc" in n:              bank["IFSC"]          = v  # FIELD: bank_details.IFSC <- bank_tbl label "ifsc"
+            elif "a/c number" in n:        bank["account_no"]    = v  # FIELD: bank_details.account_no <- bank_tbl label "a/c number"
+            elif "account holder" in n:    bank["account_name"]  = v  # FIELD: bank_details.account_name <- bank_tbl label "account holder"
+            elif "bank address" in n:      bank["address"]       = v  # FIELD: bank_details.address <- bank_tbl label "bank address"
         if bank:
-            out["bank_details"] = bank
+            out["bank_details"] = bank  # FIELD: bank_details <- ViewProject "bank account" table
 
     # ── Land area & units ─────────────────────────────────────────────────────
     land_tbl = _find_table("land details")
@@ -563,11 +599,12 @@ def _parse_viewproject_html(soup: BeautifulSoup) -> dict:  # noqa: C901
             n = k.lower()
             if ("total area" in n or "phase area" in n) and "land_area" not in out:
                 try:
-                    out["land_area"] = float(v.replace(",", ""))
+                    out["land_area"] = float(v.replace(",", ""))  # FIELD: land_area <- land_tbl "total area"/"phase area"
                 except (ValueError, TypeError):
                     pass
             if ("sanctioned number" in n or "number of apartments" in n) and v not in ("0", ""):
                 try:
+                    # FIELD: number_of_residential_units <- land_tbl "sanctioned"/"apartments"
                     out.setdefault("number_of_residential_units", int(float(v)))
                 except (ValueError, TypeError):
                     pass
@@ -579,7 +616,7 @@ def _parse_viewproject_html(soup: BeautifulSoup) -> dict:  # noqa: C901
         for k, v in kv.items():
             if "built up area" in k.lower():
                 try:
-                    out["construction_area"] = float(v.replace(",", ""))
+                    out["construction_area"] = float(v.replace(",", ""))  # FIELD: construction_area <- sba_tbl "built up area"
                 except (ValueError, TypeError):
                     pass
 
@@ -606,7 +643,7 @@ def _parse_viewproject_html(soup: BeautifulSoup) -> dict:  # noqa: C901
         if loc:
             parts = [v for fld, v in loc.items() if fld not in ("state",) and v]
             loc["raw_address"] = ", ".join(parts)
-            out["project_location_raw"] = loc
+            out["project_location_raw"] = loc  # FIELD: project_location_raw <- ViewProject "location of project" table
 
     # ── Project description (Remark) ──────────────────────────────────────────
     remark_tbl = _find_table("remark about project")
@@ -615,7 +652,7 @@ def _parse_viewproject_html(soup: BeautifulSoup) -> dict:  # noqa: C901
         if len(rows) >= 2:
             desc = _clean(rows[1].get_text())
             if desc:
-                out["project_description"] = desc
+                out["project_description"] = desc  # FIELD: project_description <- ViewProject "remark about project" table
 
     # ── Project cost ──────────────────────────────────────────────────────────
     for tbl in soup.find_all("table"):
@@ -630,13 +667,16 @@ def _parse_viewproject_html(soup: BeautifulSoup) -> dict:  # noqa: C901
                 if len(cells) < 3 or not cells[1] or not cells[2]:
                     continue
                 title, val = cells[1].lower(), cells[2]
+                # FIELD: project_cost_detail.cost_of_land <- cost row "land cost"
                 if "land cost" in title:               cost["cost_of_land"] = val
                 elif "estimated" in title and "construction" in title:
+                    # FIELD: project_cost_detail.estimated_construction_cost <- cost row "estimated construction"
                     cost["estimated_construction_cost"] = val
                 elif "estimated" in title and "project" in title:
+                    # FIELD: project_cost_detail.estimated_project_cost <- cost row "estimated project"
                     cost["estimated_project_cost"] = val
             if cost:
-                out["project_cost_detail"] = cost
+                out["project_cost_detail"] = cost  # FIELD: project_cost_detail <- ViewProject title/value cost table
             break
 
     # ── Construction progress ─────────────────────────────────────────────────
@@ -662,17 +702,17 @@ def _parse_viewproject_html(soup: BeautifulSoup) -> dict:  # noqa: C901
                 continue
             entry: dict = {}
             if title_i is not None and title_i < len(cells) and cells[title_i]:
-                entry["title"] = cells[title_i]
+                entry["title"] = cells[title_i]  # FIELD: construction_progress.title <- progress table title column
             if pct_i is not None and pct_i < len(cells) and cells[pct_i]:
-                entry["progress_percentage"] = cells[pct_i]
+                entry["progress_percentage"] = cells[pct_i]  # FIELD: construction_progress.progress_percentage <- progress table % column
             if date_i is not None and date_i < len(cells) and cells[date_i]:
-                entry["date_of_reporting"] = cells[date_i]
+                entry["date_of_reporting"] = cells[date_i]  # FIELD: construction_progress.date_of_reporting <- progress table date column
             if rem_i is not None and rem_i < len(cells) and cells[rem_i]:
-                entry["remarks"] = cells[rem_i]
+                entry["remarks"] = cells[rem_i]  # FIELD: construction_progress.remarks <- progress table remark column
             if entry.get("title"):
                 progress.append(entry)
         if progress:
-            out["construction_progress"] = progress
+            out["construction_progress"] = progress  # FIELD: construction_progress <- ViewProject "Updates as of" progress table
         break
 
     # ── Building / apartment details ──────────────────────────────────────────
@@ -694,16 +734,17 @@ def _parse_viewproject_html(soup: BeautifulSoup) -> dict:  # noqa: C901
                     v = cells[i] if i < len(cells) else ""
                     if not v or v == "View":
                         continue
-                    if "apartment type" in h:       u["flat_type"]     = v
-                    elif "block number" in h:       u["block_name"]    = v
-                    elif "carpet area" in h:        u["carpet_area"]   = v
-                    elif "balcony" in h:            u["balcony_area"]  = v
-                    elif "terrace" in h:            u["open_area"]     = v
+                    if "apartment type" in h:       u["flat_type"]     = v  # FIELD: building_details.flat_type <- bldg_tbl "apartment type"
+                    elif "block number" in h:       u["block_name"]    = v  # FIELD: building_details.block_name <- bldg_tbl "block number"
+                    elif "carpet area" in h:        u["carpet_area"]   = v  # FIELD: building_details.carpet_area <- bldg_tbl "carpet area"
+                    elif "balcony" in h:            u["balcony_area"]  = v  # FIELD: building_details.balcony_area <- bldg_tbl "balcony"
+                    elif "terrace" in h:            u["open_area"]     = v  # FIELD: building_details.open_area <- bldg_tbl "terrace"
+                    # FIELD: building_details.no_of_units <- bldg_tbl "proposed number"
                     elif "proposed number" in h:    u["no_of_units"]   = v
                 if u.get("flat_type") and u.get("carpet_area"):
                     units.append(u)
         if units:
-            out["building_details"] = units
+            out["building_details"] = units  # FIELD: building_details <- ViewProject "building details" table
 
     # ── Professional information ───────────────────────────────────────────────
     # Tables with e-mail/name/contact-number headers, preceded by a role heading
@@ -728,19 +769,19 @@ def _parse_viewproject_html(soup: BeautifulSoup) -> dict:  # noqa: C901
                 continue
             prof: dict = {}
             if ni is not None and ni < len(cells) and cells[ni]:
-                prof["name"] = cells[ni]
+                prof["name"] = cells[ni]  # FIELD: professional_information.name <- professional table "name" column
             if ei is not None and ei < len(cells) and cells[ei]:
-                prof["email"] = cells[ei]
+                prof["email"] = cells[ei]  # FIELD: professional_information.email <- professional table "e-mail" column
             if ai is not None and ai < len(cells) and cells[ai]:
-                prof["address"] = cells[ai]
+                prof["address"] = cells[ai]  # FIELD: professional_information.address <- professional table "address" column
             if pi is not None and pi < len(cells) and cells[pi]:
-                prof["phone"] = cells[pi]
+                prof["phone"] = cells[pi]  # FIELD: professional_information.phone <- professional table "contact number" column
             if role:
-                prof["role"] = role
+                prof["role"] = role  # FIELD: professional_information.role <- preceding heading text
             if prof.get("name"):
                 professionals.append(prof)
     if professionals:
-        out["professional_information"] = professionals
+        out["professional_information"] = professionals  # FIELD: professional_information <- ViewProject professional tables
 
     # ── Members / partners ────────────────────────────────────────────────────
     for tbl in soup.find_all("table"):
@@ -758,13 +799,13 @@ def _parse_viewproject_html(soup: BeautifulSoup) -> dict:  # noqa: C901
                     continue
                 m: dict = {}
                 if ni is not None and ni < len(cells):
-                    m["name"] = cells[ni]
+                    m["name"] = cells[ni]  # FIELD: members_details.name <- members table "name" column
                 if di is not None and di < len(cells):
-                    m["position"] = cells[di]
+                    m["position"] = cells[di]  # FIELD: members_details.position <- members table "designation" column
                 if m.get("name"):
                     members.append(m)
             if members:
-                out["members_details"] = members
+                out["members_details"] = members  # FIELD: members_details <- ViewProject members/partners table
             break
 
     # ── Promoter / organisation ───────────────────────────────────────────────
@@ -774,10 +815,11 @@ def _parse_viewproject_html(soup: BeautifulSoup) -> dict:  # noqa: C901
         promoter: dict = {}
         for k, v in kv.items():
             n = k.lower()
-            if "organization name" in n:    promoter["name"]         = v
+            if "organization name" in n:    promoter["name"]         = v  # FIELD: promoters_details.name <- org_tbl "organization name"
+            # FIELD: promoters_details.type_of_firm <- org_tbl "organization type"
             elif "organization type" in n:  promoter["type_of_firm"] = v
         if promoter:
-            out["promoters_details"] = promoter
+            out["promoters_details"] = promoter  # FIELD: promoters_details <- ViewProject "organization" table
 
     return out
 
@@ -955,7 +997,7 @@ def _fetch_viewproject_html(page, logger: CrawlerLogger) -> str | None:
         return None
 
 
-def _scrape_detail_playwright(
+def _scrape_detail_html_via_browser(
     page, project_ref: str, logger: CrawlerLogger
 ) -> tuple[dict, list[dict]]:
     """
@@ -1099,7 +1141,7 @@ def _navigate_to_project_detail(page, reg_no: str, logger: CrawlerLogger) -> str
 
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     """
-    Data-quality sentinel for Rajasthan RERA — Playwright-only.
+    Data-quality sentinel for Rajasthan RERA — Selenium-only.
 
     1. Navigates to the public listing page and searches for sentinel_registration_no.
     2. Clicks the View button to land on the project's detail page.
@@ -1131,45 +1173,39 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
         f"Sentinel: navigating to listing to find {sentinel_reg}", step="sentinel"
     )
     try:
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
-            context = browser.new_context(user_agent=_UA)
-            page = context.new_page()
+        page = page_adapter(_session())
+        detail_url = _navigate_to_project_detail(page, sentinel_reg, logger)
+        if not detail_url:
+            logger.error(
+                "Sentinel: could not navigate to project detail page",
+                step="sentinel",
+            )
+            insert_crawl_error(
+                run_id, config.get("id", "rajasthan_rera"),
+                "SENTINEL_FAILED", "Could not navigate to detail page",
+            )
+            return False
 
-            detail_url = _navigate_to_project_detail(page, sentinel_reg, logger)
-            if not detail_url:
-                logger.error(
-                    "Sentinel: could not navigate to project detail page",
-                    step="sentinel",
-                )
-                browser.close()
-                insert_crawl_error(
-                    run_id, config.get("id", "rajasthan_rera"),
-                    "SENTINEL_FAILED", "Could not navigate to detail page",
-                )
-                return False
-
-            logger.info(f"Sentinel: landed on {detail_url}", step="sentinel")
-            fresh, _ = _scrape_detail_playwright(page, sentinel_reg, logger)
-            browser.close()
+        logger.info(f"Sentinel: landed on {detail_url}", step="sentinel")
+        fresh, _ = _scrape_detail_html_via_browser(page, sentinel_reg, logger)
     except Exception as exc:
         exc_str = str(exc)
-        # Playwright / network timeout → transient; skip rather than abort crawl
+        # Selenium / network timeout → transient; skip rather than abort crawl
         if "timeout" in exc_str.lower() or "net::" in exc_str.lower():
             logger.warning(
-                f"Sentinel: Playwright timeout (likely transient) — {exc}; "
+                f"Sentinel: Selenium timeout (likely transient) — {exc}; "
                 "skipping coverage check this run",
                 step="sentinel",
             )
             return True
-        logger.error(f"Sentinel: Playwright failed — {exc}", step="sentinel")
+        logger.error(f"Sentinel: Selenium failed — {exc}", step="sentinel")
         return False
 
     if not fresh:
         logger.error("Sentinel: no data extracted from detail page", step="sentinel")
         insert_crawl_error(
             run_id, config.get("id", "rajasthan_rera"),
-            "SENTINEL_FAILED", "No data from detail page (Playwright)",
+            "SENTINEL_FAILED", "No data from detail page (Selenium)",
         )
         return False
 
@@ -1188,7 +1224,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 
 def _handle_document(project_key: str, doc: dict, run_id: int,
                      site_id: str, logger: CrawlerLogger,
-                     client: httpx.Client | None = None) -> dict | None:
+                     client=None) -> dict | None:
     """Download a document, upload to S3, persist to DB. Returns normalized document metadata or None."""
     url   = doc.get("url")
     label = doc.get("label", "document")
@@ -1224,7 +1260,15 @@ def _handle_document(project_key: str, doc: dict, run_id: int,
 
 
 def run(config: dict, run_id: int, mode: str) -> dict:
-    """Pure Playwright crawl: listing scrape + per-project detail page scraping."""
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
+    """Pure Selenium crawl: listing scrape + per-project detail page scraping."""
     logger   = CrawlerLogger(config["id"], run_id)
     site_id  = config["id"]
     counts   = dict(projects_found=0, projects_new=0, projects_updated=0,
@@ -1248,14 +1292,14 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     resume_after_key = checkpoint.get("last_project_key")
     resume_pending   = bool(resume_after_key)
 
-    # ── Phase A: Lister — collect project list via Playwright listing scrape ─
+    # ── Phase A: Lister — collect project list via Selenium listing scrape ─
     # Honour MAX_PAGES / CRAWL_ITEM_LIMIT during the walk itself so test runs
     # don't paginate through every page of the state listing (~100 pages,
     # 500 s wall-clock).  When neither is set we walk the full listing.
     t0 = time.monotonic()
     list_max_pages = settings.MAX_PAGES if settings.MAX_PAGES else None
     list_enough = item_limit if item_limit else None
-    listed_projects = _scrape_project_list_playwright(
+    listed_projects = _scrape_project_list(
         logger, max_pages=list_max_pages, enough_rows=list_enough,
     )
     if not listed_projects:
@@ -1270,15 +1314,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         )
     logger.timing("search", time.monotonic() - t0, rows=total_listing)
 
-    # httpx session is used only for document downloads
-    _timeout = httpx.Timeout(connect=10.0, read=30.0, write=10.0, pool=5.0)
-    session  = httpx.Client(timeout=_timeout, follow_redirects=True)
+    # Document downloads share the module-level SeleniumSession.
+    session = None  # signature compatibility for _handle_document(...)
 
-    # Phase 2: scrape each project detail page via Playwright (no API calls)
-    with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=True)
-        context = browser.new_context(user_agent=_UA)
-        detail_page = context.new_page()
+    # Phase 2: scrape each project detail page via Selenium
+    if True:
+        detail_page = page_adapter(_session())
 
         for i, proj in enumerate(listed_projects):
             reg_no = proj.get("reg_no") or f"RJ-{i}"
@@ -1317,40 +1358,44 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 detail_fields: dict = {}
                 doc_links: list[dict] = []
                 if detail_url:
-                    detail_fields, doc_links = _scrape_detail_playwright(
+                    detail_fields, doc_links = _scrape_detail_html_via_browser(
                         detail_page, reg_no, logger)
                 # Detail page fields override listing fields (more authoritative)
                 data.update(detail_fields)
 
                 project_url = detail_url or LISTING_PAGE_URL
                 data.update({
-                    "key":              key,
-                    "state":            config["state"],
-                    "project_state":    "Rajasthan",
-                    "domain":           DOMAIN,
-                    "config_id":        config["config_id"],
-                    "url":              project_url,
-                    "is_live":          True,
-                    "machine_name":     machine_name,
-                    "crawl_machine_ip": machine_ip,
+                    "key":              key,                              # FIELD: key <- generate_project_key(reg_no)
+                    "state":            config["state"],                  # FIELD: state <- config["state"]
+                    "project_state":    "Rajasthan",                      # FIELD: project_state <- literal "Rajasthan"
+                    "domain":           DOMAIN,                           # FIELD: domain <- module DOMAIN constant
+                    "config_id":        config["config_id"],              # FIELD: config_id <- config["config_id"]
+                    "url":              project_url,                      # FIELD: url <- detail_url or LISTING_PAGE_URL
+                    "is_live":          True,                             # FIELD: is_live <- literal True
+                    "machine_name":     machine_name,                     # FIELD: machine_name <- get_machine_context()
+                    "crawl_machine_ip": machine_ip,                       # FIELD: crawl_machine_ip <- get_machine_context()
                 })
 
+                # FIELD: data.govt_type <- literal "state"
+                # FIELD: data.is_processed <- literal False
                 prod_data_fields: dict = {"govt_type": "state", "is_processed": False}
                 if detail_url:
-                    prod_data_fields["details_page"]           = detail_url
+                    prod_data_fields["details_page"]           = detail_url            # FIELD: data.details_page <- detail_url
+                    # FIELD: data.land_area_unit <- literal "In sq. meters"
                     prod_data_fields["land_area_unit"]         = "In sq. meters"
+                    # FIELD: data.construction_area_unit <- literal "in sq. meters"
                     prod_data_fields["construction_area_unit"] = "in sq. meters"
 
                 _proj_type = data.get("project_type", "")
                 if _proj_type:
-                    prod_data_fields["type"] = _proj_type.replace("-", " ").title()
+                    prod_data_fields["type"] = _proj_type.replace("-", " ").title()  # FIELD: data.type <- data["project_type"] title-cased
 
                 _sub_date = data.get("submitted_date", "")
                 _reg_no_for_temp = data.get("project_registration_no", reg_no)
                 if _sub_date and _reg_no_for_temp:
                     try:
                         _dt = datetime.fromisoformat(_sub_date.replace("+00:00", ""))
-                        prod_data_fields["temp"] = (
+                        prod_data_fields["temp"] = (  # FIELD: data.temp <- f"{project_registration_no} ({submitted_date dd/mm/yyyy})"
                             f"{_reg_no_for_temp} ({_dt.strftime('%d/%m/%Y')})"
                         )
                     except (ValueError, TypeError):
@@ -1362,11 +1407,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 _pb_email   = _pb_contact.get("email", "")
                 _promoter_block = [x for x in [_pb_name, _pb_phone, _pb_email] if x]
                 if _promoter_block:
-                    prod_data_fields["promoter_block"] = _promoter_block
+                    prod_data_fields["promoter_block"] = _promoter_block  # FIELD: data.promoter_block <- [promoter_name, phone, email]
 
-                data["data"] = merge_data_sections(
+                data["data"] = merge_data_sections(  # FIELD: data <- merge_data_sections(prod_data_fields, {source, detail_url})
                     prod_data_fields,
-                    {"source": "playwright_html", "detail_url": detail_url},
+                    # FIELD: data.source <- literal "selenium_html"
+                    # FIELD: data.detail_url <- detail_url
+                    {"source": "selenium_html", "detail_url": detail_url},
                 )
 
                 logger.info("Normalizing and validating", step="normalize")
@@ -1407,16 +1454,26 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                                 counts["documents_uploaded"] += 1
                             else:
                                 uploaded_documents.append(
+                                    # FIELD: uploaded_documents.link <- doc["url"]
+                                    # FIELD: uploaded_documents.type <- doc["label"] (fallback "document")
                                     {"link": doc.get("url"), "type": doc.get("label", "document")})
                         else:
                             uploaded_documents.append(
+                                # FIELD: uploaded_documents.link <- doc["url"]
+                                # FIELD: uploaded_documents.type <- doc["label"] (fallback "document")
                                 {"link": doc.get("url"), "type": doc.get("label", "document")})
                     if uploaded_documents:
                         upsert_project({
+                            # FIELD: key <- db_dict["key"]
+                            # FIELD: url <- db_dict["url"]
                             "key": db_dict["key"], "url": db_dict["url"],
+                            # FIELD: state <- db_dict["state"]
+                            # FIELD: domain <- db_dict["domain"]
                             "state": db_dict["state"], "domain": db_dict["domain"],
+                            # FIELD: project_registration_no <- db_dict["project_registration_no"]
                             "project_registration_no": db_dict["project_registration_no"],
-                            "uploaded_documents": uploaded_documents,
+                            "uploaded_documents": uploaded_documents,  # FIELD: uploaded_documents <- list of handled/fallback doc entries
+                            # FIELD: document_urls <- build_document_urls(uploaded_documents)
                             "document_urls": build_document_urls(uploaded_documents),
                         })
 
@@ -1433,9 +1490,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             finally:
                 logger.clear_project()
 
-        browser.close()
-
-    session.close()
     reset_checkpoint(site_id, mode)
     logger.info(f"Rajasthan RERA complete: {counts}")
     logger.timing("total_run", time.monotonic() - t_run)

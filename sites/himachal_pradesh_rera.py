@@ -25,12 +25,11 @@ from urllib.parse import urlencode, quote
 
 UTC = timezone.utc
 
-import httpx
 from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
+from core.crawler_base import SeleniumSession, generate_project_key, random_delay
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -66,6 +65,94 @@ _UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
+
+
+# ── SeleniumSession wiring ────────────────────────────────────────────────────
+
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+def safe_get(url, *, logger=None, timeout=None, params=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
+    full = url
+    if params:
+        sep = "&" if "?" in url else "?"
+        full = f"{url}{sep}{urlencode(list(params) if not isinstance(params, dict) else params)}"
+    return _session().get(full, logger=logger, page_load_timeout=plt)
+
+
+def download_response(url, *, logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().download(url, logger=logger)
+
+
+class _ClientAdapter:
+    """Tiny httpx.Client-like adapter routed through the SeleniumSession.
+
+    Provides ``.get(url, params=..., headers=...)`` so existing call sites
+    (``client.get(...)`` / ``with httpx.Client(...) as client:``) keep working.
+    """
+
+    def __init__(self, session: SeleniumSession):
+        self._s = session
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def close(self) -> None:
+        pass
+
+    @staticmethod
+    def _wrap(resp):
+        if resp is None:
+            raise RuntimeError("SeleniumSession returned no response")
+        def _ras():
+            if getattr(resp, "status_code", 200) >= 400:
+                raise RuntimeError(f"HTTP {resp.status_code}")
+        resp.raise_for_status = _ras
+        return resp
+
+    def get(self, url: str, *, params=None, headers=None, **_kw):
+        full = url
+        if params:
+            sep = "&" if "?" in url else "?"
+            seq = list(params) if not isinstance(params, dict) else params
+            full = f"{url}{sep}{urlencode(seq)}"
+        # When headers are required (AJAX endpoints set X-Requested-With etc.)
+        # route through the in-browser ``fetch()`` API which honours them;
+        # otherwise fall back to ``driver.get()`` for a full page navigation.
+        if headers:
+            return self._wrap(self._s.fetch(full, method="GET", headers=headers))
+        return self._wrap(self._s.get(full))
+
+    def post(self, url: str, *, data=None, headers=None, json=None, **_kw):
+        return self._wrap(self._s.fetch(
+            url, method="POST", data=data, headers=headers, json_body=json,
+        ))
+
 
 # ---------------------------------------------------------------------------
 # Low-level helpers
@@ -124,7 +211,7 @@ def _parse_area(val: str | None) -> float | None:
 # Listing fetcher
 # ---------------------------------------------------------------------------
 
-def _get_form_data(client: httpx.Client) -> list[tuple[str, str]]:
+def _get_form_data(client) -> list[tuple[str, str]]:
     """Fetch the GetMainContent form and extract hidden field values."""
     resp = client.get(
         MAIN_CONTENT_URL,
@@ -153,7 +240,7 @@ def _get_form_data(client: httpx.Client) -> list[tuple[str, str]]:
 
 
 def _fetch_listing(
-    client: httpx.Client,
+    client,
     logger: CrawlerLogger,
 ) -> tuple[list[dict], dict[str, str]]:
     """
@@ -206,7 +293,7 @@ def _fetch_listing(
 # ---------------------------------------------------------------------------
 
 def _fetch_section(
-    client: httpx.Client,
+    client,
     section: str,
     qs: str,
     logger: CrawlerLogger,
@@ -651,7 +738,7 @@ def _handle_document(
     run_id: int,
     site_id: str,
     logger: CrawlerLogger,
-    client: httpx.Client | None = None,
+    client=None,
 ) -> dict | None:
     """Download a document, upload to S3, persist to DB. Returns enriched doc dict or None."""
     url = doc.get("url") or doc.get("link")
@@ -691,7 +778,7 @@ def _sentinel_check(
     *,
     markers: list[dict],
     qs_map: dict[str, str],
-    client: httpx.Client,
+    client,
 ) -> bool:
     """
     Data-quality sentinel for Himachal Pradesh RERA.
@@ -846,6 +933,14 @@ def _sentinel_check(
 # ---------------------------------------------------------------------------
 
 def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
     """HP RERA: static AJAX crawl — listing + five detail sections per project."""
     logger = CrawlerLogger(config["id"], run_id)
     site_id = config["id"]
@@ -862,11 +957,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     resume_after_key = checkpoint.get("last_project_key")
     resume_pending = bool(resume_after_key)
 
-    _timeout = httpx.Timeout(connect=15.0, read=120.0, write=10.0, pool=5.0)
-
-    with httpx.Client(
-        timeout=_timeout, follow_redirects=True, headers={"User-Agent": _UA}
-    ) as client:
+    with _ClientAdapter(_session()) as client:
         # Warm up session / obtain cookies
         client.get(PUBLIC_DASHBOARD_URL)
 

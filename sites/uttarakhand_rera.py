@@ -28,15 +28,13 @@ import time
 from datetime import datetime, timezone
 from urllib.parse import urljoin
 
-import httpx
 from bs4 import BeautifulSoup, Tag
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
 from core.crawler_base import (
-    download_response,
+    SeleniumSession,
     generate_project_key,
-    get_legacy_ssl_context,
     get_random_ua,
     random_delay,
 )
@@ -161,52 +159,94 @@ def _resolve_url(href: str) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# HTTP client factory
+# SeleniumSession wiring + httpx.Client-compatible adapter
 # ---------------------------------------------------------------------------
 
-def _make_client(read_timeout: float = 90.0) -> httpx.Client:
-    """Return a session-aware httpx.Client with legacy SSL support.
+_SESSION: SeleniumSession | None = None
 
-    ``read_timeout`` is raised to 90 s by default because the listing page
-    (~200 KB from a slow Spring server) regularly needs more than 60 s to
-    transfer completely.
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+def safe_get(url, *, logger=None, timeout=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
+    return _session().get(url, logger=logger, page_load_timeout=plt)
+
+
+def download_response(url, *, logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().download(url, logger=logger)
+
+
+class _ClientAdapter:
+    """httpx.Client-compatible shim — routes ``get``/``post`` through SeleniumSession.
+
+    Kept as a context manager + ``close``-able object so existing call-sites
+    (``with _make_client() as client:``) work unchanged. The underlying driver
+    lifecycle is owned by ``_quit_driver()``, so ``close()`` here is a no-op.
     """
-    ssl_ctx = get_legacy_ssl_context()
-    return httpx.Client(
-        verify=ssl_ctx,
-        follow_redirects=True,
-        timeout=httpx.Timeout(connect=15.0, read=read_timeout, write=10.0, pool=5.0),
-        headers={"User-Agent": _UA},
-    )
+
+    def __init__(self, session: SeleniumSession):
+        self._s = session
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def close(self) -> None:
+        pass
+
+    @staticmethod
+    def _wrap(resp):
+        """Attach a ``raise_for_status`` method onto the SeleniumResponse so
+        existing httpx-style call sites continue to work."""
+        if resp is None:
+            raise RuntimeError("SeleniumSession returned no response")
+        def _ras():
+            if getattr(resp, "status_code", 200) >= 400:
+                raise RuntimeError(f"HTTP {resp.status_code}")
+        resp.raise_for_status = _ras
+        return resp
+
+    def get(self, url: str, headers: dict | None = None, **_kw):
+        if headers:
+            return self._wrap(self._s.fetch(url, method="GET", headers=headers))
+        return self._wrap(self._s.get(url))
+
+    def post(self, url: str, data=None, headers: dict | None = None, json=None, **_kw):
+        return self._wrap(self._s.fetch(
+            url, method="POST", data=data, headers=headers, json_body=json,
+        ))
 
 
-def _fetch_listing_html_playwright(logger: CrawlerLogger) -> str:
-    """Fetch the listing page HTML via Playwright (Chromium).
+def _make_client(read_timeout: float = 90.0):
+    """Return a session-aware client adapter routed through SeleniumSession.
 
-    Used as a fallback when httpx connections are reset at the TLS level by the
-    UK RERA portal.  Chromium's TLS fingerprint is accepted where Python's is not.
-    Returns the rendered page HTML, or an empty string on failure.
+    The ``read_timeout`` argument is retained for signature compatibility but
+    has no effect — the underlying SeleniumSession's page-load timeout is
+    governed by its own configuration.
     """
-    from playwright.sync_api import sync_playwright
-    try:
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
-            ctx  = browser.new_context(ignore_https_errors=True, user_agent=_UA)
-            page = ctx.new_page()
-            # Server-rendered Java Spring page — all 400+ project cards are in the
-            # initial HTML response.  "domcontentloaded" / "networkidle" time out
-            # because the portal is slow and sends continuous keep-alive polling.
-            # "commit" fires as soon as the first byte arrives, then we wait briefly
-            # to ensure the full response body has been transferred before reading.
-            page.goto(LISTING_URL, wait_until="commit", timeout=120_000)
-            page.wait_for_timeout(3_000)
-            html = page.content()
-            browser.close()
-        logger.info("Playwright listing fetch succeeded", url=LISTING_URL, step="listing")
-        return html
-    except Exception as exc:
-        logger.error(f"Playwright listing fetch failed: {exc}", step="listing")
-        return ""
+    del read_timeout  # signature compatibility only
+    return _ClientAdapter(_session())
 
 
 # ---------------------------------------------------------------------------
@@ -612,7 +652,7 @@ def _parse_documents_and_images(
     return doc_links, project_images
 
 
-def _parse_detail_page(url: str, client: httpx.Client, logger: CrawlerLogger) -> dict:
+def _parse_detail_page(url: str, client, logger: CrawlerLogger) -> dict:
     """
     Fetch and fully parse a UK RERA project detail page.
     Returns a flat dict with all extracted fields plus '_doc_links' and '_project_images'.
@@ -717,7 +757,7 @@ def _handle_document(
     run_id: int,
     site_id: str,
     logger: CrawlerLogger,
-    client: httpx.Client,
+    client,
 ) -> dict | None:
     """Download one document, upload to S3, persist to DB. Returns enriched entry or None."""
     url   = doc.get("url") or doc.get("link")
@@ -817,16 +857,8 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
             try:
                 _resp = client.get(detail_url, headers={"Referer": LISTING_URL})
                 _resp.raise_for_status()
-            except (httpx.ConnectError, httpx.RemoteProtocolError,
-                    httpx.ConnectTimeout) as _net_exc:
-                logger.warning(
-                    f"Sentinel: network-level block detected — portal unreachable "
-                    f"from this host ({_net_exc}); skipping rather than failing",
-                    step="sentinel",
-                )
-                return True
             except Exception:
-                pass  # Non-network errors handled below via _parse_detail_page
+                pass  # Non-fatal — handled below via _parse_detail_page
 
             fresh = _parse_detail_page(detail_url, client, logger)
     except Exception as exc:
@@ -866,6 +898,14 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 # ---------------------------------------------------------------------------
 
 def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
     """
     Entry point called by the crawler orchestrator.
 
@@ -916,16 +956,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             resp = listing_client.get(LISTING_URL)
             resp.raise_for_status()
             listing_html = resp.text
-    except (httpx.ConnectError, httpx.RemoteProtocolError,
-            httpx.ReadError, httpx.TimeoutException, OSError) as _net_exc:
-        # Portal actively resets Python TCP connections (TLS fingerprint block),
-        # or the listing page read times out on slow responses.
-        # Fall back to Playwright whose Chromium fingerprint is accepted.
-        logger.warning(
-            f"httpx listing blocked ({_net_exc}); falling back to Playwright",
-            step="listing",
-        )
-        listing_html = _fetch_listing_html_playwright(logger)
     except Exception as exc:
         logger.error(f"Listing fetch failed: {exc}", step="listing")
         insert_crawl_error(run_id, site_id, "LISTING_FAILED", str(exc), url=LISTING_URL)
@@ -933,10 +963,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         return counts
 
     if not listing_html:
-        logger.error("Listing fetch failed (httpx blocked, Playwright also failed)",
-                     step="listing")
+        logger.error("Listing fetch failed (empty response)", step="listing")
         insert_crawl_error(run_id, site_id, "LISTING_FAILED",
-                           "All fetch methods failed", url=LISTING_URL)
+                           "Empty listing response", url=LISTING_URL)
         counts["error_count"] += 1
         return counts
 
@@ -988,35 +1017,35 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
                 # ── Merge listing data into base record ──────────────────────
                 data: dict = {
-                    "key":                     key,
-                    "state":                   config["state"],
-                    "project_state":           config["state"],
-                    "project_registration_no": reg_no,
-                    "project_name":            card.get("project_name") or None,
-                    "promoter_name":           card.get("promoter_name") or None,
-                    "project_type":            card.get("project_type") or None,
-                    "domain":                  DOMAIN,
-                    "config_id":               config["config_id"],
-                    "url":                     card.get("detail_url") or LISTING_URL,
-                    "is_live":                 True,
-                    "machine_name":            machine_name,
-                    "crawl_machine_ip":        machine_ip,
+                    "key":                     key,  # FIELD: key <- generate_project_key(reg_no)
+                    "state":                   config["state"],  # FIELD: state <- config["state"]
+                    "project_state":           config["state"],  # FIELD: project_state <- config["state"]
+                    "project_registration_no": reg_no,  # FIELD: project_registration_no <- listing card reg_no
+                    "project_name":            card.get("project_name") or None,  # FIELD: project_name <- listing card project_name
+                    "promoter_name":           card.get("promoter_name") or None,  # FIELD: promoter_name <- listing card promoter_name
+                    "project_type":            card.get("project_type") or None,  # FIELD: project_type <- listing card project_type
+                    "domain":                  DOMAIN,  # FIELD: domain <- DOMAIN constant
+                    "config_id":               config["config_id"],  # FIELD: config_id <- config["config_id"]
+                    "url":                     card.get("detail_url") or LISTING_URL,  # FIELD: url <- listing card detail_url
+                    "is_live":                 True,  # FIELD: is_live <- True literal
+                    "machine_name":            machine_name,  # FIELD: machine_name <- get_machine_context()
+                    "crawl_machine_ip":        machine_ip,  # FIELD: crawl_machine_ip <- get_machine_context()
                 }
 
                 if card.get("project_location_raw"):
-                    data["project_location_raw"] = card["project_location_raw"]
+                    data["project_location_raw"] = card["project_location_raw"]  # FIELD: project_location_raw <- listing card raw_address dict
                 if card.get("status_of_the_project"):
-                    data["status_of_the_project"] = card["status_of_the_project"]
+                    data["status_of_the_project"] = card["status_of_the_project"]  # FIELD: status_of_the_project <- listing card reason_of_revoke
                 if card.get("lister_images"):
-                    data["project_images"] = card["lister_images"]
+                    data["project_images"] = card["lister_images"]  # FIELD: project_images <- listing card image src
 
                 promoter_type = card.get("_promoter_type")
                 # Only set promoters_details when promoter_type is available from the listing;
                 # promoter_name alone is already stored as a top-level field and is redundant here.
                 if promoter_type:
-                    data["promoters_details"] = {k: v for k, v in {
-                        "type_of_firm": promoter_type,
-                        "name":         card.get("promoter_name"),
+                    data["promoters_details"] = {k: v for k, v in {  # FIELD: promoters_details <- {type_of_firm, name} from listing
+                        "type_of_firm": promoter_type,  # FIELD: promoters_details.type_of_firm <- listing _promoter_type
+                        "name":         card.get("promoter_name"),  # FIELD: promoters_details.name <- listing card promoter_name
                     }.items() if v}
 
                 # ── Fetch detail page ─────────────────────────────────────────
@@ -1034,24 +1063,24 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                             data[k] = v
 
                     if canonical_url:
-                        data["url"] = canonical_url
+                        data["url"] = canonical_url  # FIELD: url <- detail page canonical (post-redirect) URL
                     if project_images:
-                        data.setdefault("project_images", project_images)
+                        data.setdefault("project_images", project_images)  # FIELD: project_images <- detail page construction-update images
 
                     # Build composite raw_address for data JSONB if not set by detail
                     loc     = data.get("project_location_raw") or {}
                     raw_addr = loc.get("raw_address") if isinstance(loc, dict) else None
-                    data["data"] = merge_data_sections(
+                    data["data"] = merge_data_sections(  # FIELD: data <- merge_data_sections(prev, detail extras)
                         data.get("data"),
                         {
-                            "govt_type":               "state",
-                            "raw_address":             raw_addr,
-                            "promoter_type":           promoter_type,
-                            "construction_area_unit":  "sq Mt.",
+                            "govt_type":               "state",  # FIELD: data.govt_type <- literal "state"
+                            "raw_address":             raw_addr,  # FIELD: data.raw_address <- project_location_raw.raw_address
+                            "promoter_type":           promoter_type,  # FIELD: data.promoter_type <- listing _promoter_type
+                            "construction_area_unit":  "sq Mt.",  # FIELD: data.construction_area_unit <- literal "sq Mt."
                         },
                     )
                 else:
-                    data["data"] = {"govt_type": "state"}
+                    data["data"] = {"govt_type": "state"}  # FIELD: data.govt_type <- literal "state" (no detail URL)
 
                 # ── Normalize & upsert ────────────────────────────────────────
                 logger.info("Normalizing", step="normalize")
@@ -1098,24 +1127,24 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                             counts["documents_uploaded"] += 1
                         else:
                             uploaded_documents.append({
-                                "link": doc.get("url"),
-                                "type": doc.get("label") or "document",
+                                "link": doc.get("url"),  # FIELD: uploaded_documents[].link <- doc url (upload failed)
+                                "type": doc.get("label") or "document",  # FIELD: uploaded_documents[].type <- doc label
                             })
                     else:
                         uploaded_documents.append({
-                            "link": doc.get("url"),
-                            "type": doc.get("label") or "document",
+                            "link": doc.get("url"),  # FIELD: uploaded_documents[].link <- doc url (not selected for download)
+                            "type": doc.get("label") or "document",  # FIELD: uploaded_documents[].type <- doc label
                         })
 
                 if uploaded_documents:
                     upsert_project({
-                        "key":                     db_dict["key"],
-                        "url":                     db_dict["url"],
-                        "state":                   db_dict["state"],
-                        "domain":                  db_dict["domain"],
-                        "project_registration_no": db_dict["project_registration_no"],
-                        "uploaded_documents":      uploaded_documents,
-                        "document_urls":           build_document_urls(uploaded_documents),
+                        "key":                     db_dict["key"],  # FIELD: key <- db_dict["key"]
+                        "url":                     db_dict["url"],  # FIELD: url <- db_dict["url"]
+                        "state":                   db_dict["state"],  # FIELD: state <- db_dict["state"]
+                        "domain":                  db_dict["domain"],  # FIELD: domain <- db_dict["domain"]
+                        "project_registration_no": db_dict["project_registration_no"],  # FIELD: project_registration_no <- db_dict
+                        "uploaded_documents":      uploaded_documents,  # FIELD: uploaded_documents <- handled docs list
+                        "document_urls":           build_document_urls(uploaded_documents),  # FIELD: document_urls <- build_document_urls(uploaded_documents)
                     })
 
                 done_regs.add(reg_no)

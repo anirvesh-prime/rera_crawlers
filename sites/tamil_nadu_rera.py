@@ -29,7 +29,7 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
+from core.crawler_base import SeleniumSession, generate_project_key, random_delay
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -47,6 +47,46 @@ from core.project_normalizer import (
 )
 from core.s3 import compute_md5, upload_document, get_s3_url
 from core.config import settings
+
+
+# ── Selenium session (shared driver via core.crawler_base.SeleniumSession) ────
+
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+def safe_get(url, *, logger=None, timeout=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession.
+
+    The httpx ``timeout`` argument is reinterpreted as ``page_load_timeout``
+    when it's a plain number, so longer per-call timeouts still take effect.
+    """
+    plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
+    return _session().get(url, logger=logger, page_load_timeout=plt)
+
+
+def download_response(url, *, logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().download(url, logger=logger)
+
 
 BASE_URL              = "https://rera.tn.gov.in"
 CMS_INDEX_URL         = f"{BASE_URL}/cms/reg_projects_building_tamilnadu.php"
@@ -1305,21 +1345,21 @@ def _build_project_record(
 
     # Base record from listing table
     record: dict[str, Any] = {
-        "key":                          project_key,
-        "project_registration_no":      reg_no,
-        "state":                        "Tamil Nadu",
-        "project_state":                "Tamil Nadu",
-        "domain":                       DOMAIN,
-        "config_id":                    config_id,
-        "url":                          row.get("detail_url") or f"{BASE_URL}/registered-building/tn",
-        "promoter_name":                row.get("promoter_name"),
-        "project_name":                 row.get("project_name"),
-        "project_description":          row.get("project_description"),
-        "approved_on_date":             row.get("approved_on_date"),
-        "estimated_finish_date":        row.get("estimated_finish_date"),
+        "key":                          project_key,                                                                # FIELD: key <- generate_project_key(reg_no)
+        "project_registration_no":      reg_no,                                                                     # FIELD: project_registration_no <- listing row reg_no
+        "state":                        "Tamil Nadu",                                                               # FIELD: state <- hardcoded "Tamil Nadu"
+        "project_state":                "Tamil Nadu",                                                               # FIELD: project_state <- hardcoded "Tamil Nadu"
+        "domain":                       DOMAIN,                                                                     # FIELD: domain <- module DOMAIN constant
+        "config_id":                    config_id,                                                                  # FIELD: config_id <- crawler config parameter
+        "url":                          row.get("detail_url") or f"{BASE_URL}/registered-building/tn",              # FIELD: url <- listing detail_url or base listing URL
+        "promoter_name":                row.get("promoter_name"),                                                   # FIELD: promoter_name <- listing row promoter_name
+        "project_name":                 row.get("project_name"),                                                    # FIELD: project_name <- listing row project_name
+        "project_description":          row.get("project_description"),                                             # FIELD: project_description <- listing row project_description
+        "approved_on_date":             row.get("approved_on_date"),                                                # FIELD: approved_on_date <- listing row approved_on_date
+        "estimated_finish_date":        row.get("estimated_finish_date"),                                           # FIELD: estimated_finish_date <- listing row estimated_finish_date
         # TNRERA registration date ("dated" field) serves as estimated commencement date.
         # If the detail page supplies an explicit commencement date it will override this.
-        "estimated_commencement_date":  row.get("estimated_commencement_date"),
+        "estimated_commencement_date":  row.get("estimated_commencement_date"),                                     # FIELD: estimated_commencement_date <- listing row estimated_commencement_date
     }
 
     # project_name: only use what the portal actually provides.
@@ -1329,7 +1369,7 @@ def _build_project_record(
     # The registration number IS real portal data and uniquely identifies the
     # project, so it is the only acceptable fallback when no name is present.
     if not record.get("project_name"):
-        record["project_name"] = reg_no
+        record["project_name"] = reg_no  # FIELD: project_name <- registration no fallback
 
     # project_type: NOT defaulted — the portal listing does not carry a project
     # type column and Tamil Nadu building registrations include both residential
@@ -1338,16 +1378,16 @@ def _build_project_record(
 
     # Status from listing (completed vs active)
     if row.get("is_completed"):
-        record["status_of_the_project"] = "Completed"
+        record["status_of_the_project"] = "Completed"  # FIELD: status_of_the_project <- listing is_completed flag
 
     # GPS coordinates → project_location_raw seed
     loc: dict[str, str] = {}
     if row.get("latitude"):
-        loc["latitude"] = row["latitude"]
+        loc["latitude"] = row["latitude"]  # FIELD: project_location_raw.latitude <- listing row latitude
     if row.get("longitude"):
-        loc["longitude"] = row["longitude"]
+        loc["longitude"] = row["longitude"]  # FIELD: project_location_raw.longitude <- listing row longitude
     if loc:
-        record["project_location_raw"] = loc
+        record["project_location_raw"] = loc  # FIELD: project_location_raw <- listing lat/lng dict
 
     # Merge promoter detail (deeper fields overwrite listing where applicable)
     for k, v in promoter_data.items():
@@ -1363,11 +1403,12 @@ def _build_project_record(
     if isinstance(project_data.get("project_location_raw"), dict):
         merged_loc = dict(loc)  # lat/lng from listing
         merged_loc.update(project_data["project_location_raw"])
-        record["project_location_raw"] = merged_loc
+        record["project_location_raw"] = merged_loc  # FIELD: project_location_raw <- merged listing + project detail location
 
     # Normalise status string if set
     raw_status = record.get("status_of_the_project", "")
     if isinstance(raw_status, str):
+        # FIELD: status_of_the_project <- normalized via _STATUS_MAP
         record["status_of_the_project"] = _STATUS_MAP.get(
             raw_status.lower().strip(), raw_status
         )
@@ -1375,19 +1416,19 @@ def _build_project_record(
     # Form-C and document links
     doc_links: list[dict] = list(project_data.get("_doc_links") or [])
     if row.get("form_c_url"):
-        doc_links.insert(0, {"label": "Form C", "url": row["form_c_url"]})
+        doc_links.insert(0, {"label": "Form C", "url": row["form_c_url"]})  # FIELD: uploaded_documents <- prepend Form C entry from row.form_c_url
     if doc_links:
-        record["uploaded_documents"] = doc_links
+        record["uploaded_documents"] = doc_links  # FIELD: uploaded_documents <- project detail _doc_links + Form C
 
     # Data JSONB
-    record["data"] = {
-        "govt_type":      "state",
-        "is_processed":   False,
-        "approval_details": row.get("approval_details"),
-        "promoter_url":   row.get("promoter_url"),
-        "form_c":         row.get("form_c_url"),
-        "all_labels_promoter": promoter_data.get("_promoter_raw_labels"),
-        "all_labels_project":  project_data.get("_project_raw_labels"),
+    record["data"] = {  # FIELD: data <- system metadata JSONB block
+        "govt_type":      "state",                                                # FIELD: data.govt_type <- hardcoded "state"
+        "is_processed":   False,                                                  # FIELD: data.is_processed <- hardcoded False
+        "approval_details": row.get("approval_details"),                          # FIELD: data.approval_details <- listing row approval_details
+        "promoter_url":   row.get("promoter_url"),                                # FIELD: data.promoter_url <- listing row promoter_url
+        "form_c":         row.get("form_c_url"),                                  # FIELD: data.form_c <- listing row form_c_url
+        "all_labels_promoter": promoter_data.get("_promoter_raw_labels"),         # FIELD: data.all_labels_promoter <- promoter page raw kv labels
+        "all_labels_project":  project_data.get("_project_raw_labels"),           # FIELD: data.all_labels_project <- project page raw kv labels
     }
 
     return {k: v for k, v in record.items() if v is not None and v != "" and v != {} and v != []}
@@ -1531,6 +1572,14 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 
 
 def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
     """
     Entry point called by the crawler orchestrator.
 
@@ -1695,7 +1744,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     raw_record = _build_project_record(
                         row, promoter_data, project_data, config_id, run_id
                     )
-                    raw_record["is_live"] = True
+                    raw_record["is_live"] = True  # FIELD: is_live <- hardcoded True for active crawl
                     payload = normalize_project_payload(
                         raw_record,
                         config,
@@ -1753,8 +1802,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         if not selected:
                             enriched_docs.append(
                                 {
-                                    "link": doc.get("url") or doc.get("link"),
-                                    "type": doc.get("label") or doc.get("type") or "document",
+                                    "link": doc.get("url") or doc.get("link"),                            # FIELD: uploaded_documents.link <- doc url/link (unselected)
+                                    "type": doc.get("label") or doc.get("type") or "document",            # FIELD: uploaded_documents.type <- doc label/type (unselected)
                                 }
                             )
                             continue
@@ -1765,20 +1814,20 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         else:
                             enriched_docs.append(
                                 {
-                                    "link": selected.get("url") or selected.get("link"),
-                                    "type": selected.get("label") or selected.get("type") or "document",
+                                    "link": selected.get("url") or selected.get("link"),                  # FIELD: uploaded_documents.link <- selected doc url/link (upload failed)
+                                    "type": selected.get("label") or selected.get("type") or "document",  # FIELD: uploaded_documents.type <- selected doc label/type (upload failed)
                                 }
                             )
 
                 if enriched_docs:
                     upsert_project({
-                        "key": project_key,
-                        "url": db_dict["url"],
-                        "state": db_dict["state"],
-                        "domain": db_dict["domain"],
-                        "project_registration_no": db_dict["project_registration_no"],
-                        "uploaded_documents": enriched_docs,
-                        "document_urls": build_document_urls(enriched_docs),
+                        "key": project_key,                                            # FIELD: key <- generate_project_key(reg_no)
+                        "url": db_dict["url"],                                         # FIELD: url <- preserved from prior db_dict
+                        "state": db_dict["state"],                                     # FIELD: state <- preserved from prior db_dict
+                        "domain": db_dict["domain"],                                   # FIELD: domain <- preserved from prior db_dict
+                        "project_registration_no": db_dict["project_registration_no"], # FIELD: project_registration_no <- preserved from prior db_dict
+                        "uploaded_documents": enriched_docs,                           # FIELD: uploaded_documents <- enriched docs after upload pipeline
+                        "document_urls": build_document_urls(enriched_docs),           # FIELD: document_urls <- built from enriched_docs
                     })
 
                 # ── Checkpoint save ──────────────────────────────────────────────

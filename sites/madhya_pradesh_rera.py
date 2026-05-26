@@ -21,7 +21,7 @@ from typing import Any
 from bs4 import BeautifulSoup, Tag
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
-from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
+from core.crawler_base import SeleniumSession, generate_project_key, random_delay
 from core.db import get_project_by_key, insert_crawl_error, upsert_document, upsert_project
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -49,8 +49,35 @@ _DATE_FMT2 = "%d %b %Y"    # e.g. "25 Jul 2024"
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
+# ── Selenium session (shared driver via core.crawler_base.SeleniumSession) ────
+
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
 def _get(url: str, logger: CrawlerLogger | None = None, **kw):
-    return safe_get(url, verify=False, logger=logger, timeout=60.0, **kw)
+    kw.pop("verify", None)
+    kw.pop("timeout", None)
+    kw.pop("client", None)
+    return _session().get(url, logger=logger, **kw)
 
 
 def _clean(text: str | None) -> str:
@@ -176,8 +203,8 @@ def _parse_detail(detail_url: str, stub: dict, logger: CrawlerLogger | None) -> 
     out: dict = {}
 
     # ── Project Information ───────────────────────────────────────────────────
-    out["project_name"] = _row_val(soup, "Project Name :")
-    out["project_type"] = _row_val(soup, "Project Type :")
+    out["project_name"] = _row_val(soup, "Project Name :")  # FIELD: project_name <- detail row "Project Name :"
+    out["project_type"] = _row_val(soup, "Project Type :")  # FIELD: project_type <- detail row "Project Type :"
 
     # Registration number: text directly next to the <b> tag, before the PDF links
     for b_tag in soup.find_all("b"):
@@ -198,39 +225,39 @@ def _parse_detail(detail_url: str, stub: dict, logger: CrawlerLogger | None) -> 
                     cert_links = [a["href"] for a in links if "title" in a.attrs]
                     out["_rera_cert_links"] = cert_links
                     if reg_text:
-                        out["project_registration_no"] = reg_text
+                        out["project_registration_no"] = reg_text  # FIELD: project_registration_no <- registration row leading text
             break
 
     # Fallback reg_no from page text
     if not out.get("project_registration_no"):
         m = re.search(r"P-[A-Z]{2,5}-\d{2}-\d+", resp.text)
         if m:
-            out["project_registration_no"] = m.group(0)
+            out["project_registration_no"] = m.group(0)  # FIELD: project_registration_no <- regex P-XX-NN-NNN on page text
 
     # Status / approved date / contact email
     status_div = soup.find("a", class_="btn-success", attrs={"title": "Project Status"})
     if status_div:
-        out["status_of_the_project"] = _clean(status_div.get_text())
-    out["approved_on_date"]          = _parse_date(_row_val(soup, "Approved Date :"))
-    out["estimated_commencement_date"] = _parse_date(_row_val(soup, "Proposed Start Date :"))
-    out["estimated_finish_date"]     = _parse_date(_row_val(soup, "Proposed End Date :"))
+        out["status_of_the_project"] = _clean(status_div.get_text())  # FIELD: status_of_the_project <- a.btn-success "Project Status"
+    out["approved_on_date"]          = _parse_date(_row_val(soup, "Approved Date :"))  # FIELD: approved_on_date <- row "Approved Date :"
+    out["estimated_commencement_date"] = _parse_date(_row_val(soup, "Proposed Start Date :"))  # FIELD: estimated_commencement_date <- row "Proposed Start Date :"
+    out["estimated_finish_date"]     = _parse_date(_row_val(soup, "Proposed End Date :"))  # FIELD: estimated_finish_date <- row "Proposed End Date :"
 
     # Construction and land costs (in lacs → rupees)
     cost_dict: dict = {}
     cost_str = _row_val(soup, "Estimated Cost of Construction(in lacs) :")
     if cost_str:
         try:
-            cost_dict["estimated_construction_cost"] = float(cost_str) * 100_000
+            cost_dict["estimated_construction_cost"] = float(cost_str) * 100_000  # FIELD: project_cost_detail.estimated_construction_cost <- row "Estimated Cost of Construction(in lacs)" * 1e5
         except ValueError:
             pass
     land_cost_str = _row_val(soup, "Estimated Cost of Land(in lacs) :")
     if land_cost_str:
         try:
-            cost_dict["cost_of_land"] = float(land_cost_str) * 100_000
+            cost_dict["cost_of_land"] = float(land_cost_str) * 100_000  # FIELD: project_cost_detail.cost_of_land <- row "Estimated Cost of Land(in lacs)" * 1e5
         except ValueError:
             pass
     if cost_dict:
-        out["project_cost_detail"] = cost_dict
+        out["project_cost_detail"] = cost_dict  # FIELD: project_cost_detail <- assembled construction + land cost dict
 
     # ── Project Location ───────────────────────────────────────────────────────
     state_val    = _row_val(soup, "State :")
@@ -268,29 +295,29 @@ def _parse_detail(detail_url: str, stub: dict, logger: CrawlerLogger | None) -> 
     if not district_val:
         district_val = stub.get("district") or ""
 
-    out["project_state"] = state_val or "Madhya Pradesh"
-    loc: dict = {"state": out["project_state"]}
+    out["project_state"] = state_val or "Madhya Pradesh"  # FIELD: project_state <- row "State :" or default "Madhya Pradesh"
+    loc: dict = {"state": out["project_state"]}  # FIELD: project_location_raw.state <- out["project_state"]
     if district_val:
-        loc["district"] = district_val
+        loc["district"] = district_val  # FIELD: project_location_raw.district <- location-box "District" or listing stub
     if tehsil_val:
-        loc["taluk"] = tehsil_val
+        loc["taluk"] = tehsil_val  # FIELD: project_location_raw.taluk <- location-box "Tehsil"
     if address_val:
-        loc["raw_address"] = address_val
+        loc["raw_address"] = address_val  # FIELD: project_location_raw.raw_address <- location-box "Project Address"
     if planning_val:
-        loc["city"] = planning_val
-        out["project_city"] = planning_val
-    out["project_location_raw"] = loc
+        loc["city"] = planning_val  # FIELD: project_location_raw.city <- location-box "Planning Area"
+        out["project_city"] = planning_val  # FIELD: project_city <- location-box "Planning Area"
+    out["project_location_raw"] = loc  # FIELD: project_location_raw <- assembled loc dict
 
     # ── Bank Details ───────────────────────────────────────────────────────────
     bank: dict = {
-        "account_no":   _row_val(soup, "Account Number :"),
-        "bank_name":    _row_val(soup, "Bank Name :"),
-        "branch":       _row_val(soup, "Branch Name :"),
-        "account_name": _row_val(soup, "Account Name :"),
-        "IFSC":         _row_val(soup, "IFSC Code :"),
+        "account_no":   _row_val(soup, "Account Number :"),  # FIELD: bank_details.account_no <- row "Account Number :"
+        "bank_name":    _row_val(soup, "Bank Name :"),  # FIELD: bank_details.bank_name <- row "Bank Name :"
+        "branch":       _row_val(soup, "Branch Name :"),  # FIELD: bank_details.branch <- row "Branch Name :"
+        "account_name": _row_val(soup, "Account Name :"),  # FIELD: bank_details.account_name <- row "Account Name :"
+        "IFSC":         _row_val(soup, "IFSC Code :"),  # FIELD: bank_details.IFSC <- row "IFSC Code :"
     }
     if any(bank.values()):
-        out["bank_details"] = {k: v for k, v in bank.items() if v}
+        out["bank_details"] = {k: v for k, v in bank.items() if v}  # FIELD: bank_details <- non-empty bank fields
 
     return out
 
@@ -310,16 +337,16 @@ def _parse_promoter(soup: BeautifulSoup) -> dict:
         email     = _row_val(box, "Email :")
         phone     = _row_val(box, "Phone :")
         if name:
-            out["promoter_name"] = name
+            out["promoter_name"] = name  # FIELD: promoter_name <- promoter section "Name :"
         if address:
-            out["promoter_address_raw"] = {"raw_address": address}
+            out["promoter_address_raw"] = {"raw_address": address}  # FIELD: promoter_address_raw <- promoter section "Address :"
         contact = {k: v for k, v in {"email": email, "phone": phone}.items() if v}
         if contact:
-            out["promoter_contact_details"] = contact
+            out["promoter_contact_details"] = contact  # FIELD: promoter_contact_details <- promoter section "Email :" / "Phone :"
         out["promoters_details"] = {
-            "name":           name,
-            "type_of_firm":   firm_type,
-            "promoters_details": [],
+            "name":           name,  # FIELD: promoters_details.name <- promoter section "Name :"
+            "type_of_firm":   firm_type,  # FIELD: promoters_details.type_of_firm <- promoter section "Applicant Type :"
+            "promoters_details": [],  # FIELD: promoters_details.promoters_details <- empty list (filled later from co-promoters)
         }
 
     # Co-Promoter details
@@ -347,7 +374,7 @@ def _parse_promoter(soup: BeautifulSoup) -> dict:
             co_promos.append(entry)
 
     if co_promos and "promoters_details" in out:
-        out["promoters_details"]["promoters_details"] = co_promos
+        out["promoters_details"]["promoters_details"] = co_promos  # FIELD: promoters_details.promoters_details <- co-promoter rows (col-sm-9 box)
     return out
 
 
@@ -366,6 +393,9 @@ def _parse_consultants(soup: BeautifulSoup) -> list[dict]:
     for tr in rows[1:]:
         tds = tr.find_all("td")
         if len(tds) >= 3:
+            # FIELD: professional_information[].name <- consultants table tds[1]
+            # FIELD: professional_information[].role <- literal "Consultant"
+            # FIELD: professional_information[].email <- consultants table tds[2]
             entry = {"name": _clean(tds[1].get_text()), "role": "Consultant",
                      "email": _clean(tds[2].get_text())}
             if entry["name"]:
@@ -395,11 +425,11 @@ def _parse_building_details(soup: BeautifulSoup) -> list[dict]:
             carpet_area = _clean(tds[4].get_text())
             no_of_units = _clean(tds[5].get_text())
             entry: dict = {
-                "updated":    True,
-                "flat_name":  flat_name  or None,
-                "flat_type":  flat_type  or None,
-                "carpet_area": carpet_area or None,
-                "no_of_units": no_of_units or None,
+                "updated":    True,  # FIELD: building_details[].updated <- literal True
+                "flat_name":  flat_name  or None,  # FIELD: building_details[].flat_name <- apartment table tds[1]
+                "flat_type":  flat_type  or None,  # FIELD: building_details[].flat_type <- apartment table tds[3]
+                "carpet_area": carpet_area or None,  # FIELD: building_details[].carpet_area <- apartment table tds[4]
+                "no_of_units": no_of_units or None,  # FIELD: building_details[].no_of_units <- apartment table tds[5]
             }
             details.append(entry)
     return details
@@ -455,6 +485,9 @@ def _parse_documents(soup: BeautifulSoup, rera_cert_links: list[str]) -> list[di
         if key in seen:
             return
         seen.add(key)
+        # FIELD: documents[].link <- Project Documents table view-cell anchor href (normalized)
+        # FIELD: documents[].type <- "{sno} {title}" or "{title} {n}" from row
+        # FIELD: documents[].updated <- literal True
         docs.append({"link": url, "type": doc_type, "updated": True})
 
     # 1. Project Documents table
@@ -490,7 +523,9 @@ def _parse_documents(soup: BeautifulSoup, rera_cert_links: list[str]) -> list[di
         cert_urls = ",".join(rera_cert_links)
         if cert_urls not in seen:
             seen.add(cert_urls)
+            # FIELD: documents[] <- {link: joined RERA cert URLs, type: "Rera Registration Certificate", updated: True}
             docs.append({"link": cert_urls, "type": "Rera Registration Certificate", "updated": True})
+            # FIELD: documents[] <- {link: joined RERA cert URLs, type: "Rera Order", updated: True}
             docs.append({"link": cert_urls, "type": "Rera Order", "updated": True})
     return docs
 
@@ -526,9 +561,9 @@ def _parse_qpr(soup: BeautifulSoup) -> list[dict]:
             a = tds[col_idx].find("a", href=True)
             if a:
                 qpr_docs.append({
-                    "link":    a["href"].strip(),
-                    "type":    dest_type,
-                    "quarter": quarter,
+                    "link":    a["href"].strip(),  # FIELD: status_update.qpr_docs[].link <- QPR table cell anchor href
+                    "type":    dest_type,  # FIELD: status_update.qpr_docs[].type <- mapped col_map dest_type
+                    "quarter": quarter,  # FIELD: status_update.qpr_docs[].quarter <- QPR table tds[1]
                 })
     return qpr_docs
 
@@ -562,7 +597,7 @@ def _handle_document(
     for url in raw_urls:
         fname = build_document_filename({"url": url, "label": label})
         try:
-            resp = download_response(url, logger=logger, timeout=60.0, verify=False)
+            resp = _session().download(url, logger=logger)
             if not resp or len(resp.content) < 100:
                 continue
             md5    = compute_md5(resp.content)
@@ -679,7 +714,15 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 
 # ── Main run() ─────────────────────────────────────────────────────────────────
 
-def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
+def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     logger   = CrawlerLogger(config["id"], run_id)
     site_id  = config["id"]
     counts   = dict(
@@ -808,19 +851,19 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
             # ── Assemble data dict ───────────────────────────────────────────
             data: dict = {
-                "key":                     key,
-                "state":                   config["state"],
-                "config_id":               config["config_id"],
-                "domain":                  DOMAIN,
-                "url":                     detail_url,
-                "is_live":                 True,
-                "machine_name":            machine_name,
-                "crawl_machine_ip":        machine_ip,
+                "key":                     key,  # FIELD: key <- generate_project_key(reg_no)
+                "state":                   config["state"],  # FIELD: state <- config["state"]
+                "config_id":               config["config_id"],  # FIELD: config_id <- config["config_id"]
+                "domain":                  DOMAIN,  # FIELD: domain <- DOMAIN constant ("rera.mp.gov.in")
+                "url":                     detail_url,  # FIELD: url <- listing stub detail_url
+                "is_live":                 True,  # FIELD: is_live <- literal True
+                "machine_name":            machine_name,  # FIELD: machine_name <- get_machine_context()
+                "crawl_machine_ip":        machine_ip,  # FIELD: crawl_machine_ip <- get_machine_context()
                 # listing fields (fallback if detail parse returns empty strings)
-                "project_name":            stub["project_name"],
-                "promoter_name":           stub["promoter_name"],
-                "status_of_the_project":   stub["status"],
-                "project_registration_no": reg_no,
+                "project_name":            stub["project_name"],  # FIELD: project_name <- listing stub tds[1] (fallback)
+                "promoter_name":           stub["promoter_name"],  # FIELD: promoter_name <- listing stub tds[2] (fallback)
+                "status_of_the_project":   stub["status"],  # FIELD: status_of_the_project <- listing stub tds[4] (fallback)
+                "project_registration_no": reg_no,  # FIELD: project_registration_no <- detail-page reg_no
             }
             # detail overrides
             for k, v in detail.items():
@@ -831,19 +874,19 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 if v is not None:
                     data[k] = v
             if consultants:
-                data["professional_information"] = consultants
+                data["professional_information"] = consultants  # FIELD: professional_information <- _parse_consultants(soup)
             if building:
-                data["building_details"] = building
+                data["building_details"] = building  # FIELD: building_details <- _parse_building_details(soup)
             if res_units:
-                data["number_of_residential_units"] = res_units
+                data["number_of_residential_units"] = res_units  # FIELD: number_of_residential_units <- _parse_unit_counts residential sum
             if com_units:
-                data["number_of_commercial_units"] = com_units
+                data["number_of_commercial_units"] = com_units  # FIELD: number_of_commercial_units <- _parse_unit_counts commercial sum
             if images:
-                data["project_images"] = images
+                data["project_images"] = images  # FIELD: project_images <- _parse_images(soup) gallery hrefs
             if qpr_docs:
-                data["status_update"] = {"qpr_docs": qpr_docs}
+                data["status_update"] = {"qpr_docs": qpr_docs}  # FIELD: status_update <- {qpr_docs: _parse_qpr(soup)}
 
-            data["data"] = merge_data_sections({
+            data["data"] = merge_data_sections({  # FIELD: data <- merge_data_sections(govt_type/START_PAGE/is_processed)
                 "govt_type":   "state",
                 "START_PAGE":  "0",
                 "is_processed": False,
@@ -892,13 +935,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
             if uploaded_documents:
                 upsert_project({
-                    "key":                     db_dict["key"],
-                    "url":                     db_dict["url"],
-                    "state":                   db_dict["state"],
-                    "domain":                  db_dict["domain"],
-                    "project_registration_no": db_dict["project_registration_no"],
-                    "uploaded_documents":      uploaded_documents,
-                    "document_urls":           build_document_urls(uploaded_documents),
+                    "key":                     db_dict["key"],  # FIELD: key <- db_dict["key"] (assembled project key)
+                    "url":                     db_dict["url"],  # FIELD: url <- db_dict["url"] (detail page URL)
+                    "state":                   db_dict["state"],  # FIELD: state <- db_dict["state"]
+                    "domain":                  db_dict["domain"],  # FIELD: domain <- db_dict["domain"]
+                    "project_registration_no": db_dict["project_registration_no"],  # FIELD: project_registration_no <- db_dict
+                    "uploaded_documents":      uploaded_documents,  # FIELD: uploaded_documents <- list of uploaded doc entries
+                    "document_urls":           build_document_urls(uploaded_documents),  # FIELD: document_urls <- build_document_urls(uploaded_documents)
                 })
 
             done_regs.add(reg_no)

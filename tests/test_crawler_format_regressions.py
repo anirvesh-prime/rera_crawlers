@@ -151,7 +151,7 @@ class CrawlerFormatRegressionTests(unittest.TestCase):
 
     # NOTE: test_gujarat_extract_fields_maps_dev_sections was removed because
     # _extract_fields(basic, detail, qpr, promoter_profile) no longer exists —
-    # Gujarat was rewritten from JSON-API scraping to Playwright HTML scraping
+    # Gujarat was rewritten from JSON-API scraping to Selenium HTML scraping
     # (_extract_html_fields, _parse_overview_card, etc.).
 
     def test_gujarat_handle_document_falls_back_to_download_response(self):

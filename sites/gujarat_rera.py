@@ -1,6 +1,6 @@
 """
 Gujarat RERA Crawler — gujrera.gujarat.gov.in
-Type: Playwright (Angular SPA — bulk enumeration API + detail page scraping)
+Type: Selenium (Angular SPA — bulk enumeration API + detail page scraping)
 
 Strategy:
 - Enumeration: a single call to the dashboard's bulk project-list endpoint
@@ -12,7 +12,7 @@ Strategy:
   (so daily_light can skip already-known projects without a per-project
   page.goto).
 - Detail scrape: for each stub, navigate to /#/project-preview?id={b64}
-  via Playwright, wait for the Angular SPA to render, and parse the HTML
+  via Selenium, wait for the Angular SPA to render, and parse the HTML
   with BeautifulSoup using CSS selectors.  The registration number from
   the enumeration stub is the single source of truth — it is NOT
   re-extracted from the detail page.
@@ -27,13 +27,17 @@ import re
 import time
 from datetime import timezone, timedelta
 
-import httpx
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import download_response, generate_project_key, get_legacy_ssl_context, random_delay, safe_get
+from core.crawler_base import (
+    SeleniumSession,
+    SeleniumTimeout,
+    generate_project_key,
+    page_adapter,
+    random_delay,
+)
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -60,6 +64,42 @@ STATE          = "Gujarat"
 WARMUP_URL     = f"{BASE_URL}/#/home-p/registered-project"
 # Bulk enumeration: returns every registered project with projectRegId + regNo.
 BULK_LIST_PATH = "/dashboard/get-district-wise-projectlist/0/0/all/all/all"
+
+
+# ── SeleniumSession wiring ────────────────────────────────────────────────────
+
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+def safe_get(url, *, logger=None, timeout=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
+    return _session().get(url, logger=logger, page_load_timeout=plt)
+
+
+def download_response(url, *, logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().download(url, logger=logger)
+
 
 # HTML label (lowercase, colon-stripped) → schema field name.
 # Fields prefixed with "_" are internal and assembled into compound fields below.
@@ -997,7 +1037,7 @@ def _fetch_listing_stubs(page, logger: CrawlerLogger) -> list[dict]:
 
 
 def _browser_fetch_bytes(page: object, url: str) -> bytes | None:
-    """Download *url* using the Playwright browser context.
+    """Download *url* using the Selenium browser context.
 
     The VDMS server (``vdms/view-doc/{uid}``) performs TLS fingerprinting and
     resets connections from Python's httpx SSL stack.  Chromium's TLS handshake
@@ -1035,7 +1075,7 @@ def _browser_fetch_bytes(page: object, url: str) -> bytes | None:
 def _handle_document(
     project_key: str, doc: dict, run_id: int,
     site_id: str, logger: CrawlerLogger,
-    client: httpx.Client,
+    client=None,
     page: object | None = None,
 ) -> dict | None:
     """Download *doc* and upload it to S3.
@@ -1052,7 +1092,7 @@ def _handle_document(
     try:
         content: bytes | None = None
 
-        # Primary: download inside the Playwright browser (VDMS requires Chromium TLS)
+        # Primary: download inside the Selenium browser (VDMS requires Chromium TLS)
         if page is not None:
             content = _browser_fetch_bytes(page, url)
             if content and (len(content) < 100 or content[:5] in (b"<html", b"<!DOC")):
@@ -1092,7 +1132,7 @@ def _handle_document(
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     """
     Data-quality sentinel for Gujarat RERA.
-    Full-flow check: navigates to the sentinel project's detail page via Playwright,
+    Full-flow check: navigates to the sentinel project's detail page via Selenium,
     runs ALL parsers that run() uses (_extract_html_fields, _parse_overview_card,
     _parse_promoter_card, _parse_partners, _parse_professionals, _parse_facilities,
     _parse_flat_table, _extract_doc_links), merges results, and verifies ≥ 80%
@@ -1131,17 +1171,12 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     logger.info(f"Sentinel: navigating to detail page for proj_id={proj_id}",
                 url=detail_url, step="sentinel")
     try:
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
-            ctx     = browser.new_context(ignore_https_errors=True)
-            page    = ctx.new_page()
-            page.goto(detail_url, timeout=60_000, wait_until="networkidle")
-            page.wait_for_timeout(5_000)
-            html  = page.content()
-            # Fetch document tokens while the page context is still alive
-            _sentinel_doc_links = _fetch_document_tokens(page)
-            ctx.close()
-            browser.close()
+        page = page_adapter(_session())
+        page.goto(detail_url, timeout=60_000, wait_until="networkidle")
+        page.wait_for_timeout(5_000)
+        html  = page.content()
+        # Fetch document tokens while the page context is still alive
+        _sentinel_doc_links = _fetch_document_tokens(page)
 
         soup = BeautifulSoup(html, "lxml")
         lv   = _extract_label_values(soup)
@@ -1180,11 +1215,11 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 
     except Exception as exc:
         exc_str = str(exc)
-        # Playwright timeout errors contain "Timeout" in the message; treat them
+        # Selenium timeout errors contain "Timeout" in the message; treat them
         # as transient network issues and skip the sentinel rather than aborting.
         if "timeout" in exc_str.lower() or "net::" in exc_str.lower():
             logger.warning(
-                f"Sentinel: Playwright error (likely transient) — {exc}; "
+                f"Sentinel: Selenium error (likely transient) — {exc}; "
                 "skipping coverage check this run",
                 step="sentinel",
             )
@@ -1208,8 +1243,16 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     return True
 
 
-def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
-    """Main entry point — listing-page stub collection + Playwright detail scraping."""
+def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
+    """Main entry point — listing-page stub collection + Selenium detail scraping."""
     logger   = CrawlerLogger(config["id"], run_id)
     site_id  = config["id"]
     counts   = dict(projects_found=0, projects_new=0, projects_updated=0,
@@ -1218,12 +1261,10 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     machine_name, machine_ip = get_machine_context()
     t_run = time.monotonic()
 
-    _timeout = httpx.Timeout(connect=10.0, read=30.0, write=10.0, pool=5.0)
-    session  = httpx.Client(
-        timeout=_timeout,
-        follow_redirects=True,
-        verify=get_legacy_ssl_context(),
-    )
+    # Document downloads now share the module-level SeleniumSession; the
+    # original ``session`` httpx client was used purely for legacy-TLS
+    # compatibility, which Chrome handles natively via Selenium.
+    session = None
 
     # ── Sentinel health check ────────────────────────────────────────────────
     t0 = time.monotonic()
@@ -1245,10 +1286,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
     items_processed = 0
 
-    with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=True)
-        ctx     = browser.new_context(ignore_https_errors=True)
-        page    = ctx.new_page()
+    if True:
+        page = page_adapter(_session())
 
         # ── Phase 1: bulk enumeration ─────────────────────────────────────────
         # Single call to the dashboard's grand-total endpoint returns every
@@ -1259,9 +1298,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         all_stubs = _fetch_listing_stubs(page, logger)
         if not all_stubs:
             logger.error("No project stubs returned from enumeration — aborting")
-            ctx.close()
-            browser.close()
-            session.close()
             return counts
 
         logger.info(f"Total projects to process: {len(all_stubs)}")
@@ -1498,10 +1534,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             finally:
                 logger.clear_project()
 
-        ctx.close()
-        browser.close()
-
-    session.close()
     reset_checkpoint(site_id, mode)
     logger.info(f"Gujarat RERA complete: {counts}")
     logger.timing("total_run", time.monotonic() - t_run)

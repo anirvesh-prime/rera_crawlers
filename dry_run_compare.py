@@ -80,7 +80,7 @@ def _listing_patches_rajasthan(module, sample_url: str, reg_no: str, sample: dic
     qs     = parse_qs(urlparse(sample_url).query)
     enc_id = (qs.get("id") or qs.get("Id") or [""])[0]
     loc = sample.get("project_location_raw") or {}
-    # Stub matches the keys produced by _extract_rj_table_rows / _scrape_project_list_playwright
+    # Stub matches the keys produced by _extract_rj_table_rows / _scrape_project_list
     stub = {
         "enc_id":        enc_id,
         "reg_no":        reg_no,
@@ -93,7 +93,7 @@ def _listing_patches_rajasthan(module, sample_url: str, reg_no: str, sample: dic
         "status":        sample.get("status_of_the_project", ""),
     }
     return [
-        patch.object(module, "_scrape_project_list_playwright", return_value=[stub]),
+        patch.object(module, "_scrape_project_list", return_value=[stub]),
     ]
 
 
@@ -268,7 +268,7 @@ def _listing_patches_maharashtra(module, sample_url: str, reg_no: str, sample: d
     return [
         patch.object(module, "_parse_cards",            return_value=[card]),
         patch.object(module, "_get_total_pages",        return_value=1),
-        # _scrape_mh_detail_page uses Playwright+CAPTCHA — bypass in dry-run
+        # _scrape_mh_detail_page uses Selenium+CAPTCHA — bypass in dry-run
         patch.object(module, "_scrape_mh_detail_page",  return_value=detail_fields),
     ]
 
@@ -278,7 +278,7 @@ def _listing_patches_gujarat(module, sample_url: str, reg_no: str, sample: dict)
 
     Gujarat's run() has two phases:
       Phase 1 — _fetch_all_project_ids(page, logger) → list[int]  (all project IDs)
-      Phase 2 — scrape each detail page via Playwright
+      Phase 2 — scrape each detail page via Selenium
 
     We patch _fetch_all_project_ids to return only the known-good project ID
     extracted from the sample's data.project_id (base64-encoded integer).
@@ -549,7 +549,7 @@ def _listing_patches_wb(module, sample_url: str, reg_no: str, sample: dict) -> l
     records; for all other URLs (detail pages, document links) _get falls through
     to the real implementation and fetches live.
 
-    The sentinel (_sentinel_find_procode uses Playwright → not affected by the
+    The sentinel (_sentinel_find_procode uses Selenium → not affected by the
     _get patch) and _parse_detail_page both run live.
     """
     stub = {
@@ -670,29 +670,24 @@ def _listing_patches_uttar_pradesh(module, sample_url: str, reg_no: str, sample:
         "row_index":     0,
     }
 
-    # Navigate directly to the sample URL in Playwright instead of clicking through
+    # Navigate directly to the sample URL via Selenium instead of clicking through
     # the district listing — faster and avoids fragile button-click navigation.
     def _direct_detail_fetch(dist, rn, logger, existing_url=None):
         if not sample_url:
             return "", ""
         try:
-            from playwright.sync_api import sync_playwright
-            with sync_playwright() as pw:
-                browser = pw.chromium.launch(headless=True)
-                ctx = browser.new_context(
-                    user_agent=(
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-                    )
-                )
-                page = ctx.new_page()
+            from core.crawler_base import SeleniumSession, page_adapter
+            session = SeleniumSession(ignore_certificate_errors=True)
+            try:
+                page = page_adapter(session)
                 page.goto(sample_url, wait_until="domcontentloaded", timeout=60_000)
                 try:
                     page.wait_for_load_state("networkidle", timeout=20_000)
                 except Exception:
                     pass
                 html = page.content()
-                browser.close()
+            finally:
+                session.quit()
             return html, sample_url
         except Exception as exc:
             if hasattr(logger, "error"):
@@ -706,9 +701,9 @@ def _listing_patches_uttar_pradesh(module, sample_url: str, reg_no: str, sample:
         patch.object(module, "_fetch_district_listing", return_value=[stub]),
         # Navigate directly to the sample URL for the detail page instead of
         # clicking through the district listing with __doPostBack.
-        # The sentinel also calls _fetch_detail_html_playwright so it gets the
+        # The sentinel also calls _fetch_detail_html so it gets the
         # same live page → sentinel runs for real, same as production.
-        patch.object(module, "_fetch_detail_html_playwright", side_effect=_direct_detail_fetch),
+        patch.object(module, "_fetch_detail_html", side_effect=_direct_detail_fetch),
     ]
 
 
@@ -716,7 +711,7 @@ def _listing_patches_telangana(module, sample_url: str, reg_no: str, sample: dic
     """Telangana runs its full natural live flow — no listing patches needed.
 
     PrintPreview URLs are session-scoped (``q`` parameter expires immediately
-    after the Playwright session ends), so injecting a stored sample URL would
+    after the Selenium session ends), so injecting a stored sample URL would
     always hit UnauthorizedPage.  The crawler is left unpatched:
       - ``_submit_search`` solves the CAPTCHA and submits the search form live.
       - ``_parse_listing_rows`` parses real results, producing fresh ``pp_url`` values.

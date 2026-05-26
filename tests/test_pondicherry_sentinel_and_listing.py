@@ -165,31 +165,30 @@ class SentinelCheckTests(unittest.TestCase):
         mock_err.assert_called_once()
 
 
-# ── _get_listing — timeout / retry config ────────────────────────────────────
+# ── _get_listing — Selenium timeout / retry config ───────────────────────────
 
 class GetListingConfigTests(unittest.TestCase):
-    """Verify _get_listing calls safe_get with the right timeout and retry knobs."""
+    """Verify _get_listing dispatches to SeleniumSession.get with the right timeout/retry knobs."""
 
-    def test_uses_extended_read_timeout_and_more_retries(self):
-        import httpx
-
+    def test_uses_extended_page_load_timeout_and_more_retries(self):
         captured: dict = {}
 
-        def fake_safe_get(url, *, verify, logger, timeout, retries, delay, **_kw):
-            captured["url"]     = url
-            captured["timeout"] = timeout
-            captured["retries"] = retries
-            captured["delay"]   = delay
+        def fake_get(url, *, retries, delay, page_load_timeout, logger, **_):
+            captured["url"]               = url
+            captured["page_load_timeout"] = page_load_timeout
+            captured["retries"]           = retries
+            captured["delay"]             = delay
             return None  # simulate failure; we only care about the call params
 
-        with mock.patch.object(pondicherry_rera, "safe_get", side_effect=fake_safe_get):
+        fake_session = mock.MagicMock()
+        fake_session.get.side_effect = fake_get
+
+        with mock.patch.object(pondicherry_rera, "_session", return_value=fake_session):
             pondicherry_rera._get_listing(logger=mock.MagicMock())
 
         self.assertEqual(captured["url"], pondicherry_rera.LISTING_URL)
-        self.assertIsInstance(captured["timeout"], httpx.Timeout,
-                              "listing must use an httpx.Timeout, not a plain float")
-        self.assertGreaterEqual(captured["timeout"].read, 120.0,
-                                "read timeout must be ≥ 120 s for the slow Pondicherry server")
+        self.assertGreaterEqual(captured["page_load_timeout"], 120.0,
+                                "page-load timeout must be ≥ 120 s for the slow Pondicherry server")
         self.assertGreaterEqual(captured["retries"], 4,
                                 "listing should retry at least 4 times")
         self.assertGreaterEqual(captured["delay"], 5.0,

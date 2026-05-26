@@ -22,7 +22,7 @@ import httpx
 from bs4 import BeautifulSoup
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
-from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
+from core.crawler_base import SeleniumSession, generate_project_key, random_delay
 from core.db import get_project_by_key, insert_crawl_error, upsert_document, upsert_project
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -64,9 +64,45 @@ def _timeout_for_url(url: str) -> httpx.Timeout:
     return _DETAIL_TIMEOUT
 
 
+# ── Selenium session (shared driver via core.crawler_base.SeleniumSession) ────
+
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        # Listing page is large; raise page-load timeout but keep it below the
+        # urllib3 read-timeout ceiling (default client_timeout=180s) so
+        # chromedriver aborts cleanly rather than poisoning the session.
+        _SESSION = SeleniumSession(
+            ignore_certificate_errors=True,
+            page_load_timeout=150.0,
+            client_timeout=200.0,
+        )
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
 def _get(url: str, logger: CrawlerLogger | None = None, **kw):
-    kw.setdefault("timeout", _timeout_for_url(url))
-    return safe_get(url, verify=False, logger=logger, **kw)
+    # _timeout_for_url stays in place for test compatibility, but
+    # SeleniumSession.get derives its own page-load timeout from the
+    # session config; httpx-only kwargs are dropped below.
+    kw.pop("verify", None)
+    kw.pop("timeout", None)
+    kw.pop("client", None)
+    return _session().get(url, logger=logger, **kw)
 
 
 def _field(soup: BeautifulSoup, name: str) -> str:
@@ -697,12 +733,7 @@ def _handle_document(project_key: str, doc: dict, run_id: int, site_id: str,
     label = doc["type"]
     fname = build_document_filename({"url": url, "label": label})
     try:
-        resp = download_response(
-            url,
-            logger=logger,
-            timeout=_timeout_for_url(url),
-            verify=False,
-        )
+        resp = _session().download(url, logger=logger)
         if not resp or len(resp.content) < 100:
             return None
         md5    = compute_md5(resp.content)
@@ -824,6 +855,14 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 # ── Main run() ─────────────────────────────────────────────────────────────────
 
 def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
     logger   = CrawlerLogger(config["id"], run_id)
     site_id  = config["id"]
     counts   = dict(projects_found=0, projects_new=0, projects_updated=0,

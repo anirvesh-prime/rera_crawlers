@@ -1,0 +1,233 @@
+[
+  {
+    "site": "kerala_rera",
+    "status": "ok",
+    "elapsed_s": 15.6,
+    "found": 20,
+    "new": 1,
+    "updated": 0,
+    "skipped": 0,
+    "docs": 5,
+    "errors": 0
+  },
+  {
+    "site": "rajasthan_rera",
+    "status": "ok",
+    "elapsed_s": 91.2,
+    "found": 10,
+    "new": 0,
+    "updated": 1,
+    "skipped": 0,
+    "docs": 7,
+    "errors": 0
+  },
+  {
+    "site": "odisha_rera",
+    "status": "ok",
+    "elapsed_s": 59.5,
+    "found": 10,
+    "new": 1,
+    "updated": 0,
+    "skipped": 0,
+    "docs": 1,
+    "errors": 0
+  },
+  {
+    "site": "pondicherry_rera",
+    "status": "ok",
+    "elapsed_s": 7.6,
+    "found": 374,
+    "new": 1,
+    "updated": 0,
+    "skipped": 0,
+    "docs": 2,
+    "errors": 0
+  },
+  {
+    "site": "bihar_rera",
+    "status": "ok",
+    "elapsed_s": 40.6,
+    "found": 10,
+    "new": 0,
+    "updated": 1,
+    "skipped": 0,
+    "docs": 6,
+    "errors": 0
+  },
+  {
+    "site": "punjab_rera",
+    "status": "ok",
+    "elapsed_s": 101.3,
+    "found": 1947,
+    "new": 1,
+    "updated": 0,
+    "skipped": 0,
+    "docs": 10,
+    "errors": 0
+  },
+  {
+    "site": "maharashtra_rera",
+    "status": "timeout",
+    "elapsed_s": 300.0,
+    "found": 0,
+    "new": 0,
+    "updated": 0,
+    "skipped": 0,
+    "docs": 0,
+    "errors": 0
+  },
+  {
+    "site": "gujarat_rera",
+    "status": "ok",
+    "elapsed_s": 132.0,
+    "found": 17098,
+    "new": 0,
+    "updated": 1,
+    "skipped": 0,
+    "docs": 6,
+    "errors": 0
+  },
+  {
+    "site": "karnataka_rera",
+    "status": "ok",
+    "elapsed_s": 87.8,
+    "found": 9632,
+    "new": 1,
+    "updated": 0,
+    "skipped": 0,
+    "docs": 13,
+    "errors": 0
+  },
+  {
+    "site": "haryana_rera",
+    "status": "ok",
+    "elapsed_s": 22.8,
+    "found": 2024,
+    "new": 0,
+    "updated": 1,
+    "skipped": 0,
+    "docs": 3,
+    "errors": 0
+  },
+  {
+    "site": "delhi_rera",
+    "status": "ok",
+    "elapsed_s": 78.6,
+    "found": 10,
+    "new": 1,
+    "updated": 0,
+    "skipped": 0,
+    "docs": 6,
+    "errors": 0
+  },
+  {
+    "site": "tamil_nadu_rera",
+    "status": "ok",
+    "elapsed_s": 35.1,
+    "found": 2,
+    "new": 0,
+    "updated": 1,
+    "skipped": 0,
+    "docs": 8,
+    "errors": 0
+  },
+  {
+    "site": "jharkhand_rera",
+    "status": "ok",
+    "elapsed_s": 17.1,
+    "found": 10,
+    "new": 0,
+    "updated": 1,
+    "skipped": 0,
+    "docs": 1,
+    "errors": 0
+  },
+  {
+    "site": "andhra_pradesh_rera",
+    "status": "ok",
+    "elapsed_s": 38.7,
+    "found": 6685,
+    "new": 0,
+    "updated": 1,
+    "skipped": 0,
+    "docs": 6,
+    "errors": 0
+  },
+  {
+    "site": "goa_rera",
+    "status": "ok",
+    "elapsed_s": 15.8,
+    "found": 9,
+    "new": 0,
+    "updated": 1,
+    "skipped": 0,
+    "docs": 8,
+    "errors": 0
+  },
+  {
+    "site": "tripura_rera",
+    "status": "ok",
+    "elapsed_s": 4.8,
+    "found": 76,
+    "new": 0,
+    "updated": 1,
+    "skipped": 0,
+    "docs": 0,
+    "errors": 0
+  },
+  {
+    "site": "wb_rera",
+    "status": "ok",
+    "elapsed_s": 73.3,
+    "found": 4257,
+    "new": 0,
+    "updated": 1,
+    "skipped": 0,
+    "docs": 4,
+    "errors": 0
+  },
+  {
+    "site": "assam_rera",
+    "status": "ok",
+    "elapsed_s": 14.6,
+    "found": 1228,
+    "new": 0,
+    "updated": 1,
+    "skipped": 0,
+    "docs": 6,
+    "errors": 0
+  },
+  {
+    "site": "himachal_pradesh_rera",
+    "status": "ok",
+    "elapsed_s": 12.9,
+    "found": 274,
+    "new": 0,
+    "updated": 1,
+    "skipped": 0,
+    "docs": 0,
+    "errors": 0
+  },
+  {
+    "site": "uttarakhand_rera",
+    "status": "ok",
+    "elapsed_s": 20.5,
+    "found": 185,
+    "new": 0,
+    "updated": 1,
+    "skipped": 0,
+    "docs": 0,
+    "errors": 0
+  },
+  {
+    "site": "uttar_pradesh_rera",
+    "status": "ok",
+    "elapsed_s": 85.3,
+    "found": 220,
+    "new": 0,
+    "updated": 1,
+    "skipped": 0,
+    "docs": 5,
+    "errors": 0
+  }
+]

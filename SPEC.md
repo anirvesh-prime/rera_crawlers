@@ -24,10 +24,10 @@ A production-grade web crawling framework targeting ~25 Indian state RERA (Real 
 | Pondicherry | https://prera.py.gov.in/reraAppOffice/viewDefaulterProjects | TBD |
 | ~20 more | TBD | TBD |
 
-### Site Classification (determines crawler type)
-- **Type 1 — Static/Server-rendered**: Use `httpx` + `BeautifulSoup4`. Fast, no browser needed.
-- **Type 2 — API-backed SPA**: Intercept underlying REST/JSON API calls, use `httpx` directly. Fastest.
-- **Type 3 — Pure JS SPA (no discoverable API)**: Use `playwright` headless Chromium.
+### Site Classification (drives extraction strategy inside the Selenium crawler)
+- **Type 1 — Static/Server-rendered**: Parse the rendered HTML with `BeautifulSoup4`. Fetched via the shared `SeleniumSession` so all sites share one TLS/cookie path.
+- **Type 2 — API-backed SPA**: Call the underlying REST/JSON endpoint from inside the Selenium driver (via the in-browser `fetch` bridge on `SeleniumSession`).
+- **Type 3 — Pure JS SPA (no discoverable API)**: Render the page in Selenium (Chromium WebDriver) and scrape the resulting DOM via `SeleniumPageAdapter` / `BeautifulSoup4`.
 
 Every new site must be classified before a crawler is written. Classification process:
 1. Open browser DevTools → Network tab → filter XHR/Fetch
@@ -35,9 +35,11 @@ Every new site must be classified before a crawler is written. Classification pr
 3. If page renders without JS → Type 1
 4. Otherwise → Type 3
 
+All three types run on top of a single `SeleniumSession` (Chromium WebDriver) — the classification only governs how the page contents are extracted, not the underlying transport.
+
 ### CAPTCHA Handling Policy
 - If a site has a real, server-validated CAPTCHA, use `core/captcha_solver.py` as the shared integration point instead of embedding site-specific socket/OCR code inside the crawler.
-- For Playwright-based flows, first extract the rendered CAPTCHA image from the page and call `solve_captcha_from_page(...)`. Keep a site-specific fallback only when the portal exposes a more reliable bypass, such as a readable canvas draw sequence or reusable token flow.
+- Inside a Selenium-driven flow, first extract the rendered CAPTCHA image from the page (via `WebElement.screenshot()` on the `<img>` or `<canvas>` element) and call `solve_captcha_from_page(...)`. Keep a site-specific fallback only when the portal exposes a more reliable bypass, such as a readable canvas draw sequence or reusable token flow.
 - Do not force the shared solver into pages where the CAPTCHA is only client-side decoration and the backend does not validate it. In those cases, keep the simpler site-specific path.
 - Current status:
   - Maharashtra uses the shared solver against the rendered CAPTCHA canvas, with canvas-text interception retained as fallback.
@@ -52,7 +54,7 @@ Every new site must be classified before a crawler is written. Classification pr
 | Language | Python | 3.13 |
 | HTTP client | `httpx` | latest |
 | HTML parsing | `beautifulsoup4` + `lxml` | latest |
-| Browser automation | `playwright` | latest |
+| Browser automation | `selenium` + `webdriver-manager` (Chromium) | latest |
 | PostgreSQL driver | `psycopg[binary]` (psycopg3) | latest |
 | S3 client | `boto3` | latest |
 | Data validation | `pydantic` + `pydantic-settings` | v2 |
@@ -641,7 +643,7 @@ SITES = [
         "domain": "rera.kerala.gov.in",
         "listing_url": "https://rera.kerala.gov.in/projects",
         "crawler_module": "sites.kerala_rera",
-        "crawler_type": "static",        # 'static' | 'api' | 'playwright'
+        "crawler_type": "selenium",      # all crawlers now run on SeleniumSession
         "enabled": True,
         "rate_limit_delay": (2, 4),      # (min_seconds, max_seconds) random delay
         "max_retries": 3,
@@ -782,7 +784,8 @@ class ProjectRecord(BaseModel):
 - `get_random_ua()` — picks from UA pool in settings
 - `safe_get(url, retries, delay) -> httpx.Response` — GET with retry + backoff
 - `safe_post(url, data, retries, delay) -> httpx.Response`
-- `get_playwright_page(url) -> Page` — launches headless Chromium, returns page
+- `SeleniumSession(...)` — context manager that lazily launches headless Chromium and exposes `get()` / `fetch()` / `download()` plus a `driver()` accessor
+- `page_adapter(session) -> SeleniumPageAdapter` — Page-style adapter (goto/locator/evaluate/wait_for_load_state) for use by sites that need a browser-page-like API
 
 ### `core/checkpoint.py`
 - `get_checkpoint(site_id, run_type) -> dict | None`
@@ -898,7 +901,7 @@ run_crawlers.py --mode daily_light/weekly_deep
       │    │        compare with DB → pass/fail
       │    │
       │    ├─► fetch_listing_pages()  [daily: listing only]
-      │    │    ├─► httpx GET/POST (Type 1/2) or Playwright (Type 3)
+      │    │    ├─► SeleniumSession.get / fetch (Type 1/2) or rendered DOM (Type 3)
       │    │    ├─► parse project cards
       │    │    ├─► dedup check (key + last_modified)
       │    │    └─► checkpoint saved after each page
@@ -938,7 +941,7 @@ run_crawlers.py --mode daily_light/weekly_deep
 ## 21. Known Constraints & Notes
 
 - Keep `PYTHONHASHSEED` fixed across environments and cron runs. It is used as the SipHash seed for deterministic project-key generation.
-- Playwright requires Chromium to be installed: `playwright install chromium`
+- Selenium uses Chromium via `webdriver-manager`, which auto-downloads a matching `chromedriver` on first run; no manual install step is required.
 - PostgreSQL is running locally for development; for production it will be AWS RDS PostgreSQL
 - No AI/LLM calls are made at any point during crawling. All extraction is rule-based (CSS selectors, regex, JSON path).
 - Documents are uploaded as-is (raw PDF bytes). No OCR or content extraction happens in the crawler (the `doc_ocr_url` field exists in the schema for a separate downstream process).

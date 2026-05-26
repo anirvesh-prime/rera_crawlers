@@ -52,7 +52,7 @@ class UttarPradeshItemLimitTests(unittest.TestCase):
             mock.patch.object(uttar_pradesh_rera, "_fetch_district_listing", return_value=stubs),
             mock.patch.object(
                 uttar_pradesh_rera,
-                "_fetch_detail_html_playwright",
+                "_fetch_detail_html",
                 side_effect=[
                     ("<html>detail-1</html>", "https://example.com/1"),
                     ("<html>detail-2</html>", "https://example.com/2"),

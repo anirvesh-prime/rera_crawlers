@@ -31,12 +31,11 @@ from __future__ import annotations
 import re
 import time
 
-import httpx
 from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
-from core.crawler_base import download_response, generate_project_key, get_random_ua, random_delay, safe_get, safe_post
+from core.crawler_base import SeleniumSession, generate_project_key, get_random_ua, random_delay
 from core.db import get_project_by_key, insert_crawl_error, upsert_document, upsert_project
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -76,31 +75,79 @@ _SKIP_H1_RE = re.compile(
 )
 
 
-def _make_client() -> httpx.Client:
-    """Return a session-aware httpx.Client with SSL verification disabled."""
-    return httpx.Client(
-        verify=False,
-        follow_redirects=True,
-        timeout=60.0,
-        headers={
-            "User-Agent": get_random_ua(),
-            "Origin":  BASE_URL,
-            "Referer": HOME_URL,
-        },
-    )
+# ── SeleniumSession wiring ────────────────────────────────────────────────────
+
+_SESSION: SeleniumSession | None = None
 
 
-def _get(url: str, logger: CrawlerLogger, client: httpx.Client,
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+def safe_get(url, *, logger=None, timeout=None, params=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
+    full = url
+    if params:
+        from urllib.parse import urlencode
+        sep = "&" if "?" in url else "?"
+        full = f"{url}{sep}{urlencode(params)}"
+    return _session().get(full, logger=logger, page_load_timeout=plt)
+
+
+def safe_post(url, *, data=None, headers=None, logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().post(url, data=data, headers=headers, logger=logger)
+
+
+def download_response(url, *, method="GET", data=None, headers=None,
+                      logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().download(url, method=method, data=data, headers=headers, logger=logger)
+
+
+class _ClientAdapter:
+    """httpx.Client-compatible no-op adapter — driver state lives on _session()."""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def close(self) -> None:
+        pass
+
+
+def _make_client():
+    """Return a no-op client adapter; cookies/session state live on the SeleniumSession."""
+    return _ClientAdapter()
+
+
+def _get(url: str, logger: CrawlerLogger, client,
          params: dict | None = None):
-    """GET wrapper — reuses persistent session client."""
-    return safe_get(url, verify=False, logger=logger, timeout=60.0,
-                    params=params, client=client)
+    """GET wrapper — routes through the shared SeleniumSession."""
+    return safe_get(url, logger=logger, timeout=60.0, params=params)
 
 
-def _post(url: str, data: dict, logger: CrawlerLogger, client: httpx.Client):
-    """POST wrapper — reuses persistent session client."""
-    return safe_post(url, data=data, verify=False, logger=logger,
-                     timeout=60.0, client=client)
+def _post(url: str, data: dict, logger: CrawlerLogger, client):
+    """POST wrapper — routes through the shared SeleniumSession."""
+    return safe_post(url, data=data, logger=logger)
 
 
 # ── Search listing parsing (primary — POST /search) ───────────────────────────
@@ -190,25 +237,25 @@ def _parse_search_rows(soup: BeautifulSoup) -> tuple[list[dict], int]:
                 pass
 
         row: dict = {
-            "project_registration_no": reg_no,
-            "project_name":            project_name,
+            "project_registration_no": reg_no,  # FIELD: project_registration_no <- listing card reg-no <p>
+            "project_name":            project_name,  # FIELD: project_name <- listing card <h1>
             "promoter_name":           (
                 summary.get("promoter")
                 or summary.get("promoter name")
                 or summary.get("name of promoter")
-            ) or None,
-            "project_type":          summary.get("property type") or None,
-            "status_of_the_project": summary.get("status") or None,
-            "detail_url":            detail_url,
+            ) or None,  # FIELD: promoter_name <- listing summary "promoter"/"promoter name"
+            "project_type":          summary.get("property type") or None,  # FIELD: project_type <- listing summary "property type"
+            "status_of_the_project": summary.get("status") or None,  # FIELD: status_of_the_project <- listing summary "status"
+            "detail_url":            detail_url,  # FIELD: detail_url <- listing card "Read More" href
         }
         if address:
-            row["project_location_raw"] = {"raw_address": address}
+            row["project_location_raw"] = {"raw_address": address}  # FIELD: project_location_raw.raw_address <- listing card address <p>
         if land_area is not None:
-            row["land_area"] = land_area
+            row["land_area"] = land_area  # FIELD: land_area <- listing summary "TOTAL AREA" parsed
         if land_area_unit:
-            row["land_area_unit"] = land_area_unit
+            row["land_area_unit"] = land_area_unit  # FIELD: land_area_unit <- listing summary "TOTAL AREA" unit
         if summary.get("promoter type"):
-            row["data"] = {"promoter_type": summary["promoter type"]}
+            row["data"] = {"promoter_type": summary["promoter type"]}  # FIELD: data.promoter_type <- listing summary "promoter type"
         rows.append(row)
     return rows, total
 
@@ -270,25 +317,25 @@ def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
 
             detail_url = _derive_detail_url(reg_no)
             row: dict = {
-                "project_registration_no": reg_no,
-                "project_name":  project_name,
+                "project_registration_no": reg_no,  # FIELD: project_registration_no <- supp card reg-no <p>
+                "project_name":  project_name,  # FIELD: project_name <- supp card <h1>
                 "promoter_name": (
                     summary_row.get("promoter")
                     or summary_row.get("promoter name")
                     or summary_row.get("name of promoter")
                     or summary_row.get("name of the promoter")
-                ) or None,
-                "project_type": summary_row.get("property type") or None,
-                "detail_url":   detail_url,
+                ) or None,  # FIELD: promoter_name <- supp summary "promoter"/"name of promoter"
+                "project_type": summary_row.get("property type") or None,  # FIELD: project_type <- supp summary "property type"
+                "detail_url":   detail_url,  # FIELD: detail_url <- derived from reg_no via _derive_detail_url
             }
             if address:
-                row["project_location_raw"] = {"raw_address": address}
+                row["project_location_raw"] = {"raw_address": address}  # FIELD: project_location_raw.raw_address <- supp card address <p>
             if land_area is not None:
-                row["land_area"] = land_area
+                row["land_area"] = land_area  # FIELD: land_area <- supp summary "total area of land (sq.mtr.)"
             if land_area_unit:
-                row["land_area_unit"] = land_area_unit
+                row["land_area_unit"] = land_area_unit  # FIELD: land_area_unit <- supp summary land-area unit
             if summary_row.get("promoter type"):
-                row["data"] = {"promoter_type": summary_row["promoter type"]}
+                row["data"] = {"promoter_type": summary_row["promoter type"]}  # FIELD: data.promoter_type <- supp summary "promoter type"
             rows.append(row)
         return rows
 
@@ -312,12 +359,12 @@ def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
                 return tds[i].get_text(separator=" ", strip=True) or None if 0 <= i < len(tds) else None
 
             rows.append({
-                "project_registration_no": reg_no,
-                "project_name":          _cell(1),
-                "promoter_name":         _cell(2),
-                "project_type":          _cell(3),
-                "status_of_the_project": _cell(4),
-                "detail_url":            _derive_detail_url(reg_no),
+                "project_registration_no": reg_no,  # FIELD: project_registration_no <- table cell matching PRTR regex
+                "project_name":          _cell(1),  # FIELD: project_name <- table cell at reg_idx+1
+                "promoter_name":         _cell(2),  # FIELD: promoter_name <- table cell at reg_idx+2
+                "project_type":          _cell(3),  # FIELD: project_type <- table cell at reg_idx+3
+                "status_of_the_project": _cell(4),  # FIELD: status_of_the_project <- table cell at reg_idx+4
+                "detail_url":            _derive_detail_url(reg_no),  # FIELD: detail_url <- derived from reg_no
             })
     return rows
 
@@ -412,13 +459,13 @@ def _process_label_value(
         if "land_area" not in out:
             val, unit = _extract_area(value)
             if val is not None:
-                out["land_area"] = val
+                out["land_area"] = val  # FIELD: land_area <- detail label "_land_area_raw" parsed
                 raw["land_area_unit"] = unit or "sq Mtr"
     elif schema_field == "_construction_area_raw":
         if "construction_area" not in out:
             val, unit = _extract_area(value)
             if val is not None:
-                out["construction_area"] = val
+                out["construction_area"] = val  # FIELD: construction_area <- detail label "_construction_area_raw" parsed
                 raw["construction_area_unit"] = unit or "Sq Mtr"
     elif schema_field == "_district":
         location_parts["district"] = value
@@ -488,7 +535,7 @@ def _normalize_professional(raw: dict, role: str | None = None) -> dict:
 
 
 def _parse_detail_page(url: str, logger: CrawlerLogger,
-                        client: httpx.Client | None = None) -> dict:
+                        client=None) -> dict:
     """Fetch and parse a Tripura project detail page."""
     if client is not None:
         resp = _get(url, logger, client)
@@ -548,7 +595,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger,
 
     if location_parts:
         location_parts["has_same_data"] = True
-        out["project_location_raw"] = location_parts
+        out["project_location_raw"] = location_parts  # FIELD: project_location_raw <- detail district/taluk/address labels
 
     # ── Section tables (members, professionals) ───────────────────────────────
     members: list[dict] = []
@@ -581,7 +628,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger,
         for h1 in soup.find_all("h1"):
             text = h1.get_text(strip=True)
             if text and not _SKIP_H1_RE.search(text) and len(text) < 120:
-                out["project_name"] = text
+                out["project_name"] = text  # FIELD: project_name <- detail page first clean <h1>
                 break
 
     # Capture project_description from <h1>Project Description</h1> + next <p>
@@ -592,7 +639,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger,
                 if p_sib:
                     desc = p_sib.get_text(separator=" ", strip=True)
                     if desc:
-                        out["project_description"] = desc
+                        out["project_description"] = desc  # FIELD: project_description <- <p> after <h1>Project Description
                 break
 
     # Walk headings to classify nearby tables by section name
@@ -633,7 +680,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger,
                             and not any(x in kl for x in ("email", "e-mail", "phone", "mobile", "contact", "address"))
                             and col_val
                         ):
-                            out["promoter_name"] = col_val
+                            out["promoter_name"] = col_val  # FIELD: promoter_name <- promoter section table "name" column
                             break
                 # Extract contact details
                 if not out.get("promoter_contact_details"):
@@ -645,7 +692,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger,
                         elif any(x in kl for x in ("mobile", "phone", "contact")) and col_val:
                             contact["phone"] = col_val
                     if contact.get("email") or contact.get("phone"):
-                        out["promoter_contact_details"] = contact
+                        out["promoter_contact_details"] = contact  # FIELD: promoter_contact_details <- promoter section email/phone cols
         # "chairman" / "lead member" sections are organisational headings, not board members
         elif any(kw in htext for kw in ("member", "director", "partner")) and "chairman" not in htext:
             used_tables.add(id(table))
@@ -765,18 +812,18 @@ def _parse_detail_page(url: str, logger: CrawlerLogger,
         project_images.append(full_src)
 
     if members:
-        out["members_details"] = members
+        out["members_details"] = members  # FIELD: members_details <- member/director/partner section tables
         if not out.get("promoter_contact_details"):
             first = members[0]
             contact = {k: first[k] for k in ("email", "phone") if first.get(k)}
             if contact:
-                out["promoter_contact_details"] = contact
+                out["promoter_contact_details"] = contact  # FIELD: promoter_contact_details <- first member email/phone fallback
     if professionals:
-        out["professional_information"] = professionals
+        out["professional_information"] = professionals  # FIELD: professional_information <- architect/engineer/contractor sections
     if project_images:
-        out["project_images"] = project_images
-    out["_doc_links"] = doc_links
-    out["data"] = raw
+        out["project_images"] = project_images  # FIELD: project_images <- <img src> on detail page (non-icon)
+    out["_doc_links"] = doc_links  # FIELD: _doc_links <- detail page <a> with DOC_ID/download/pdf hrefs
+    out["data"] = raw  # FIELD: data <- raw label->value map of detail page
     return out
 
 
@@ -785,7 +832,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger,
 
 def _handle_document(
     project_key: str, doc: dict, run_id: int, site_id: str, logger: CrawlerLogger,
-    client: httpx.Client | None = None,
+    client=None,
 ) -> dict | None:
     url   = doc["url"]
     label = doc["label"]
@@ -824,7 +871,7 @@ def _handle_document(
 
 
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger,
-                     client: httpx.Client | None = None) -> bool:
+                     client=None) -> bool:
     """
     Data-quality sentinel for Tripura RERA.
     Loads state_projects_sample/tripura.json as the baseline, re-scrapes the
@@ -886,7 +933,7 @@ def _process_row(
     config: dict,
     run_id: int,
     site_id: str,
-    client: httpx.Client,
+    client,
     logger: CrawlerLogger,
     machine_name: str,
     machine_ip: str,
@@ -921,28 +968,28 @@ def _process_row(
             return items_processed
 
         data: dict = {
-            "key":                     key,
-            "state":                   config["state"],
-            "project_state":           "Tripura",
-            "project_registration_no": reg_no,
-            "project_name":            row.get("project_name"),
-            "promoter_name":           row.get("promoter_name"),
-            "project_type":            row.get("project_type"),
-            "status_of_the_project":   row.get("status_of_the_project"),
-            "domain":                  DOMAIN,
-            "config_id":               config["config_id"],
-            "url":                     row.get("detail_url") or SEARCH_URL,
-            "is_live":                 True,
-            "machine_name":            machine_name,
-            "crawl_machine_ip":        machine_ip,
+            "key":                     key,  # FIELD: key <- generate_project_key(reg_no)
+            "state":                   config["state"],  # FIELD: state <- config["state"]
+            "project_state":           "Tripura",  # FIELD: project_state <- literal "Tripura"
+            "project_registration_no": reg_no,  # FIELD: project_registration_no <- listing row reg_no
+            "project_name":            row.get("project_name"),  # FIELD: project_name <- listing row project_name
+            "promoter_name":           row.get("promoter_name"),  # FIELD: promoter_name <- listing row promoter_name
+            "project_type":            row.get("project_type"),  # FIELD: project_type <- listing row project_type
+            "status_of_the_project":   row.get("status_of_the_project"),  # FIELD: status_of_the_project <- listing row status_of_the_project
+            "domain":                  DOMAIN,  # FIELD: domain <- module constant DOMAIN
+            "config_id":               config["config_id"],  # FIELD: config_id <- config["config_id"]
+            "url":                     row.get("detail_url") or SEARCH_URL,  # FIELD: url <- listing row detail_url (fallback SEARCH_URL)
+            "is_live":                 True,  # FIELD: is_live <- literal True
+            "machine_name":            machine_name,  # FIELD: machine_name <- get_machine_context()
+            "crawl_machine_ip":        machine_ip,  # FIELD: crawl_machine_ip <- get_machine_context()
             "promoters_details": (
                 {"name": row["promoter_name"]} if row.get("promoter_name") else None
-            ),
+            ),  # FIELD: promoters_details.name <- listing row promoter_name (or None)
         }
         if row.get("project_location_raw"):
-            data["project_location_raw"] = row["project_location_raw"]
+            data["project_location_raw"] = row["project_location_raw"]  # FIELD: project_location_raw <- listing row project_location_raw
         if row.get("land_area") is not None:
-            data["land_area"] = row["land_area"]
+            data["land_area"] = row["land_area"]  # FIELD: land_area <- listing row land_area
 
         doc_links: list[dict] = []
         if row.get("detail_url") and settings.SCRAPE_DETAILS:
@@ -957,7 +1004,7 @@ def _process_row(
                     data[k] = v
 
             if data.get("promoter_name") and not data.get("promoters_details"):
-                data["promoters_details"] = {"name": data["promoter_name"]}
+                data["promoters_details"] = {"name": data["promoter_name"]}  # FIELD: promoters_details.name <- data["promoter_name"] post-detail
 
             la = data.get("land_area")
             ca = data.get("construction_area")
@@ -965,9 +1012,10 @@ def _process_row(
                 la_unit = row.get("land_area_unit") or detail_data.get("land_area_unit") or "sq Mtr"
                 data["land_area_details"] = {
                     k: v for k, v in {
-                        "land_area":              str(la) if la else None,
-                        "land_area_unit":         la_unit,
-                        "construction_area":      str(ca) if ca else None,
+                        "land_area":              str(la) if la else None,  # FIELD: land_area_details.land_area <- data["land_area"] stringified
+                        "land_area_unit":         la_unit,  # FIELD: land_area_details.land_area_unit <- row/detail land_area_unit
+                        "construction_area":      str(ca) if ca else None,  # FIELD: land_area_details.construction_area <- data["construction_area"] stringified
+                        # FIELD: land_area_details.construction_area_unit <- detail_data["construction_area_unit"]
                         "construction_area_unit": detail_data.get("construction_area_unit", "Sq Mtr"),
                     }.items() if v
                 }
@@ -978,12 +1026,12 @@ def _process_row(
             )
             if row.get("land_area_unit") and isinstance(merged_data, dict):
                 merged_data["land_area_unit"] = row["land_area_unit"]
-            data["data"] = merged_data
+            data["data"] = merged_data  # FIELD: data <- merge of listing_row + detail raw labels
         else:
             data["data"] = merge_data_sections(
                 row.get("data"),
                 {"listing_row": {k: v for k, v in row.items() if k not in {"detail_url", "data"}}},
-            )
+            )  # FIELD: data <- merge of row.data + listing_row (no detail fetched)
 
         logger.info("Normalizing and validating", step="normalize")
         try:
@@ -1029,12 +1077,13 @@ def _process_row(
 
         if uploaded_documents:
             upsert_project({
-                "key":                     db_dict["key"],
-                "url":                     db_dict["url"],
-                "state":                   db_dict["state"],
-                "domain":                  db_dict["domain"],
-                "project_registration_no": db_dict["project_registration_no"],
-                "uploaded_documents":      uploaded_documents,
+                "key":                     db_dict["key"],  # FIELD: key <- db_dict["key"]
+                "url":                     db_dict["url"],  # FIELD: url <- db_dict["url"]
+                "state":                   db_dict["state"],  # FIELD: state <- db_dict["state"]
+                "domain":                  db_dict["domain"],  # FIELD: domain <- db_dict["domain"]
+                "project_registration_no": db_dict["project_registration_no"],  # FIELD: project_registration_no <- from db_dict
+                "uploaded_documents":      uploaded_documents,  # FIELD: uploaded_documents <- doc upload result entries
+                # FIELD: document_urls <- build_document_urls(uploaded_documents)
                 "document_urls":           build_document_urls(uploaded_documents),
             })
 
@@ -1054,6 +1103,14 @@ def _process_row(
 # ── Main run() ────────────────────────────────────────────────────────────────
 
 def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
     """
     Args:
         config:  site dict from sites_config.SITES

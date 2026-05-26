@@ -1,6 +1,6 @@
 """
 Punjab RERA Crawler — rera.punjab.gov.in/reraindex/publicview/projectinfo
-Type: playwright (Playwright + Chromium)
+Type: selenium (Selenium + Chromium)
 
 Strategy:
 - Navigate to listing page with a headless browser.
@@ -27,13 +27,16 @@ from pathlib import Path
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from bs4 import BeautifulSoup
-import httpx
-from playwright.sync_api import TimeoutError as PWTimeout, sync_playwright
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.captcha_solver import captcha_to_text
-from core.crawler_base import generate_project_key, random_delay, safe_get
+from core.crawler_base import (
+    SeleniumSession,
+    SeleniumTimeout as PWTimeout,
+    generate_project_key,
+    random_delay,
+)
 from core.config import settings
 from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error
 from core.document_policy import select_document_for_download
@@ -63,6 +66,87 @@ SEL_VIEW_BTN  = "a#modalOpenerButtonRegdProject"
 SEL_MODAL     = "#myModal"
 SEL_MODAL_VIS = "#myModal.show"
 SEL_CAPTCHA_IMG = "img.capcha-badge"
+
+
+# ── SeleniumSession wiring ────────────────────────────────────────────────────
+
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+def safe_get(url, *, logger=None, timeout=None, params=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
+    full = url
+    if params:
+        from urllib.parse import urlencode
+        sep = "&" if "?" in url else "?"
+        full = f"{url}{sep}{urlencode(params)}"
+    return _session().get(full, logger=logger, page_load_timeout=plt)
+
+
+def download_response(url, *, logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().download(url, logger=logger)
+
+
+class _ClientAdapter:
+    """Tiny httpx.Client-like adapter routed through the SeleniumSession."""
+
+    def __init__(self, session: SeleniumSession):
+        self._s = session
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        pass
+
+    def close(self) -> None:
+        pass
+
+    @staticmethod
+    def _wrap(resp):
+        if resp is None:
+            raise RuntimeError("SeleniumSession returned no response")
+        def _ras():
+            if getattr(resp, "status_code", 200) >= 400:
+                raise RuntimeError(f"HTTP {resp.status_code}")
+        resp.raise_for_status = _ras
+        return resp
+
+    def get(self, url: str, *, params=None, headers=None, **_kw):
+        full = url
+        if params:
+            from urllib.parse import urlencode
+            sep = "&" if "?" in url else "?"
+            full = f"{url}{sep}{urlencode(params)}"
+        if headers:
+            return self._wrap(self._s.fetch(full, method="GET", headers=headers))
+        return self._wrap(self._s.get(full))
+
+    def post(self, url: str, *, data=None, headers=None, json=None, **_kw):
+        return self._wrap(self._s.fetch(
+            url, method="POST", data=data, headers=headers, json_body=json,
+        ))
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -695,7 +779,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     return True
 
 
-def _solve_listing_captcha(session: httpx.Client, logger: CrawlerLogger) -> tuple[str | None, BeautifulSoup | None]:
+def _solve_listing_captcha(session, logger: CrawlerLogger) -> tuple[str | None, BeautifulSoup | None]:
     try:
         t_page = time.monotonic()
         resp = session.get(LISTING_URL)
@@ -729,7 +813,7 @@ def _solve_listing_captcha(session: httpx.Client, logger: CrawlerLogger) -> tupl
         return None, None
 
 
-def _search_projects(session: httpx.Client, logger: CrawlerLogger) -> list[dict]:
+def _search_projects(session, logger: CrawlerLogger) -> list[dict]:
     for attempt in range(1, 21):
         captcha_text, soup = _solve_listing_captcha(session, logger)
         if not captcha_text or soup is None:
@@ -796,7 +880,7 @@ def _parse_partial_rows(html: str) -> list[dict]:
     return rows
 
 
-def _fetch_detail_fields(session: httpx.Client, row: dict, logger: CrawlerLogger) -> dict:
+def _fetch_detail_fields(session, row: dict, logger: CrawlerLogger) -> dict:
     if not row.get("project_id"):
         return {}
     try:
@@ -889,7 +973,7 @@ def _handle_document(
     run_id: int,
     site_id: str,
     logger: CrawlerLogger,
-    client: httpx.Client,
+    client,
 ) -> dict | None:
     """Download one document, upload to S3, persist to DB. Returns enriched entry or None."""
     url = doc.get("link")
@@ -899,49 +983,17 @@ def _handle_document(
     fname = build_document_filename({"url": url, "label": label})
     try:
         logger.info(f"Downloading document: {label}", url=url, step="documents")
-        doc_timeout = httpx.Timeout(
-            connect=_DOC_CONNECT_TIMEOUT,
-            read=_DOC_READ_TIMEOUT,
-            write=_DOC_READ_TIMEOUT,
-            pool=10.0,
-        )
-        chunks: list[bytes] = []
-        total_bytes = 0
-        deadline_hit = threading.Event()
-
-        def _abort_on_deadline(stream):
-            deadline_hit.set()
-            try:
-                stream.close()
-            except Exception:
-                pass
-
         t_dl = time.monotonic()
-        with client.stream(
-            "GET", url,
-            headers={"Referer": LISTING_URL},
-            timeout=doc_timeout,
-            follow_redirects=True,
-        ) as stream:
-            timer = threading.Timer(_DOC_TOTAL_TIMEOUT, _abort_on_deadline, args=(stream,))
-            timer.start()
-            try:
-                for chunk in stream.iter_bytes(chunk_size=65536):
-                    if deadline_hit.is_set():
-                        raise TimeoutError(
-                            f"Document download exceeded {_DOC_TOTAL_TIMEOUT}s total limit"
-                        )
-                    chunks.append(chunk)
-                    total_bytes += len(chunk)
-                    if total_bytes > _DOC_MAX_BYTES:
-                        raise ValueError(
-                            f"Document too large (>{_DOC_MAX_BYTES // (1024*1024)} MB), skipping"
-                        )
-            finally:
-                timer.cancel()
+        resp = download_response(url, logger=logger)
         dl_elapsed = time.monotonic() - t_dl
-
-        data = b"".join(chunks)
+        if not resp or not resp.content:
+            logger.warning("Document download empty or failed", url=url, step="documents")
+            return None
+        data = resp.content
+        if len(data) > _DOC_MAX_BYTES:
+            raise ValueError(
+                f"Document too large (>{_DOC_MAX_BYTES // (1024*1024)} MB), skipping"
+            )
         if len(data) < 100:
             logger.warning("Document download empty or failed", url=url, step="documents")
             return None
@@ -980,6 +1032,14 @@ def _handle_document(
 # ── Main entry point ──────────────────────────────────────────────────────────
 
 def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
     logger = CrawlerLogger(config["id"], run_id)
     counters = dict(projects_found=0, projects_new=0, projects_updated=0,
                     projects_skipped=0, documents_uploaded=0, error_count=0)
@@ -1002,7 +1062,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     site_id = config["id"]
 
     # ── Listing: try cache first, fall back to live fetch ────────────────────
-    with httpx.Client(timeout=60.0, follow_redirects=True) as session:
+    with _ClientAdapter(_session()) as session:
         t0 = time.monotonic()
         rows = _load_listing_cache(logger)
         if rows is None:

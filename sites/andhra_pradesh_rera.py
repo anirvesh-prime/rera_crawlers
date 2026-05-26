@@ -25,12 +25,11 @@ import time
 from urllib.parse import urljoin
 from typing import Any
 
-import httpx
 from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import download_response, generate_project_key, random_delay, safe_get, safe_post
+from core.crawler_base import SeleniumSession, generate_project_key, random_delay
 from core.db import (
     get_project_by_key,
     upsert_project,
@@ -68,6 +67,51 @@ _LISTING_HEADERS = {
     "Accept-Language": "en-US,en;q=0.5",
     "Referer": BASE_URL,
 }
+
+
+# ── SeleniumSession wiring ────────────────────────────────────────────────────
+
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+def safe_get(url, *, logger=None, timeout=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
+    return _session().get(url, logger=logger, page_load_timeout=plt)
+
+
+def safe_post(url, *, data=None, headers=None, logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().post(url, data=data, headers=headers, logger=logger)
+
+
+def download_response(url, *, method="GET", data=None, headers=None,
+                      logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession.
+
+    POST is routed via ``SeleniumSession.download`` so binary responses
+    (e.g. AP RERA's ASPX postback returning a file body) are decoded as bytes.
+    """
+    return _session().download(url, method=method, data=data, headers=headers, logger=logger)
 
 # Column indices in the listing GridView (0-based, skipping serial#)
 _COL_REG_ID   = 1
@@ -256,13 +300,12 @@ def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
 def _fetch_detail(
     detail_url: str,
     logger: CrawlerLogger,
-    client: httpx.Client | None = None,
+    client=None,
 ) -> tuple[BeautifulSoup, dict] | tuple[None, dict]:
     """Fetch a project detail page and return (parsed soup, unused-cookie-stub).
 
-    Pass *client* (a persistent httpx.Client) so that the ASP.NET session cookie
-    set during this GET is automatically included in subsequent POST requests that
-    use the same client — enabling document downloads without re-authenticating.
+    The *client* parameter is retained for signature compatibility; the
+    Selenium-backed session keeps cookies (incl. ASP.NET_SessionId) implicitly.
     """
     resp = safe_get(detail_url, headers=_LISTING_HEADERS, retries=3,
                     timeout=60, logger=logger, client=client)
@@ -1079,7 +1122,7 @@ def _handle_document(
     site_id: str,
     logger: CrawlerLogger,
     form_fields: dict[str, str] | None = None,
-    client: httpx.Client | None = None,
+    client=None,
 ) -> dict | None:
     """
     Download a document, upload to S3, return a document result entry or None.
@@ -1089,8 +1132,10 @@ def _handle_document(
     when the detail page was first fetched.  The server responds with the raw
     file bytes (Content-Disposition: attachment).
 
-    *client* MUST be the same httpx.Client that was used to fetch the detail page
-    so that the ASP.NET_SessionId cookie is automatically included in the POST.
+    The *client* parameter is retained for signature compatibility; the
+    Selenium-backed session keeps the ASP.NET_SessionId cookie implicitly so
+    the same Selenium browser context that fetched the detail page issues the
+    document POST.
 
     Fallback: plain GET to doc["link"] for any doc that carries a direct URL
     (rare on AP RERA but kept for robustness).
@@ -1257,6 +1302,14 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 # ── Main entry point ──────────────────────────────────────────────────────────
 
 def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
     """
     Main entry point for the Andhra Pradesh RERA crawler.
 
@@ -1342,9 +1395,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             counts["error_count"] += 1
             continue
         logger.set_project(key=project_key, reg_no=reg_no, url=detail_url, page=i)
-        # One persistent client per project: preserves ASP.NET_SessionId across
-        # the detail-page GET and all subsequent document POSTs.
-        project_client = httpx.Client(timeout=60, follow_redirects=True)
+        # The shared SeleniumSession keeps the ASP.NET_SessionId cookie across
+        # the detail-page GET and all subsequent document POSTs implicitly.
+        project_client = None
         try:
             try:
                 random_delay(delay_min, delay_max)
@@ -1464,7 +1517,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                                    project_key=project_key, url=detail_url)
                 counts["error_count"] += 1
         finally:
-            project_client.close()
             logger.clear_project()
 
     # ── Final checkpoint ──────────────────────────────────────────────────────

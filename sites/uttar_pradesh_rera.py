@@ -1,6 +1,6 @@
 """
 Uttar Pradesh RERA Crawler — www.up-rera.in
-Type: httpx (listing) + Playwright (detail pages via __doPostBack)
+Type: httpx (listing) + Selenium (detail pages via __doPostBack)
 
 Strategy:
 - District-wise listing: GET frm_allprojectdistrictwise.aspx?districtname={district}
@@ -8,10 +8,10 @@ Strategy:
   initial HTML response (client-side DataTables — no server-side pagination).
   Columns: RegistrationNo, ProjectName, Promoter, District, ProjectType.
 - "View Detail" buttons use __doPostBack to navigate to each project's full detail page.
-  Playwright is used per-project to click the button and capture the resulting HTML.
+  Selenium is used per-project to click the button and capture the resulting HTML.
 - On the first detail navigation for a district, the resolved URL is cached so that
   subsequent projects in the same district can be fetched via direct httpx GET if the
-  URL pattern is predictable (reduces Playwright overhead).
+  URL pattern is predictable (reduces Selenium overhead).
 - Detail HTML is parsed with BeautifulSoup for structured field extraction.
 - Documents: all PDF <a> links found on the detail page are collected, downloaded,
   and uploaded to S3 per the framework's document policy.
@@ -25,11 +25,15 @@ from typing import Any
 from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
+from core.crawler_base import (
+    SeleniumSession,
+    generate_project_key,
+    page_adapter,
+    random_delay,
+)
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -79,8 +83,43 @@ _LISTING_HEADERS = {
     "Accept-Language": "en-US,en;q=0.5",
 }
 
-# Max parallel workers for pre-fetching district listing pages
-_MAX_LISTING_WORKERS = 8
+# SeleniumSession driver is not thread-safe — serialise district pre-fetch.
+_MAX_LISTING_WORKERS = 1
+
+
+# ── SeleniumSession wiring ────────────────────────────────────────────────────
+
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+def safe_get(url, *, logger=None, timeout=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
+    return _session().get(url, logger=logger, page_load_timeout=plt)
+
+
+def download_response(url, *, logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().download(url, logger=logger)
 
 
 # ── String helpers ─────────────────────────────────────────────────────────────
@@ -136,7 +175,7 @@ def _project_id_from_reg_no(reg_no: str) -> str | None:
 
 
 def _fetch_full_detail_html(reg_no: str, logger: CrawlerLogger) -> tuple[str, str]:
-    """Fetch the comprehensive project detail page via direct HTTP GET (no Playwright)."""
+    """Fetch the comprehensive project detail page via direct HTTP GET (no Selenium)."""
     project_id = _project_id_from_reg_no(reg_no)
     if not project_id:
         return "", ""
@@ -222,9 +261,9 @@ def _fetch_district_listing(district: str, logger: CrawlerLogger) -> list[dict]:
     return rows
 
 
-# ── Playwright: fetch project detail HTML ─────────────────────────────────────
+# ── Selenium: fetch project detail HTML ─────────────────────────────────────
 
-def _fetch_detail_html_playwright(
+def _fetch_detail_html(
     district: str,
     reg_no: str,
     logger: CrawlerLogger,
@@ -241,25 +280,14 @@ def _fetch_detail_html_playwright(
     # If we already have a Projectsummary URL for this project, use it directly
     if existing_url and "Projectsummary" in existing_url:
         try:
-            with sync_playwright() as pw:
-                browser = pw.chromium.launch(headless=True)
-                ctx = browser.new_context(
-                    user_agent=(
-                        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-                    )
-                )
-                page = ctx.new_page()
-                page.goto(existing_url, wait_until="domcontentloaded", timeout=60_000)
-                try:
-                    page.wait_for_load_state("networkidle", timeout=20_000)
-                except Exception:
-                    pass
-                if "servermaintenance" not in page.url:
-                    html = page.content()
-                    browser.close()
-                    return html, existing_url
-                browser.close()
+            page = page_adapter(_session())
+            page.goto(existing_url, wait_until="domcontentloaded", timeout=60_000)
+            try:
+                page.wait_for_load_state("networkidle", timeout=20_000)
+            except Exception:
+                pass
+            if "servermaintenance" not in page.url:
+                return page.content(), existing_url
         except Exception as exc:
             logger.warning(f"Direct Projectsummary fetch failed for {reg_no}: {exc}")
 
@@ -269,55 +297,45 @@ def _fetch_detail_html_playwright(
     detail_url = listing_url
 
     try:
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
-            ctx = browser.new_context(
-                user_agent=(
-                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-                )
-            )
-            page = ctx.new_page()
-            page.goto(listing_url, wait_until="domcontentloaded", timeout=60_000)
+        page = page_adapter(_session())
+        page.goto(listing_url, wait_until="domcontentloaded", timeout=60_000)
 
-            try:
-                page.wait_for_selector(f"table#{_GRID_ID}", timeout=20_000)
-            except Exception:
-                pass
+        try:
+            page.wait_for_selector(f"table#{_GRID_ID}", timeout=20_000)
+        except Exception:
+            pass
 
-            # Click the button in the row that contains our registration number
-            clicked = page.evaluate(f"""
-                (function() {{
-                    var spans = document.querySelectorAll('span[id$="lblRegistrationNo"]');
-                    for (var i = 0; i < spans.length; i++) {{
-                        if (spans[i].textContent.trim() === '{reg_no}') {{
-                            var row = spans[i].closest('tr');
-                            if (row) {{
-                                var btn = row.querySelector('a[id$="LnkView"]');
-                                if (btn) {{ btn.click(); return true; }}
-                            }}
+        # Click the button in the row that contains our registration number
+        clicked = page.evaluate(f"""
+            (function() {{
+                var spans = document.querySelectorAll('span[id$="lblRegistrationNo"]');
+                for (var i = 0; i < spans.length; i++) {{
+                    if (spans[i].textContent.trim() === '{reg_no}') {{
+                        var row = spans[i].closest('tr');
+                        if (row) {{
+                            var btn = row.querySelector('a[id$="LnkView"]');
+                            if (btn) {{ btn.click(); return true; }}
                         }}
                     }}
-                    return false;
-                }})()
-            """)
+                }}
+                return false;
+            }})()
+        """)
 
-            if not clicked:
-                logger.warning(f"Could not find View Detail button for {reg_no} in {district}")
-                browser.close()
-                return "", ""
+        if not clicked:
+            logger.warning(f"Could not find View Detail button for {reg_no} in {district}")
+            return "", ""
 
-            try:
-                page.wait_for_load_state("networkidle", timeout=30_000)
-            except Exception:
-                page.wait_for_load_state("domcontentloaded", timeout=20_000)
+        try:
+            page.wait_for_load_state("networkidle", timeout=30_000)
+        except Exception:
+            page.wait_for_load_state("domcontentloaded", timeout=20_000)
 
-            detail_url = page.url
-            detail_html = page.content()
-            browser.close()
+        detail_url = page.url
+        detail_html = page.content()
 
     except Exception as exc:
-        logger.error(f"Playwright detail fetch failed for {reg_no}: {exc}")
+        logger.error(f"Selenium detail fetch failed for {reg_no}: {exc}")
 
     return detail_html, detail_url
 
@@ -446,7 +464,7 @@ def _parse_full_detail_page(html: str, reg_no: str, district: str) -> dict:  # n
 
     # Always stamp the registration number so downstream callers (e.g. sentinel
     # check) can confirm the page was parsed for the correct project.
-    out["project_registration_no"] = reg_no
+    out["project_registration_no"] = reg_no  # FIELD: project_registration_no <- listing reg_no
 
     def _inp(elem_id: str) -> str | None:
         """Return the value= attribute of a hidden input element (None if empty/placeholder)."""
@@ -480,7 +498,7 @@ def _parse_full_detail_page(html: str, reg_no: str, district: str) -> dict:  # n
         except (ValueError, TypeError):
             pass
     if "latitude" in loc:
-        out["project_location_raw"] = loc
+        out["project_location_raw"] = loc  # FIELD: project_location_raw <- loc dict (lat/lon hidden inputs)
 
     # ── Bank details ──────────────────────────────────────────────────────────
     bank: dict[str, str] = {}
@@ -495,29 +513,29 @@ def _parse_full_detail_page(html: str, reg_no: str, district: str) -> dict:  # n
     if _branch:   bank["branch"]       = _branch
     if _ifsc:     bank["ifsc"]         = _ifsc
     if bank:
-        out["bank_details"] = bank
+        out["bank_details"] = bank  # FIELD: bank_details <- bank dict from lbl* hidden inputs
 
     # ── Land area (Sq.mt.) ────────────────────────────────────────────────────
     _area = _inp("ctl00_ContentPlaceHolder1_lblTotalArea")
     if _area:
         land_val = _parse_float(_area)
         if land_val:
-            out["land_area"] = land_val
+            out["land_area"] = land_val  # FIELD: land_area <- lblTotalArea hidden input
 
     # ── Project cost (in Lacs → convert to rupees by × 1,00,000) ─────────────
     _cost = _inp("ctl00_ContentPlaceHolder1_lblProjectCost")
     if _cost:
         cost_val = _parse_float(_cost)
         if cost_val:
-            out["project_cost_detail"] = {"total_project_cost": cost_val * 100_000.0}
+            out["project_cost_detail"] = {"total_project_cost": cost_val * 100_000.0}  # FIELD: project_cost_detail.total_project_cost <- lblProjectCost (Lacs→INR)
 
     # ── Commencement / completion dates ───────────────────────────────────────
     _start = _inp("ctl00_ContentPlaceHolder1_lblStartDate")
     _end   = _inp("ctl00_ContentPlaceHolder1_lblEndDate")
     if _start and _start not in ("-", "0"):
-        out["actual_commencement_date"] = _parse_date(_start)
+        out["actual_commencement_date"] = _parse_date(_start)  # FIELD: actual_commencement_date <- lblStartDate hidden input
     if _end and _end not in ("-", "0"):
-        out["actual_finish_date"] = _parse_date(_end)
+        out["actual_finish_date"] = _parse_date(_end)  # FIELD: actual_finish_date <- lblEndDate hidden input
 
     # ── Building details & unit counts (grd_PlanDetails_ForAdmin) ────────────
     plan_table = soup.find("table", id="ctl00_ContentPlaceHolder1_grd_PlanDetails_ForAdmin")
@@ -569,11 +587,11 @@ def _parse_full_detail_page(html: str, reg_no: str, district: str) -> dict:  # n
                 pass
 
         if building_details:
-            out["building_details"] = building_details
+            out["building_details"] = building_details  # FIELD: building_details <- grd_PlanDetails_ForAdmin rows
         if residential_count > 0:
-            out["number_of_residential_units"] = residential_count
+            out["number_of_residential_units"] = residential_count  # FIELD: number_of_residential_units <- plan-table residential rows sum
         if commercial_count > 0:
-            out["number_of_commercial_units"] = commercial_count
+            out["number_of_commercial_units"] = commercial_count  # FIELD: number_of_commercial_units <- plan-table commercial rows sum
 
     # ── Land detail (grdLadDetail) ────────────────────────────────────────────
     land_table = soup.find("table", id="ctl00_ContentPlaceHolder1_grdLadDetail")
@@ -585,6 +603,8 @@ def _parse_full_detail_page(html: str, reg_no: str, district: str) -> dict:  # n
                 plot_no    = _clean(cells[2].get_text()) or ""
                 total_area = _clean(cells[3].get_text()) or ""
                 if plot_no and total_area:
+                    # FIELD: land_detail.plot_no <- grdLadDetail row cells[2]
+                    # FIELD: land_detail.total_area <- grdLadDetail row cells[3]
                     out["land_detail"] = {"plot_no": plot_no, "total_area": total_area}
                     break
 
@@ -628,7 +648,7 @@ def _parse_full_detail_page(html: str, reg_no: str, district: str) -> dict:  # n
             entry["address"] = _eng_addr
         professionals.append(entry)
     if professionals:
-        out["professional_information"] = professionals
+        out["professional_information"] = professionals  # FIELD: professional_information <- contractor/architect/engineer hidden inputs
 
     return out
 
@@ -646,7 +666,7 @@ def _parse_detail_page(html: str, reg_no: str, district: str) -> dict:  # noqa: 
     out: dict[str, Any] = {}
 
     # ── Registration and basic fields (also from listing stub) ─────────────────
-    out["project_registration_no"] = reg_no
+    out["project_registration_no"] = reg_no  # FIELD: project_registration_no <- listing reg_no
 
     # Lookup patterns for common fields (label text → schema field).
     # NOTE: "project type" is intentionally omitted — the Projectsummary page shows
@@ -684,14 +704,14 @@ def _parse_detail_page(html: str, reg_no: str, district: str) -> dict:  # noqa: 
     for raw_label, val in lv.items():
         ll = raw_label.lower().strip().rstrip(":")
         if "proposed start date" in ll and not out.get("actual_commencement_date"):
-            out["actual_commencement_date"] = _parse_date(val)
+            out["actual_commencement_date"] = _parse_date(val)  # FIELD: actual_commencement_date <- label "proposed start date"
 
     # ── Land area ─────────────────────────────────────────────────────────────
     for raw_label, val in lv.items():
         if "land area" in raw_label.lower() or "plot area" in raw_label.lower():
             land_val = _parse_float(val)
             if land_val:
-                out["land_area"] = land_val
+                out["land_area"] = land_val  # FIELD: land_area <- label "land area"/"plot area"
                 break
 
     # ── Project cost ──────────────────────────────────────────────────────────
@@ -700,7 +720,7 @@ def _parse_detail_page(html: str, reg_no: str, district: str) -> dict:  # noqa: 
         if "total cost" in ll or "total project cost" in ll or "estimated cost" in ll:
             cost_val = _parse_float(val)
             if cost_val:
-                out["project_cost_detail"] = {"total_project_cost": cost_val}
+                out["project_cost_detail"] = {"total_project_cost": cost_val}  # FIELD: project_cost_detail.total_project_cost <- label "total cost"/"estimated cost"
                 break
 
     # ── Residential / commercial units ────────────────────────────────────────
@@ -709,11 +729,11 @@ def _parse_detail_page(html: str, reg_no: str, district: str) -> dict:  # noqa: 
         if "residential unit" in ll or "total residential" in ll:
             u = _parse_int(val)
             if u:
-                out.setdefault("number_of_residential_units", u)
+                out.setdefault("number_of_residential_units", u)  # FIELD: number_of_residential_units <- label "residential unit"
         elif "commercial unit" in ll or "total commercial" in ll:
             u = _parse_int(val)
             if u:
-                out.setdefault("number_of_commercial_units", u)
+                out.setdefault("number_of_commercial_units", u)  # FIELD: number_of_commercial_units <- label "commercial unit"
 
     # ── Promoter contact ──────────────────────────────────────────────────────
     contact: dict[str, str] = {}
@@ -731,13 +751,13 @@ def _parse_detail_page(html: str, reg_no: str, district: str) -> dict:  # noqa: 
                 contact["email"] = t
                 break
     if contact:
-        out["promoter_contact_details"] = contact
+        out["promoter_contact_details"] = contact  # FIELD: promoter_contact_details <- contact dict (email/phone from labels)
 
     # ── Promoter address ──────────────────────────────────────────────────────
     for raw_label, val in lv.items():
         ll = raw_label.lower()
         if "promoter" in ll and "address" in ll:
-            out["promoter_address_raw"] = {"raw_address": val}
+            out["promoter_address_raw"] = {"raw_address": val}  # FIELD: promoter_address_raw.raw_address <- label "promoter"+"address"
             break
 
     # ── Promoters details (name + type) ───────────────────────────────────────
@@ -751,7 +771,7 @@ def _parse_detail_page(html: str, reg_no: str, district: str) -> dict:  # noqa: 
         if ll in ("applicant type", "type of firm", "type of applicant") and val:
             promoters["type_of_firm"] = val
     if promoters:
-        out["promoters_details"] = promoters
+        out["promoters_details"] = promoters  # FIELD: promoters_details <- promoter name span + applicant-type label
 
     # ── Complaints / litigation ────────────────────────────────────────────────
     for raw_label, val in lv.items():
@@ -759,7 +779,7 @@ def _parse_detail_page(html: str, reg_no: str, district: str) -> dict:  # noqa: 
         if "complaints in respect" in ll or "complaints against this project" in ll:
             m = re.search(r"\d+", val or "")
             if m:
-                out["complaints_litigation_details"] = {"count": m.group()}
+                out["complaints_litigation_details"] = {"count": m.group()}  # FIELD: complaints_litigation_details.count <- digits in "complaints" label
             break
 
     # ── actual_finish_date: last Extension Upto date ──────────────────────────
@@ -775,7 +795,7 @@ def _parse_detail_page(html: str, reg_no: str, district: str) -> dict:  # noqa: 
                 if date_part:
                     last_upto = date_part.group()
         if last_upto:
-            out.setdefault("actual_finish_date", _parse_date(last_upto))
+            out.setdefault("actual_finish_date", _parse_date(last_upto))  # FIELD: actual_finish_date <- grd_extension last Upto date
 
     # ── Bank details ──────────────────────────────────────────────────────────
     bank: dict[str, str] = {}
@@ -792,7 +812,7 @@ def _parse_detail_page(html: str, reg_no: str, district: str) -> dict:  # noqa: 
         elif "ifsc" in ll:
             bank["ifsc"] = val
     if bank:
-        out["bank_details"] = bank
+        out["bank_details"] = bank  # FIELD: bank_details <- bank dict assembled from bank/branch/account/ifsc labels
 
     # ── Location from district (known from listing) ───────────────────────────
     loc: dict[str, Any] = {
@@ -817,12 +837,12 @@ def _parse_detail_page(html: str, reg_no: str, district: str) -> dict:  # noqa: 
             loc["taluk"] = val
         elif ll == "district" and val:
             loc["district"] = val
-    out["project_location_raw"] = loc
+    out["project_location_raw"] = loc  # FIELD: project_location_raw <- loc dict (state/district/lat/lon/taluk)
 
     # ── Building / unit details ───────────────────────────────────────────────
     building_details = _extract_building_details(soup)
     if building_details:
-        out["building_details"] = building_details
+        out["building_details"] = building_details  # FIELD: building_details <- _extract_building_details(soup)
 
     return out
 
@@ -924,9 +944,9 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     Returns True if passed, False if failed (caller should abort crawl).
 
     Uses _fetch_full_detail_html (direct HTTP GET to frm_view_project_details.aspx)
-    rather than _fetch_detail_html_playwright so the sentinel does not depend on
+    rather than _fetch_detail_html so the sentinel does not depend on
     the project still appearing in the active district listing — a fragile
-    Playwright-based navigation that fails when the project is revoked/expired,
+    Selenium-based navigation that fails when the project is revoked/expired,
     the GridView is slow, or the site is in maintenance mode.
     """
     sentinel_reg = config.get("sentinel_registration_no", "")
@@ -959,7 +979,15 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 
 # ── Main run function ─────────────────────────────────────────────────────────
 
-def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
+def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     """
     Entry point for the UP RERA crawler.
 
@@ -1084,7 +1112,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             # ── Deep crawl: fetch detail page ──────────────────────────────────
             logger.info(f"Deep crawling project {reg_no}", district=district)
             existing_url = existing.get("url") if existing else None
-            detail_html, detail_url = _fetch_detail_html_playwright(
+            detail_html, detail_url = _fetch_detail_html(
                 district, reg_no, logger, existing_url=existing_url
             )
 
@@ -1114,7 +1142,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             # ── Fetch + parse comprehensive full-detail page ───────────────────
             # frm_view_project_details.aspx has bank details, lat/lon, area,
             # project cost, and full building unit table — not present on
-            # the Projectsummary page fetched via Playwright above.
+            # the Projectsummary page fetched via Selenium above.
             full_detail_html, _ = _fetch_full_detail_html(reg_no, logger)
             if full_detail_html:
                 try:
@@ -1139,12 +1167,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
             # ── Merge listing stub fields into detail ─────────────────────────
             merged: dict[str, Any] = {
-                "project_name":           stub.get("project_name"),
-                "promoter_name":          stub.get("promoter_name"),
+                "project_name":           stub.get("project_name"),  # FIELD: project_name <- listing stub project_name
+                "promoter_name":          stub.get("promoter_name"),  # FIELD: promoter_name <- listing stub promoter_name
                 # Use listing project_type ('Residential'/'Commercial') — not the
                 # registration type ('New'/'Extension') from the Projectsummary page.
-                "project_type":           stub.get("project_type"),
-                "status_of_the_project":  "New",  # default for registered projects
+                "project_type":           stub.get("project_type"),  # FIELD: project_type <- listing stub project_type
+                "status_of_the_project":  "New",  # default for registered projects  # FIELD: status_of_the_project <- hardcoded "New"
             }
             # detail_data takes precedence except for fields already set above
             # that should not be overwritten (project_type).
@@ -1159,13 +1187,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             )
             payload: dict[str, Any] = {
                 **merged,
-                "key": project_key,
-                "url": detail_url,
-                "domain": DOMAIN,
-                "state": STATE,
-                "config_id": config.get("config_id"),
-                "data": raw_snapshot,
-                "is_live": True,
+                "key": project_key,  # FIELD: key <- generate_project_key(reg_no)
+                "url": detail_url,  # FIELD: url <- detail page navigation URL
+                "domain": DOMAIN,  # FIELD: domain <- DOMAIN const "up-rera.in"
+                "state": STATE,  # FIELD: state <- STATE const "uttar pradesh"
+                "config_id": config.get("config_id"),  # FIELD: config_id <- site config_id
+                "data": raw_snapshot,  # FIELD: data <- merge_data_sections(detail + listing_stub)
+                "is_live": True,  # FIELD: is_live <- hardcoded True
             }
             payload = normalize_project_payload(
                 payload, config,
@@ -1220,12 +1248,12 @@ def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 if uploaded_docs:
                     doc_urls = build_document_urls(uploaded_docs)
                     upsert_project({
-                        "key": project_key,
-                        "url": detail_url,
-                        "domain": DOMAIN,
-                        "state": STATE,
-                        "uploaded_documents": uploaded_docs,
-                        "document_urls": doc_urls,
+                        "key": project_key,  # FIELD: key <- generate_project_key(reg_no)
+                        "url": detail_url,  # FIELD: url <- detail page navigation URL
+                        "domain": DOMAIN,  # FIELD: domain <- DOMAIN const "up-rera.in"
+                        "state": STATE,  # FIELD: state <- STATE const "uttar pradesh"
+                        "uploaded_documents": uploaded_docs,  # FIELD: uploaded_documents <- _handle_document results
+                        "document_urls": doc_urls,  # FIELD: document_urls <- build_document_urls(uploaded_docs)
                     })
             except Exception as exc:
                 logger.warning(f"Document processing failed for {reg_no}: {exc}")

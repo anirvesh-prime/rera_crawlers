@@ -22,7 +22,7 @@ from pydantic import ValidationError
 
 from core.checkpoint import reset_checkpoint
 from core.config import settings
-from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
+from core.crawler_base import SeleniumSession, generate_project_key, random_delay
 from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -41,6 +41,40 @@ LISTING_URL = "https://jharera.jharkhand.gov.in/Home/OnlineRegisteredProjectsLis
 DETAIL_BASE  = "https://jharera.jharkhand.gov.in/Home/ViewProjectProfile"
 DOMAIN       = "jharera.jharkhand.gov.in"
 BASE_URL     = "https://jharera.jharkhand.gov.in"
+
+
+# ── Selenium session (shared driver via core.crawler_base.SeleniumSession) ────
+
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+def safe_get(url, *, retries: int = 3, logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().get(url, retries=retries, logger=logger)
+
+
+def download_response(url, *, logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().download(url, logger=logger)
 
 # Document types that appear as table-row labels in Section 1
 _DOC_LABELS: set[str] = {
@@ -798,7 +832,15 @@ def _process_documents(
 
 # ── Main entry point ──────────────────────────────────────────────────────────
 
-def run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
+def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     logger = CrawlerLogger(config["id"], run_id)
     counters = dict(projects_found=0, projects_new=0, projects_updated=0,
                     projects_skipped=0, documents_uploaded=0, error_count=0)

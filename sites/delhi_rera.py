@@ -21,13 +21,12 @@ import re
 import time
 from urllib.parse import urljoin
 
-import httpx
 from bs4 import BeautifulSoup, Tag
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.config import settings
-from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
+from core.crawler_base import SeleniumSession, generate_project_key, page_adapter, random_delay
 from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -50,37 +49,76 @@ _REG_NO_RE  = re.compile(r"DLRERA\d{4}[PA]\d{4,5}", re.IGNORECASE)
 _PIN_RE     = re.compile(r"\b(\d{6})\b")
 
 
-def _get_listing_response(url: str, logger: CrawlerLogger, params: dict | None = None) -> httpx.Response | None:
+# ── SeleniumSession wiring ────────────────────────────────────────────────────
+
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+def safe_get(url, *, logger=None, timeout=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
+    return _session().get(url, logger=logger, page_load_timeout=plt)
+
+
+def download_response(url, *, logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().download(url, logger=logger)
+
+
+def _get_listing_response(url: str, logger: CrawlerLogger, params: dict | None = None):
     """Delhi returns a parseable listing page with a broken TLS chain and HTTP 500."""
-    headers = {"User-Agent": settings.user_agents[0]}
+    full = url
+    if params:
+        from urllib.parse import urlencode
+        sep = "&" if "?" in url else "?"
+        full = f"{url}{sep}{urlencode(params)}"
     try:
-        with httpx.Client(timeout=60.0, follow_redirects=True, verify=False) as client:
-            resp = client.get(url, headers=headers, params=params)
+        resp = _session().get(full, logger=logger)
+        if not resp:
+            return None
         if resp.status_code >= 400 and "views-table" not in resp.text:
             logger.warning(
                 f"Listing fetch returned HTTP {resp.status_code} without usable table markup",
-                url=url,
+                url=full,
             )
             return None
         return resp
     except Exception as exc:
-        logger.warning(f"Listing fetch failed: {exc}", url=url)
+        logger.warning(f"Listing fetch failed: {exc}", url=full)
         return None
 
 
-def _delhi_get(url: str, logger: CrawlerLogger | None = None) -> httpx.Response | None:
+def _delhi_get(url: str, logger: CrawlerLogger | None = None):
     """GET for Delhi RERA sub-pages.
 
     The site often returns HTTP 500 while still serving valid HTML content.
     Unlike safe_get(), this wrapper does NOT call raise_for_status() so that
     callers can still parse the response body on non-200 codes.
     """
-    headers = {"User-Agent": settings.user_agents[0]}
     for attempt in range(1, 4):
         try:
-            with httpx.Client(timeout=30.0, follow_redirects=True, verify=False) as client:
-                resp = client.get(url, headers=headers)
-            return resp
+            resp = _session().get(url, logger=logger)
+            if resp:
+                return resp
         except Exception as exc:
             if logger:
                 logger.warning(f"GET attempt {attempt}/3 failed: {exc}", url=url)
@@ -413,34 +451,26 @@ def _find_project_page_by_promoter_node(
     confirming it is the correct project page.
     """
     target = f"promoter_page/{promoter_node_id}"
-    headers = {"User-Agent": settings.user_agents[0]}
-    try:
-        with httpx.Client(timeout=15.0, follow_redirects=True, verify=False) as client:
-            for delta in range(1, max_delta + 1):
-                node_id = promoter_node_id + delta
-                url = f"{BASE_URL}/project_page/{node_id}"
-                try:
-                    resp = client.get(url, headers=headers)
-                    if target in resp.text:
-                        if logger:
-                            logger.info(
-                                f"Found project_page/{node_id} via promoter scan"
-                                f" (promoter={promoter_node_id}, delta={delta})",
-                                step="project_page_scan",
-                            )
-                        return url
-                except Exception as exc:
-                    if logger:
-                        logger.warning(
-                            f"project_page/{node_id} fetch error: {exc}",
-                            step="project_page_scan",
-                        )
-    except Exception as exc:
-        if logger:
-            logger.warning(
-                f"Promoter-scan client error (promoter={promoter_node_id}): {exc}",
-                step="project_page_scan",
-            )
+    sess = _session()
+    for delta in range(1, max_delta + 1):
+        node_id = promoter_node_id + delta
+        url = f"{BASE_URL}/project_page/{node_id}"
+        try:
+            resp = sess.get(url, logger=logger)
+            if resp and target in resp.text:
+                if logger:
+                    logger.info(
+                        f"Found project_page/{node_id} via promoter scan"
+                        f" (promoter={promoter_node_id}, delta={delta})",
+                        step="project_page_scan",
+                    )
+                return url
+        except Exception as exc:
+            if logger:
+                logger.warning(
+                    f"project_page/{node_id} fetch error: {exc}",
+                    step="project_page_scan",
+                )
     return None
 
 
@@ -976,55 +1006,44 @@ def _has_next_page(html: str) -> bool:
     ))
 
 
-def _fetch_project_page_urls_playwright(listing_url: str, logger: CrawlerLogger) -> dict[str, str]:
-    """Use Playwright to load a listing page and click 'View Project' for each row.
+def _fetch_project_page_urls(listing_url: str, logger: CrawlerLogger) -> dict[str, str]:
+    """Use Selenium to load a listing page and locate 'View Project' links per row.
 
     Returns a dict mapping reg_no → absolute project_page URL.  Called as a
     fallback when the static HTML fetch doesn't expose any project_page/ links
     (e.g. because the site renders them via JavaScript or the link class changed).
     """
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        logger.warning("Playwright not installed — cannot click View Project buttons",
-                       step="project_page")
-        return {}
-
     result: dict[str, str] = {}
     try:
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
-            ctx = browser.new_context(ignore_https_errors=True)
-            page = ctx.new_page()
-            page.goto(listing_url, wait_until="domcontentloaded", timeout=30_000)
-            rows = page.query_selector_all("div.view-content table tbody tr")
-            for row in rows:
-                # Identify the project by reg_no
-                reg_td = row.query_selector("td.views-field-field-rera-registrationno")
-                if not reg_td:
-                    continue
-                m = _REG_NO_RE.search(reg_td.inner_text())
-                if not m:
-                    continue
-                reg_no = m.group(0).upper()
+        page = page_adapter(_session())
+        page.goto(listing_url, wait_until="domcontentloaded", timeout=30_000)
+        rows = page.query_selector_all("div.view-content table tbody tr")
+        for row in rows:
+            # Identify the project by reg_no
+            reg_td = row.query_selector("td.views-field-field-rera-registrationno")
+            if not reg_td:
+                continue
+            m = _REG_NO_RE.search(reg_td.inner_text())
+            if not m:
+                continue
+            reg_no = m.group(0).upper()
 
-                # Look for any link whose href contains project_page/ OR whose
-                # visible text contains "View Project" (handles class/layout changes)
-                proj_link = row.query_selector("a[href*='project_page/']")
-                if not proj_link:
-                    proj_link = row.query_selector("a:has-text('View Project')")
-                if proj_link:
-                    href = proj_link.get_attribute("href")
-                    if href:
-                        result[reg_no] = _abs(href)
+            # Look for any link whose href contains project_page/ OR whose
+            # visible text contains "View Project" (handles class/layout changes)
+            proj_link = row.query_selector("a[href*='project_page/']")
+            if not proj_link:
+                proj_link = row.query_selector("a:has-text('View Project')")
+            if proj_link:
+                href = proj_link.get_attribute("href")
+                if href:
+                    result[reg_no] = _abs(href)
 
-            browser.close()
         logger.info(
-            f"Playwright: found {len(result)} View Project URLs on {listing_url}",
+            f"Selenium: found {len(result)} View Project URLs on {listing_url}",
             step="project_page",
         )
     except Exception as exc:
-        logger.warning(f"Playwright View Project extraction failed: {exc}",
+        logger.warning(f"Selenium View Project extraction failed: {exc}",
                        step="project_page")
     return result
 
@@ -1269,6 +1288,14 @@ def _process_documents(
 # ─── Main entry point ─────────────────────────────────────────────────────────
 
 def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
     """
     Args:
         config  : site dict from sites_config.SITES
@@ -1338,13 +1365,13 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             logger.timing("search", time.monotonic() - t0, rows=len(rows))
             first_page_logged = True
 
-        # ── Playwright fallback: click "View Project" for any rows missing the URL ──
+        # ── Selenium fallback: click "View Project" for any rows missing the URL ──
         # The static HTML may not expose project_page/ links (class change / JS render).
-        # One Playwright session per listing page covers all rows at once.
-        # Skip the Playwright fallback once the cap is hit — those rows will
+        # One Selenium navigation per listing page covers all rows at once.
+        # Skip the Selenium fallback once the cap is hit — those rows will
         # never be processed, so resolving their detail URL is wasted work.
         if not done_processing and any(not r.get("_project_page_url") for r in rows) and settings.SCRAPE_DETAILS:
-            pw_urls = _fetch_project_page_urls_playwright(page_url, logger)
+            pw_urls = _fetch_project_page_urls(page_url, logger)
             if pw_urls:
                 for r in rows:
                     reg = r.get("project_registration_no", "").upper()

@@ -72,7 +72,7 @@ def _logger_call(logger: Any, level: str, message: str) -> None:
 
 def extract_captcha_source_from_page(page, selectors: list[str] | None = None) -> str | None:
     """
-    Return a JSON-serializable image source from a Playwright page.
+    Return a JSON-serializable image source from a Selenium page.
 
     Preference order:
     1. Explicit selectors passed by the caller.
@@ -151,7 +151,7 @@ def wait_for_captcha_canvas(
     Block until a canvas element is visible AND has non-blank pixel data.
 
     Returns True if the canvas is ready within *timeout_ms*, False otherwise.
-    Uses Playwright's wait_for_function so we poll inside the browser rather
+    Uses Selenium's wait_for_function so we poll inside the browser rather
     than sleeping on the Python side.
     """
     try:
@@ -197,7 +197,7 @@ def solve_captcha_from_page(
     host: str = default_host,
     time_out: int = default_time_out,
 ) -> str | None:
-    """Extract a captcha image from a Playwright page and send it to the solver."""
+    """Extract a captcha image from a Selenium page and send it to the solver."""
     try:
         image_source = extract_captcha_source_from_page(page, selectors=selectors)
         if not image_source:

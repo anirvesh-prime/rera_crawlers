@@ -1,11 +1,11 @@
 """
 West Bengal RERA Crawler — rera.wb.gov.in
-Type: Playwright listing (DataTables JS API) + static httpx for detail pages
+Type: Selenium listing (DataTables JS API) + static httpx for detail pages
 
 Strategy:
 - The WB RERA listing page /district_project.php?dcode=0 uses DataTables with
   server-side or client-side rendering.  Python httpx is blocked by the site
-  (Connection reset), so we use Playwright to load the page and extract all
+  (Connection reset), so we use Selenium to load the page and extract all
   rows via the DataTables JavaScript API (which holds the complete dataset
   in memory even when only 10 rows are visible at a time).
 - Each listing row: Sl No. | Old Reg No. | Project Name (link →procode) |
@@ -28,7 +28,7 @@ from bs4 import BeautifulSoup, Tag
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
-from core.crawler_base import download_response, generate_project_key, get_legacy_ssl_context, random_delay, safe_get
+from core.crawler_base import SeleniumSession, generate_project_key, random_delay
 from core.db import (
     get_project_by_key,
     insert_crawl_error,
@@ -61,27 +61,56 @@ _DATE_RE    = re.compile(r"\d{2}-\d{2}-\d{4}")
 _PLAN_DEV_KW = ("plan of development", "plan of development works")
 
 
-# ── HTTP helper ────────────────────────────────────────────────────────────────
-# WB RERA requires a legacy SSL context (UNSAFE_LEGACY_RENEGOTIATION_DISABLED).
-# We create a single reusable httpx.Client with that context.
-import httpx as _httpx
+# ── SeleniumSession wiring ────────────────────────────────────────────────────
+# WB RERA requires a legacy SSL context (UNSAFE_LEGACY_RENEGOTIATION_DISABLED);
+# the Selenium-backed Chrome session accepts those connections natively.
 
-_SSL_CTX = get_legacy_ssl_context()
-_CLIENT  = _httpx.Client(
-    verify=_SSL_CTX,
-    timeout=60.0,
-    follow_redirects=True,
-)
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+def safe_get(url, *, logger=None, timeout=None, params=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
+    full = url
+    if params:
+        from urllib.parse import urlencode
+        sep = "&" if "?" in url else "?"
+        full = f"{url}{sep}{urlencode(params)}"
+    return _session().get(full, logger=logger, page_load_timeout=plt)
+
+
+def download_response(url, *, logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().download(url, logger=logger)
 
 
 def _get(url: str, logger: CrawlerLogger, params: dict | None = None):
-    return safe_get(url, logger=logger, timeout=60.0, params=params, client=_CLIENT)
+    return safe_get(url, logger=logger, timeout=60.0, params=params)
 
 
 # ── Listing page ───────────────────────────────────────────────────────────────
 
-def _playwright_fetch_all_listing_rows(logger) -> list[dict]:
-    """Use Playwright + DataTables JS API to fetch all WB RERA project rows.
+def _fetch_all_listing_rows(logger) -> list[dict]:
+    """Use Selenium + DataTables JS API to fetch all WB RERA project rows.
 
     The site blocks Python httpx (Connection reset), but Chromium works fine.
     DataTables stores the full dataset in JS memory even when it only renders
@@ -89,71 +118,66 @@ def _playwright_fetch_all_listing_rows(logger) -> list[dict]:
 
     Returns one dict per project (same format as ``_parse_listing_rows``).
     """
-    from playwright.sync_api import sync_playwright
-
     rows: list[dict] = []
-    with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=True)
-        ctx = browser.new_context(ignore_https_errors=True)
-        page = ctx.new_page()
-        try:
-            page.goto(LISTING_URL, timeout=60_000, wait_until="networkidle")
-            page.wait_for_timeout(3_000)
+    try:
+        resp = _session().get(LISTING_URL, logger=logger)
+        if not resp:
+            logger.error("Selenium listing fetch returned no response")
+            return rows
+        driver = _session().driver()
+        time.sleep(3)
 
-            # Extract all rows via DataTables JS API
-            raw_rows = page.evaluate("""() => {
-                if (typeof $ === 'undefined' || typeof $.fn.DataTable === 'undefined')
-                    return null;
-                const tables = $.fn.dataTable.tables();
-                if (!tables || !tables.length) return null;
-                const dt = $(tables[0]).DataTable();
-                return dt.rows().data().toArray();
-            }""")
+        # Extract all rows via DataTables JS API
+        raw_rows = driver.execute_script("""
+            if (typeof $ === 'undefined' || typeof $.fn.DataTable === 'undefined')
+                return null;
+            const tables = $.fn.dataTable.tables();
+            if (!tables || !tables.length) return null;
+            const dt = $(tables[0]).DataTable();
+            return dt.rows().data().toArray();
+        """)
 
-            if not raw_rows:
-                logger.warning("DataTables JS API returned no rows; "
-                               "falling back to HTML tbody parsing")
-                html = page.content()
-                return _parse_listing_rows(BeautifulSoup(html, "lxml"))
+        if not raw_rows:
+            logger.warning("DataTables JS API returned no rows; "
+                           "falling back to HTML tbody parsing")
+            return _parse_listing_rows(BeautifulSoup(driver.page_source, "lxml"))
 
-            logger.info(f"DataTables JS API returned {len(raw_rows)} rows")
+        logger.info(f"DataTables JS API returned {len(raw_rows)} rows")
 
-            for raw in raw_rows:
-                # Each row is a list: [serial, old_reg_no, name_html, comp_date, reg_no, reg_date]
-                if not isinstance(raw, list) or len(raw) < 5:
-                    continue
-                name_html = raw[2] if len(raw) > 2 else ""
-                reg_no    = (raw[4] if len(raw) > 4 else "").strip()
-                reg_date  = (raw[5] if len(raw) > 5 else "").strip()
-                if not reg_no:
-                    continue
+        for raw in raw_rows:
+            # Each row is a list: [serial, old_reg_no, name_html, comp_date, reg_no, reg_date]
+            if not isinstance(raw, list) or len(raw) < 5:
+                continue
+            name_html = raw[2] if len(raw) > 2 else ""
+            reg_no    = (raw[4] if len(raw) > 4 else "").strip()
+            reg_date  = (raw[5] if len(raw) > 5 else "").strip()
+            if not reg_no:
+                continue
 
-                # Parse project name and procode from the HTML cell
-                name_soup = BeautifulSoup(name_html, "lxml")
-                a_tag = name_soup.find("a", href=True)
-                project_name = a_tag.get_text(strip=True) if a_tag else None
-                procode = None
-                detail_url = None
-                if a_tag:
-                    m = _PROCODE_RE.search(a_tag["href"])
-                    if m:
-                        procode = m.group(1)
-                        detail_url = f"{BASE_URL}/project_details.php?procode={procode}"
+            # Parse project name and procode from the HTML cell
+            name_soup = BeautifulSoup(name_html, "lxml")
+            a_tag = name_soup.find("a", href=True)
+            project_name = a_tag.get_text(strip=True) if a_tag else None
+            procode = None
+            detail_url = None
+            if a_tag:
+                m = _PROCODE_RE.search(a_tag["href"])
+                if m:
+                    procode = m.group(1)
+                    detail_url = f"{BASE_URL}/project_details.php?procode={procode}"
 
-                row: dict = {
-                    "project_registration_no": reg_no,
-                    "project_name":            project_name,
-                    "promoter_name":           None,
-                    "status_of_the_project":   None,
-                    "approved_on_date":        reg_date or None,
-                    "detail_url":              detail_url,
-                    "procode":                 procode,
-                }
-                rows.append(row)
-        except Exception as e:
-            logger.error(f"Playwright listing fetch failed: {e}")
-        finally:
-            browser.close()
+            row: dict = {
+                "project_registration_no": reg_no,                          # FIELD: project_registration_no <- DataTables row col 4
+                "project_name":            project_name,                    # FIELD: project_name <- DataTables row col 2 <a> text
+                "promoter_name":           None,                            # FIELD: promoter_name <- not in listing
+                "status_of_the_project":   None,                            # FIELD: status_of_the_project <- not in listing
+                "approved_on_date":        reg_date or None,                # FIELD: approved_on_date <- DataTables row col 5
+                "detail_url":              detail_url,                      # FIELD: detail_url <- procode from name link href
+                "procode":                 procode,                         # FIELD: procode <- regex on name link href
+            }
+            rows.append(row)
+    except Exception as e:
+        logger.error(f"Selenium listing fetch failed: {e}")
     return rows
 
 
@@ -226,15 +250,15 @@ def _parse_listing_rows(soup: BeautifulSoup) -> list[dict]:
 
         district = _cell(dist_idx)
         row: dict = {
-            "project_registration_no": reg_no,
-            "project_name":            project_name,
-            "promoter_name":           _cell(prom_idx) or None,
-            "status_of_the_project":   _cell(status_idx) or None,
-            "detail_url":              detail_url,
-            "procode":                 procode,
+            "project_registration_no": reg_no,                                  # FIELD: project_registration_no <- listing reg column
+            "project_name":            project_name,                            # FIELD: project_name <- listing name cell <a> text
+            "promoter_name":           _cell(prom_idx) or None,                 # FIELD: promoter_name <- listing promoter column
+            "status_of_the_project":   _cell(status_idx) or None,               # FIELD: status_of_the_project <- listing status column
+            "detail_url":              detail_url,                              # FIELD: detail_url <- procode from name link href
+            "procode":                 procode,                                 # FIELD: procode <- regex on name link href
         }
         if district:
-            row["project_location_raw"] = {"raw_address": district}
+            row["project_location_raw"] = {"raw_address": district}             # FIELD: project_location_raw.raw_address <- listing district cell
         rows.append(row)
     return rows
 
@@ -424,32 +448,25 @@ def _extract_other_project_docs(table: Tag) -> list[dict]:
 
 # ── Main detail page parser ────────────────────────────────────────────────────
 
-def _fetch_detail_html_playwright(url: str, logger: CrawlerLogger) -> str | None:
-    """Fetch a WB RERA detail page via Playwright (httpx is blocked by the site)."""
-    from playwright.sync_api import sync_playwright
+def _fetch_detail_html(url: str, logger: CrawlerLogger) -> str | None:
+    """Fetch a WB RERA detail page via Selenium."""
     try:
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
-            ctx = browser.new_context(ignore_https_errors=True)
-            page = ctx.new_page()
-            page.goto(url, timeout=60_000, wait_until="networkidle")
-            html = page.content()
-            browser.close()
-            return html
+        resp = _session().get(url, logger=logger)
+        return resp.text if resp else None
     except Exception as e:
-        logger.warning(f"Playwright detail fetch failed for {url}: {e}")
+        logger.warning(f"Selenium detail fetch failed for {url}: {e}")
         return None
 
 
 def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
     """Fetch and parse a WB RERA project detail page. Returns a flat dict."""
-    # Try httpx first; fall back to Playwright since site blocks Python SSL.
+    # All fetches go through the SeleniumSession (the WB site blocks Python SSL).
     html: str | None = None
     resp = _get(url, logger)
     if resp:
         html = resp.text
     else:
-        html = _fetch_detail_html_playwright(url, logger)
+        html = _fetch_detail_html(url, logger)
     if not html:
         return {}
     soup = BeautifulSoup(html, "lxml")
@@ -457,7 +474,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
     raw: dict = {"source_url": url, "govt_type": "state"}
 
     # State is always West Bengal for this crawler
-    out["project_state"] = "west bengal"
+    out["project_state"] = "west bengal"                                        # FIELD: project_state <- hardcoded crawler constant
 
     # ── PROJECT NAME ─────────────────────────────────────────────────────────
     # The project name is in an <h2> inside the col-md-12 div that also
@@ -468,7 +485,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
         if name_container:
             h2 = name_container.find("h2")
             if h2:
-                out["project_name"] = _clean(h2.get_text())
+                out["project_name"] = _clean(h2.get_text())                     # FIELD: project_name <- detail page <h2> near outerrera ul
 
     # ── PROJECT STATUS banner (ul.outerrera) ──────────────────────────────────
     # <ul class="outerrera">
@@ -489,16 +506,16 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
 
     m = re.search(r"PROJECT STATUS\s*[-–]\s*(.+?)PROJECT ID", page_text, re.I)
     if m:
-        out["status_of_the_project"] = _clean(m.group(1))
+        out["status_of_the_project"] = _clean(m.group(1))                       # FIELD: status_of_the_project <- banner "PROJECT STATUS - ..."
 
     m = re.search(r"PROJECT ID\s*:\s*(WBRERA/NPR-\d+)", page_text, re.I)
     if m:
-        out["acknowledgement_no"] = m.group(1).strip()
+        out["acknowledgement_no"] = m.group(1).strip()                          # FIELD: acknowledgement_no <- banner "PROJECT ID:"
 
     m = re.search(r"RERA REGISTRATION NO\.\s*:\s*(WBRERA/[A-Z]/[A-Z]+/\d{4}/\d+)",
                   page_text, re.I)
     if m:
-        out["project_registration_no"] = m.group(1).strip()
+        out["project_registration_no"] = m.group(1).strip()                     # FIELD: project_registration_no <- banner "RERA REGISTRATION NO."
 
     # Completion dates from the banner (skip the "NA" extension date)
     if outerrera_ul:
@@ -506,11 +523,11 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
     else:
         dates = _DATE_RE.findall(page_text)
     if dates:
-        out["estimated_finish_date"] = dates[0]
-        out["actual_finish_date"]    = dates[0]
-        raw["completion_date_raw"]   = dates[0]
+        out["estimated_finish_date"] = dates[0]                                 # FIELD: estimated_finish_date <- banner first dd-mm-yyyy date
+        out["actual_finish_date"]    = dates[0]                                 # FIELD: actual_finish_date <- banner first dd-mm-yyyy date
+        raw["completion_date_raw"]   = dates[0]                                 # FIELD: data.completion_date_raw <- banner first dd-mm-yyyy date
         if len(dates) > 1 and dates[1].upper() != "NA":
-            raw["extension_completion_date"] = dates[1]
+            raw["extension_completion_date"] = dates[1]                         # FIELD: data.extension_completion_date <- banner second date
 
     # Registration / approved date — not shown on detail page; will be injected
     # from the DataTables listing reg_date field in _sentinel_check / run().
@@ -518,7 +535,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
         r"Registration\s+Date\s*[:\-]?\s*(\d{2}-\d{2}-\d{4})", page_text, re.I
     )
     if reg_date_m:
-        out["approved_on_date"] = reg_date_m.group(1)
+        out["approved_on_date"] = reg_date_m.group(1)                           # FIELD: approved_on_date <- page text "Registration Date"
 
     # ── RERA registration certificate (VIEW CERTIFICATE link) ─────────────────
     cert_counter = 0
@@ -528,7 +545,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
     def _add_doc(url_: str, label_: str) -> None:
         if url_ not in seen_urls:
             seen_urls.add(url_)
-            doc_links.append({"url": url_, "label": label_})
+            doc_links.append({"url": url_, "label": label_})                    # FIELD: _doc_links[].url/label <- collected doc href + label
 
     for a in soup.find_all("a", href=True):
         href = a["href"]
@@ -569,33 +586,33 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
                     m = re.search(r"([\d,]+(?:\.\d+)?)", val)
                     if m:
                         try:
-                            out["land_area"] = float(m.group(1).replace(",", ""))
-                            raw["land_area_unit"] = "sq.mtr."
+                            out["land_area"] = float(m.group(1).replace(",", ""))   # FIELD: land_area <- Highlights li "Land Area"
+                            raw["land_area_unit"] = "sq.mtr."                       # FIELD: data.land_area_unit <- hardcoded sq.mtr.
                         except ValueError:
                             pass
                 elif "super built" in label or "total built" in label:
                     m = re.search(r"([\d,]+(?:\.\d+)?)", val)
                     if m:
                         try:
-                            out["construction_area"] = float(m.group(1).replace(",", ""))
-                            raw["construction_area_unit"] = "sq.mtr."
+                            out["construction_area"] = float(m.group(1).replace(",", ""))   # FIELD: construction_area <- Highlights "Super/Total Built"
+                            raw["construction_area_unit"] = "sq.mtr."                       # FIELD: data.construction_area_unit <- hardcoded sq.mtr.
                         except ValueError:
                             pass
                 elif "project type" in label:
-                    out.setdefault("project_type", val)
+                    out.setdefault("project_type", val)                              # FIELD: project_type <- Highlights li "Project Type"
         else:
             # Fallback: text-based extraction from heading's container
             h_text = _clean(hl_heading.get_text(separator=" "))
             la_m = re.search(r"Land\s+Area\s+([\d,]+(?:\.\d+)?)", h_text, re.I)
             if la_m:
                 try:
-                    out["land_area"] = float(la_m.group(1).replace(",", ""))
-                    raw["land_area_unit"] = "sq.mtr."
+                    out["land_area"] = float(la_m.group(1).replace(",", ""))    # FIELD: land_area <- Highlights text "Land Area"
+                    raw["land_area_unit"] = "sq.mtr."                           # FIELD: data.land_area_unit <- hardcoded sq.mtr.
                 except ValueError:
                     pass
             pt_m = re.search(r"Project\s+Type\s+(\w+)", h_text, re.I)
             if pt_m:
-                out.setdefault("project_type", pt_m.group(1).strip())
+                out.setdefault("project_type", pt_m.group(1).strip())           # FIELD: project_type <- Highlights text "Project Type"
 
     # ── Residential Details ───────────────────────────────────────────────────
     # New layout (2025): data is in col-md-3 div siblings, not a table.
@@ -624,18 +641,20 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
                             m = re.search(r"([\d,]+(?:\.\d+)?)", val)
                             if m:
                                 try:
+                                    # FIELD: land_area <- Residential Details div "Land Area"
                                     out.setdefault("land_area",
                                                    float(m.group(1).replace(",", "")))
-                                    raw.setdefault("land_area_unit", "sq.mtr.")
+                                    raw.setdefault("land_area_unit", "sq.mtr.")     # FIELD: data.land_area_unit <- hardcoded sq.mtr.
                                 except ValueError:
                                     pass
                         elif "total built" in label or "built up" in label:
                             m = re.search(r"([\d,]+(?:\.\d+)?)", val)
                             if m:
                                 try:
+                                    # FIELD: construction_area <- Residential Details div "Total/Built Up Area"
                                     out.setdefault("construction_area",
                                                    float(m.group(1).replace(",", "")))
-                                    raw.setdefault("construction_area_unit", "sq.mtr.")
+                                    raw.setdefault("construction_area_unit", "sq.mtr.")     # FIELD: data.construction_area_unit <- hardcoded sq.mtr.
                                 except ValueError:
                                     pass
                         elif any(kw in label for kw in (
@@ -643,12 +662,14 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
                             "number of apart", "total unit", "total flat", "total apart",
                         )):
                             try:
+                                # FIELD: number_of_residential_units <- Residential Details div apart/flat/unit count
                                 out["number_of_residential_units"] = int(val.replace(",", ""))
                             except ValueError:
                                 pass
                         elif "floor area" in label or "residential area" in label:
                             v = _extract_area(val)
                             if v is not None:
+                                # FIELD: total_floor_area_under_residential <- Residential Details div floor/residential area
                                 out["total_floor_area_under_residential"] = v
             sib = sib.next_sibling
 
@@ -665,12 +686,14 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
                         "total unit", "total flat", "total apart", "no. of apart",
                     )):
                         try:
+                            # FIELD: number_of_residential_units <- Residential Details table units row
                             out["number_of_residential_units"] = int(val.replace(",", ""))
                         except ValueError:
                             pass
                     elif "floor area" in label or "residential area" in label:
                         v = _extract_area(val)
                         if v is not None:
+                            # FIELD: total_floor_area_under_residential <- Residential Details table area row
                             out["total_floor_area_under_residential"] = v
 
     # ── Location ──────────────────────────────────────────────────────────────
@@ -681,7 +704,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
         if addr_h5:
             addr = _clean(addr_h5.get_text(separator=" "))
             if len(addr) > 5:
-                out["project_location_raw"] = {"raw_address": addr}
+                out["project_location_raw"] = {"raw_address": addr}             # FIELD: project_location_raw.raw_address <- Location section <h5> text
 
     # ── Facilities ────────────────────────────────────────────────────────────
     provided_facility: list[dict] = []
@@ -691,12 +714,14 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
         if fac_table:
             for row in _table_rows(fac_table):
                 if row and row[0].strip():
+                    # FIELD: provided_faciltiy[].facility/has_same_data <- Facilities table row[0]
                     provided_facility.append({"facility": row[0].strip(), "has_same_data": True})
         if not provided_facility:
             container = fac_h5.find_parent("div") or fac_h5
             for li in container.find_all("li"):
                 txt = li.get_text(strip=True)
                 if txt:
+                    # FIELD: provided_faciltiy[].facility/has_same_data <- Facilities <li> text
                     provided_facility.append({"facility": txt, "has_same_data": True})
 
     # ── Consultants → professional_information ────────────────────────────────
@@ -713,11 +738,11 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
                 addr = row[2].strip() if len(row) > 2 else ""
                 role = row[3].strip() if len(row) > 3 else ""
                 if name:
-                    prof: dict = {"name": name}
+                    prof: dict = {"name": name}                                 # FIELD: professional_information[].name <- Consultants table col 1
                     if role:
-                        prof["role"] = role
+                        prof["role"] = role                                     # FIELD: professional_information[].role <- Consultants table col 3
                     if addr:
-                        prof["address"] = addr
+                        prof["address"] = addr                                  # FIELD: professional_information[].address <- Consultants table col 2
                     professionals.append(prof)
 
 
@@ -745,30 +770,30 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
                 sib = sib.next_sibling
         container = content_div or pi_h5.find_parent("div") or pi_h5
         pi_text = _clean(container.get_text(separator=" "))
-        promoter_address_raw["registered_address"] = pi_text
+        promoter_address_raw["registered_address"] = pi_text                    # FIELD: promoter_address_raw.registered_address <- Personal Information container text
 
         # Company name: text before "Company Type"
         parts = pi_text.split("Company Type")
         company_raw = parts[0].replace("Personal Information", "").strip()
         if company_raw:
-            promoters_details["name"] = company_raw.upper()
-            raw["temp_promoter"] = company_raw.upper()
+            promoters_details["name"] = company_raw.upper()                     # FIELD: promoters_details.name <- Personal Information text before "Company Type"
+            raw["temp_promoter"] = company_raw.upper()                          # FIELD: data.temp_promoter <- same company name (raw cache)
 
         ct_m = re.search(r"Company\s+Type\s*[:\-]?\s*([^\n]+?)(?:Address|$)", pi_text, re.I)
         if ct_m:
-            promoters_details["type_of_firm"] = _clean(ct_m.group(1))
+            promoters_details["type_of_firm"] = _clean(ct_m.group(1))           # FIELD: promoters_details.type_of_firm <- Personal Information "Company Type"
 
         dist_m = re.search(r"District\s*[:\-]?\s*([\w\s]+?)(?:\s+Registration|\s*$)", pi_text, re.I)
         if dist_m:
-            promoter_address_raw["district"] = _clean(dist_m.group(1))
+            promoter_address_raw["district"] = _clean(dist_m.group(1))          # FIELD: promoter_address_raw.district <- Personal Information "District"
 
         pin_m = re.search(r"Pincode\s*[:\-]?\s*(\d{6})", pi_text, re.I)
         if pin_m:
-            promoter_address_raw["pin_code"] = pin_m.group(1)
+            promoter_address_raw["pin_code"] = pin_m.group(1)                   # FIELD: promoter_address_raw.pin_code <- Personal Information "Pincode"
 
         reg_m = re.search(r"Registration\s+No\.\s*[:\-]?\s*([^\n\s]+)", pi_text, re.I)
         if reg_m:
-            promoters_details["registration_no"] = _clean(reg_m.group(1))
+            promoters_details["registration_no"] = _clean(reg_m.group(1))       # FIELD: promoters_details.registration_no <- Personal Information "Registration No."
 
     # ── Promoter and Officials table ─────────────────────────────────────────
     # Columns: Sl No. | Promoter Name | Firm Name | Est.Year | Contact | Email ID | Address | Completed Projects
@@ -797,22 +822,22 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
                     exp_state = completed
 
             if emails:
-                out["promoter_contact_details"] = {"email": " ".join(emails)}
+                out["promoter_contact_details"] = {"email": " ".join(emails)}   # FIELD: promoter_contact_details.email <- Officials table col 5 (joined)
             if first_address:
-                promoter_address_raw["raw_address"] = first_address
+                promoter_address_raw["raw_address"] = first_address             # FIELD: promoter_address_raw.raw_address <- Officials table col 6
             if exp_state:
-                promoters_details["experience_state"] = exp_state
+                promoters_details["experience_state"] = exp_state               # FIELD: promoters_details.experience_state <- Officials table col 7 (completed)
 
     if promoter_name_from_officials:
-        out["promoter_name"] = promoter_name_from_officials
+        out["promoter_name"] = promoter_name_from_officials                     # FIELD: promoter_name <- Officials table col 1 (first row)
     if promoter_address_raw:
-        out["promoter_address_raw"] = promoter_address_raw
+        out["promoter_address_raw"] = promoter_address_raw                      # FIELD: promoter_address_raw <- assembled from Personal Info + Officials
     if promoters_details:
-        out["promoters_details"] = promoters_details
+        out["promoters_details"] = promoters_details                            # FIELD: promoters_details <- assembled from Personal Info + Officials
     if provided_facility:
-        out["provided_faciltiy"] = provided_facility   # preserve schema typo
+        out["provided_faciltiy"] = provided_facility   # preserve schema typo   # FIELD: provided_faciltiy <- Facilities table/list
     if professionals:
-        out["professional_information"] = professionals
+        out["professional_information"] = professionals                         # FIELD: professional_information <- Consultants table
 
     # ── Document sections ─────────────────────────────────────────────────────
     # 2. Promoter's Document
@@ -863,12 +888,12 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
             for doc in _extract_numbered_section_links(t):
                 _add_doc(doc["url"], doc["label"])
 
-    out["_doc_links"] = doc_links
+    out["_doc_links"] = doc_links                                               # FIELD: _doc_links <- aggregated doc list from all sections
     # Also expose as uploaded_documents so the sentinel coverage check can verify
     # that documents are reachable (sentinel uses this field name).
     if doc_links:
-        out["uploaded_documents"] = doc_links
-    out["data"] = raw
+        out["uploaded_documents"] = doc_links                                   # FIELD: uploaded_documents <- aggregated doc list (sentinel coverage)
+    out["data"] = raw                                                           # FIELD: data <- raw section dict (units, addresses, etc.)
     return out
 
 
@@ -916,72 +941,69 @@ def _sentinel_find_procode(
     sentinel_reg: str, logger: CrawlerLogger
 ) -> "tuple[str | None, str | None]":
     """
-    Use Playwright + the DataTables JS API on the WB RERA listing page to find
+    Use Selenium + the DataTables JS API on the WB RERA listing page to find
     the procode and registration date for the given registration number.
 
     Returns (procode, reg_date) on success, or (None, None) if not found /
     site unreachable.
     """
-    from playwright.sync_api import sync_playwright
-
     try:
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
-            ctx = browser.new_context(ignore_https_errors=True)
-            page = ctx.new_page()
-            page.goto(LISTING_URL, timeout=60_000, wait_until="networkidle")
-            page.wait_for_timeout(3_000)
+        resp = _session().get(LISTING_URL, logger=logger)
+        if not resp:
+            logger.warning("Sentinel: listing fetch returned no response", step="sentinel")
+            return None, None
+        driver = _session().driver()
+        time.sleep(3)
 
-            # Check for 503 / maintenance page before going further
-            title = page.title()
-            if "503" in title or "unavailable" in title.lower():
-                logger.warning(
-                    f"Sentinel: listing page returned {title!r} — skipping",
-                    step="sentinel",
-                )
-                browser.close()
-                return None, None
-
-            result = page.evaluate(
-                """(targetReg) => {
-                    if (typeof $ === 'undefined' || typeof $.fn.DataTable === 'undefined')
-                        return null;
-                    const tables = $.fn.dataTable.tables();
-                    if (!tables || !tables.length) return null;
-                    const dt = $(tables[0]).DataTable();
-                    const allRows = dt.rows().data().toArray();
-                    for (const row of allRows) {
-                        // row layout: [serial, old_reg_no, name_html, comp_date, reg_no, reg_date]
-                        if (Array.isArray(row) && row.length > 4 &&
-                                String(row[4]).trim() === targetReg) {
-                            const nameHtml = row[2] || '';
-                            const m = nameHtml.match(/procode=(\\d+)/i);
-                            const procode = m ? m[1] : null;
-                            const regDate = row.length > 5 ? String(row[5]).trim() : '';
-                            return {procode: procode, reg_date: regDate};
-                        }
-                    }
-                    return null;
-                }""",
-                sentinel_reg,
+        # Check for 503 / maintenance page before going further
+        title = driver.title or ""
+        if "503" in title or "unavailable" in title.lower():
+            logger.warning(
+                f"Sentinel: listing page returned {title!r} — skipping",
+                step="sentinel",
             )
-            browser.close()
+            return None, None
 
-            procode  = (result or {}).get("procode")
-            reg_date = (result or {}).get("reg_date") or None
+        result = driver.execute_script(
+            """
+            const targetReg = arguments[0];
+            if (typeof $ === 'undefined' || typeof $.fn.DataTable === 'undefined')
+                return null;
+            const tables = $.fn.dataTable.tables();
+            if (!tables || !tables.length) return null;
+            const dt = $(tables[0]).DataTable();
+            const allRows = dt.rows().data().toArray();
+            for (const row of allRows) {
+                // row layout: [serial, old_reg_no, name_html, comp_date, reg_no, reg_date]
+                if (Array.isArray(row) && row.length > 4 &&
+                        String(row[4]).trim() === targetReg) {
+                    const nameHtml = row[2] || '';
+                    const m = nameHtml.match(/procode=(\\d+)/i);
+                    const procode = m ? m[1] : null;
+                    const regDate = row.length > 5 ? String(row[5]).trim() : '';
+                    return {procode: procode, reg_date: regDate};
+                }
+            }
+            return null;
+            """,
+            sentinel_reg,
+        )
 
-            if procode:
-                logger.info(
-                    f"Sentinel: found procode={procode} reg_date={reg_date!r} "
-                    f"for {sentinel_reg}",
-                    step="sentinel",
-                )
-            else:
-                logger.warning(
-                    f"Sentinel: {sentinel_reg!r} not found in DataTables listing",
-                    step="sentinel",
-                )
-            return procode, reg_date
+        procode  = (result or {}).get("procode")
+        reg_date = (result or {}).get("reg_date") or None
+
+        if procode:
+            logger.info(
+                f"Sentinel: found procode={procode} reg_date={reg_date!r} "
+                f"for {sentinel_reg}",
+                step="sentinel",
+            )
+        else:
+            logger.warning(
+                f"Sentinel: {sentinel_reg!r} not found in DataTables listing",
+                step="sentinel",
+            )
+        return procode, reg_date
 
     except Exception as exc:
         logger.warning(f"Sentinel: listing search failed ({exc})", step="sentinel")
@@ -1047,7 +1069,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     # Inject listing-sourced fields that aren't available on the detail page alone.
     # approved_on_date comes from the DataTables reg_date column (registration date).
     if reg_date and not fresh.get("approved_on_date"):
-        fresh["approved_on_date"] = reg_date
+        fresh["approved_on_date"] = reg_date                                    # FIELD: approved_on_date <- sentinel reg_date from DataTables col 5
 
     if not check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
         insert_crawl_error(
@@ -1062,6 +1084,14 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 
 
 def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
     """
     Args:
         config:  site dict from sites_config.SITES
@@ -1092,11 +1122,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     counts["sentinel_passed"] = True
     logger.timing("sentinel", time.monotonic() - t0)
 
-    # Use Playwright to fetch all rows via the DataTables JS API.
+    # Use Selenium to fetch all rows via the DataTables JS API.
     # Direct httpx is blocked by the site (Connection reset by peer).
     t0 = time.monotonic()
-    logger.info("Fetching WB RERA listing via Playwright + DataTables API")
-    rows = _playwright_fetch_all_listing_rows(logger)
+    logger.info("Fetching WB RERA listing via Selenium + DataTables API")
+    rows = _fetch_all_listing_rows(logger)
     if not rows:
         logger.error("No project rows found on listing page")
         insert_crawl_error(run_id, site_id, "PARSE_ERROR", "No rows parsed", url=LISTING_URL)
@@ -1133,24 +1163,24 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 continue
 
             data: dict = {
-                "key":                     key,
-                "state":                   config["state"],
-                "project_state":           "west bengal",
-                "project_registration_no": reg_no,
-                "project_name":            row.get("project_name"),
-                "promoter_name":           row.get("promoter_name"),
-                "status_of_the_project":   row.get("status_of_the_project"),
-                "domain":                  DOMAIN,
-                "config_id":               config["config_id"],
-                "url":                     row.get("detail_url") or LISTING_URL,
-                "is_live":                 True,
-                "machine_name":            machine_name,
-                "crawl_machine_ip":        machine_ip,
+                "key":                     key,                                 # FIELD: key <- generate_project_key(reg_no)
+                "state":                   config["state"],                     # FIELD: state <- site config "state"
+                "project_state":           "west bengal",                       # FIELD: project_state <- hardcoded crawler constant
+                "project_registration_no": reg_no,                              # FIELD: project_registration_no <- listing row reg_no
+                "project_name":            row.get("project_name"),             # FIELD: project_name <- listing row project_name
+                "promoter_name":           row.get("promoter_name"),            # FIELD: promoter_name <- listing row promoter_name
+                "status_of_the_project":   row.get("status_of_the_project"),    # FIELD: status_of_the_project <- listing row status_of_the_project
+                "domain":                  DOMAIN,                              # FIELD: domain <- crawler DOMAIN constant
+                "config_id":               config["config_id"],                 # FIELD: config_id <- site config "config_id"
+                "url":                     row.get("detail_url") or LISTING_URL,  # FIELD: url <- listing row detail_url or LISTING_URL
+                "is_live":                 True,                                # FIELD: is_live <- hardcoded True
+                "machine_name":            machine_name,                        # FIELD: machine_name <- get_machine_context()
+                "crawl_machine_ip":        machine_ip,                          # FIELD: crawl_machine_ip <- get_machine_context()
             }
             if row.get("project_location_raw"):
-                data["project_location_raw"] = row["project_location_raw"]
+                data["project_location_raw"] = row["project_location_raw"]      # FIELD: project_location_raw <- listing row project_location_raw
             if row.get("approved_on_date"):
-                data["approved_on_date"] = row["approved_on_date"]
+                data["approved_on_date"] = row["approved_on_date"]              # FIELD: approved_on_date <- listing row approved_on_date
 
             doc_links: list[dict] = []
             if row.get("detail_url") and settings.SCRAPE_DETAILS:
@@ -1167,22 +1197,22 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 la = data.get("land_area")
                 ca = data.get("construction_area")
                 if la or ca:
-                    data["land_area_details"] = {
+                    data["land_area_details"] = {                               # FIELD: land_area_details <- combined area block
                         k: v for k, v in {
-                            "land_area":              (str(int(la)) if la == int(la) else str(la)) if la else None,
-                            "land_area_unit":         detail_data.get("land_area_unit", "sq.mtr."),
-                            "construction_area":      ca,
-                            "construction_area_unit": detail_data.get("construction_area_unit", "sq.mtr."),
+                            "land_area":              (str(int(la)) if la == int(la) else str(la)) if la else None,    # FIELD: land_area_details.land_area <- data["land_area"] stringified
+                            "land_area_unit":         detail_data.get("land_area_unit", "sq.mtr."),                    # FIELD: land_area_details.land_area_unit <- detail_data land_area_unit
+                            "construction_area":      ca,                                                              # FIELD: land_area_details.construction_area <- data["construction_area"]
+                            "construction_area_unit": detail_data.get("construction_area_unit", "sq.mtr."),            # FIELD: land_area_details.construction_area_unit <- detail_data construction_area_unit
                         }.items() if v is not None
                     }
 
                 listing_row = {k: v for k, v in row.items() if k not in ("detail_url", "data")}
-                data["data"] = merge_data_sections({"listing_row": listing_row}, detail_data)
+                data["data"] = merge_data_sections({"listing_row": listing_row}, detail_data)   # FIELD: data <- merge_data_sections(listing_row, detail_data)
                 if row.get("detail_url"):
-                    data["data"]["complete_html_url"] = [row["detail_url"]]
+                    data["data"]["complete_html_url"] = [row["detail_url"]]     # FIELD: data.complete_html_url <- [listing row detail_url]
             else:
                 listing_row = {k: v for k, v in row.items() if k not in ("detail_url", "data")}
-                data["data"] = merge_data_sections({"listing_row": listing_row})
+                data["data"] = merge_data_sections({"listing_row": listing_row})    # FIELD: data <- merge_data_sections(listing_row only)
 
             logger.info("Normalizing and validating", step="normalize")
             try:
@@ -1221,22 +1251,24 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         db_dict["key"], selected, run_id, site_id, logger,
                     )
                     if uploaded:
-                        uploaded_documents.append(uploaded)
+                        uploaded_documents.append(uploaded)                     # FIELD: uploaded_documents[] <- document_result_entry from _handle_document
                         counts["documents_uploaded"] += 1
                     else:
+                        # FIELD: uploaded_documents[].link/type <- original doc url + label (upload failed)
                         uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label", "document")})
                 else:
+                    # FIELD: uploaded_documents[].link/type <- original doc url + label (skipped by policy)
                     uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label", "document")})
 
             if uploaded_documents:
                 upsert_project({
-                    "key":                     db_dict["key"],
-                    "url":                     db_dict["url"],
-                    "state":                   db_dict["state"],
-                    "domain":                  db_dict["domain"],
-                    "project_registration_no": db_dict["project_registration_no"],
-                    "uploaded_documents":      uploaded_documents,
-                    "document_urls":           build_document_urls(uploaded_documents),
+                    "key":                     db_dict["key"],                  # FIELD: key <- db_dict["key"]
+                    "url":                     db_dict["url"],                  # FIELD: url <- db_dict["url"]
+                    "state":                   db_dict["state"],                # FIELD: state <- db_dict["state"]
+                    "domain":                  db_dict["domain"],               # FIELD: domain <- db_dict["domain"]
+                    "project_registration_no": db_dict["project_registration_no"],  # FIELD: project_registration_no <- db_dict["project_registration_no"]
+                    "uploaded_documents":      uploaded_documents,              # FIELD: uploaded_documents <- collected uploaded_documents list
+                    "document_urls":           build_document_urls(uploaded_documents),     # FIELD: document_urls <- build_document_urls(uploaded_documents)
                 })
 
             done_regs.add(reg_no)

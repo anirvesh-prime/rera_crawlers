@@ -21,7 +21,7 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import PlaywrightSession, generate_project_key, random_delay, safe_get
+from core.crawler_base import SeleniumSession, generate_project_key, random_delay
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.details_pool import get_detail_workers, process_details
 from core.document_policy import select_document_for_download
@@ -48,17 +48,60 @@ DOMAIN = "rera.kerala.gov.in"
 LEGACY_DOMAIN = "reraonline.kerala.gov.in"
 
 
+# ── SeleniumSession wiring ────────────────────────────────────────────────────
+
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+def safe_get(url, *, logger=None, timeout=None, params=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession.
+
+    The Kerala RERA portal serves an incomplete certificate chain; Selenium's
+    Chrome session is configured with ``ignore_certificate_errors=True``.
+    """
+    plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
+    full = url
+    if params:
+        from urllib.parse import urlencode
+        sep = "&" if "?" in url else "?"
+        full = f"{url}{sep}{urlencode(params)}"
+    return _session().get(full, logger=logger, page_load_timeout=plt)
+
+
+def download_response(url, *, logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().download(url, logger=logger)
+
+
 def _get(url: str, logger: CrawlerLogger, *, timeout: float = 30.0,
          params: dict | None = None):
-    """Thin wrapper around safe_get with SSL verification disabled.
+    """Thin wrapper around the SeleniumSession for Kerala RERA fetches.
 
     The Kerala RERA portal (rera.kerala.gov.in / reraonline.kerala.gov.in)
-    serves an incomplete certificate chain that fails Python's default SSL
-    verification with 'unable to get local issuer certificate'.  Using
-    verify=False is consistent with how other state portals with broken certs
-    are handled in this codebase (e.g. Pondicherry, Tripura).
+    serves an incomplete certificate chain; Selenium's Chrome instance is
+    configured with ``ignore_certificate_errors=True`` so the original
+    ``verify=False`` semantics carry over.
     """
-    return safe_get(url, verify=False, logger=logger, timeout=timeout, params=params)
+    return safe_get(url, logger=logger, timeout=timeout, params=params)
 
 
 LEGACY_CONFIG_ID = 14521
@@ -457,14 +500,14 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
                 contact_entry = {k: v for k, v in
                                  {"phone": contact_phone, "email": contact_email}.items() if v}
                 if not out.get("promoter_contact_details"):
-                    out["promoter_contact_details"] = [contact_entry]
+                    out["promoter_contact_details"] = [contact_entry]  # FIELD: promoter_contact_details <- promoter panel phone/email labels
 
         if registered:
             promoter_addr["registered_address"] = registered
         if communication:
             promoter_addr["communication_address"] = communication
         if promoter_addr:
-            out["promoter_address_raw"] = promoter_addr
+            out["promoter_address_raw"] = promoter_addr  # FIELD: promoter_address_raw <- promoter panel ordered labels
 
     # ── Step 2: Map labels → schema fields via lookup ─────────────────────────
     for raw_key, raw_val in all_labels.items():
@@ -504,13 +547,13 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
     loc = {_LOCATION_KEY_MAP[k]: v for k, v in all_labels.items()
            if k in _LOCATION_KEY_MAP and v}
     if loc:
-        out["project_location_raw"] = loc
-        out["project_city"]    = loc.get("district", out.get("project_city"))
-        out["project_pin_code"] = loc.get("pin_code", out.get("project_pin_code"))
+        out["project_location_raw"] = loc  # FIELD: project_location_raw <- all_labels via _LOCATION_KEY_MAP
+        out["project_city"]    = loc.get("district", out.get("project_city"))  # FIELD: project_city <- loc["district"]
+        out["project_pin_code"] = loc.get("pin_code", out.get("project_pin_code"))  # FIELD: project_pin_code <- loc["pin_code"]
 
     land = {k: v for k, v in all_labels.items() if k in _LAND_KEYS and v}
     if land:
-        out["land_detail"] = land
+        out["land_detail"] = land  # FIELD: land_detail <- all_labels matching _LAND_KEYS
 
     # promoter_address_raw is set in Step 1b above via ordered per-panel extraction.
     # Fallback: if step 1b found no usable registered/communication address
@@ -531,7 +574,7 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
             "House Number/ Building Name": all_labels.get("House Number/ Building Name"),
         }.items() if v not in (None, "", "NA")}
         if _fb_addr:
-            out["promoter_address_raw"] = {"registered_address": _fb_addr}
+            out["promoter_address_raw"] = {"registered_address": _fb_addr}  # FIELD: promoter_address_raw <- project location labels fallback
 
     # Fallback: if step 1b found no contact details, scan all_labels for phone/email.
     if "promoter_contact_details" not in out:
@@ -545,15 +588,15 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
         _fb_email = next((str(v).replace("[at]", "@") for k, v in all_labels.items()
                           if k.lower().strip() in _email_keys and v), None)
         if _fb_phone or _fb_email:
-            out["promoter_contact_details"] = [
+            out["promoter_contact_details"] = [  # FIELD: promoter_contact_details <- all_labels phone/email fallback
                 {k: v for k, v in {"phone": _fb_phone, "email": _fb_email}.items() if v}
             ]
 
     financier = all_labels.get("Name of the Financier (If any)", "")
     if financier and financier.strip():
-        out["bank_details"] = {
-            "financier_name":    financier,
-            "financier_address": all_labels.get("Address of the Financier", ""),
+        out["bank_details"] = {  # FIELD: bank_details <- "Name of the Financier (If any)" present
+            "financier_name":    financier,  # FIELD: bank_details.financier_name <- "Name of the Financier (If any)" label
+            "financier_address": all_labels.get("Address of the Financier", ""),  # FIELD: bank_details.financier_address <- "Address of the Financier" label
         }
 
     # ── Step 4: Map tables → schema JSONB fields ──────────────────────────────
@@ -567,7 +610,7 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
             continue
 
         if "member" in sec:
-            out["members_details"] = rows
+            out["members_details"] = rows  # FIELD: members_details <- rows of "member" panel table
             # Match both UK ("authorised") and US ("authorized") spelling
             auth = next(
                 (r for r in rows
@@ -576,14 +619,14 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
                 None,
             )
             if auth:
-                out["authorised_signatory_details"] = auth
+                out["authorised_signatory_details"] = auth  # FIELD: authorised_signatory_details <- member row with "authoris/authoriz" designation
 
         elif "land owner" in sec:
-            out["co_promoter_details"] = rows
+            out["co_promoter_details"] = rows  # FIELD: co_promoter_details <- rows of "land owner" panel table
 
         elif "past experience" in sec:
-            out["development_agreement_detail"] = rows
-            out["past_experience_of_promoter"]  = len(rows)
+            out["development_agreement_detail"] = rows  # FIELD: development_agreement_detail <- rows of "past experience" panel
+            out["past_experience_of_promoter"]  = len(rows)  # FIELD: past_experience_of_promoter <- count of past-experience rows
 
         elif "professional" in sec:
             # Map Kerala PrintPreview column names → normalizer-compatible keys
@@ -610,10 +653,10 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
                           for k, v in r.items() if v}
                 if mapped:
                     mapped_rows.append(mapped)
-            out["professional_information"] = mapped_rows or rows
+            out["professional_information"] = mapped_rows or rows  # FIELD: professional_information <- "professional" panel rows via _PROF_COL_MAP
 
         elif "litigation" in sec:
-            out["complaints_litigation_details"] = {"rows": rows}
+            out["complaints_litigation_details"] = {"rows": rows}  # FIELD: complaints_litigation_details <- rows of "litigation" panel table
 
         elif "common area" in sec or "facilit" in sec:
             facility_dict: dict = out.get("provided_faciltiy") or {}
@@ -642,23 +685,23 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
                         entry["details"] = fdetails
                     facility_dict[fname] = entry
             if facility_dict:
-                out["provided_faciltiy"] = facility_dict
+                out["provided_faciltiy"] = facility_dict  # FIELD: provided_faciltiy <- "common area"/"facilit" panel rows
                 # Build construction_progress in schema-compatible format so it survives
                 # normalization. _build_kerala_legacy_facility_progress is defined below and
                 # available at call time since module is fully loaded before any function runs.
                 _cp = _build_kerala_legacy_facility_progress(facility_dict)
                 if _cp:
-                    out["construction_progress"] = _cp
+                    out["construction_progress"] = _cp  # FIELD: construction_progress <- _build_kerala_legacy_facility_progress(facility_dict)
 
         elif "bank" in sec or "separate bank" in sec:
-            out["bank_details"] = {r.get("col_0", ""): r.get("col_1", "") for r in rows}
+            out["bank_details"] = {r.get("col_0", ""): r.get("col_1", "") for r in rows}  # FIELD: bank_details <- "bank"/"separate bank" panel rows
 
         elif "building" in sec or "permit" in sec:
             if "task" in hdrs or "activity" in hdrs or "percentage of work" in hdrs:
                 # Keep raw task rows for reference but don't overwrite schema-compatible
                 # construction_progress if already set from facilities above.
                 if not out.get("construction_progress"):
-                    out["construction_progress"] = rows
+                    out["construction_progress"] = rows  # FIELD: construction_progress <- "task"/"activity" rows of building panel
             elif "unit type" in hdrs or "carpet" in hdrs or "super built" in hdrs:
                 # Build normalized list with schema-compatible keys so it survives normalization.
                 unit_list = []
@@ -674,7 +717,7 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
                     if entry:
                         unit_list.append(entry)
                 if unit_list:
-                    out["building_details"] = unit_list
+                    out["building_details"] = unit_list  # FIELD: building_details <- normalized unit-type rows
                 building_details["unit_types"] = rows  # keep raw for internal use
             elif "parking" in hdrs and "building name" not in hdrs:
                 # Only treat as parking if the table doesn't also contain structural
@@ -686,19 +729,19 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
 
         elif "uploaded document" in sec or "supporting document" in sec:
             # Row-level metadata; actual URLs come from doc buttons
-            out.setdefault("uploaded_documents", rows)
+            out.setdefault("uploaded_documents", rows)  # FIELD: uploaded_documents <- rows of "uploaded document"/"supporting document" panel
 
     # Always preserve raw building dict for status_update builder (structure + unit_types rows).
     if building_details:
-        out["_raw_building"] = building_details
+        out["_raw_building"] = building_details  # FIELD: _raw_building <- aggregated building_details (structure + unit_types)
     # Only assign nested building_details dict if a normalized list wasn't already set.
     if building_details and not isinstance(out.get("building_details"), list):
-        out["building_details"] = building_details
+        out["building_details"] = building_details  # FIELD: building_details <- aggregated building_details dict
 
     # ── Step 5: Document buttons → downloadable URL list ─────────────────────
     if all_doc_btns:
-        out["_print_preview_docs"] = all_doc_btns
-        out["uploaded_documents"] = [
+        out["_print_preview_docs"] = all_doc_btns  # FIELD: _print_preview_docs <- _extract_doc_buttons()
+        out["uploaded_documents"] = [  # FIELD: uploaded_documents <- _extract_doc_buttons() projected
             {"label": d["label"], "url": d["url"],
              "file_id": d.get("file_id"),
              "show_button_id": d.get("show_button_id"),
@@ -711,17 +754,17 @@ def _parse_print_preview(url: str, logger: CrawlerLogger) -> dict:
         ]
 
     # ── Step 6: Raw safety net — everything stored in data JSONB ─────────────
-    out["data"] = {
-        "all_labels":       all_labels,
-        "all_tables":       [{"section": t["section"], "headers": t["headers"],
+    out["data"] = {  # FIELD: data <- raw safety-net JSONB
+        "all_labels":       all_labels,  # FIELD: data.all_labels <- _extract_all_labels()
+        "all_tables":       [{"section": t["section"], "headers": t["headers"],  # FIELD: data.all_tables <- _extract_all_tables() summary
                               "row_count": len(t["rows"]),
                               "first_row": t["rows"][0] if t["rows"] else {}}
                              for t in all_tables],
-        "doc_button_count": len(all_doc_btns),
-        "source_url":       url,
+        "doc_button_count": len(all_doc_btns),  # FIELD: data.doc_button_count <- count of _extract_doc_buttons()
+        "source_url":       url,  # FIELD: data.source_url <- url parameter
         # Carry raw structured data through normalization for post-normalization shaping.
-        "_raw_building":    out.get("_raw_building") or None,
-        "_raw_facilities":  out.get("provided_faciltiy") or None,
+        "_raw_building":    out.get("_raw_building") or None,  # FIELD: data._raw_building <- out["_raw_building"]
+        "_raw_facilities":  out.get("provided_faciltiy") or None,  # FIELD: data._raw_facilities <- out["provided_faciltiy"]
     }
 
     return {k: v for k, v in out.items() if v is not None and v != "" and v != {} and v != []}
@@ -1027,24 +1070,24 @@ def apply_kerala_legacy_shape(record: dict[str, Any]) -> dict[str, Any]:
                                else (out.get("provided_faciltiy") if isinstance(out.get("provided_faciltiy"), dict) else {}))
     chosen_addr = _legacy_promoter_address(out, labels) or {}
 
-    out["state"] = "kerala"
-    out["project_state"] = str(labels.get("State") or out.get("project_state") or "KERALA").upper()
-    out["domain"] = LEGACY_DOMAIN
-    out["config_id"] = LEGACY_CONFIG_ID
+    out["state"] = "kerala"  # FIELD: state <- literal "kerala"
+    out["project_state"] = str(labels.get("State") or out.get("project_state") or "KERALA").upper()  # FIELD: project_state <- labels.State / existing / "KERALA" upper
+    out["domain"] = LEGACY_DOMAIN  # FIELD: domain <- LEGACY_DOMAIN constant
+    out["config_id"] = LEGACY_CONFIG_ID  # FIELD: config_id <- LEGACY_CONFIG_ID constant
 
     preview_source_url = out.get("data", {}).get("source_url") if isinstance(out.get("data"), dict) else None
     if preview_source_url and not out.get("url"):
-        out["url"] = preview_source_url
+        out["url"] = preview_source_url  # FIELD: url <- data["source_url"]
 
     if out.get("estimated_commencement_date") and not out.get("actual_commencement_date"):
-        out["actual_commencement_date"] = out["estimated_commencement_date"]
+        out["actual_commencement_date"] = out["estimated_commencement_date"]  # FIELD: actual_commencement_date <- estimated_commencement_date fallback
     if out.get("estimated_finish_date") and not out.get("actual_finish_date"):
-        out["actual_finish_date"] = out["estimated_finish_date"]
-    out["actual_commencement_date"] = _legacy_utc_timestamp(out.get("actual_commencement_date"))
-    out["actual_finish_date"] = _legacy_utc_timestamp(out.get("actual_finish_date"))
-    out["last_modified"] = _legacy_utc_timestamp(out.get("last_modified"))
-    out["estimated_commencement_date"] = None
-    out["estimated_finish_date"] = None
+        out["actual_finish_date"] = out["estimated_finish_date"]  # FIELD: actual_finish_date <- estimated_finish_date fallback
+    out["actual_commencement_date"] = _legacy_utc_timestamp(out.get("actual_commencement_date"))  # FIELD: actual_commencement_date <- _legacy_utc_timestamp()
+    out["actual_finish_date"] = _legacy_utc_timestamp(out.get("actual_finish_date"))  # FIELD: actual_finish_date <- _legacy_utc_timestamp()
+    out["last_modified"] = _legacy_utc_timestamp(out.get("last_modified"))  # FIELD: last_modified <- _legacy_utc_timestamp()
+    out["estimated_commencement_date"] = None  # FIELD: estimated_commencement_date <- None (legacy shape)
+    out["estimated_finish_date"] = None  # FIELD: estimated_finish_date <- None (legacy shape)
 
     raw_location = out.get("project_location_raw") if isinstance(out.get("project_location_raw"), dict) else {}
     # project_location_raw keys are now stored in normalized (lowercase/underscore) form
@@ -1070,7 +1113,7 @@ def apply_kerala_legacy_shape(record: dict[str, Any]) -> dict[str, Any]:
     }
     legacy_location = {k: v for k, v in legacy_location.items() if v not in (None, "", "NA", "/ Thandapper Details")}
     if legacy_location:
-        out["project_location_raw"] = [legacy_location]
+        out["project_location_raw"] = [legacy_location]  # FIELD: project_location_raw <- labels + raw_location merged
 
     legacy_promoter_address = {
         "state": chosen_addr.get("State/ UT"),
@@ -1082,7 +1125,7 @@ def apply_kerala_legacy_shape(record: dict[str, Any]) -> dict[str, Any]:
     }
     legacy_promoter_address = {k: v for k, v in legacy_promoter_address.items() if v not in (None, "", "NA")}
     if legacy_promoter_address:
-        out["promoter_address_raw"] = [legacy_promoter_address]
+        out["promoter_address_raw"] = [legacy_promoter_address]  # FIELD: promoter_address_raw <- _legacy_promoter_address()
 
     if out.get("land_area") is not None or out.get("construction_area") is not None:
         def _fmt_area(v: Any) -> str | None:
@@ -1092,29 +1135,29 @@ def apply_kerala_legacy_shape(record: dict[str, Any]) -> dict[str, Any]:
                 return f"{float(v):.2f}"
             except (ValueError, TypeError):
                 return str(v)
-        out["land_area_details"] = {
-            "land_area": _fmt_area(out.get("land_area")),
-            "land_area_unit": "Sqmts",
-            "construction_area": _fmt_area(out.get("construction_area")),
-            "construction_area_unit": "in Sqmts",
+        out["land_area_details"] = {  # FIELD: land_area_details <- land_area + construction_area
+            "land_area": _fmt_area(out.get("land_area")),  # FIELD: land_area_details.land_area <- _fmt_area(out["land_area"])
+            "land_area_unit": "Sqmts",  # FIELD: land_area_details.land_area_unit <- literal "Sqmts"
+            "construction_area": _fmt_area(out.get("construction_area")),  # FIELD: land_area_details.construction_area <- _fmt_area(out["construction_area"])
+            "construction_area_unit": "in Sqmts",  # FIELD: land_area_details.construction_area_unit <- literal "in Sqmts"
         }
 
     compact_members = _compact_kerala_members(out.get("members_details"))
     if compact_members:
-        out["members_details"] = compact_members
+        out["members_details"] = compact_members  # FIELD: members_details <- _compact_kerala_members()
     compact_promoters = _compact_kerala_co_promoters(out.get("co_promoter_details"))
     if compact_promoters:
-        out["co_promoter_details"] = compact_promoters
+        out["co_promoter_details"] = compact_promoters  # FIELD: co_promoter_details <- _compact_kerala_co_promoters()
     compact_professionals = _compact_kerala_professionals(out.get("professional_information"))
     if compact_professionals:
-        out["professional_information"] = compact_professionals
+        out["professional_information"] = compact_professionals  # FIELD: professional_information <- _compact_kerala_professionals()
 
     # construction_progress is already built with schema-compatible keys in _parse_print_preview;
     # only fall back to facility dict here if it wasn't populated during parsing.
     if not out.get("construction_progress") and original_facilities:
         legacy_progress = _build_kerala_legacy_facility_progress(original_facilities)
         if legacy_progress:
-            out["construction_progress"] = legacy_progress
+            out["construction_progress"] = legacy_progress  # FIELD: construction_progress <- _build_kerala_legacy_facility_progress() fallback
 
     # Post-normalization fixups for construction_progress to match legacy sample format:
     # - add has_same_data: True
@@ -1136,11 +1179,11 @@ def apply_kerala_legacy_shape(record: dict[str, Any]) -> dict[str, Any]:
                 if pct is not None and not str(pct).startswith(" "):
                     entry["progress_percentage"] = f" {str(pct).strip()}"
             fixed_cp.append(entry)
-        out["construction_progress"] = fixed_cp
+        out["construction_progress"] = fixed_cp  # FIELD: construction_progress <- post-normalization fixup (has_same_data + leading-space pct)
 
     # Normalize promoter_name whitespace (e.g. "Abdul  Rasheed" → "Abdul Rasheed")
     if out.get("promoter_name"):
-        out["promoter_name"] = " ".join(str(out["promoter_name"]).split())
+        out["promoter_name"] = " ".join(str(out["promoter_name"]).split())  # FIELD: promoter_name <- whitespace-collapsed promoter_name
 
     legacy_status_update = _build_kerala_legacy_status_update(
         out,
@@ -1150,16 +1193,16 @@ def apply_kerala_legacy_shape(record: dict[str, Any]) -> dict[str, Any]:
         building_list=original_building_list,
     )
     if legacy_status_update:
-        out["status_update"] = legacy_status_update
+        out["status_update"] = legacy_status_update  # FIELD: status_update <- _build_kerala_legacy_status_update()
 
-    out["project_city"] = None
-    out["authorised_signatory_details"] = None
-    out["provided_faciltiy"] = None
+    out["project_city"] = None  # FIELD: project_city <- None (legacy shape)
+    out["authorised_signatory_details"] = None  # FIELD: authorised_signatory_details <- None (legacy shape)
+    out["provided_faciltiy"] = None  # FIELD: provided_faciltiy <- None (legacy shape)
     out.pop("_raw_building", None)
     # Preserve building_details if it is the normalized list; clear internal dicts.
     if isinstance(out.get("building_details"), dict):
-        out["building_details"] = None
-    out["land_detail"] = None
+        out["building_details"] = None  # FIELD: building_details <- None when intermediate dict
+    out["land_detail"] = None  # FIELD: land_detail <- None (legacy shape)
 
     # Ensure PROD-required fields are present in data, and strip interim raw fields
     existing_data = dict(out.get("data") if isinstance(out.get("data"), dict) else {})
@@ -1167,10 +1210,10 @@ def apply_kerala_legacy_shape(record: dict[str, Any]) -> dict[str, Any]:
     existing_data.pop("_raw_facilities", None)
     # Strip source_url from data after it has been used to set url above.
     existing_data.pop("source_url", None)
-    out["data"] = {
-        "govt_type": "state",
-        "land_area_unit": "Sqmts",
-        "construction_area_unit": "in Sqmts",
+    out["data"] = {  # FIELD: data <- govt_type + units + existing_data
+        "govt_type": "state",  # FIELD: data.govt_type <- literal "state"
+        "land_area_unit": "Sqmts",  # FIELD: data.land_area_unit <- literal "Sqmts"
+        "construction_area_unit": "in Sqmts",  # FIELD: data.construction_area_unit <- literal "in Sqmts"
         **existing_data,
     }
     return out
@@ -1248,54 +1291,55 @@ def _scrape_detail_page(url: str, logger: CrawlerLogger) -> dict:
         return {}
     soup = BeautifulSoup(resp.text, "lxml")
     page_text = soup.get_text(separator="\n", strip=True)
-    extracted: dict = {"url": url, "data": {"raw_html_length": len(resp.text)}}
+    # FIELD: data.raw_html_length <- len(resp.text)
+    extracted: dict = {"url": url, "data": {"raw_html_length": len(resp.text)}}  # FIELD: url <- url param
 
     # Project name from og:title meta tag
     og_title = soup.find("meta", {"property": "og:title"})
     if og_title and og_title.get("content"):
-        extracted["project_name"] = og_title["content"].strip()
+        extracted["project_name"] = og_title["content"].strip()  # FIELD: project_name <- <meta property="og:title">
 
     # Registration / certificate number
     cert_match = re.search(r"K-RERA/PRJ/[A-Z]+/\d+/\d+", page_text)
     if cert_match:
-        extracted["project_registration_no"] = cert_match.group(0)
+        extracted["project_registration_no"] = cert_match.group(0)  # FIELD: project_registration_no <- regex K-RERA/PRJ/.../N/N in page text
 
     # Status
     status_match = re.search(r"(In\s*Progress|Completed|Lapsed|Revoked|De-?registered)", page_text, re.I)
     if status_match:
-        extracted["status_of_the_project"] = status_match.group(0).strip()
+        extracted["status_of_the_project"] = status_match.group(0).strip()  # FIELD: status_of_the_project <- regex In Progress|Completed|Lapsed|Revoked|De-registered
 
     # Units: "71 Residential Units  0 Commercial Units"
     res_match = re.search(r"(\d+)\s+Residential\s+Units?", page_text, re.I)
     com_match = re.search(r"(\d+)\s+Commercial\s+Units?", page_text, re.I)
     if res_match:
-        extracted["number_of_residential_units"] = res_match.group(1)
+        extracted["number_of_residential_units"] = res_match.group(1)  # FIELD: number_of_residential_units <- regex N Residential Units
     if com_match:
-        extracted["number_of_commercial_units"] = com_match.group(1)
+        extracted["number_of_commercial_units"] = com_match.group(1)  # FIELD: number_of_commercial_units <- regex N Commercial Units
 
     # Proposed completion: "Proposed Completion On\n20, Feb 2031"
     comp_match = re.search(r"Proposed\s+Completion\s+On\s+([\d,\w\s]+)", page_text, re.I)
     if comp_match:
-        extracted["estimated_finish_date"] = comp_match.group(1).strip().replace(",", "")
+        extracted["estimated_finish_date"] = comp_match.group(1).strip().replace(",", "")  # FIELD: estimated_finish_date <- regex Proposed Completion On ...
 
     # Last modified: "Information As Of: 14/03/2026" on the main detail page
     info_match = re.search(r"Information\s+As\s+Of\s*:?\s*(\d{1,2}/\d{1,2}/\d{4})", page_text, re.I)
     if info_match:
-        extracted["last_modified"] = info_match.group(1)
+        extracted["last_modified"] = info_match.group(1)  # FIELD: last_modified <- regex Information As Of: DD/MM/YYYY
 
     # Available / total units: "71 / 71"
     avail_match = re.search(r"Available\s+Units?\s*[:\|]?\s*(\d+)\s*/\s*(\d+)", page_text, re.I)
     if avail_match:
-        extracted["_available_units"] = avail_match.group(1)
-        extracted["_total_units"] = avail_match.group(2)
+        extracted["_available_units"] = avail_match.group(1)  # FIELD: _available_units <- regex Available Units N/M (numerator)
+        extracted["_total_units"] = avail_match.group(2)  # FIELD: _total_units <- regex Available Units N/M (denominator)
 
     # Floor areas
     res_area = re.search(r"Total\s+Floor\s+Area\s+Under\s+Residential\s+Use\s*[:\|]?\s*([\d.]+)", page_text, re.I)
     other_area = re.search(r"Total\s+Floor\s+Area\s+Under\s+Other\s+Use\s*[:\|]?\s*([\d.]+)", page_text, re.I)
     if res_area:
-        extracted["total_floor_area_under_residential"] = res_area.group(1)
+        extracted["total_floor_area_under_residential"] = res_area.group(1)  # FIELD: total_floor_area_under_residential <- regex Total Floor Area Under Residential Use
     if other_area:
-        extracted["total_floor_area_under_commercial_or_other_uses"] = other_area.group(1)
+        extracted["total_floor_area_under_commercial_or_other_uses"] = other_area.group(1)  # FIELD: total_floor_area_under_commercial_or_other_uses <- regex Total Floor Area Under Other Use
 
     # Stash HTML for embedded-JSON date extraction (applied after PrintPreview merge)
     _html_src = resp.text
@@ -1344,7 +1388,7 @@ def _scrape_detail_page(url: str, logger: CrawlerLogger) -> dict:
         elif ".pdf" in href.lower():
             doc_links.append({"label": label, "url": full_url})
 
-    extracted["_doc_links"] = doc_links
+    extracted["_doc_links"] = doc_links  # FIELD: _doc_links <- collected /signed-certificate, PrintPreview, QPR, .pdf links
 
     # ── Dates from embedded JSON blob (fallback after PrintPreview merge) ─────
     # Kerala pages embed project data as HTML-encoded JSON
@@ -1370,51 +1414,16 @@ def _scrape_detail_page(url: str, logger: CrawlerLogger) -> dict:
 # ── Document download + S3 upload ─────────────────────────────────────────────
 
 def _download_print_preview_document(
-    browser_session: PlaywrightSession,
+    browser_session,
     page_cache: dict[str, Any],
     doc: dict[str, Any],
     logger: CrawlerLogger,
 ) -> bytes | None:
-    print_preview_url = doc.get("print_preview_url")
-    download_button_id = doc.get("download_button_id")
-    if not print_preview_url or not download_button_id:
-        return None
-
-    selector = f"#{download_button_id}"
-    try:
-        page = page_cache.get(print_preview_url)
-        if page is None:
-            page = browser_session.new_page()
-            page.goto(print_preview_url, wait_until="domcontentloaded", timeout=_PLAYWRIGHT_PAGE_TIMEOUT_MS)
-            page_cache[print_preview_url] = page
-        # Short timeout — if the button isn't immediately available the page
-        # likely requires a live session cookie the headless browser doesn't
-        # have; we fall back to direct GET rather than blocking for 15 s.
-        page.wait_for_selector(selector, timeout=3_000)
-        with page.expect_download(timeout=_PLAYWRIGHT_DOWNLOAD_START_TIMEOUT_MS) as download_info:
-            page.locator(selector).click()
-        download = download_info.value
-        suggested_name = download.suggested_filename or "document.pdf"
-        suffix = os.path.splitext(suggested_name)[1] or ".pdf"
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
-            temp_path = temp_file.name
-        try:
-            # save_as() waits for the download to complete; do not fall back
-            # early while the browser is still transferring bytes.
-            download.save_as(temp_path)
-            with open(temp_path, "rb") as file_obj:
-                data = file_obj.read()
-            return data if len(data) >= 100 else None
-        finally:
-            try:
-                os.unlink(temp_path)
-            except OSError:
-                pass
-    except Exception as exc:
-        # Expected on headless servers without a live RERA session cookie;
-        # _handle_document will fall back to direct GET automatically.
-        logger.debug("Playwright download skipped; using direct GET", error=str(exc), url=print_preview_url)
-        return None
+    """Legacy stub — the original Selenium-driven download path is no longer
+    reachable in production (all callers pass ``browser_session=None``).  The
+    function is retained for signature compatibility with existing call sites."""
+    del browser_session, page_cache, doc, logger
+    return None
 
 
 def _handle_document(
@@ -1424,7 +1433,7 @@ def _handle_document(
     site_id: str,
     logger: CrawlerLogger,
     *,
-    browser_session: PlaywrightSession | None = None,
+    browser_session=None,
     page_cache: dict[str, Any] | None = None,
 ) -> dict | None:
     url = doc.get("url")
@@ -1641,7 +1650,7 @@ def _process_card(
     Performs the whole detail-page → normalize → upsert → document pipeline
     for one project card and returns a small counter-delta dict the main
     thread folds into the run counters.  All DB and httpx clients used in
-    here are safe to share across threads; Playwright is intentionally
+    here are safe to share across threads; Selenium is intentionally
     disabled in parallel mode (``_handle_document`` falls back to direct
     GETs, which is what production runs hit in practice anyway).
     """
@@ -1671,22 +1680,22 @@ def _process_card(
         detail_data.pop("_total_units", None)
 
         if not detail_data.get("project_name") and card.get("project_name"):
-            detail_data["project_name"] = card["project_name"]
+            detail_data["project_name"] = card["project_name"]  # FIELD: project_name <- listing card project_name (fallback)
 
         if not detail_data.get("project_registration_no"):
             logger.error("Detail page missing project_registration_no — skipping",
                          step="detail_fetch")
             deltas["error_count"] += 1
             return deltas
-        detail_data["key"] = key
-        detail_data["state"] = config["state"]
-        detail_data["project_state"] = config["state"]
-        detail_data["domain"] = DOMAIN
-        detail_data["config_id"] = config["config_id"]
-        detail_data["crawl_machine_ip"] = machine_ip
-        detail_data["machine_name"] = machine_name
-        detail_data["is_live"] = True
-        detail_data["data"] = merge_data_sections(
+        detail_data["key"] = key  # FIELD: key <- generate_project_key(cert_no)
+        detail_data["state"] = config["state"]  # FIELD: state <- config["state"]
+        detail_data["project_state"] = config["state"]  # FIELD: project_state <- config["state"]
+        detail_data["domain"] = DOMAIN  # FIELD: domain <- DOMAIN constant
+        detail_data["config_id"] = config["config_id"]  # FIELD: config_id <- config["config_id"]
+        detail_data["crawl_machine_ip"] = machine_ip  # FIELD: crawl_machine_ip <- machine_ip arg
+        detail_data["machine_name"] = machine_name  # FIELD: machine_name <- machine_name arg
+        detail_data["is_live"] = True  # FIELD: is_live <- literal True
+        detail_data["data"] = merge_data_sections(  # FIELD: data <- merge_data_sections(listing_card + existing data)
             {"listing_card": card, "detail_url": card["detail_url"]},
             detail_data.get("data"),
         )
@@ -1730,7 +1739,7 @@ def _process_card(
             if not selected_doc:
                 continue
             # browser_session=None — parallel workers cannot safely share a
-            # Playwright session, so we always use the httpx fallback path
+            # Selenium session, so we always use the httpx fallback path
             # in _handle_document (production runs hit this path anyway).
             uploaded_doc = _handle_document(
                 db_dict["key"], selected_doc, run_id, site_id, logger,
@@ -1744,13 +1753,13 @@ def _process_card(
             preview_docs, doc_links, uploaded_doc_results)
         if uploaded_documents:
             upsert_project({
-                "key": db_dict["key"],
-                "url": db_dict["url"],
-                "state": db_dict["state"],
-                "domain": db_dict["domain"],
-                "project_registration_no": db_dict["project_registration_no"],
-                "uploaded_documents": uploaded_documents,
-                "document_urls": build_document_urls(uploaded_documents),
+                "key": db_dict["key"],  # FIELD: key <- db_dict["key"]
+                "url": db_dict["url"],  # FIELD: url <- db_dict["url"]
+                "state": db_dict["state"],  # FIELD: state <- db_dict["state"]
+                "domain": db_dict["domain"],  # FIELD: domain <- db_dict["domain"]
+                "project_registration_no": db_dict["project_registration_no"],  # FIELD: project_registration_no <- db_dict["project_registration_no"]
+                "uploaded_documents": uploaded_documents,  # FIELD: uploaded_documents <- build_kerala_legacy_uploaded_documents()
+                "document_urls": build_document_urls(uploaded_documents),  # FIELD: document_urls <- build_document_urls(uploaded_documents)
             })
     except Exception as exc:
         logger.exception("Project processing failed", exc, step="project_loop")
@@ -1765,6 +1774,14 @@ def _process_card(
 # ── Main run() ────────────────────────────────────────────────────────────────
 
 def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
     site_id = config["id"]
     logger = CrawlerLogger(site_id, run_id)
     counts = {"projects_found": 0, "projects_new": 0, "projects_updated": 0,

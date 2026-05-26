@@ -1,6 +1,6 @@
 """
 Maharashtra RERA Crawler — maharera.maharashtra.gov.in/projects-search-result
-Type: static listing (httpx + BeautifulSoup) + SPA detail (Playwright HTML scraping)
+Type: static listing (httpx + BeautifulSoup) + SPA detail (Selenium HTML scraping)
 
 Strategy:
 - Bootstrap-card listing page, server-rendered HTML. Pagination via ?page=N.
@@ -23,11 +23,11 @@ Total Covered Area:- 2654.94 Sq Mtrs 	Carpet Area of Units (Range):- 164.44 Sq M
 - Total pages parsed from div.pagination ("of N" text).
 - Detail pages: the detail site (maharerait.maharashtra.gov.in) is an Angular SPA
   gated by a canvas CAPTCHA. Strategy:
-    1. Use Playwright to load the detail page, solve the CAPTCHA via
+    1. Use Selenium to load the detail page, solve the CAPTCHA via
        core.captcha_solver against the rendered canvas, and fall back to canvas
        text interception if OCR fails.
     2. Once CAPTCHA is accepted, scrape all rendered Angular tab HTML directly.
-    3. Each project gets its own Playwright session — no token management needed.
+    3. Each project gets its own Selenium session — no token management needed.
 - CRAWL_ITEM_LIMIT env variable caps total projects processed.
 - SCRAPE_DETAILS env variable (default True) enables detail fetching.
 - Checkpointing: saves last completed page_no so runs can resume.
@@ -40,15 +40,19 @@ import re
 import time as _time
 from typing import Optional
 
-import httpx
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.captcha_solver import captcha_to_text, solve_captcha_from_page, wait_for_captcha_canvas
 from core.config import settings
-from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
+from core.crawler_base import (
+    SeleniumSession,
+    SeleniumTimeout,
+    generate_project_key,
+    page_adapter,
+    random_delay,
+)
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -83,6 +87,46 @@ _MH_UPLOADED_DOC_PAYLOADS: list[dict] = [
     {"documentSectionNmae": "Project_Finance",   "documentTypeId": [26]},   # note: API typo
     {"documentTypeId": [28, 30, 51]},
 ]
+
+
+# ── SeleniumSession wiring ────────────────────────────────────────────────────
+
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        # Override viewport via Chrome arguments; the captcha canvas size
+        # depends on this so it stays at 800x800 as in the original code.
+        _SESSION = SeleniumSession(
+            ignore_certificate_errors=True,
+            window_size="800,800",
+        )
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+def safe_get(url, *, logger=None, timeout=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
+    return _session().get(url, logger=logger, page_load_timeout=plt)
+
+
+def download_response(url, *, logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().download(url, logger=logger)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -187,36 +231,36 @@ def _parse_cards(soup: BeautifulSoup) -> list[dict]:
             continue
 
         loc_raw: dict = {
-            "location": location,
-            "district": district,
-            "state":    state,
-            "pincode":  pincode,
+            "location": location,  # FIELD: project_location_raw.location <- _parse_location(hdr)
+            "district": district,  # FIELD: project_location_raw.district <- _cell_value(cells[4])
+            "state":    state,     # FIELD: project_location_raw.state <- _cell_value(cells[1])
+            "pincode":  pincode,   # FIELD: project_location_raw.pincode <- _cell_value(cells[2])
         }
         if lat is not None:
-            loc_raw["latitude"]  = lat
-            loc_raw["longitude"] = lng
+            loc_raw["latitude"]  = lat   # FIELD: project_location_raw.latitude <- _parse_coords(hdr)
+            loc_raw["longitude"] = lng   # FIELD: project_location_raw.longitude <- _parse_coords(hdr)
 
         # Extra metadata stored in data{} so it passes through the normalizer
         extra_data: dict = {}
         if cert_id:
-            extra_data["certificate_id"] = cert_id
+            extra_data["certificate_id"] = cert_id            # FIELD: data.certificate_id <- cert_btn["data-qstr"]
         if detail_url:
-            extra_data["view_details_url"] = detail_url
+            extra_data["view_details_url"] = detail_url       # FIELD: data.view_details_url <- detail_link["href"]
         if ext_cert and ext_cert not in ("N/A", ""):
-            extra_data["extension_certificate"] = ext_cert
+            extra_data["extension_certificate"] = ext_cert    # FIELD: data.extension_certificate <- _cell_value(cells[6])
 
         projects.append({
-            "project_registration_no": reg_no,
-            "project_name":            proj_name,
-            "promoter_name":           prom_name,
-            "project_location_raw":    loc_raw,
-            "last_modified":           last_mod,
-            "certificate_available":   has_cert,
+            "project_registration_no": reg_no,                  # FIELD: project_registration_no <- hdr p.p-0 (lstrip "#")
+            "project_name":            proj_name,               # FIELD: project_name <- hdr h4.title4 text
+            "promoter_name":           prom_name,               # FIELD: promoter_name <- hdr p.darkBlue text
+            "project_location_raw":    loc_raw,                 # FIELD: project_location_raw <- loc_raw dict
+            "last_modified":           last_mod,                # FIELD: last_modified <- _cell_value(cells[5])
+            "certificate_available":   has_cert,                # FIELD: certificate_available <- bool(cert_id)
             # Exposed at top level so run() can use cert_id for detail API calls
-            "certificate_id":          cert_id,
+            "certificate_id":          cert_id,                 # FIELD: certificate_id <- cert_btn["data-qstr"]
             # view_details_url doubles as the canonical project URL
-            "view_details_url":        detail_url,
-            "data":                    extra_data or None,
+            "view_details_url":        detail_url,              # FIELD: view_details_url <- detail_link["href"]
+            "data":                    extra_data or None,      # FIELD: data <- extra_data dict (or None)
         })
     return projects
 
@@ -245,21 +289,34 @@ _MH_UA = (
 )
 
 
-def _do_scrape_mh_detail(cert_id: str, logger: CrawlerLogger, browser) -> dict:
-    """Inner detail scrape using an already-launched Playwright browser.
-    Creates and closes a fresh context per call (CAPTCHA is session-specific).
+def _do_scrape_mh_detail(cert_id: str, logger: CrawlerLogger, browser=None) -> dict:
+    """Inner detail scrape using the shared SeleniumSession.
+
+    The original implementation created a fresh Selenium context per call
+    (CAPTCHA is session-specific). With Selenium we replicate that by clearing
+    cookies and storage between calls and re-injecting the captcha intercept
+    script via Chrome DevTools Protocol on every navigation.
     Returns {} on failure.
     """
+    del browser  # signature compatibility only — ``_session()`` owns the driver
     url = f"{DETAIL_BASE}/public/project/view/{cert_id}"
-    context = browser.new_context(
-        user_agent=_MH_UA,
-        # Set viewport before navigation so the canvas renders at this
-        # size from the start — matches old crawler's set_window_size(800,800)
-        # without triggering a mid-load redraw.
-        viewport={"width": 800, "height": 800},
-    )
-    context.add_init_script(_CAPTCHA_INTERCEPT_SCRIPT)
-    page = context.new_page()
+    sess = _session()
+    driver = sess.driver()
+    # Reset captcha-issuing session state so each project starts fresh.
+    try:
+        driver.delete_all_cookies()
+        driver.execute_script("try { localStorage.clear(); sessionStorage.clear(); } catch (e) {}")
+    except Exception:
+        pass
+    # Re-inject the captcha intercept script for the next document load.
+    try:
+        driver.execute_cdp_cmd(
+            "Page.addScriptToEvaluateOnNewDocument",
+            {"source": _CAPTCHA_INTERCEPT_SCRIPT},
+        )
+    except Exception:
+        pass
+    page = page_adapter(sess)
     try:
         page.goto(url, timeout=45_000)
 
@@ -389,31 +446,30 @@ def _do_scrape_mh_detail(cert_id: str, logger: CrawlerLogger, browser) -> dict:
 
         return _extract_mh_html_fields(page, cert_id, logger)
     finally:
-        context.close()
+        # Reset the captcha-issuing session state so the next project starts
+        # fresh — the SeleniumSession driver itself stays alive.
+        try:
+            driver.delete_all_cookies()
+        except Exception:
+            pass
 
 
 def _scrape_mh_detail_page(cert_id: str, logger: CrawlerLogger, *, shared_browser=None) -> dict:
     """
-    Open maharerait detail page via Playwright, solve CAPTCHA,
+    Open maharerait detail page via Selenium, solve CAPTCHA,
     then scrape the rendered Angular HTML tabs.
     Returns a flat dict of schema-mapped fields.
     Returns {} on failure.
 
-    When shared_browser is provided, reuses the existing browser instance,
-    avoiding the ~1 s per-project Playwright startup overhead.  Each call
-    still creates its own fresh context so the CAPTCHA canvas is clean.
+    The *shared_browser* parameter is retained for signature compatibility;
+    the SeleniumSession is shared at the module level via ``_session()`` and
+    re-used across all calls.
     """
+    del shared_browser
     try:
-        if shared_browser is not None:
-            return _do_scrape_mh_detail(cert_id, logger, shared_browser)
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
-            try:
-                return _do_scrape_mh_detail(cert_id, logger, browser)
-            finally:
-                browser.close()
+        return _do_scrape_mh_detail(cert_id, logger, None)
     except Exception as exc:
-        logger.error(f"Playwright detail scrape failed: {exc}", step="detail")
+        logger.error(f"Selenium detail scrape failed: {exc}", step="detail")
         return {}
 
 
@@ -506,15 +562,15 @@ def _parse_mh_overview_tab(soup: BeautifulSoup, out: dict) -> None:
         if not val:
             continue
         if "registration number" in key or "registration no" in key:
-            out.setdefault("project_registration_no", val)
+            out.setdefault("project_registration_no", val)   # FIELD: project_registration_no <- label.bg-blue.f-w-700 "registration number"
         elif "date of registration" in key or "registration date" in key:
-            out.setdefault("approved_on_date", val)
+            out.setdefault("approved_on_date", val)          # FIELD: approved_on_date <- label.bg-blue.f-w-700 "date of registration"
 
     # Project status from the status badge span
     for span in soup.select("span"):
         txt = span.get_text(strip=True)
         if txt.lower() in _MH_STATUS_VALUES:
-            out.setdefault("status_of_the_project", txt)
+            out.setdefault("status_of_the_project", txt)  # FIELD: status_of_the_project <- span text in _MH_STATUS_VALUES
             break
 
     # Project name fallback: read from the card/page heading (h2, h3, h4) near
@@ -525,7 +581,7 @@ def _parse_mh_overview_tab(soup: BeautifulSoup, out: dict) -> None:
             for el in soup.select(tag):
                 txt = el.get_text(strip=True)
                 if txt and len(txt) > 3 and txt.lower() not in _SKIP_HEADINGS:
-                    out["project_name"] = txt
+                    out["project_name"] = txt   # FIELD: project_name <- h2/h3/h4 heading fallback
                     break
             if out.get("project_name"):
                 break
@@ -556,20 +612,20 @@ def _parse_mh_promoter_tab(soup: BeautifulSoup, out: dict) -> None:
                 value = val_el.get_text(strip=True)
                 if "longitude" in label and value:
                     try:
-                        loc["longitude"] = float(value)
+                        loc["longitude"] = float(value)   # FIELD: project_location_raw.longitude <- form label "longitude"
                     except (ValueError, TypeError):
                         pass
                 elif "latitude" in label and value:
                     try:
-                        loc["latitude"] = float(value)
+                        loc["latitude"] = float(value)    # FIELD: project_location_raw.latitude <- form label "latitude"
                     except (ValueError, TypeError):
                         pass
         if loc:
-            out["project_location_raw"] = loc
+            out["project_location_raw"] = loc                       # FIELD: project_location_raw <- _PROJ_ADDR_MAP + lat/lng
         if pairs.get("district"):
-            out.setdefault("project_city", pairs["district"])
+            out.setdefault("project_city", pairs["district"])       # FIELD: project_city <- proj addr "district"
         if pairs.get("pin code"):
-            out.setdefault("project_pin_code", pairs["pin code"])
+            out.setdefault("project_pin_code", pairs["pin code"])   # FIELD: project_pin_code <- proj addr "pin code"
 
     # ── Promoter Details ─────────────────────────────────────────────────────
     promo_container = _find_section_container(soup, "Promoter Details")
@@ -578,12 +634,12 @@ def _parse_mh_promoter_tab(soup: BeautifulSoup, out: dict) -> None:
         # "Name of Limited Liability Partnership" / "Name of Company" etc.
         for key, val in pairs.items():
             if key.startswith("name of") and val:
-                out.setdefault("promoter_name", val)
-                promoters: dict = {"name": val}
+                out.setdefault("promoter_name", val)                # FIELD: promoter_name <- promo "name of ..." pair
+                promoters: dict = {"name": val}                     # FIELD: promoters_details.name <- promo "name of ..." pair
                 type_of_firm = pairs.get("promoter type", "")
                 if type_of_firm:
-                    promoters["type_of_firm"] = type_of_firm
-                out["promoters_details"] = promoters
+                    promoters["type_of_firm"] = type_of_firm        # FIELD: promoters_details.type_of_firm <- promo "promoter type"
+                out["promoters_details"] = promoters                # FIELD: promoters_details <- promoters dict
                 break
 
     # ── Promoter Official Communication Address ───────────────────────────────
@@ -607,22 +663,22 @@ def _parse_mh_promoter_tab(soup: BeautifulSoup, out: dict) -> None:
             if lbl in pairs:
                 addr[field] = pairs[lbl]
         if addr:
-            out["promoter_address_raw"] = addr
+            out["promoter_address_raw"] = addr                       # FIELD: promoter_address_raw <- _PROMO_ADDR_MAP pairs
         # data extras: state_promo, district_promo, pin_code_promo
         data_extras: dict = {}
         if pairs.get("state/ut"):
-            data_extras["state_promo"] = pairs["state/ut"]
+            data_extras["state_promo"] = pairs["state/ut"]           # FIELD: data.state_promo <- promo addr "state/ut"
         if pairs.get("district"):
-            data_extras["district_promo"] = pairs["district"]
+            data_extras["district_promo"] = pairs["district"]        # FIELD: data.district_promo <- promo addr "district"
         if pairs.get("pin code"):
             try:
-                data_extras["pin_code_promo"] = int(pairs["pin code"])
+                data_extras["pin_code_promo"] = int(pairs["pin code"])   # FIELD: data.pin_code_promo <- promo addr "pin code" (int)
             except (ValueError, TypeError):
-                data_extras["pin_code_promo"] = pairs["pin code"]
+                data_extras["pin_code_promo"] = pairs["pin code"]        # FIELD: data.pin_code_promo <- promo addr "pin code" (str)
         if data_extras:
             existing_data = dict(out.get("data") or {})
             existing_data.update({k: v for k, v in data_extras.items() if k not in existing_data})
-            out["data"] = existing_data
+            out["data"] = existing_data                              # FIELD: data <- merged with promo addr extras
 
     # ── Promoter contact details (phone / email anywhere on page) ─────────────
     contact: dict = {}
@@ -634,11 +690,11 @@ def _parse_mh_promoter_tab(soup: BeautifulSoup, out: dict) -> None:
         lbl_text = lbl_el.get_text(strip=True).lower()
         value = val_el.get_text(strip=True)
         if ("phone" in lbl_text or "mobile" in lbl_text) and value and value != "-":
-            contact["phone"] = value
+            contact["phone"] = value     # FIELD: promoter_contact_details.phone <- form label "phone"/"mobile"
         elif "email" in lbl_text and value and value != "-":
-            contact["email"] = value
+            contact["email"] = value     # FIELD: promoter_contact_details.email <- form label "email"
     if contact:
-        out.setdefault("promoter_contact_details", contact)
+        out.setdefault("promoter_contact_details", contact)   # FIELD: promoter_contact_details <- contact dict
 
 
 def _parse_mh_building_tab(soup: BeautifulSoup, out: dict) -> None:
@@ -669,19 +725,19 @@ def _parse_mh_building_tab(soup: BeautifulSoup, out: dict) -> None:
             if label in _LAND_LABELS and value:
                 try:
                     area = float(value.replace(",", ""))
-                    out.setdefault("land_area", area)
-                    out.setdefault("land_area_details", {"land_area": area, "land_area_unit": "sq mt"})
+                    out.setdefault("land_area", area)               # FIELD: land_area <- form label in _LAND_LABELS
+                    out.setdefault("land_area_details", {"land_area": area, "land_area_unit": "sq mt"})  # FIELD: land_area_details <- _LAND_LABELS value + "sq mt"
                     existing_data = dict(out.get("data") or {})
                     existing_data.setdefault("land_area_unit", "sq mt")
-                    out["data"] = existing_data
+                    out["data"] = existing_data                     # FIELD: data <- merged with land_area_unit
                 except (ValueError, TypeError):
                     pass
             elif label in _COST_LABELS and value and "project_cost_detail" not in out:
                 try:
                     cost = float(value.replace(",", ""))
-                    out["project_cost_detail"] = {"estimated_construction_cost": cost}
+                    out["project_cost_detail"] = {"estimated_construction_cost": cost}    # FIELD: project_cost_detail <- form label in _COST_LABELS (float)
                 except (ValueError, TypeError):
-                    out["project_cost_detail"] = {"estimated_construction_cost": value}
+                    out["project_cost_detail"] = {"estimated_construction_cost": value}   # FIELD: project_cost_detail <- form label in _COST_LABELS (str)
 
     # Building unit details from wing/unit summary table
     for table in soup.select("table"):
@@ -709,7 +765,7 @@ def _parse_mh_building_tab(soup: BeautifulSoup, out: dict) -> None:
                 if entry and "flat_type" in entry:
                     units.append(entry)
             if units and not out.get("building_details"):
-                out["building_details"] = units
+                out["building_details"] = units   # FIELD: building_details <- wing/unit summary table rows
         break
 
 
@@ -729,15 +785,15 @@ def _parse_mh_bank_details(soup: BeautifulSoup, out: dict) -> None:
         if not value or value == "-":
             continue
         if "bank name" in label:
-            bank["bank_name"] = value
+            bank["bank_name"] = value             # FIELD: bank_details.bank_name <- "bank name" label
         elif "ifsc" in label:
-            bank["IFSC"] = value
+            bank["IFSC"] = value                  # FIELD: bank_details.IFSC <- "ifsc" label
         elif "bank address" in label or "address" in label:
-            bank.setdefault("address", value)
+            bank.setdefault("address", value)     # FIELD: bank_details.address <- "bank address"/"address" label
         elif "branch" in label:
-            bank["branch"] = value
+            bank["branch"] = value                # FIELD: bank_details.branch <- "branch" label
     if bank:
-        out["bank_details"] = bank
+        out["bank_details"] = bank                # FIELD: bank_details <- bank dict
 
 
 def _parse_mh_partner_tables(soup: BeautifulSoup, out: dict) -> None:
@@ -770,9 +826,9 @@ def _parse_mh_partner_tables(soup: BeautifulSoup, out: dict) -> None:
                 heading_el = table.find_previous(["h5", "b", "h4", "h3"])
                 heading_txt = heading_el.get_text(strip=True).lower() if heading_el else ""
                 if "authorised signatory" in heading_txt or "signatory" in heading_txt:
-                    out.setdefault("authorised_signatory_details", partners)
+                    out.setdefault("authorised_signatory_details", partners)  # FIELD: authorised_signatory_details <- table rows under "signatory" heading
                 else:
-                    out.setdefault("co_promoter_details", partners)
+                    out.setdefault("co_promoter_details", partners)           # FIELD: co_promoter_details <- table rows with name/designation
 
         # Project Professionals: [#, Professional Name, Certificate No., Professional Type]
         elif any("professional name" in h for h in headers):
@@ -791,7 +847,7 @@ def _parse_mh_partner_tables(soup: BeautifulSoup, out: dict) -> None:
                     entry["role"] = cells[type_idx]
                 profs.append(entry)
             if profs:
-                out.setdefault("professional_information", profs)
+                out.setdefault("professional_information", profs)   # FIELD: professional_information <- "professional name" table rows
 
 
 # ── Maharashtra document API helpers ─────────────────────────────────────────
@@ -828,45 +884,47 @@ def _fetch_mh_api_docs(cert_id: str, auth_token: str, logger: CrawlerLogger) -> 
     seen_refs: set[str] = set()
 
     try:
-        with httpx.Client(timeout=20) as client:
-            # getMigratedDocuments — legacy docs with human-readable names + DMS refs
+        sess = _session()
+        # getMigratedDocuments — legacy docs with human-readable names + DMS refs
+        try:
+            r = sess.fetch(
+                f"{_MH_DOC_API_BASE}/getMigratedDocuments",
+                method="POST", json_body={"projectId": cert_id}, headers=headers,
+            )
+            data = r.json() if r else {}
+            for item in (data.get("responseObject") or []):
+                dms_ref  = item.get("userDocumentDMSRefNo", "")
+                filename = item.get("documentFileName", "")
+                doc_name = item.get("documentName") or filename or "Document"
+                if dms_ref and dms_ref not in seen_refs:
+                    seen_refs.add(dms_ref)
+                    docs.append({"type": doc_name, "filename": filename, "dms_ref": dms_ref})
+        except Exception as exc:
+            logger.warning(f"getMigratedDocuments: {exc}", step="documents")
+
+        # getUploadedDocuments — per section/type combinationstype
+        for payload_extra in _MH_UPLOADED_DOC_PAYLOADS:
             try:
-                r = client.post(
-                    f"{_MH_DOC_API_BASE}/getMigratedDocuments",
-                    json={"projectId": cert_id},
+                r = sess.fetch(
+                    f"{_MH_DOC_API_BASE}/getUploadedDocuments",
+                    method="POST",
+                    json_body={"projectId": cert_id, **payload_extra},
                     headers=headers,
                 )
-                for item in (r.json().get("responseObject") or []):
-                    dms_ref  = item.get("userDocumentDMSRefNo", "")
+                data = r.json() if r else {}
+                for item in (data.get("responseObject") or []):
+                    dms_ref  = item.get("documentDmsRefNo", "")
                     filename = item.get("documentFileName", "")
-                    doc_name = item.get("documentName") or filename or "Document"
+                    doc_name = item.get("documentDescription") or filename or "Document"
                     if dms_ref and dms_ref not in seen_refs:
                         seen_refs.add(dms_ref)
-                        docs.append({"type": doc_name, "filename": filename, "dms_ref": dms_ref})
+                        docs.append({
+                            "type": doc_name,
+                            "filename": filename,
+                            "dms_ref": dms_ref,
+                        })
             except Exception as exc:
-                logger.warning(f"getMigratedDocuments: {exc}", step="documents")
-
-            # getUploadedDocuments — per section/type combinationstype
-            for payload_extra in _MH_UPLOADED_DOC_PAYLOADS:
-                try:
-                    r = client.post(
-                        f"{_MH_DOC_API_BASE}/getUploadedDocuments",
-                        json={"projectId": cert_id, **payload_extra},
-                        headers=headers,
-                    )
-                    for item in (r.json().get("responseObject") or []):
-                        dms_ref  = item.get("documentDmsRefNo", "")
-                        filename = item.get("documentFileName", "")
-                        doc_name = item.get("documentDescription") or filename or "Document"
-                        if dms_ref and dms_ref not in seen_refs:
-                            seen_refs.add(dms_ref)
-                            docs.append({
-                                "type": doc_name,
-                                "filename": filename,
-                                "dms_ref": dms_ref,
-                            })
-                except Exception as exc:
-                    logger.warning(f"getUploadedDocuments: {exc}", step="documents")
+                logger.warning(f"getUploadedDocuments: {exc}", step="documents")
     except Exception as exc:
         logger.warning(f"Document API fetch failed: {exc}", step="documents")
 
@@ -1021,11 +1079,11 @@ def _parse_mh_documents_tab(soup: BeautifulSoup, out: dict) -> None:
                 docs.append(entry)
 
     if docs:
-        out["uploaded_documents"] = docs
+        out["uploaded_documents"] = docs                              # FIELD: uploaded_documents <- doc hrefs or document tables
         # Only build document_urls when actual hrefs are available
         link_docs = [d for d in docs if d.get("link")]
         if link_docs:
-            out["document_urls"] = build_document_urls(link_docs)
+            out["document_urls"] = build_document_urls(link_docs)     # FIELD: document_urls <- build_document_urls(link_docs)
 
 
 def _extract_mh_html_fields(page, cert_id: str, logger: CrawlerLogger) -> dict:
@@ -1087,7 +1145,7 @@ def _extract_mh_html_fields(page, cert_id: str, logger: CrawlerLogger) -> dict:
         loc = out.get("project_location_raw") or {}
         state_val = loc.get("state") if isinstance(loc, dict) else None
         if state_val:
-            out["project_state"] = state_val
+            out["project_state"] = state_val   # FIELD: project_state <- project_location_raw.state
 
     # ── Document fetching: API-first, HTML fallback ───────────────────────────
     # After CAPTCHA is solved, the Angular app has a session token in sessionStorage.
@@ -1095,7 +1153,7 @@ def _extract_mh_html_fields(page, cert_id: str, logger: CrawlerLogger) -> dict:
     auth_token = _get_mh_auth_token(page)
     api_docs = _fetch_mh_api_docs(cert_id, auth_token, logger) if auth_token else []
     if api_docs:
-        out["uploaded_documents"] = api_docs
+        out["uploaded_documents"] = api_docs   # FIELD: uploaded_documents <- _fetch_mh_api_docs()
         logger.info(f"Using API docs: {len(api_docs)} found", step="documents")
     else:
         # Fallback: scrape doc type + filename from rendered HTML tables
@@ -1104,11 +1162,11 @@ def _extract_mh_html_fields(page, cert_id: str, logger: CrawlerLogger) -> dict:
 
     # Stash auth token in data so run() can download documents after upsert
     existing_data = dict(out.get("data") or {})
-    existing_data["project_id"] = str(cert_id)
-    out["data"] = existing_data
+    existing_data["project_id"] = str(cert_id)   # FIELD: data.project_id <- cert_id arg
+    out["data"] = existing_data                  # FIELD: data <- merged with project_id
     # Embed token under a temporary key (stripped in run() before normalization)
     if auth_token:
-        out["_auth_token"] = auth_token
+        out["_auth_token"] = auth_token          # FIELD: _auth_token <- sessionStorage tokens.accessToken (temp)
 
     return {k: v for k, v in out.items() if v is not None}
 
@@ -1119,7 +1177,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     """
     Data-quality sentinel for Maharashtra RERA.
     Loads state_projects_sample/maharashtra.json as the baseline, re-scrapes
-    the sentinel project's detail page via Playwright, and verifies ≥ 80% field coverage.
+    the sentinel project's detail page via Selenium, and verifies ≥ 80% field coverage.
     """
     import json as _json
     import os as _os
@@ -1161,10 +1219,10 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
         fresh = _scrape_mh_detail_page(cert_id, logger) or {}
     except Exception as exc:
         exc_str = str(exc)
-        # Playwright / network timeout → transient; skip rather than abort crawl
+        # Selenium / network timeout → transient; skip rather than abort crawl
         if "timeout" in exc_str.lower() or "net::" in exc_str.lower():
             logger.warning(
-                f"Sentinel: Playwright timeout (likely transient) — {exc}; "
+                f"Sentinel: Selenium timeout (likely transient) — {exc}; "
                 "skipping coverage check this run",
                 step="sentinel",
             )
@@ -1192,6 +1250,14 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 # ── Main entry point ──────────────────────────────────────────────────────────
 
 def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
     logger = CrawlerLogger(config["id"], run_id)
     counters = dict(projects_found=0, projects_new=0, projects_updated=0,
                     projects_skipped=0, documents_uploaded=0, error_count=0)
@@ -1243,12 +1309,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     processing_done = False
 
     # ── Page loop ────────────────────────────────────────────────────────────
-    # Open a single Playwright browser for the entire run and share it across
-    # all detail-page scrapes.  Each project still gets its own fresh context
-    # (required for a clean CAPTCHA canvas), but we avoid the ~1 s per-project
-    # Playwright subprocess startup cost.
-    _pw_instance = sync_playwright().start()
-    _shared_browser = _pw_instance.chromium.launch(headless=True)
+    # The detail scraper now shares the module-level SeleniumSession; each
+    # call clears cookies and storage so the CAPTCHA canvas starts clean.
+    _shared_browser = None
     for page_no in range(start_page, end_page):
 
         url = _url_for_page(page_no)
@@ -1303,7 +1366,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
             logger.set_project(key=key, reg_no=reg_no, url=project_url, page=page_no)
             try:
-                # ── Detail page enrichment via Playwright HTML scrape ────────
+                # ── Detail page enrichment via Selenium HTML scrape ────────
                 detail_fields: dict = {}
                 if scrape_detail and cert_id:
                     detail_fields = _scrape_mh_detail_page(cert_id, logger, shared_browser=_shared_browser)
@@ -1328,20 +1391,21 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     payload: dict = {
                         **raw,
                         **detail_fields,
-                        "domain": DOMAIN,
-                        "url":    project_url,
-                        "state":  config.get("state", "Maharashtra"),
-                        "is_live": True,
+                        "domain": DOMAIN,                                  # FIELD: domain <- module-level DOMAIN constant
+                        "url":    project_url,                             # FIELD: url <- detail_url or listing url
+                        "state":  config.get("state", "Maharashtra"),      # FIELD: state <- config["state"] (default "Maharashtra")
+                        "is_live": True,                                   # FIELD: is_live <- literal True
                     }
                     # Merge data JSONB sections (listing data + detail API raw data)
                     if "data" in detail_fields and "data" in raw:
+                        # FIELD: data <- merge_data_sections(listing raw["data"], detail_fields["data"])
                         payload["data"] = merge_data_sections(raw.get("data", {}), detail_fields.get("data", {}))
 
                     # Derive project_city from listing district when the API doesn't provide it
                     if not payload.get("project_city"):
                         loc = payload.get("project_location_raw") or {}
                         if isinstance(loc, dict) and loc.get("district"):
-                            payload["project_city"] = loc["district"]
+                            payload["project_city"] = loc["district"]   # FIELD: project_city <- project_location_raw.district fallback
 
                     normalized = normalize_project_payload(payload, config, machine_name=machine_name, machine_ip=machine_ip)
                     record  = ProjectRecord(**normalized)
@@ -1396,12 +1460,14 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         uploaded_documents.extend(skipped_docs)
                         if uploaded_documents:
                             upsert_project({
-                                "key": key,
-                                "url": db_dict["url"],
-                                "state": db_dict["state"],
-                                "domain": db_dict["domain"],
+                                "key": key,                                                       # FIELD: key <- generate_project_key(reg_no)
+                                "url": db_dict["url"],                                            # FIELD: url <- db_dict["url"]
+                                "state": db_dict["state"],                                        # FIELD: state <- db_dict["state"]
+                                "domain": db_dict["domain"],                                      # FIELD: domain <- db_dict["domain"]
+                                # FIELD: project_registration_no <- db_dict["project_registration_no"]
                                 "project_registration_no": db_dict["project_registration_no"],
-                                "uploaded_documents": uploaded_documents,
+                                "uploaded_documents": uploaded_documents,                         # FIELD: uploaded_documents <- _handle_mh_document results + skipped
+                                # FIELD: document_urls <- build_document_urls(uploaded_documents)
                                 "document_urls": build_document_urls(uploaded_documents),
                             })
 
@@ -1420,9 +1486,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
         if processing_done:
             break
         random_delay(*delay_range)
-
-    _shared_browser.close()
-    _pw_instance.stop()
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Maharashtra RERA complete: {counters}", step="done")

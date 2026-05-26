@@ -1,14 +1,14 @@
 """
 Bihar RERA Crawler — rera.bihar.gov.in/RegisteredPP.aspx
-Type: httpx listing + Playwright detail (popup capture)
+Type: httpx listing + Selenium detail (popup capture)
 
 Strategy:
 - The listing page is a server-side ASP.NET GridView paginated via ASP.NET postbacks.
-- Listing pagination is driven with Playwright because direct httpx page-turn POSTs
+- Listing pagination is driven with Selenium because direct httpx page-turn POSTs
   intermittently fail with server-side ViewState / cluster mismatches.
 - Each project name is a link that triggers __doPostBack('...', 'PrintIndicator$N'),
   which opens a popup window at Filanprint.aspx?id=RERAP...
-- Playwright clicks each listing row and captures the popup URL via
+- Selenium clicks each listing row and captures the popup URL via
   context.expect_page().
 - The Filanprint detail page is a plain GET request, parsed with httpx + BeautifulSoup.
 - Fields from listing: project_name, project_registration_no, promoter_name,
@@ -25,12 +25,17 @@ import re
 import time
 
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright
 from pydantic import ValidationError
 
 from core.checkpoint import reset_checkpoint
 from core.config import settings
-from core.crawler_base import download_response, generate_project_key, random_delay, safe_get, safe_post
+from core.crawler_base import (
+    SeleniumSession,
+    SeleniumTimeout,
+    generate_project_key,
+    page_adapter,
+    random_delay,
+)
 from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error
 from core.details_pool import get_detail_workers, process_details
 from core.document_policy import select_document_for_download
@@ -54,7 +59,48 @@ _GRID_ID     = "ContentPlaceHolder1_GV_Building"
 _GRID_TARGET = "ctl00$ContentPlaceHolder1$GV_Building"
 
 
-# ── Playwright: collect Filanprint popup URLs ──────────────────────────────────
+# ── SeleniumSession wiring ────────────────────────────────────────────────────
+
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+def safe_get(url, *, logger=None, timeout=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
+    return _session().get(url, logger=logger, page_load_timeout=plt)
+
+
+def safe_post(url, *, data=None, headers=None, logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().post(url, data=data, headers=headers, logger=logger)
+
+
+def download_response(url, *, method="GET", data=None, headers=None,
+                      logger=None, **_ignored):
+    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    return _session().download(url, method=method, data=data, headers=headers, logger=logger)
+
+
+# ── Selenium-driven listing walker (was Selenium) ────────────────────────────
 
 def _collect_listing_pages(
     logger: CrawlerLogger,
@@ -63,7 +109,7 @@ def _collect_listing_pages(
     capture_detail_urls: bool = True,
 ) -> list[dict]:
     """
-    Use Playwright to traverse listing pages and capture aligned detail popup URLs.
+    Use Selenium to traverse listing pages and capture aligned detail popup URLs.
 
     Strategy:
     - Maintain a single persistent listing page and navigate it forward page by page.
@@ -80,7 +126,7 @@ def _collect_listing_pages(
     where detail_urls is positionally aligned with rows.
 
     max_items: when set, stop after collecting this many URLs (for CRAWL_ITEM_LIMIT).
-        Bihar's listing requires Playwright pagination with per-row popup
+        Bihar's listing requires Selenium pagination with per-row popup
         clicks to surface detail URLs, so a full count-only walk would take
         many minutes; honouring the cap short-circuits the walk and
         projects_found reflects only the rows actually collected.
@@ -90,19 +136,17 @@ def _collect_listing_pages(
     items_seen = 0
 
     try:
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
-            ctx = browser.new_context()
-            listing_page = ctx.new_page()
-            listing_page.goto(LISTING_URL, wait_until="domcontentloaded", timeout=30_000)
-            current_listing_pg = 1
+        listing_page = page_adapter(_session())
+        ctx = listing_page.context
+        listing_page.goto(LISTING_URL, wait_until="domcontentloaded", timeout=30_000)
+        current_listing_pg = 1
 
-            while True:
+        while True:
                 soup = BeautifulSoup(listing_page.content(), "lxml")
                 rows = _parse_page_rows(soup)
                 if not rows:
                     logger.info(
-                        f"Playwright: listing page {current_listing_pg} has no parsed rows — stopping",
+                        f"Selenium: listing page {current_listing_pg} has no parsed rows — stopping",
                         step="detail_collect",
                     )
                     break
@@ -128,7 +172,7 @@ def _collect_listing_pages(
                 project_indices = project_indices[:len(rows_for_detail)]
                 if rows_for_detail and not project_indices:
                     logger.info(
-                        f"Playwright: listing page {current_listing_pg} has no project links — stopping",
+                        f"Selenium: listing page {current_listing_pg} has no project links — stopping",
                         step="detail_collect",
                     )
                     break
@@ -136,13 +180,13 @@ def _collect_listing_pages(
                 detail_urls: list[str | None]
                 if capture_detail_urls and rows_for_detail:
                     logger.info(
-                        f"Playwright: listing page {current_listing_pg},"
+                        f"Selenium: listing page {current_listing_pg},"
                         f" collecting {len(project_indices)} detail URLs for {len(rows)} rows",
                         step="detail_collect",
                     )
                     if len(project_indices) != len(rows):
                         logger.warning(
-                            f"Playwright: row/link mismatch on page {current_listing_pg}:"
+                            f"Selenium: row/link mismatch on page {current_listing_pg}:"
                             f" rows={len(rows)} links={len(project_indices)}",
                             step="detail_collect",
                         )
@@ -187,7 +231,7 @@ def _collect_listing_pages(
                         detail_urls.extend([None] * (len(rows) - len(detail_urls)))
                 else:
                     logger.info(
-                        f"Playwright: listing page {current_listing_pg}, parsed {len(rows)} rows",
+                        f"Selenium: listing page {current_listing_pg}, parsed {len(rows)} rows",
                         step="detail_collect",
                     )
                     detail_urls = [None] * len(rows)
@@ -231,20 +275,19 @@ def _collect_listing_pages(
                         current_listing_pg = next_pg
                     else:
                         logger.info(
-                            f"Playwright: no link to page {next_pg} — all pages collected",
+                            f"Selenium: no link to page {next_pg} — all pages collected",
                             step="detail_collect",
                         )
                         break
 
-            listing_page.close()
-            browser.close()
+        listing_page.close()
     except Exception as e:
-        logger.error(f"Playwright detail-url collection failed: {e}", step="detail_collect")
+        logger.error(f"Selenium detail-url collection failed: {e}", step="detail_collect")
     return pages
 
 
 def _collect_detail_urls(logger: CrawlerLogger, max_items: int | None = None) -> list[str | None]:
-    """Backward-compatible wrapper that flattens Playwright listing page payloads."""
+    """Backward-compatible wrapper that flattens Selenium listing page payloads."""
     pages = _collect_listing_pages(logger, max_items=max_items)
     return [url for payload in pages for url in payload["detail_urls"]]
 
@@ -696,11 +739,11 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     )
     fresh = dict(listing_row)
 
-    # ── Step 2: Discover Filanprint detail URL via Playwright ─────────────────
+    # ── Step 2: Discover Filanprint detail URL via Selenium ─────────────────
     # The sentinel project is always on page 1 of the listing (data_rows).
     # Find its row index first so we only collect that many popup URLs instead
     # of crawling all pages (which would take minutes / hours).
-    logger.info(f"Sentinel: discovering Filanprint URL via Playwright", step="sentinel")
+    logger.info(f"Sentinel: discovering Filanprint URL via Selenium", step="sentinel")
     detail_url: str = ""
     try:
         sentinel_row_idx = next(
@@ -719,7 +762,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
                 logger.warning("Sentinel: exact project not found, using first available Filanprint URL",
                                step="sentinel")
     except Exception as exc:
-        logger.warning(f"Sentinel: Playwright discovery failed — {exc}", step="sentinel")
+        logger.warning(f"Sentinel: Selenium discovery failed — {exc}", step="sentinel")
 
     if detail_url and "Filanprint.aspx" in detail_url:
         logger.info(f"Sentinel: fetching Filanprint detail for {sentinel_reg}",
@@ -1050,6 +1093,14 @@ def _process_bihar_candidate(
 # ── Main entry point ──────────────────────────────────────────────────────────
 
 def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
     logger = CrawlerLogger(config["id"], run_id)
     counters = dict(projects_found=0, projects_new=0, projects_updated=0,
                     projects_skipped=0, documents_uploaded=0, error_count=0)
@@ -1071,7 +1122,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     max_pages    = settings.MAX_PAGES
     delay_range  = config.get("rate_limit_delay", (2, 4))
 
-    # ── Step 1: Collect paginated listing rows + popup URLs via Playwright ──
+    # ── Step 1: Collect paginated listing rows + popup URLs via Selenium ──
     # daily_light only needs project_registration_no for the DB dedup check,
     # never the detail URL — skip the per-project popup clicks entirely.
     capture_detail_urls = mode != "daily_light"
@@ -1080,7 +1131,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     listing_max_items = item_limit or None
     t0 = time.monotonic()
     logger.info(
-        f"Collecting paginated listing data via Playwright"
+        f"Collecting paginated listing data via Selenium"
         f" (item_limit={item_limit or 'unlimited'}, max_pages={max_pages or 'unlimited'},"
         f" capture_detail={capture_detail_urls})",
         step="detail_collect",
@@ -1148,7 +1199,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     # Bihar's Filanprint document server is fragile under load — capping at 3
     # workers keeps per-document GET latency under the 60 s timeout that would
     # otherwise erase the parallel-fetch speedup.
-    n_workers = min(get_detail_workers(), 3)
+    # SeleniumSession driver is not thread-safe — force serial processing.
+    n_workers = 1
     logger.info(
         f"Phase B: parallel detail fetch ({len(candidates)} candidates, "
         f"{n_workers} workers)",

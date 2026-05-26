@@ -132,7 +132,7 @@ def _listing_patches_kerala(module, sample_url: str, reg_no: str, sample: dict) 
 
 
 def _listing_patches_rajasthan(module, sample_url: str, reg_no: str, sample: dict) -> list:
-    """Patch the Playwright listing scraper to return just the sample project row,
+    """Patch the Selenium listing scraper to return just the sample project row,
     and bypass the Angular search navigation by going directly to the sample URL."""
     row = {
         "reg_no":         reg_no,
@@ -151,13 +151,13 @@ def _listing_patches_rajasthan(module, sample_url: str, reg_no: str, sample: dic
         return sample_url
 
     return [
-        patch.object(module, "_scrape_project_list_playwright", return_value=[row]),
+        patch.object(module, "_scrape_project_list", return_value=[row]),
         patch.object(module, "_navigate_to_project_detail", side_effect=_fake_navigate),
     ]
 
 
 def _listing_patches_odisha(module, sample_url: str, reg_no: str, sample: dict) -> list:
-    """Return only the sample card from the Playwright listing, then navigate
+    """Return only the sample card from the Selenium listing, then navigate
     directly to the sample URL instead of clicking in the browser."""
     def _fake_open_detail(page, reg, logger):
         page.goto(sample_url, wait_until="networkidle", timeout=40000)

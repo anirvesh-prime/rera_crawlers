@@ -1,6 +1,6 @@
 """
 Pondicherry RERA Crawler — prera.py.gov.in
-Type: static (httpx with SSL verification disabled — legacy government SSL)
+Type: selenium (headless Chrome with SSL verification disabled — legacy government SSL)
 
 Strategy:
 - GET /reraAppOffice/viewDefaulterProjects (~1.3 MB page, 363 project cards)
@@ -24,7 +24,7 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
+from core.crawler_base import SeleniumSession, generate_project_key, random_delay
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -66,28 +66,57 @@ def _normalize_puducherry_doc_label(raw_label: str) -> str:
     return raw_label
 
 
+# ── Selenium session (shared driver via core.crawler_base.SeleniumSession) ────
+
+# The listing page is ~1.3 MB served by a slow government server.  Page load
+# can take well over a minute, so keep the listing page-load timeout generous
+# and pair it with extra retries + longer back-off (matches the spirit of the
+# previous httpx.Timeout(read=180s) + retries=5 configuration).
+_LISTING_PAGE_LOAD_TIMEOUT = 240.0
+_DEFAULT_PAGE_LOAD_TIMEOUT = 120.0
+
+# Set by run() for the lifetime of one crawl and torn down in the finally block.
+_SESSION: SeleniumSession | None = None
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, creating one if necessary."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(
+            ignore_certificate_errors=True,
+            page_load_timeout=_DEFAULT_PAGE_LOAD_TIMEOUT,
+        )
+    return _SESSION
+
+
+def _selenium_download(url: str, *, logger: CrawlerLogger | None = None, **kw):
+    """Document download helper — primes the legacy server origin for cookies/TLS."""
+    return _session().download(url, origin_url=APP_BASE + "/", logger=logger, **kw)
+
+
 def _get(url: str, logger: CrawlerLogger):
-    """Thin wrapper around safe_get with SSL verification disabled (legacy govt cert)."""
-    return safe_get(url, verify=False, logger=logger, timeout=60.0)
-
-
-# The listing page is ~1.3 MB served by a slow government server.  It regularly
-# needs more than 60 s to start streaming the response body, which causes the
-# default read timeout to fire and safe_get to give up after 3 attempts.
-# A dedicated timeout (connect is kept short; read is generous) + more retries
-# with longer back-off dramatically reduces the "Failed to load listing page" rate.
-import httpx as _httpx  # noqa: E402  (kept local to avoid polluting the module top)
-
-_LISTING_TIMEOUT = _httpx.Timeout(connect=30.0, read=180.0, write=30.0, pool=30.0)
+    """Thin wrapper around the SeleniumSession — used for detail pages."""
+    return _session().get(url, logger=logger, page_load_timeout=_DEFAULT_PAGE_LOAD_TIMEOUT)
 
 
 def _get_listing(logger: CrawlerLogger):
-    """Fetch the Pondicherry listing page with an extended read timeout and more retries."""
-    return safe_get(
+    """Fetch the Pondicherry listing page with an extended page-load timeout and more retries."""
+    return _session().get(
         LISTING_URL,
-        verify=False,
         logger=logger,
-        timeout=_LISTING_TIMEOUT,
+        page_load_timeout=_LISTING_PAGE_LOAD_TIMEOUT,
         retries=5,
         delay=10.0,
     )
@@ -228,7 +257,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
         # Remove "Last UpdatedOn ..." suffix (any capitalisation)
         clean_name = re.split(r"Last\s*Updated\s*On", raw_h1, flags=re.I)[0].strip()
         if clean_name:
-            out["project_name"] = clean_name
+            out["project_name"] = clean_name  # FIELD: project_name <- detail page 2nd <h1> (timestamp stripped)
 
     # Key-value rows: label in text-right <p>, value in the following sibling <p>
     for row in soup.find_all("div", class_="row"):
@@ -265,16 +294,17 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
                 # preserves the full HH:MM:SS precision.
                 out[schema_field] = value
             if label_lower in ("project cost", "estimated project cost", "total project cost") and value:
-                out["project_cost_detail"] = {"total_project_cost": value}
+                out["project_cost_detail"] = {"total_project_cost": value}  # FIELD: project_cost_detail.total_project_cost <- detail label "project cost"
             if label_lower in ("land area", "plot area", "total land area") and value:
-                out["land_area"] = value
+                out["land_area"] = value  # FIELD: land_area <- detail label "land area"
 
     # Always populate land_area_details so the field is present even when values are null
     out["land_area_details"] = {k: v for k, v in {
+        # FIELD: land_area_details.land_area <- str(out["land_area"]) when present
         "land_area":              str(out["land_area"]) if out.get("land_area") else None,
-        "land_area_unit":         "Sq Mtr" if out.get("land_area") else None,
-        "construction_area":      None,
-        "construction_area_unit": "Sq Mtr",
+        "land_area_unit":         "Sq Mtr" if out.get("land_area") else None,  # FIELD: land_area_details.land_area_unit <- literal "Sq Mtr"
+        "construction_area":      None,  # FIELD: land_area_details.construction_area <- not available on detail page
+        "construction_area_unit": "Sq Mtr",  # FIELD: land_area_details.construction_area_unit <- literal "Sq Mtr"
     }.items() if v is not None}
 
     # Build a fuller raw_address: "<detail address>, <district>, Puducherry"
@@ -288,7 +318,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
             addr_parts.append(STATE_DISPLAY_NAME)
             location_raw["raw_address"] = ", ".join(addr_parts)
         location_raw["state"] = STATE_DISPLAY_NAME
-        out["project_location_raw"] = location_raw
+        out["project_location_raw"] = location_raw  # FIELD: project_location_raw <- accumulated location labels + state
 
     # Promoter contact details and professional information from page tables.
     # Table 0: applicant (Name / E-mail / Mobile)
@@ -303,7 +333,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
             if cells:
                 rows_data.append(dict(zip(hdrs, cells)))
         if rows_data:
-            out["promoter_contact_details"] = rows_data
+            out["promoter_contact_details"] = rows_data  # FIELD: promoter_contact_details <- detail table 0 (applicant rows)
             raw["applicant_table"] = rows_data
 
     # Professional information: Architects (table 3) + Engineers (table 4)
@@ -335,7 +365,7 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
             if len(entry) > 1:  # role + at least one other field
                 professionals.append(entry)
     if professionals:
-        out["professional_information"] = professionals
+        out["professional_information"] = professionals  # FIELD: professional_information <- detail tables 3+4 (architects/engineers)
 
     # Document links: href may be absolute ("/reraAppOffice/getdocument?...")
     # or relative ("reraAppOffice/getdocument?...") — always anchor to BASE_URL.
@@ -358,16 +388,16 @@ def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
     # Build promoters_details from the promoter name already extracted via the
     # label map so the sentinel coverage check finds the field.
     if out.get("promoter_name") and "promoters_details" not in out:
-        out["promoters_details"] = {"name": out["promoter_name"]}
+        out["promoters_details"] = {"name": out["promoter_name"]}  # FIELD: promoters_details.name <- out["promoter_name"]
 
     # Expose doc links as uploaded_documents so the sentinel coverage check
     # (which looks for this key, not _doc_links) sees the field as populated.
     if doc_links:
-        out["uploaded_documents"] = [
+        out["uploaded_documents"] = [  # FIELD: uploaded_documents <- detail page <a href="getdocument"> links
             {"type": d.get("label", "document"), "link": d["url"]} for d in doc_links
         ]
 
-    out["data"] = raw
+    out["data"] = raw  # FIELD: data <- raw detail label/value pairs (JSONB)
     return out
 
 
@@ -379,7 +409,7 @@ def _handle_document(project_key: str, doc: dict, run_id: int,
     label = doc["label"]
     fname = build_document_filename(doc)
     try:
-        resp = download_response(url, logger=logger, timeout=60.0, verify=False)
+        resp = _selenium_download(url, logger=logger)
         if not resp or len(resp.content) < 100:
             return None
         md5    = compute_md5(resp.content)
@@ -482,6 +512,14 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 # ── Main run() ────────────────────────────────────────────────────────────────
 
 def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
     logger   = CrawlerLogger(config["id"], run_id)
     site_id  = config["id"]
     counts   = dict(projects_found=0, projects_new=0, projects_updated=0,
@@ -567,22 +605,22 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                 continue
 
             data: dict = {
-                "key":                     key,
-                "state":                   config["state"],
+                "key":                     key,  # FIELD: key <- generate_project_key(reg_no)
+                "state":                   config["state"],  # FIELD: state <- config["state"]
                 # project_state is NOT pre-populated: Puducherry doesn't expose
                 # a separate project_state field on its pages, so it should remain
                 # null rather than being defaulted to the config state key.
-                "project_registration_no": reg_no,
-                "project_name":            card["project_name"] or None,
-                "promoter_name":           card["promoter_name"] or None,
-                "project_type":            card["project_type"] or None,
-                "status_of_the_project":   card["listing_status"] or None,
-                "domain":                  DOMAIN,
-                "config_id":               config["config_id"],
-                "url":                     card["detail_url"] or LISTING_URL,
-                "is_live":                 True,
-                "machine_name":            machine_name,
-                "crawl_machine_ip":        machine_ip,
+                "project_registration_no": reg_no,  # FIELD: project_registration_no <- listing card "Reg No."
+                "project_name":            card["project_name"] or None,  # FIELD: project_name <- listing card <h1>
+                "promoter_name":           card["promoter_name"] or None,  # FIELD: promoter_name <- listing card table td[0]
+                "project_type":            card["project_type"] or None,  # FIELD: project_type <- listing card table td[2]
+                "status_of_the_project":   card["listing_status"] or None,  # FIELD: status_of_the_project <- listing card table td[3]
+                "domain":                  DOMAIN,  # FIELD: domain <- module DOMAIN constant
+                "config_id":               config["config_id"],  # FIELD: config_id <- config["config_id"]
+                "url":                     card["detail_url"] or LISTING_URL,  # FIELD: url <- listing card detail href or LISTING_URL
+                "is_live":                 True,  # FIELD: is_live <- literal True
+                "machine_name":            machine_name,  # FIELD: machine_name <- get_machine_context()
+                "crawl_machine_ip":        machine_ip,  # FIELD: crawl_machine_ip <- get_machine_context()
             }
             # Fields populated from the listing card that must not be overwritten
             # by the detail page (the listing is the canonical source for these).
@@ -592,8 +630,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             # Promoters details from listing card (promoter type is always available)
             if card.get("promoter_type") or card.get("promoter_name"):
                 data["promoters_details"] = {k: v for k, v in {
-                    "type_of_firm": card.get("promoter_type"),
-                    "name":         card.get("promoter_name"),
+                    "type_of_firm": card.get("promoter_type"),  # FIELD: promoters_details.type_of_firm <- listing card promoter_type
+                    "name":         card.get("promoter_name"),  # FIELD: promoters_details.name <- listing card promoter_name
                 }.items() if v}
 
 
@@ -613,7 +651,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         data[k] = v
                 # Build data JSONB with schema-allowed keys
                 _raw_addr = (data.get("project_location_raw") or {}).get("raw_address") if isinstance(data.get("project_location_raw"), dict) else None
-                data["data"] = merge_data_sections(
+                data["data"] = merge_data_sections(  # FIELD: data <- merge(listing_card, detail data, extras) JSONB
                     {"listing_card": card},
                     data.get("data"),
                     {
@@ -624,6 +662,7 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     },
                 )
             else:
+                # FIELD: data <- listing_card fallback (no detail page) JSONB
                 data["data"] = {"listing_card": card, "govt_type": "state", "is_processed": False}
 
             logger.info("Normalizing and validating", step="normalize")
@@ -663,11 +702,11 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label") or doc.get("type", "document")})
             if uploaded_documents:
                 upsert_project({
-                    "key": db_dict["key"], "url": db_dict["url"],
-                    "state": db_dict["state"], "domain": db_dict["domain"],
-                    "project_registration_no": db_dict["project_registration_no"],
-                    "uploaded_documents": uploaded_documents,
-                    "document_urls": build_document_urls(uploaded_documents),
+                    "key": db_dict["key"], "url": db_dict["url"],  # FIELD: key, url <- db_dict (re-upsert with documents)
+                    "state": db_dict["state"], "domain": db_dict["domain"],  # FIELD: state, domain <- db_dict
+                    "project_registration_no": db_dict["project_registration_no"],  # FIELD: project_registration_no <- db_dict
+                    "uploaded_documents": uploaded_documents,  # FIELD: uploaded_documents <- processed doc results
+                    "document_urls": build_document_urls(uploaded_documents),  # FIELD: document_urls <- build_document_urls(uploaded_documents)
                 })
 
             done_regs.add(reg_no)

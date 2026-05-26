@@ -1,6 +1,6 @@
 """
 Goa RERA Crawler — rera.goa.gov.in
-Type: playwright (captcha on listing) + static httpx for detail pages
+Type: selenium (captcha on listing) + selenium-backed fetch for detail pages
 
 Strategy:
 - POST /reraApp/search with solved captcha to get registered project listing
@@ -23,7 +23,7 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
+from core.crawler_base import SeleniumSession, generate_project_key, page_adapter, random_delay
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -51,8 +51,37 @@ _CAPTCHA_MAX_TRIES    = 10  # solver attempts per captcha round (inner loop)
 _MAX_SERVER_REJECTS   = 20  # max server-side rejections before giving up entirely
 
 
+# ── Selenium session (shared driver via core.crawler_base.SeleniumSession) ────
+
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
 def _get(url: str, logger: CrawlerLogger, **kw):
-    return safe_get(url, verify=False, logger=logger, timeout=60.0, **kw)
+    # Drop httpx-only kwargs that SeleniumSession.get accepts-and-ignores anyway,
+    # but pass through retries / delay / page_load_timeout if a caller sets them.
+    kw.pop("verify", None)
+    kw.pop("timeout", None)
+    kw.pop("client", None)
+    return _session().get(url, logger=logger, **kw)
 
 
 # ── Date parsing ───────────────────────────────────────────────────────────────
@@ -386,166 +415,157 @@ def _parse_listing_cards(soup: BeautifulSoup) -> list[dict]:
     return cards
 
 
-# ── Captcha + listing via Playwright ──────────────────────────────────────────
+# ── Captcha + listing via Selenium ────────────────────────────────────────────
 
 def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> list[dict]:
     """
-    Use Playwright to solve the captcha and submit the Goa RERA search form.
+    Use Selenium to solve the captcha and submit the Goa RERA search form.
     Returns a list of project card dicts.
     On captcha failure returns an empty list (caller handles fallback).
     """
     from core.captcha_solver import captcha_to_text
-    try:
-        from playwright.sync_api import sync_playwright
-    except ImportError:
-        logger.error("Playwright not installed")
-        return []
 
     all_cards: list[dict] = []
     start_from = 0
     _server_rejections = 0  # count server-side captcha rejections to avoid infinite loop
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        ctx = browser.new_context()
-        page = ctx.new_page()
+    page = page_adapter(_session())
 
-        while True:
-            # ── Captcha retry loop ────────────────────────────────────────────
-            solved = None
-            for captcha_attempt in range(1, _CAPTCHA_MAX_TRIES + 1):
-                try:
-                    page.goto(HOME_URL, timeout=45000)
-                    page.wait_for_load_state("networkidle", timeout=30000)
-                except Exception as e:
-                    logger.error(f"Failed to load home page: {e}")
-                    break
-
-                # Capture captcha image and resize to 90×28 for the solver.
-                # Strategy:
-                #   1. element.screenshot() — captures the rendered element pixels
-                #      directly via Playwright; completely bypasses CORS/canvas-taint
-                #      issues that made the old JS canvas approach return blank PNGs.
-                #   2. Feed the screenshot bytes back as a data: URL and draw it on a
-                #      90×28 canvas (data: URLs are never cross-origin, so no taint).
-                #   3. The resulting PNG stays within the solver's ~1750-byte limit.
-                _CAPTCHA_SELECTORS = [
-                    'img[src*="captcha"]',
-                    'img[src*="Captcha"]',
-                    'img[src*="CAPTCHA"]',
-                    'img[id*="captcha" i]',
-                    'img[name*="captcha" i]',
-                    'img[alt*="captcha" i]',
-                ]
-                captcha_data = None
-                for _sel in _CAPTCHA_SELECTORS:
-                    try:
-                        captcha_el = page.wait_for_selector(_sel, state="visible", timeout=8000)
-                    except Exception:
-                        captcha_el = page.query_selector(_sel)
-                    if not captcha_el:
-                        continue
-                    try:
-                        png_bytes = captcha_el.screenshot()
-                    except Exception as _e:
-                        logger.warning(f"element.screenshot() failed for {_sel!r}: {_e}")
-                        continue
-                    if not png_bytes:
-                        continue
-                    full_data_url = "data:image/png;base64," + base64.b64encode(png_bytes).decode()
-                    # Re-encode at natural dimensions (200×45) via an in-browser canvas.
-                    # - data: URLs are never cross-origin → no canvas taint
-                    # - Canvas always outputs RGBA PNG which the solver server requires
-                    # - We preserve the captcha's native resolution (no downscale) so the
-                    #   model receives maximum detail
-                    captcha_data = page.evaluate("""(dataUrl) => {
-                        return new Promise((resolve) => {
-                            const img = new Image();
-                            img.onload = () => {
-                                const w = img.naturalWidth  || 200;
-                                const h = img.naturalHeight || 45;
-                                const c = document.createElement('canvas');
-                                c.width = w; c.height = h;
-                                c.getContext('2d').drawImage(img, 0, 0, w, h);
-                                const url = c.toDataURL('image/png');
-                                resolve((url && url !== 'data:,') ? url : null);
-                            };
-                            img.onerror = () => resolve(null);
-                            img.src = dataUrl;
-                        });
-                    }""", full_data_url)
-                    if captcha_data:
-                        break
-                if not captcha_data or len(captcha_data) < 100:
-                    logger.warning(f"Captcha element screenshot failed (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES})")
-                    continue
-
-                try:
-                    candidate = captcha_to_text(captcha_data, default_captcha_source="model_captcha")
-                except Exception as e:
-                    logger.warning(f"Captcha solver exception (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES}): {e}")
-                    continue
-
-                if candidate and len(candidate) >= 4:
-                    solved = candidate
-                    logger.info(f"Captcha solved on attempt {captcha_attempt}: {solved!r}")
-                    break
-                logger.warning(f"Captcha bad result {candidate!r} (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES})")
-
-            if not solved:
-                logger.error(f"Captcha solve failed after {_CAPTCHA_MAX_TRIES} attempts — stopping")
-                break
-
-            # Set startFrom for pagination and submit form
+    while True:
+        # ── Captcha retry loop ────────────────────────────────────────────
+        solved = None
+        for captcha_attempt in range(1, _CAPTCHA_MAX_TRIES + 1):
             try:
-                page.evaluate(f"document.querySelector('[name=startFrom]').value = '{start_from}';")
-                page.fill('[name=captcha]', solved)
-                page.evaluate("document.querySelector('[name=btn1]') && document.getElementById('searchForm') ? document.getElementById('searchForm').submit() : document.searchForm.submit()")
+                page.goto(HOME_URL, timeout=45000)
                 page.wait_for_load_state("networkidle", timeout=30000)
-                page.wait_for_timeout(1500)  # allow any secondary navigation to settle
             except Exception as e:
-                logger.error(f"Form submission failed: {e}")
+                logger.error(f"Failed to load home page: {e}")
                 break
 
-            # page.content() can fail if the page is mid-navigation; retry briefly
-            html_content = None
-            for _retry in range(3):
+            # Capture captcha image and resize to 90×28 for the solver.
+            # Strategy:
+            #   1. element.screenshot() — captures the rendered element pixels
+            #      directly via Selenium; completely bypasses CORS/canvas-taint
+            #      issues that made the old JS canvas approach return blank PNGs.
+            #   2. Feed the screenshot bytes back as a data: URL and draw it on a
+            #      90×28 canvas (data: URLs are never cross-origin, so no taint).
+            #   3. The resulting PNG stays within the solver's ~1750-byte limit.
+            _CAPTCHA_SELECTORS = [
+                'img[src*="captcha"]',
+                'img[src*="Captcha"]',
+                'img[src*="CAPTCHA"]',
+                'img[id*="captcha" i]',
+                'img[name*="captcha" i]',
+                'img[alt*="captcha" i]',
+            ]
+            captcha_data = None
+            for _sel in _CAPTCHA_SELECTORS:
                 try:
-                    html_content = page.content()
-                    break
+                    captcha_el = page.wait_for_selector(_sel, state="visible", timeout=8000)
                 except Exception:
-                    page.wait_for_timeout(1000)
-            if not html_content:
-                logger.warning(f"Could not get page content at startFrom={start_from}; skipping page")
-                break
-            soup = BeautifulSoup(html_content, "lxml")
-            # Detect captcha rejection: server redirects back to home page (has captcha form again)
-            if soup.find("input", {"name": "captcha"}) and not soup.find("div", class_=lambda c: c and "no_pad_lft" in c):
-                _server_rejections += 1
-                logger.warning(f"Captcha rejected by server (rejection #{_server_rejections}/{_MAX_SERVER_REJECTS}) — retrying")
-                if _server_rejections >= _MAX_SERVER_REJECTS:
-                    logger.error("Too many captcha rejections — stopping")
+                    captcha_el = page.query_selector(_sel)
+                if not captcha_el:
+                    continue
+                try:
+                    png_bytes = captcha_el.screenshot()
+                except Exception as _e:
+                    logger.warning(f"element.screenshot() failed for {_sel!r}: {_e}")
+                    continue
+                if not png_bytes:
+                    continue
+                full_data_url = "data:image/png;base64," + base64.b64encode(png_bytes).decode()
+                # Re-encode at natural dimensions (200×45) via an in-browser canvas.
+                # - data: URLs are never cross-origin → no canvas taint
+                # - Canvas always outputs RGBA PNG which the solver server requires
+                # - We preserve the captcha's native resolution (no downscale) so the
+                #   model receives maximum detail
+                captcha_data = page.evaluate("""(dataUrl) => {
+                    return new Promise((resolve) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const w = img.naturalWidth  || 200;
+                            const h = img.naturalHeight || 45;
+                            const c = document.createElement('canvas');
+                            c.width = w; c.height = h;
+                            c.getContext('2d').drawImage(img, 0, 0, w, h);
+                            const url = c.toDataURL('image/png');
+                            resolve((url && url !== 'data:,') ? url : null);
+                        };
+                        img.onerror = () => resolve(null);
+                        img.src = dataUrl;
+                    });
+                }""", full_data_url)
+                if captcha_data:
                     break
-                continue  # restart outer while True loop to re-attempt captcha
-            cards = _parse_listing_cards(soup)
-            if not cards:
-                logger.info(f"No cards at startFrom={start_from} — listing complete")
-                break
-            all_cards.extend(cards)
-            logger.info(f"Fetched {len(cards)} cards at startFrom={start_from}")
+            if not captcha_data or len(captcha_data) < 100:
+                logger.warning(f"Captcha element screenshot failed (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES})")
+                continue
 
-            # Check for more pages
-            next_links = soup.find_all("a", string=re.compile(r"Next|>>", re.I))
-            if not next_links:
-                break
-            start_from += PAGE_SIZE
+            try:
+                candidate = captcha_to_text(captcha_data, default_captcha_source="model_captcha")
+            except Exception as e:
+                logger.warning(f"Captcha solver exception (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES}): {e}")
+                continue
 
-            max_pages = settings.MAX_PAGES
-            if max_pages and (start_from // PAGE_SIZE) >= max_pages:
-                logger.info(f"Reached MAX_PAGES={max_pages}")
+            if candidate and len(candidate) >= 4:
+                solved = candidate
+                logger.info(f"Captcha solved on attempt {captcha_attempt}: {solved!r}")
                 break
+            logger.warning(f"Captcha bad result {candidate!r} (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES})")
 
-        browser.close()
+        if not solved:
+            logger.error(f"Captcha solve failed after {_CAPTCHA_MAX_TRIES} attempts — stopping")
+            break
+
+        # Set startFrom for pagination and submit form
+        try:
+            page.evaluate(f"document.querySelector('[name=startFrom]').value = '{start_from}';")
+            page.fill('[name=captcha]', solved)
+            page.evaluate("document.querySelector('[name=btn1]') && document.getElementById('searchForm') ? document.getElementById('searchForm').submit() : document.searchForm.submit()")
+            page.wait_for_load_state("networkidle", timeout=30000)
+            page.wait_for_timeout(1500)  # allow any secondary navigation to settle
+        except Exception as e:
+            logger.error(f"Form submission failed: {e}")
+            break
+
+        # page.content() can fail if the page is mid-navigation; retry briefly
+        html_content = None
+        for _retry in range(3):
+            try:
+                html_content = page.content()
+                break
+            except Exception:
+                page.wait_for_timeout(1000)
+        if not html_content:
+            logger.warning(f"Could not get page content at startFrom={start_from}; skipping page")
+            break
+        soup = BeautifulSoup(html_content, "lxml")
+        # Detect captcha rejection: server redirects back to home page (has captcha form again)
+        if soup.find("input", {"name": "captcha"}) and not soup.find("div", class_=lambda c: c and "no_pad_lft" in c):
+            _server_rejections += 1
+            logger.warning(f"Captcha rejected by server (rejection #{_server_rejections}/{_MAX_SERVER_REJECTS}) — retrying")
+            if _server_rejections >= _MAX_SERVER_REJECTS:
+                logger.error("Too many captcha rejections — stopping")
+                break
+            continue  # restart outer while True loop to re-attempt captcha
+        cards = _parse_listing_cards(soup)
+        if not cards:
+            logger.info(f"No cards at startFrom={start_from} — listing complete")
+            break
+        all_cards.extend(cards)
+        logger.info(f"Fetched {len(cards)} cards at startFrom={start_from}")
+
+        # Check for more pages
+        next_links = soup.find_all("a", string=re.compile(r"Next|>>", re.I))
+        if not next_links:
+            break
+        start_from += PAGE_SIZE
+
+        max_pages = settings.MAX_PAGES
+        if max_pages and (start_from // PAGE_SIZE) >= max_pages:
+            logger.info(f"Reached MAX_PAGES={max_pages}")
+            break
+
     return all_cards
 
 
@@ -562,7 +582,7 @@ def _handle_document(project_key: str, doc: dict, run_id: int,
         return reused
     fname = build_document_filename(doc)
     try:
-        resp = download_response(url, logger=logger, timeout=60.0, verify=False)
+        resp = _session().download(url, logger=logger)
         if not resp or len(resp.content) < 100:
             return None
         md5    = compute_md5(resp.content)
@@ -643,6 +663,14 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 
 
 def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
     logger  = CrawlerLogger(config["id"], run_id)
     site_id = config["id"]
     counts  = dict(projects_found=0, projects_new=0, projects_updated=0,

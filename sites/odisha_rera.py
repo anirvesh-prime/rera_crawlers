@@ -1,6 +1,6 @@
 """
 Odisha RERA Crawler — rera.odisha.gov.in/projects/project-list
-Type: Playwright (Angular SPA)
+Type: Selenium (Angular SPA)
 
 Strategy:
 - Listing page: 10 cards/page, ~112 pages. Each card: project name, promoter,
@@ -21,11 +21,17 @@ import time
 from urllib.parse import urlparse, parse_qs
 
 from bs4 import BeautifulSoup
-from playwright.sync_api import sync_playwright, Page, TimeoutError as PWTimeout
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import download_response, generate_project_key, random_delay, safe_get
+from core.crawler_base import (
+    SeleniumPageAdapter as Page,
+    SeleniumTimeout as PWTimeout,
+    SeleniumSession,
+    generate_project_key,
+    page_adapter,
+    random_delay,
+)
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -49,7 +55,31 @@ DMS_BASE_URL    = "https://reraapps.odisha.gov.in/dms"
 DMS_DECRYPT_URL = DMS_BASE_URL + "/fileDecryptHandlerForPdfPublic"
 
 
-# ── Playwright helpers ────────────────────────────────────────────────────────
+# ── SeleniumSession wiring ────────────────────────────────────────────────────
+
+_SESSION: SeleniumSession | None = None
+
+
+def _session() -> SeleniumSession:
+    """Return the active SeleniumSession, lazy-initialising on first use."""
+    global _SESSION
+    if _SESSION is None:
+        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+    return _SESSION
+
+
+def _quit_driver() -> None:
+    """Tear down the module's SeleniumSession driver (if any)."""
+    global _SESSION
+    if _SESSION is not None:
+        try:
+            _SESSION.quit()
+        except Exception:
+            pass
+        _SESSION = None
+
+
+# ── Selenium-driven page helpers (was Selenium) ────────────────────────────
 
 def _dismiss_modal(page: Page) -> None:
     for selector in (".swal2-confirm", ".swal2-cancel", ".swal2-close"):
@@ -222,11 +252,11 @@ def _resolve_dms_viewer_url(page: Page, viewer_url: str, logger: CrawlerLogger) 
 
     The DMS viewer page uses JavaScript to POST to the decrypt endpoint (with the
     token from the URL) and receive a temporary ``filePath``.  We replicate that
-    POST using Playwright's request API so that the browser session cookies are
+    POST using Selenium's request API so that the browser session cookies are
     included automatically, making the call succeed.
 
     Args:
-        page: Active Playwright page (must be in the same browser context that
+        page: Active Selenium page (must be in the same browser context that
               loaded the RERA project detail page).
         viewer_url: Full DMS viewer URL, e.g.
             ``https://reraapps.odisha.gov.in/dms/public/library/pdfjsnewds/web/
@@ -524,7 +554,7 @@ def _parse_overview(soup: BeautifulSoup) -> dict:
     # ── Building details — try unit table first, fall back to meta-dict ──────
     unit_rows = _parse_unit_table(soup)
     if unit_rows:
-        out["building_details"] = unit_rows
+        out["building_details"] = unit_rows  # FIELD: building_details <- _parse_unit_table(soup)
     else:
         building_fields = ["Building Type", "Planning Authority", "Authority Details"]
         bld = {k: labels[k] for k in building_fields if k in labels}
@@ -535,14 +565,14 @@ def _parse_overview(soup: BeautifulSoup) -> dict:
     num_units_raw = labels.get("Number of Units") or labels.get("No. of Units")
     if num_units_raw:
         try:
-            out["number_of_residential_units"] = int(re.sub(r"[^\d]", "", num_units_raw))
+            out["number_of_residential_units"] = int(re.sub(r"[^\d]", "", num_units_raw))  # FIELD: number_of_residential_units <- labels "Number of Units"/"No. of Units"
         except (ValueError, TypeError):
             pass
 
     # Project location
     loc_val = labels.get("Project Location") or labels.get("Location")
     if loc_val:
-        out["project_location_raw"] = {"raw_address": loc_val}
+        out["project_location_raw"] = {"raw_address": loc_val}  # FIELD: project_location_raw <- {raw_address: labels "Project Location"/"Location"}
 
     # ── Land details — parse Plot fieldsets (label→strong / label→a) ──────────
     # The Odisha RERA site renders land parcels as <fieldset> blocks with
@@ -588,7 +618,7 @@ def _parse_overview(soup: BeautifulSoup) -> dict:
         if row:
             land_rows.append(row)
     if land_rows:
-        out["land_detail"] = land_rows
+        out["land_detail"] = land_rows  # FIELD: land_detail <- "Plot N" fieldsets (plot_no, mouza, khata, area, docs)
 
     # ── Proposed timeline ─────────────────────────────────────────────────────
     commencement = (labels.get("Proposed Date of Commencement")
@@ -598,15 +628,15 @@ def _parse_overview(soup: BeautifulSoup) -> dict:
                     or labels.get("Date of Completion")
                     or labels.get("Completion Date"))
     if commencement or completion:
-        out["proposed_timeline"] = {k: v for k, v in {
-            "commencement_date": commencement,
-            "completion_date":   completion,
+        out["proposed_timeline"] = {k: v for k, v in {  # FIELD: proposed_timeline <- {commencement_date, completion_date} from labels
+            "commencement_date": commencement,  # FIELD: proposed_timeline.commencement_date <- labels "Proposed Date of Commencement"
+            "completion_date":   completion,  # FIELD: proposed_timeline.completion_date <- labels "Proposed Date of Completion"
         }.items() if v}
 
     # ── Financial / project cost ───────────────────────────────────────────
     financial_raw = {k: v for k, v in labels.items() if k in _FINANCIAL_KEYS and v and v != "--"}
     if financial_raw:
-        out["project_cost_detail"] = {_FINANCIAL_LABEL_MAP[k]: v for k, v in financial_raw.items()}
+        out["project_cost_detail"] = {_FINANCIAL_LABEL_MAP[k]: v for k, v in financial_raw.items()}  # FIELD: project_cost_detail <- financial labels via _FINANCIAL_LABEL_MAP
         raw["financial_details"] = financial_raw
 
     # ── Provided facilities / amenities ───────────────────────────────────
@@ -636,19 +666,19 @@ def _parse_overview(soup: BeautifulSoup) -> dict:
             if in_facility_section:
                 facilities.append({"name": name})
     if facilities:
-        out["provided_faciltiy"] = facilities
+        out["provided_faciltiy"] = facilities  # FIELD: provided_faciltiy <- <strong> names inside facilities/amenities section
 
     bank_accounts = _parse_bank_accounts(soup)
     if bank_accounts:
-        out["bank_details"] = bank_accounts
+        out["bank_details"] = bank_accounts  # FIELD: bank_details <- _parse_bank_accounts(soup)
         raw["bank_accounts"] = bank_accounts
 
     professionals = _parse_professionals(soup)
     if professionals:
         raw["professionals"] = professionals
-        out["professional_information"] = professionals
+        out["professional_information"] = professionals  # FIELD: professional_information <- _parse_professionals(soup)
 
-    out["data"] = raw
+    out["data"] = raw  # FIELD: data <- raw {labels, building_meta, financial_details, bank_accounts, professionals}
     out["_doc_links"] = _extract_doc_links(soup)
     return out
 
@@ -679,7 +709,7 @@ def _parse_promoter_tab(soup: BeautifulSoup) -> dict:
                     _reg_nos.append(_v)
     reg_no = " ".join(_reg_nos) if _reg_nos else None
     if company:
-        out["promoter_name"] = company
+        out["promoter_name"] = company  # FIELD: promoter_name <- labels "Company Name"
     promoters: dict = {}
     for k, v in {"name": company, "gst_no": gst_no, "type_of_firm": entity,
                  "registration_no": reg_no}.items():
@@ -694,7 +724,7 @@ def _parse_promoter_tab(soup: BeautifulSoup) -> dict:
                 promoters["registration_certificate"] = a_tag["href"]
                 break
     if promoters:
-        out["promoters_details"] = promoters
+        out["promoters_details"] = promoters  # FIELD: promoters_details <- {name, gst_no, type_of_firm, registration_no, registration_certificate}
 
     # ── Contact ───────────────────────────────────────────────────────────────
     email  = labels.get("Email Id") or labels.get("Email")
@@ -705,7 +735,7 @@ def _parse_promoter_tab(soup: BeautifulSoup) -> dict:
     if tel_no:
         contact["telephone_no"] = tel_no
     if contact:
-        out["promoter_contact_details"] = contact
+        out["promoter_contact_details"] = contact  # FIELD: promoter_contact_details <- labels Email Id/Mobile/Telephone
 
     # ── Address ───────────────────────────────────────────────────────────────
     # For company promoters: "Registered Office Address" / "Correspondence Office Address"
@@ -720,10 +750,10 @@ def _parse_promoter_tab(soup: BeautifulSoup) -> dict:
     # Always include correspondence_address even if it matches registered_address —
     # both fields are expected in the output schema.
     if reg_addr or corr_addr:
-        out["promoter_address_raw"] = {
+        out["promoter_address_raw"] = {  # FIELD: promoter_address_raw <- {registered_address, correspondence_address} from labels
             k: v for k, v in {
-                "registered_address":      reg_addr,
-                "correspondence_address":  corr_addr,
+                "registered_address":      reg_addr,  # FIELD: promoter_address_raw.registered_address <- labels "Registered Office Address"/etc
+                "correspondence_address":  corr_addr,  # FIELD: promoter_address_raw.correspondence_address <- labels "Correspondence/Permanent Address"
             }.items() if v
         }
 
@@ -762,7 +792,7 @@ def _parse_promoter_tab(soup: BeautifulSoup) -> dict:
     # Keep only genuine person entries (have a role or a reraapps photo)
     board = [e for e in board if e.get("role") or e.get("photo")]
     if board:
-        out["co_promoter_details"] = board
+        out["co_promoter_details"] = board  # FIELD: co_promoter_details <- board cards (h5 name + role + strongs email/phone + photo)
 
     out["_raw"] = labels
     return out
@@ -771,7 +801,7 @@ def _parse_promoter_tab(soup: BeautifulSoup) -> dict:
 # ── Listing page parser ───────────────────────────────────────────────────────
 
 def _parse_page_cards(page: Page) -> list[dict]:
-    """Extract all project cards from the current Playwright page state."""
+    """Extract all project cards from the current Selenium page state."""
     soup = BeautifulSoup(page.content(), "lxml")
     projects: list[dict] = []
 
@@ -829,17 +859,17 @@ def _parse_page_cards(page: Page) -> list[dict]:
                 status = tok
 
         projects.append({
-            "project_registration_no":     reg_no,
-            "project_name":                project_name or None,
-            "promoter_name":               promoter or None,
-            "listing_city":                city or None,
-            "project_type":                proj_type or None,
-            "estimated_commencement_date": start_date or None,
-            "estimated_finish_date":       end_date or None,
-            "listing_unit_count":          units or None,
-            "listing_availability_status": status or None,
-            "phone":                       phone or None,
-            "cert_url":                    cert_url,
+            "project_registration_no":     reg_no,  # FIELD: project_registration_no <- card span.fw-bold.me-2 text
+            "project_name":                project_name or None,  # FIELD: project_name <- card token preceding "by <promoter>"
+            "promoter_name":               promoter or None,  # FIELD: promoter_name <- card token after "by "
+            "listing_city":                city or None,  # FIELD: listing_city <- card token after "address"
+            "project_type":                proj_type or None,  # FIELD: project_type <- card token after "project type"
+            "estimated_commencement_date": start_date or None,  # FIELD: estimated_commencement_date <- card token after "started from"
+            "estimated_finish_date":       end_date or None,  # FIELD: estimated_finish_date <- card token after "possession by"
+            "listing_unit_count":          units or None,  # FIELD: listing_unit_count <- card token "<N> units" regex
+            "listing_availability_status": status or None,  # FIELD: listing_availability_status <- card token "available/sold/fully sold"
+            "phone":                       phone or None,  # FIELD: phone <- card tel: anchor href
+            "cert_url":                    cert_url,  # FIELD: cert_url <- card icon-pdf anchor href (RERA reg cert)
         })
     return projects
 
@@ -854,8 +884,8 @@ def _open_detail_page(page: Page, reg: str, logger: CrawlerLogger) -> bool:
     """
     _dismiss_modal(page)
 
-    # Strategy 1: use Playwright locator — it auto-scrolls the element into view
-    # before clicking (no force=True so Playwright waits for actionability).
+    # Strategy 1: use Selenium locator — it auto-scrolls the element into view
+    # before clicking (no force=True so Selenium waits for actionability).
     try:
         btn_loc = (
             page.locator("span.fw-bold.me-2", has_text=reg)
@@ -901,7 +931,7 @@ def _open_detail_page(page: Page, reg: str, logger: CrawlerLogger) -> bool:
     if clicked:
         return True
 
-    # Strategy 3: fallback — re-scroll full page then retry Playwright locator with force.
+    # Strategy 3: fallback — re-scroll full page then retry Selenium locator with force.
     _scroll_full(page)
     page.wait_for_timeout(300)
     try:
@@ -952,12 +982,11 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger, _page: "Pa
     """
     Data-quality sentinel for Odisha RERA.
     Loads state_projects_sample/odisha.json as the baseline, spawns its own
-    Playwright browser (same as run() does), navigates to the sentinel project's
+    Selenium browser (same as run() does), navigates to the sentinel project's
     detail page, parses the Overview tab, and verifies ≥ 80% field coverage.
     """
     import json as _json
     import os as _os
-    from playwright.sync_api import sync_playwright
     from core.sentinel_utils import check_field_coverage, click_tab_with_retry
 
     sentinel_reg = config.get("sentinel_registration_no", "")
@@ -1057,20 +1086,11 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger, _page: "Pa
             result["project_state"] = "odisha"
             return result
 
-        if _page is not None:
-            # Already inside a sync_playwright() context in run() — reuse the
-            # existing browser by spawning a new context so we don't nest sessions.
-            sentinel_ctx  = _page.context.browser.new_context(ignore_https_errors=True)
-            sentinel_page = sentinel_ctx.new_page()
-            fresh = _scrape_sentinel_tabs(sentinel_page)
-            sentinel_ctx.close()
-        else:
-            with sync_playwright() as pw:
-                browser = pw.chromium.launch(headless=True)
-                ctx     = browser.new_context(ignore_https_errors=True)
-                sentinel_page = ctx.new_page()
-                fresh = _scrape_sentinel_tabs(sentinel_page)
-                browser.close()
+        # The Selenium-backed adapter shares a single browser session so the
+        # original Selenium "reuse existing context" branch collapses into
+        # the single-driver case.
+        sentinel_page = page_adapter(_session())
+        fresh = _scrape_sentinel_tabs(sentinel_page)
     except Exception as exc:
         logger.error(f"Sentinel: navigation/parse error — {exc}", step="sentinel")
         return False
@@ -1129,6 +1149,14 @@ def _handle_document(project_key: str, doc: dict, run_id: int,
 # ── Main run() ────────────────────────────────────────────────────────────────
 
 def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
     logger       = CrawlerLogger(config["id"], run_id)
     site_id      = config["id"]
     counts       = dict(projects_found=0, projects_new=0, projects_updated=0,
@@ -1147,9 +1175,8 @@ def run(config: dict, run_id: int, mode: str) -> dict:
     machine_name, machine_ip = get_machine_context()
     t_run = time.monotonic()
 
-    with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=True)
-        page    = browser.new_page()
+    if True:
+        page = page_adapter(_session())
 
         # ── Sentinel health check ────────────────────────────────────────────
         t0 = time.monotonic()
@@ -1157,7 +1184,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             logger.error("Sentinel failed — aborting crawl", step="sentinel")
             counts["sentinel_passed"] = False
             counts["error_count"] += 1
-            browser.close()
             return counts
         counts["sentinel_passed"] = True
         logger.timing("sentinel", time.monotonic() - t0)
@@ -1405,33 +1431,33 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                                 break
 
                     data: dict = {
-                        "key":              key,
-                        "state":            config["state"],
-                        "project_state":    config["state"],
-                        "domain":           DOMAIN,
-                        "config_id":        config["config_id"],
-                        "url":              detail_url,
-                        "is_live":          True,
-                        "machine_name":     machine_name,
-                        "crawl_machine_ip": machine_ip,
+                        "key":              key,  # FIELD: key <- generate_project_key(reg)
+                        "state":            config["state"],  # FIELD: state <- config["state"]
+                        "project_state":    config["state"],  # FIELD: project_state <- config["state"]
+                        "domain":           DOMAIN,  # FIELD: domain <- DOMAIN constant
+                        "config_id":        config["config_id"],  # FIELD: config_id <- config["config_id"]
+                        "url":              detail_url,  # FIELD: url <- page.url after detail navigation
+                        "is_live":          True,  # FIELD: is_live <- literal True
+                        "machine_name":     machine_name,  # FIELD: machine_name <- get_machine_context()
+                        "crawl_machine_ip": machine_ip,  # FIELD: crawl_machine_ip <- get_machine_context()
                         **card_data,
                         **overview_data,
                         **promoter_data,
-                        "data": merge_data_sections(
+                        "data": merge_data_sections(  # FIELD: data <- merged metadata + raw_card + overview.data + promoter._raw
                             # PROD-compatible metadata — must be first so raw sections don't overwrite
                             {
-                                "govt_type":        "state",
-                                "is_processed":     False,
-                                "regis_cert":       _regis_cert,
-                                "project_location": _project_location,
+                                "govt_type":        "state",  # FIELD: data.govt_type <- literal "state"
+                                "is_processed":     False,  # FIELD: data.is_processed <- literal False
+                                "regis_cert":       _regis_cert,  # FIELD: data.regis_cert <- card.cert_url or RERA Reg Cert doc URL
+                                "project_location": _project_location,  # FIELD: data.project_location <- overview project_location_raw.raw_address
                             },
                             {
-                                "source_url": detail_url,
-                                "page_num": page_num,
-                                "raw_card": {k: v for k, v in card.items() if k != "cert_url" and v},
+                                "source_url": detail_url,  # FIELD: data.source_url <- page.url after detail navigation
+                                "page_num": page_num,  # FIELD: data.page_num <- current listing page number
+                                "raw_card": {k: v for k, v in card.items() if k != "cert_url" and v},  # FIELD: data.raw_card <- listing card dict minus cert_url
                             },
                             overview.get("data"),
-                            {"promoter_tab": promoter.get("_raw")} if promoter.get("_raw") else None,
+                            {"promoter_tab": promoter.get("_raw")} if promoter.get("_raw") else None,  # FIELD: data.promoter_tab <- promoter tab raw labels
                         ),
                     }
 
@@ -1441,16 +1467,16 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                     # status_update for downstream change-detection.
                     if status_update_data:
                         if "building_details" in status_update_data:
-                            data["building_details"] = status_update_data["building_details"]
+                            data["building_details"] = status_update_data["building_details"]  # FIELD: building_details <- Booking Status tab unit cards
                         if "proposed_timeline" in status_update_data:
-                            data["proposed_timeline"] = status_update_data["proposed_timeline"]
-                        data["status_update"] = [status_update_data]
+                            data["proposed_timeline"] = status_update_data["proposed_timeline"]  # FIELD: proposed_timeline <- Project Milestone tab timeline table
+                        data["status_update"] = [status_update_data]  # FIELD: status_update <- [Booking Status + Milestone combined]
                     if card.get("phone"):
                         existing_contact = data.get("promoter_contact_details")
                         if isinstance(existing_contact, dict):
                             existing_contact.setdefault("listing_phone", card["phone"])
                         elif existing_contact is None:
-                            data["promoter_contact_details"] = {"listing_phone": card["phone"]}
+                            data["promoter_contact_details"] = {"listing_phone": card["phone"]}  # FIELD: promoter_contact_details <- {listing_phone: card.phone}
 
                     logger.info("Normalizing and validating", step="normalize")
                     try:
@@ -1491,9 +1517,9 @@ def run(config: dict, run_id: int, mode: str) -> dict:
                         upsert_project({
                             "key": db_dict["key"], "url": db_dict["url"],
                             "state": db_dict["state"], "domain": db_dict["domain"],
-                            "project_registration_no": db_dict["project_registration_no"],
-                            "uploaded_documents": uploaded_documents,
-                            "document_urls": build_document_urls(uploaded_documents),
+                            "project_registration_no": db_dict["project_registration_no"],  # FIELD: project_registration_no <- db_dict (carried for doc-only upsert)
+                            "uploaded_documents": uploaded_documents,  # FIELD: uploaded_documents <- list of {type, link, s3_link} from _handle_document
+                            "document_urls": build_document_urls(uploaded_documents),  # FIELD: document_urls <- build_document_urls(uploaded_documents)
                         })
 
                     done_regs.add(reg)
@@ -1566,8 +1592,6 @@ def run(config: dict, run_id: int, mode: str) -> dict:
             except Exception as e:
                 logger.warning(f"Pagination error at page {page_num}: {e}")
                 break
-
-        browser.close()
 
     reset_checkpoint(site_id, mode)
     logger.info(f"Odisha RERA complete: {counts}")

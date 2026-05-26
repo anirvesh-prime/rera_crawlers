@@ -90,7 +90,7 @@ class TestBuildUrlHelpers(unittest.TestCase):
 # TestNewFieldsExtraction tested the old JSON-API based implementation
 # (_fetch_project_detail, _iter_website_documents, _iter_view_project_documents,
 # _extract_view_project_fields). The Rajasthan crawler was rewritten to use
-# Playwright HTML scraping (_parse_detail_html, _parse_viewproject_html,
+# Selenium HTML scraping (_parse_detail_html, _parse_viewproject_html,
 # _parse_detail_docs). Those test classes have been removed accordingly.
 
 if __name__ == "__main__":

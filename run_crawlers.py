@@ -196,27 +196,6 @@ def _fmt_row(result: dict) -> str:
     )
 
 
-def ensure_playwright_browsers(sites: list[dict]) -> None:
-    """Install Playwright Chromium only when a selected site requires it."""
-    if not any(site["crawler_type"] == "playwright" for site in sites):
-        return
-
-    try:
-        from playwright.sync_api import sync_playwright
-        with sync_playwright() as p:
-            p.chromium.launch(headless=True).close()
-    except Exception:
-        print("Playwright browser not found — installing chromium...")
-        result = subprocess.run(
-            [sys.executable, "-m", "playwright", "install", "chromium"],
-            check=False,
-        )
-        if result.returncode != 0:
-            print("[WARNING] playwright install chromium failed — Odisha crawl may error.")
-        else:
-            print("Playwright chromium installed successfully.")
-
-
 def apply_runtime_overrides(args: argparse.Namespace) -> int:
     """Apply CLI overrides to runtime settings and child worker environment."""
     # --test-logs implies --test but additionally enables DB log writes.
@@ -277,8 +256,6 @@ def main():
     if getattr(args, "tester", False) and len(sites) != 1:
         print("[ERROR] --tester requires exactly one --site")
         return
-
-    ensure_playwright_browsers(sites)
 
     parallel = not args.sequential and not getattr(args, "tester", False) and len(sites) > 1
 
