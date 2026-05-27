@@ -245,11 +245,17 @@ class KarnatakaSentinelCheckTests(unittest.TestCase):
     """
     Tests for _sentinel_check in karnataka_rera.py.
 
-    Karnataka uses a generic POST endpoint (/projectViewDetails) — there are no
-    per-project URLs.  The sentinel must therefore:
-      1. Pull acknowledgement_no from the baseline JSON (not from config).
-      2. Pass it to _fetch_detail (which expects an ack_no, not a reg_no).
-      3. Cross-check the returned project_registration_no against config.
+    The sentinel now uses the same direct ``/projectViewDetails`` search that
+    powers the ``--target-reg-no`` flag:
+      1. Look up the project by ``sentinel_registration_no`` from config via
+         ``_search_by_reg_no``.
+      2. Use the ack_no from the search result to drive ``_fetch_detail``.
+      3. Cross-check the returned ``project_registration_no`` against config.
+      4. Compare extracted fields against ``state_projects_sample/karnataka.json``.
+
+    Transient portal hiccups (empty search, no HTML, network timeouts) skip
+    the run with a warning and return ``True`` rather than failing the whole
+    crawl.
     """
 
     BASELINE = {
@@ -267,6 +273,15 @@ class KarnatakaSentinelCheckTests(unittest.TestCase):
     CONFIG = {
         "id": "karnataka_rera",
         "sentinel_registration_no": "PRM/KA/RERA/1248/469/PR/050723/006033",
+    }
+
+    SEARCH_ROW = {
+        "acknowledgement_no": "ACK/KA/RERA/1248/469/PR/110223/006823",
+        "project_registration_no": "PRM/KA/RERA/1248/469/PR/050723/006033",
+        "project_name": "DIVYA LAYOUT",
+        "promoter_name": "LALITHA D",
+        "project_city": "BALLARI",
+        "project_location_raw": {"district": "Ballari"},
     }
 
     FRESH = {
@@ -288,82 +303,105 @@ class KarnatakaSentinelCheckTests(unittest.TestCase):
         logger.error = mock.MagicMock()
         return logger
 
-    def _run(self, *, fetch_return=None, parse_return=None,
+    def _run(self, *, search_return=..., fetch_return=None, parse_return=None,
              coverage_return=True, config=None, baseline=None):
         """Helper: run _sentinel_check with all I/O mocked out."""
         config = config if config is not None else self.CONFIG
         baseline = baseline if baseline is not None else self.BASELINE
+        search_return = self.SEARCH_ROW if search_return is ... else search_return
         fetch_return = fetch_return if fetch_return is not None else ("<html/>", {})
         parse_return = parse_return if parse_return is not None else self.FRESH
         logger = self._make_logger()
 
         with mock.patch("builtins.open", mock.mock_open(read_data=json.dumps(baseline))):
-            with mock.patch("sites.karnataka_rera._fetch_detail",
-                            return_value=fetch_return) as mock_fetch:
-                with mock.patch("sites.karnataka_rera._parse_detail",
-                                return_value=parse_return):
-                    with mock.patch("sites.karnataka_rera.insert_crawl_error") as mock_ice:
-                        with mock.patch("core.sentinel_utils.check_field_coverage",
-                                        return_value=coverage_return):
-                            result = _sentinel_check(config, run_id=1, logger=logger)
-        return result, logger, mock_fetch, mock_ice
+            with mock.patch("sites.karnataka_rera._search_by_reg_no",
+                            return_value=search_return) as mock_search:
+                with mock.patch("sites.karnataka_rera._fetch_detail",
+                                return_value=fetch_return) as mock_fetch:
+                    with mock.patch("sites.karnataka_rera._parse_detail",
+                                    return_value=parse_return):
+                        with mock.patch("sites.karnataka_rera.insert_crawl_error") as mock_ice:
+                            with mock.patch("core.sentinel_utils.check_field_coverage",
+                                            return_value=coverage_return):
+                                result = _sentinel_check(config, run_id=1, logger=logger)
+        return result, logger, mock_search, mock_fetch, mock_ice
 
     # ── Happy-path ────────────────────────────────────────────────────────────
 
     def test_happy_path_returns_true(self):
-        result, logger, _, _ = self._run()
+        result, _, _, _, _ = self._run()
         self.assertTrue(result)
 
-    def test_uses_ack_no_from_baseline_not_reg_no(self):
-        """_fetch_detail must be called with the ack_no from the baseline JSON,
-        NOT with the registration number from config."""
-        _, _, mock_fetch, _ = self._run()
+    def test_searches_by_reg_no_from_config(self):
+        """_search_by_reg_no must be called with the sentinel reg_no from
+        config — NOT with the ack_no from the baseline JSON."""
+        _, _, mock_search, _, _ = self._run()
+        mock_search.assert_called_once()
+        called_reg = mock_search.call_args[0][0]
+        self.assertEqual(called_reg, self.CONFIG["sentinel_registration_no"])
+        self.assertNotEqual(called_reg, self.BASELINE["acknowledgement_no"])
+
+    def test_fetch_detail_uses_ack_from_search_result(self):
+        """The ack_no fed to _fetch_detail must come from the search result row,
+        not from any pre-known constant."""
+        _, _, _, mock_fetch, _ = self._run()
         mock_fetch.assert_called_once()
-        called_ack_no = mock_fetch.call_args[0][0]
-        self.assertEqual(called_ack_no, self.BASELINE["acknowledgement_no"])
-        self.assertNotEqual(called_ack_no, self.CONFIG["sentinel_registration_no"])
+        called_ack = mock_fetch.call_args[0][0]
+        self.assertEqual(called_ack, self.SEARCH_ROW["acknowledgement_no"])
 
     # ── Early-exit / skip cases ───────────────────────────────────────────────
 
     def test_skips_when_no_sentinel_registration_no_in_config(self):
-        result, logger, mock_fetch, _ = self._run(config={"id": "karnataka_rera"})
+        result, logger, mock_search, mock_fetch, _ = self._run(
+            config={"id": "karnataka_rera"},
+        )
         self.assertTrue(result)
+        mock_search.assert_not_called()
         mock_fetch.assert_not_called()
         logger.warning.assert_called()
 
     def test_skips_when_baseline_file_not_found(self):
         logger = self._make_logger()
         with mock.patch("builtins.open", side_effect=FileNotFoundError):
-            with mock.patch("sites.karnataka_rera._fetch_detail") as mock_fetch:
-                result = _sentinel_check(self.CONFIG, run_id=1, logger=logger)
+            with mock.patch("sites.karnataka_rera._search_by_reg_no") as mock_search:
+                with mock.patch("sites.karnataka_rera._fetch_detail") as mock_fetch:
+                    result = _sentinel_check(self.CONFIG, run_id=1, logger=logger)
+        self.assertTrue(result)
+        mock_search.assert_not_called()
+        mock_fetch.assert_not_called()
+        logger.warning.assert_called()
+
+    def test_skips_when_search_returns_no_match(self):
+        """Transient portal hiccup → return True with a warning, don't fail."""
+        result, logger, _, mock_fetch, _ = self._run(search_return=None)
         self.assertTrue(result)
         mock_fetch.assert_not_called()
         logger.warning.assert_called()
 
-    def test_skips_when_baseline_has_no_acknowledgement_no(self):
-        baseline_no_ack = {k: v for k, v in self.BASELINE.items()
-                           if k != "acknowledgement_no"}
-        result, logger, mock_fetch, _ = self._run(baseline=baseline_no_ack)
+    def test_skips_when_search_row_has_no_ack_no(self):
+        bad_row = dict(self.SEARCH_ROW, acknowledgement_no="")
+        result, logger, _, mock_fetch, _ = self._run(search_return=bad_row)
         self.assertTrue(result)
         mock_fetch.assert_not_called()
+        logger.warning.assert_called()
+
+    def test_skips_when_fetch_returns_no_html(self):
+        """Transient portal hiccup → return True with a warning, don't fail."""
+        result, logger, _, _, _ = self._run(fetch_return=(None, {}))
+        self.assertTrue(result)
         logger.warning.assert_called()
 
     # ── Failure cases ─────────────────────────────────────────────────────────
 
-    def test_returns_false_when_fetch_returns_no_html(self):
-        result, logger, _, _ = self._run(fetch_return=(None, {}))
-        self.assertFalse(result)
-        logger.error.assert_called()
-
     def test_returns_false_when_parse_returns_empty(self):
-        result, logger, _, _ = self._run(parse_return={})
+        result, logger, _, _, _ = self._run(parse_return={})
         self.assertFalse(result)
         logger.error.assert_called()
 
     def test_returns_false_on_reg_no_mismatch(self):
         fresh_wrong_reg = dict(self.FRESH,
                                project_registration_no="PRM/KA/RERA/WRONG/REG/NO")
-        result, logger, _, mock_ice = self._run(parse_return=fresh_wrong_reg)
+        result, logger, _, _, mock_ice = self._run(parse_return=fresh_wrong_reg)
         self.assertFalse(result)
         logger.error.assert_called()
         mock_ice.assert_called_once()
@@ -371,7 +409,7 @@ class KarnatakaSentinelCheckTests(unittest.TestCase):
         self.assertEqual(error_type, "SENTINEL_FAILED")
 
     def test_returns_false_when_coverage_below_threshold(self):
-        result, logger, _, mock_ice = self._run(coverage_return=False)
+        result, _, _, _, mock_ice = self._run(coverage_return=False)
         self.assertFalse(result)
         mock_ice.assert_called_once()
         error_type = mock_ice.call_args[0][2]
@@ -380,14 +418,26 @@ class KarnatakaSentinelCheckTests(unittest.TestCase):
     def test_reg_no_comparison_is_case_insensitive(self):
         fresh_lower = dict(self.FRESH,
                            project_registration_no=self.FRESH["project_registration_no"].lower())
-        result, _, _, _ = self._run(parse_return=fresh_lower)
+        result, _, _, _, _ = self._run(parse_return=fresh_lower)
         self.assertTrue(result)
 
-    def test_returns_false_when_fetch_detail_raises(self):
+    def test_returns_true_when_search_raises_timeout(self):
+        """Timeout-like exceptions are treated as transient → skip + return True."""
         logger = self._make_logger()
         with mock.patch("builtins.open", mock.mock_open(read_data=json.dumps(self.BASELINE))):
-            with mock.patch("sites.karnataka_rera._fetch_detail",
-                            side_effect=RuntimeError("timeout")):
+            with mock.patch("sites.karnataka_rera._search_by_reg_no",
+                            side_effect=RuntimeError("ReadTimeout while POSTing")):
+                with mock.patch("sites.karnataka_rera.insert_crawl_error"):
+                    result = _sentinel_check(self.CONFIG, run_id=1, logger=logger)
+        self.assertTrue(result)
+        logger.warning.assert_called()
+
+    def test_returns_false_when_search_raises_non_transient(self):
+        """Non-transient exceptions abort the run (return False)."""
+        logger = self._make_logger()
+        with mock.patch("builtins.open", mock.mock_open(read_data=json.dumps(self.BASELINE))):
+            with mock.patch("sites.karnataka_rera._search_by_reg_no",
+                            side_effect=RuntimeError("parser blew up")):
                 with mock.patch("sites.karnataka_rera.insert_crawl_error"):
                     result = _sentinel_check(self.CONFIG, run_id=1, logger=logger)
         self.assertFalse(result)

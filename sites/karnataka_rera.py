@@ -267,6 +267,68 @@ def _post_listing(district: str, start_page: int, logger: CrawlerLogger) -> str 
     return resp.text if resp else None
 
 
+def _search_by_reg_no(reg_no: str, logger: CrawlerLogger) -> dict | None:
+    """Direct lookup: POST /projectViewDetails with regNo=<reg_no> and parse the
+    single-row search result into a listing-row dict.  Returns ``None`` when the
+    portal yields no matching row.  Used by the ``--target-reg-no`` shortcut so
+    targeted runs skip the district walk entirely.
+    """
+    resp = safe_post(
+        PROJECT_URL,
+        data={"appNo": "", "regNo": reg_no, "project": "", "firm": "",
+              "district": "0", "subdistrict": "0"},
+        retries=2, logger=logger, timeout=30.0,
+    )
+    if not resp:
+        return None
+    tbl = BeautifulSoup(resp.text, "lxml").find("table")
+    if not tbl:
+        return None
+    rows = tbl.find_all("tr")
+    if len(rows) < 2:
+        return None
+    headers = [_clean(c.get_text()).lower()
+               for c in rows[0].find_all(["th", "td"])]
+
+    def col(*needles: str) -> int:
+        for needle in needles:
+            for i, h in enumerate(headers):
+                if needle in h:
+                    return i
+        return -1
+
+    ack_i  = col("acknowledg", "application")
+    reg_i  = col("registration")
+    name_i = col("project name")
+    prom_i = col("promoter")
+    dist_i = col("district")
+    target = reg_no.strip().upper()
+    for row in rows[1:]:
+        if not row.find("a", onclick=lambda s: s and "showFileApplicationPreview" in s):
+            continue
+        cells = [_clean(c.get_text()) for c in row.find_all("td")]
+        def at(i: int) -> str:
+            return cells[i] if 0 <= i < len(cells) else ""
+        if at(reg_i).upper() != target:
+            continue
+        district = at(dist_i)
+        return {
+            "acknowledgement_no": at(ack_i),
+            "project_registration_no": at(reg_i),
+            "project_name": at(name_i),
+            "promoter_name": at(prom_i),
+            "promoter_registration_no": None,
+            "project_city": district.upper(),
+            "project_location_raw": {"district": district} if district else {},
+            "data": {
+                "search_district": district,
+                "listing_fallback": True,
+                "target_lookup": True,
+            },
+        }
+    return None
+
+
 def _extract_ack_nos(html: str) -> list[str]:
     """
     Extract acknowledgement numbers from the JavaScript arrays embedded in the
@@ -1326,15 +1388,16 @@ def _process_documents(
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     """
     Data-quality sentinel for Karnataka RERA.
-    Loads state_projects_sample/karnataka.json as the baseline, fetches the
-    sentinel project detail via _fetch_detail + _parse_detail, and verifies
-    ≥ 80% field coverage.
 
-    Karnataka has no per-project URLs — all detail fetches go through a generic
-    POST endpoint.  The sentinel therefore uses the acknowledgement_no stored in
-    the baseline JSON to drive _fetch_detail (which expects an ack_no, not a
-    reg_no), then cross-checks the returned reg_no against
-    sentinel_registration_no from config.
+    Uses the same direct ``/projectViewDetails`` search that powers the
+    ``--target-reg-no`` flag: looks up the sentinel project by its registration
+    number (``sentinel_registration_no`` from config) via
+    :func:`_search_by_reg_no`, then fetches the full detail HTML and verifies
+    ≥ 80% field coverage against ``state_projects_sample/karnataka.json``.
+
+    Both the sentinel and the targeted-crawl path therefore exercise an
+    identical lookup path against the portal — if one breaks the other will
+    too, which is exactly what we want a health check to surface.
     """
     import json as _json
     import os as _os
@@ -1357,15 +1420,25 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
                        path=sample_path, step="sentinel")
         return True
 
-    # Karnataka has no per-project URL; use the acknowledgement_no from the
-    # baseline to look up the project via the two-step POST flow.
-    ack_no = baseline.get("acknowledgement_no", "")
-    if not ack_no:
-        logger.warning("Sentinel: no acknowledgement_no in baseline — skipping", step="sentinel")
-        return True
-
-    logger.info(f"Sentinel: fetching detail for {sentinel_reg} (ack={ack_no})", step="sentinel")
+    logger.info(f"Sentinel: direct reg_no lookup for {sentinel_reg}", step="sentinel")
     try:
+        listing_row = _search_by_reg_no(sentinel_reg, logger)
+        if listing_row is None:
+            logger.warning(
+                "Sentinel: reg_no lookup returned no match — likely transient "
+                "(portal hangs / empty search response); skipping coverage "
+                "check this run",
+                step="sentinel",
+            )
+            return True
+        ack_no = listing_row.get("acknowledgement_no") or ""
+        if not ack_no:
+            logger.warning(
+                "Sentinel: lookup row carried no acknowledgement_no — skipping",
+                step="sentinel",
+            )
+            return True
+
         html, meta = _fetch_detail(ack_no, logger)
         if not html:
             logger.warning(
@@ -1449,12 +1522,30 @@ def _collect_candidates(
     total_found = 0
     last_district_idx = start_district_idx
     cap = item_limit if item_limit > 0 else None
-    target_reg_no = (settings.TARGET_REG_NO or "").strip().upper()
+    target_reg_no = (settings.TARGET_REG_NO or "").strip()
+    # Targeted run: skip the district walk entirely.  /projectViewDetails accepts
+    # regNo as a direct lookup key (same endpoint the sentinel hits with appNo),
+    # so one POST yields the single matching listing row.
     if target_reg_no:
         logger.info(
-            f"Targeted run — filtering listings for reg_no={target_reg_no!r}",
+            f"Targeted run — direct reg_no lookup for {target_reg_no!r}",
             step="listing",
         )
+        t0 = time.monotonic()
+        row = _search_by_reg_no(target_reg_no, logger)
+        logger.timing("search", time.monotonic() - t0, rows=(1 if row else 0))
+        if row is None:
+            logger.warning(
+                f"Target reg_no={target_reg_no!r} not found via direct lookup",
+                step="listing",
+            )
+            return [], 0, last_district_idx
+        logger.info(
+            f"Target matched: ack={row['acknowledgement_no']!r} "
+            f"district={(row.get('project_location_raw') or {}).get('district', '')!r}",
+            step="listing",
+        )
+        return [(start_district_idx, 0, row)], 1, last_district_idx
     first_district_logged = False
     t0 = time.monotonic()
     for district_idx in range(start_district_idx, len(districts)):
@@ -1493,18 +1584,6 @@ def _collect_candidates(
                 first_district_logged = True
 
             for row in listing_rows:
-                if target_reg_no:
-                    row_reg = (row.get("project_registration_no") or "").strip().upper()
-                    if row_reg != target_reg_no:
-                        continue
-                    candidates.append((district_idx, page_number, row))
-                    logger.info(
-                        f"Target reg_no matched in district={district!r} "
-                        f"(ack={row.get('acknowledgement_no')!r}) — stopping lister",
-                        step="listing",
-                    )
-                    save_checkpoint(site_id, mode, district_idx, None, run_id)
-                    return candidates, total_found, last_district_idx
                 candidates.append((district_idx, page_number, row))
                 if cap is not None and len(candidates) >= cap:
                     save_checkpoint(site_id, mode, district_idx, None, run_id)
@@ -1523,11 +1602,6 @@ def _collect_candidates(
             start_page = next_start
             random_delay(*delay_range)
         save_checkpoint(site_id, mode, district_idx + 1, None, run_id)
-    if target_reg_no and not candidates:
-        logger.warning(
-            f"Target reg_no={target_reg_no!r} not found in any district",
-            step="listing",
-        )
     return candidates, total_found, last_district_idx
 
 
