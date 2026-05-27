@@ -340,39 +340,58 @@ def _submit_search_form(
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.support.ui import Select, WebDriverWait
 
+    # Bengaluru Urban returns ~4k rows / ~6 MB of HTML and the portal is slow,
+    # so the form-submit navigation regularly exceeds short page-load budgets.
+    # Use a generous page-load cap and retry once on TimeoutException.
     with _DRIVER_LOCK:
-        try:
-            driver = _session().driver()
-            driver.set_page_load_timeout(30.0)
-            driver.get(LISTING_URL)
-            WebDriverWait(driver, 20).until(
-                EC.presence_of_element_located((By.ID, "projectDist"))
-            )
-            if district and district != "0":
-                Select(driver.find_element(By.ID, "projectDist")).select_by_value(district)
-            if app_no:
-                el = driver.find_element(By.ID, "regNo")     # name="appNo"
-                el.clear(); el.send_keys(app_no)
-            if reg_no:
-                el = driver.find_element(By.ID, "regNo2")    # name="regNo"
-                el.clear(); el.send_keys(reg_no)
-            driver.find_element(By.CSS_SELECTOR, 'input[name="btn1"]').click()
-            WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "table"))
-            )
-            # Each results table is wrapped in jQuery DataTables with a default
-            # page length of 10, which pulls all other rows out of the DOM.
-            # Expand every DataTables instance so ``page_source`` carries the
-            # complete set of result rows.
-            driver.execute_script(_EXPAND_DATATABLES_JS)
-            return driver.page_source
-        except (TimeoutException, NoSuchElementException, WebDriverException) as exc:
-            logger.warning(
-                f"Browser search failed ({exc.__class__.__name__}): "
-                f"district={district!r} app_no={app_no!r} reg_no={reg_no!r}",
-                step=step,
-            )
-            return None
+        last_exc: Exception | None = None
+        for attempt in range(2):
+            try:
+                driver = _session().driver()
+                driver.set_page_load_timeout(120.0)
+                driver.get(LISTING_URL)
+                WebDriverWait(driver, 30).until(
+                    EC.presence_of_element_located((By.ID, "projectDist"))
+                )
+                if district and district != "0":
+                    Select(driver.find_element(By.ID, "projectDist")).select_by_value(district)
+                if app_no:
+                    el = driver.find_element(By.ID, "regNo")     # name="appNo"
+                    el.clear(); el.send_keys(app_no)
+                if reg_no:
+                    el = driver.find_element(By.ID, "regNo2")    # name="regNo"
+                    el.clear(); el.send_keys(reg_no)
+                driver.find_element(By.CSS_SELECTOR, 'input[name="btn1"]').click()
+                WebDriverWait(driver, 90).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "table"))
+                )
+                # Each results table is wrapped in jQuery DataTables with a
+                # default page length of 10 which pulls all other rows out of
+                # the DOM.  Expand every DataTables instance so ``page_source``
+                # carries the complete set of result rows.
+                driver.execute_script(_EXPAND_DATATABLES_JS)
+                return driver.page_source
+            except (TimeoutException, NoSuchElementException, WebDriverException) as exc:
+                last_exc = exc
+                # Abort any half-loaded navigation before the retry so the next
+                # ``driver.get`` starts from a clean state.
+                try:
+                    driver.execute_script("window.stop();")
+                except Exception:
+                    pass
+                if attempt == 0:
+                    logger.info(
+                        f"Browser search retry 1/1 after {exc.__class__.__name__}: "
+                        f"district={district!r} app_no={app_no!r} reg_no={reg_no!r}",
+                        step=step,
+                    )
+                    continue
+        logger.warning(
+            f"Browser search failed ({last_exc.__class__.__name__ if last_exc else 'unknown'}): "
+            f"district={district!r} app_no={app_no!r} reg_no={reg_no!r}",
+            step=step,
+        )
+        return None
 
 
 def _post_listing(district: str, logger: CrawlerLogger) -> str | None:
