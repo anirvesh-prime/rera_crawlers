@@ -17,7 +17,7 @@ STATE_DOC_DICT: dict[str, list[str]] = {
         "Section Plan", "Specification", "Approved Section Of Building", "Infrastructure Plan", "Annexure 67",
         "Approval letter", "Sectional Drawing", "Floor Plans", "Engineer", "ARCHITECT", "Form 2", "Form 3",
         "demarcation drawing", "Annexure 80", "COM CER", "A67", "A80", "Occupation Certificate",
-        "Occupancy Certificate",
+        "Occupancy Certificate", "Quarterly Progress Report",
     ],
     "tamil nadu": [
         "Rera Registration Certificate", "Promoter Details", "Project Details", "Approval Details",

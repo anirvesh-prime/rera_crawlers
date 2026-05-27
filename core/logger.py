@@ -24,13 +24,13 @@ _TESTER_ROOT_LOCK = threading.Lock()
 
 
 def _configure_tester_root_logger() -> None:
-    """Install a single verbose stdout handler on the root logger.
+    """Install stdout handlers for the tester (CRAWLER_TESTER=1).
 
-    Used only by the dashboard tester (CRAWLER_TESTER=1).  CrawlerLogger
-    instances skip their per-instance handlers in tester mode so every
-    record — including third-party libs and ``logging.getLogger(__name__)``
-    calls inside core.db etc. — propagates to this handler.  Output mirrors
-    the legacy crawler format: ``<ts> <file:line> <LEVEL> <message>``.
+    Our own namespaces (``rera.*``, ``core.*``) get an INFO-level handler so
+    every crawler and core-module log line is visible.  The root logger is set
+    to WARNING only, which silences third-party library chatter (playwright,
+    httpx, urllib3, psycopg internals, etc.) while still surfacing their
+    warnings and errors.  Output format: ``<ts> <file:line> <LEVEL> <message>``.
     """
     global _TESTER_ROOT_CONFIGURED
     if _TESTER_ROOT_CONFIGURED:
@@ -38,14 +38,30 @@ def _configure_tester_root_logger() -> None:
     with _TESTER_ROOT_LOCK:
         if _TESTER_ROOT_CONFIGURED:
             return
-        root = logging.getLogger()
-        root.setLevel(logging.DEBUG)
-        handler = logging.StreamHandler(stream=sys.stdout)
-        handler.setLevel(logging.DEBUG)
-        handler.setFormatter(logging.Formatter(
+
+        fmt = logging.Formatter(
             "%(asctime)s\t%(filename)s:%(lineno)d\t%(levelname)s\t%(message)s"
-        ))
-        root.addHandler(handler)
+        )
+
+        # Root: WARNING+ only — catches third-party library issues without
+        # flooding the log with their DEBUG/INFO output.
+        root = logging.getLogger()
+        root.setLevel(logging.WARNING)
+        root_handler = logging.StreamHandler(stream=sys.stdout)
+        root_handler.setLevel(logging.WARNING)
+        root_handler.setFormatter(fmt)
+        root.addHandler(root_handler)
+
+        # Our own namespaces: show INFO+ without double-logging to root.
+        for ns in ("rera", "core"):
+            ns_logger = logging.getLogger(ns)
+            ns_logger.setLevel(logging.INFO)
+            h = logging.StreamHandler(stream=sys.stdout)
+            h.setLevel(logging.INFO)
+            h.setFormatter(fmt)
+            ns_logger.addHandler(h)
+            ns_logger.propagate = False  # already handled above; avoid duplicates
+
         _TESTER_ROOT_CONFIGURED = True
 
 

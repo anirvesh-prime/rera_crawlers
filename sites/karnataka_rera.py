@@ -33,12 +33,15 @@ How the portal works (observed from live HTML):
 """
 from __future__ import annotations
 
+import base64
+import mimetypes
 import re
 import time
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
@@ -877,6 +880,166 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
 
 
 
+# ── Quarterly Progress Report snapshot ────────────────────────────────────────
+
+# Bootstrap accordion headers inside the #quarter tab look like:
+#   <b>Quarter Q4 ( 2025-26 ) Details (Submitted on 11-04-2026)</b>
+# The crawler grabs the LATEST panel (by submission date), inlines every
+# <img> inside it as a base64 data URI, and emits one self-contained HTML
+# snapshot per project that downstream code uploads to S3 alongside the
+# regular PDFs.
+_QPR_QUARTER_RE   = re.compile(r"Quarter\s+Q(\d)\s*\(\s*(\d{4})\s*-\s*(\d{2})\s*\)", re.I)
+_QPR_SUBMITTED_RE = re.compile(r"Submitted on\s+(\d{2}-\d{2}-\d{4})", re.I)
+_QPR_DOC_TYPE     = "Quarterly Progress Report"
+
+_QPR_INLINE_CSS = (
+    'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:24px;color:#222}'
+    "h1,h2{color:#1f4e8a}"
+    "table{border-collapse:collapse;margin:8px 0;width:100%}"
+    "th,td{border:1px solid #ccc;padding:6px 10px;vertical-align:top}"
+    "th{background:#f4f6fa;text-align:left}"
+    "img{max-width:320px;height:auto;margin:4px;border:1px solid #ddd;padding:2px;background:#fff}"
+    ".kheader{background:#f4f6fa;padding:12px 16px;border-radius:6px;margin-bottom:16px}"
+    ".kheader table{border:none}.kheader td{border:none;padding:2px 8px}"
+    ".text-right{text-align:right;font-weight:600}.space_LR{padding:0 4px}"
+    ".panel{margin:12px 0}"
+    ".panel-heading{background:#1f4e8a;color:#fff;padding:8px 14px;border-radius:6px 6px 0 0}"
+    ".panel-heading b,.panel-heading b span{color:#fff !important;font-size:16px}"
+    ".panel-body{border:1px solid #ddd;border-top:none;padding:14px;border-radius:0 0 6px 6px}"
+)
+
+
+def _qpr_find_panel_root(node: Tag) -> Tag | None:
+    """Walk up to the enclosing Bootstrap accordion panel div for ``node``."""
+    p: Tag | None = node
+    while p is not None and p.parent is not None:
+        p = p.parent
+        if isinstance(p, Tag) and p.name == "div":
+            cls = p.get("class") or []
+            if "panel" in cls and not any(
+                x in cls for x in ("panel-heading", "panel-body", "panel-title", "panel-group")
+            ):
+                return p
+    return None
+
+
+def _qpr_inline_image(img: Tag, logger: CrawlerLogger) -> bool:
+    """Replace ``img['src']`` with a base64 data URI; returns True on success."""
+    src = (img.get("src") or "").strip()
+    if not src or src.startswith("data:"):
+        return False
+    if src.startswith("http"):
+        full = src
+    elif src.startswith("/"):
+        full = f"{BASE_URL}{src}"
+    else:
+        full = f"{BASE_URL}/{src}"
+    resp = download_response(full, logger=logger,
+                             total_timeout=_DOC_TOTAL_TIMEOUT, max_bytes=_DOC_MAX_BYTES)
+    if not resp or not getattr(resp, "content", None):
+        return False
+    ctype = ""
+    headers = getattr(resp, "headers", None) or {}
+    if hasattr(headers, "get"):
+        ctype = (headers.get("content-type") or "").split(";", 1)[0].strip().lower()
+    if not ctype or "html" in ctype:
+        ctype = mimetypes.guess_type(src)[0] or "image/jpeg"
+    img["src"] = f"data:{ctype};base64,{base64.b64encode(resp.content).decode('ascii')}"
+    img.attrs.pop("srcset", None)
+    return True
+
+
+def _qpr_header_fields(soup: BeautifulSoup) -> dict[str, str]:
+    """Pull Project Name / Ack No / Reg No from the detail page header strip."""
+    out: dict[str, str] = {}
+    for span in soup.find_all("span", class_="user_name"):
+        text = " ".join(span.get_text(" ", strip=True).split())
+        m = re.match(r"^([^:]+)\s*:\s*(.+)$", text)
+        if m:
+            out[m.group(1).strip().lower()] = m.group(2).strip()
+    return out
+
+
+def _build_qpr_snapshot(
+    html: str, ack_no: str, reg_no: str, logger: CrawlerLogger,
+) -> dict | None:
+    """Return a synthetic ``uploaded_documents`` entry for the latest QPR panel.
+
+    The returned dict carries ``_inline_bytes`` / ``_inline_filename`` so
+    ``_handle_document`` skips the download step and uploads the pre-built
+    HTML straight to S3.  Returns ``None`` when no QPR panel is present.
+    """
+    try:
+        soup = BeautifulSoup(html, "lxml")
+    except Exception as exc:
+        logger.warning(f"QPR snapshot: html parse failed: {exc}", step="documents")
+        return None
+    qdiv = soup.find(id="quarter")
+    if not qdiv:
+        return None
+
+    panels: list[tuple[datetime, int, int, Tag]] = []
+    for b in qdiv.find_all("b"):
+        text = " ".join(b.get_text(" ", strip=True).split())
+        qm, sm = _QPR_QUARTER_RE.search(text), _QPR_SUBMITTED_RE.search(text)
+        if not qm or not sm:
+            continue
+        panel = _qpr_find_panel_root(b)
+        if panel is None:
+            continue
+        try:
+            sub_date = datetime.strptime(sm.group(1), "%d-%m-%Y")
+        except ValueError:
+            continue
+        panels.append((sub_date, int(qm.group(2)), int(qm.group(1)), panel))
+    if not panels:
+        return None
+
+    panels.sort(key=lambda x: x[0], reverse=True)
+    sub_date, fy, qn, latest = panels[0]
+    label = f"Q{qn} ({fy}-{(fy + 1) % 100:02d}) submitted on {sub_date.strftime('%d-%m-%Y')}"
+
+    ok = fail = 0
+    for img in latest.find_all("img"):
+        try:
+            if _qpr_inline_image(img, logger):
+                ok += 1
+            else:
+                fail += 1
+        except Exception as exc:
+            logger.warning(f"QPR snapshot: image inline error: {exc}", step="documents")
+            fail += 1
+
+    header = _qpr_header_fields(soup)
+    from html import escape as _esc
+    project_name = header.get("project name", "")
+    title = f"{project_name or reg_no or ack_no} — Latest QPR ({label})"
+    hdr_html = (
+        f'<div class="kheader"><h1>{_esc(title)}</h1><table>'
+        f"<tr><td><b>Project Name</b></td><td>{_esc(project_name)}</td></tr>"
+        f"<tr><td><b>Acknowledgement No</b></td><td>{_esc(header.get('acknowledgement number', ack_no))}</td></tr>"
+        f"<tr><td><b>Registration No</b></td><td>{_esc(header.get('registration number', reg_no))}</td></tr>"
+        f"<tr><td><b>Snapshot Of</b></td><td>{_esc(label)}</td></tr></table></div>"
+    )
+    out_html = (
+        f"<!doctype html><html><head><meta charset='utf-8'><title>{_esc(title)}</title>"
+        f"<style>{_QPR_INLINE_CSS}</style></head><body>{hdr_html}{str(latest)}</body></html>"
+    )
+    data = out_html.encode("utf-8")
+    logger.info(
+        f"QPR snapshot built: {label} (images ok={ok} failed={fail}, size={len(data)/1024:.0f} KB)",
+        step="documents",
+    )
+    return {
+        "link": f"{PROJECT_URL}?appNo={ack_no}",
+        "type": _QPR_DOC_TYPE,
+        "dated_on": sub_date.strftime("%Y-%m-%d"),
+        "_inline_bytes": data,
+        "_inline_filename": "quarterly_progress_report.html",
+        "_inline_content_type": "text/html; charset=utf-8",
+    }
+
+
 # ── Document extraction ───────────────────────────────────────────────────────
 
 # Matches "*(Annexure - 60)" or "( Annexure - 60 )" suffixes on portal labels.
@@ -1042,23 +1205,38 @@ def _handle_document(
     logger: CrawlerLogger,
     client=None,
 ) -> dict | None:
-    """Download a document, upload to S3, and record it in rera_project_documents."""
+    """Download a document, upload to S3, and record it in rera_project_documents.
+
+    Docs carrying ``_inline_bytes`` (e.g. the QPR HTML snapshot built locally)
+    bypass the network download and are uploaded straight to S3.
+    """
     url = doc.get("link")
     doc_type = doc.get("type", "document")
-    if not url:
+    inline_bytes = doc.get("_inline_bytes")
+    if not url and not inline_bytes:
         return None
-    filename = build_document_filename(doc)
     try:
-        resp = download_response(
-            url,
-            logger=logger,
-            total_timeout=_DOC_TOTAL_TIMEOUT,
-            max_bytes=_DOC_MAX_BYTES,
-        )
-        if not resp or len(resp.content) < 100:
-            logger.warning("Document download empty or failed", url=url, step="documents")
-            return None
-        data = resp.content
+        if inline_bytes is not None:
+            data = inline_bytes
+            # Derive filename from the (post-rename) label so the counter
+            # suffix is preserved, but force the inline content's extension.
+            slug = re.sub(r"[^a-z0-9]+", "_",
+                          (doc.get("label") or doc.get("type") or "document").lower()).strip("_") or "document"
+            inline_name = doc.get("_inline_filename") or "snapshot.html"
+            ext = inline_name[inline_name.rfind("."):] if "." in inline_name else ".html"
+            filename = f"{slug}{ext}"
+        else:
+            filename = build_document_filename(doc)
+            resp = download_response(
+                url,
+                logger=logger,
+                total_timeout=_DOC_TOTAL_TIMEOUT,
+                max_bytes=_DOC_MAX_BYTES,
+            )
+            if not resp or len(resp.content) < 100:
+                logger.warning("Document download empty or failed", url=url, step="documents")
+                return None
+            data = resp.content
         if len(data) > _DOC_MAX_BYTES:
             logger.warning(
                 f"Document too large ({len(data)/1024/1024:.1f} MB), skipping",
@@ -1082,7 +1260,10 @@ def _handle_document(
                 file_size_bytes=len(data),
             )
         logger.log_document(doc_type, url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
-        return {**doc, "s3_link": s3_url}  # FIELD: uploaded_documents[].s3_link <- get_s3_url(s3_key)
+        # Strip internal _inline_* keys so they don't leak into the project record.
+        result = {k: v for k, v in doc.items() if not k.startswith("_inline_")}
+        result["s3_link"] = s3_url                                                # FIELD: uploaded_documents[].s3_link <- get_s3_url(s3_key)
+        return result
     except Exception as exc:
         logger.warning(f"Document handling error: {exc}", url=url, step="documents")
         with _DB_LOCK:
@@ -1395,6 +1576,9 @@ def _process_candidate(
                     )
                     return deltas
             uploaded_docs = _extract_documents(detail_html, reg_no)
+            qpr_doc = _build_qpr_snapshot(detail_html, ack_no, reg_no, logger)
+            if qpr_doc is not None:
+                uploaded_docs.append(qpr_doc)                              # FIELD: uploaded_documents[] <- inline QPR snapshot (latest panel)
         else:
             if not listing_reg_no:
                 logger.warning(
