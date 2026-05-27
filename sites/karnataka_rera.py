@@ -264,7 +264,18 @@ def _parse_search_table(html: str) -> list[dict]:
     numeric DB id that link carries.
     """
     soup = BeautifulSoup(html, "lxml")
-    tbl = soup.find("table")
+    # DataTables with scrollable headers splits the source <table> into two
+    # sibling tables: a header-only "scrollHead" copy and a body table
+    # (``id="approvedTable"``) that actually carries the data rows.  Prefer
+    # the table whose rows contain a ``showFileApplicationPreview`` anchor;
+    # fall back to ``#approvedTable`` and finally to the first <table>.
+    tbl = None
+    for cand in soup.find_all("table"):
+        if cand.find("a", onclick=lambda s: s and "showFileApplicationPreview" in s):
+            tbl = cand
+            break
+    if tbl is None:
+        tbl = soup.find("table", id="approvedTable") or soup.find("table")
     if not tbl:
         return []
     trs = tbl.find_all("tr")
