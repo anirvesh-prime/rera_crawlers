@@ -3,14 +3,20 @@ Karnataka RERA Crawler — rera.karnataka.gov.in
 Type: static (httpx + BeautifulSoup)
 
 How the portal works (observed from live HTML):
-- The listing page (viewAllProjects) renders project data as JavaScript arrays.
-  Each project appears as:
-      var localObj = { appNo : 'ACK/KA/RERA/.../...' };
-      applicationArray.push(localObj);
-  The registration number (format PRM/KA/RERA/...) is embedded in a parallel
-  array: applicationNameList1.push('<reg_no>').
-  A district MUST be selected — blank search returns zero results.
-  The crawler POSTs each district name and extracts both ack_no and reg_no.
+- The listing endpoint that actually honours the district filter is
+  /projectViewDetails (the form on /viewAllProjects POSTs there).  The crawler
+  POSTs each district name with payload
+      {appNo: "", regNo: "", project: "", firm: "",
+       district: <DistrictName>, subdistrict: "0"}
+  and reads the HTML <table> at the top of the response — columns include
+  ACKNOWLEDGEMENT NO, REGISTRATION NO, PROMOTER NAME, PROJECT NAME, STATUS,
+  DISTRICT, TALUK, PROJECT TYPE, APPROVED ON, ...
+  Only rows that carry a "showFileApplicationPreview" view link are drillable
+  (rejected applications have the link stripped and are skipped).
+  Note: /viewAllProjects itself always returns the unfiltered global catalog
+  (~9.6k projects embedded as `localObj.appNo` JS arrays) regardless of any
+  POST parameters — using it for district traversal silently mislabels every
+  candidate with the wrong district.
 
 - Detail fetch (TWO-STEP, as of 2025):
   Step 1: POST /projectViewDetails with appNo=<ack_no>
@@ -65,10 +71,10 @@ from core.s3 import compute_md5, upload_document, get_s3_url
 from core.config import settings
 
 BASE_URL    = "https://rera.karnataka.gov.in"
-LISTING_URL = f"{BASE_URL}/viewAllProjects"
+LISTING_URL = f"{BASE_URL}/viewAllProjects"      # search-form page
 DETAIL_URL  = f"{BASE_URL}/projectDetails"
 CERT_URL    = f"{BASE_URL}/certificate"
-PROJECT_URL = f"{BASE_URL}/projectViewDetails"   # canonical; no per-project URL path
+PROJECT_URL = f"{BASE_URL}/projectViewDetails"   # form action (search results page)
 DOMAIN      = "rera.karnataka.gov.in"
 STATE_CODE  = "KA"
 
@@ -76,6 +82,24 @@ STATE_CODE  = "KA"
 # ── SeleniumSession wiring ────────────────────────────────────────────────────
 
 _SESSION: SeleniumSession | None = None
+# Detail-pool runs N workers against the single shared headless-Chrome driver;
+# every search / detail interaction navigates the browser, so concurrent calls
+# would race over the active URL and DOM. Serialise all browser-driven work
+# through this lock — the driver itself is effectively single-threaded anyway.
+_DRIVER_LOCK = threading.Lock()
+
+# Expand every jQuery DataTables instance on the current page to its full row
+# set. The Karnataka results page uses DataTables to paginate at 10 rows per
+# page client-side and physically removes the other rows from the DOM, so
+# without this expansion ``page_source`` only contains the first page's rows.
+_EXPAND_DATATABLES_JS = (
+    "if (window.jQuery && jQuery.fn.dataTable) {"
+    "  var t = jQuery.fn.dataTable.tables();"
+    "  for (var i = 0; i < t.length; i++) {"
+    "    try { jQuery(t[i]).DataTable().page.len(-1).draw(false); } catch (e) {}"
+    "  }"
+    "}"
+)
 
 
 def _session() -> SeleniumSession:
@@ -97,20 +121,13 @@ def _quit_driver() -> None:
         _SESSION = None
 
 
-def safe_get(url, *, logger=None, timeout=None, **_ignored):
-    """Backwards-compatible shim — dispatches through the SeleniumSession."""
-    plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
-    return _session().get(url, logger=logger, page_load_timeout=plt)
-
-
-def safe_post(url, *, data=None, headers=None, logger=None, **_ignored):
-    """Backwards-compatible shim — dispatches through the SeleniumSession."""
-    return _session().post(url, data=data, headers=headers, logger=logger)
-
-
 def download_response(url, *, method="GET", data=None, headers=None,
                       logger=None, **_ignored):
-    """Backwards-compatible shim — dispatches through the SeleniumSession."""
+    """Binary-download shim — dispatches through the SeleniumSession so PDFs
+    inherit the browser's cookies + TLS trust store.  Used only for document
+    downloads; all page-content interaction now goes through real browser
+    navigation (see ``_submit_search_form`` / ``_fetch_detail``).
+    """
     return _session().download(url, method=method, data=data, headers=headers, logger=logger)
 
 # All 31 Karnataka districts as they appear in the portal's <select> options.
@@ -125,17 +142,6 @@ DISTRICTS: list[str] = [
     "Shivamogga", "Tumakuru", "Udupi", "Uttara Kannada", "Vijayanagara",
     "Vijayapura", "Yadgir",
 ]
-
-# Regex patterns for the embedded JavaScript arrays in the listing page.
-# Matches: appNo : 'ACK/KA/RERA/...' or appNo : "ACK/KA/RERA/..."
-_ACK_RE = re.compile(r"""appNo\s*:\s*['"]([^'"]+)['"]""")
-# applicationNameList1 → project registration no (PRM/KA/RERA/...)
-_REG_NO_RE = re.compile(r"""applicationNameList1\s*\.push\('([^']*)'\)""")
-# Fallback: regNo field inside localObj if list1 is absent
-_LOCAL_OBJ_REG_RE = re.compile(r"""regNo\s*:\s*['"]([^'"]+)['"]""")
-_PROMO_RE = re.compile(r"""applicationNameList2\s*\.push\('([^']*)'\)""")
-_PROJECT_NAME_RE = re.compile(r"""applicationNameList3\s*\.push\('([^']*)'\)""")
-_PROMOTER_NAME_RE = re.compile(r"""applicationNameList4\s*\.push\('([^']*)'\)""")
 
 # Map lowercased Karnataka portal labels (from detail HTML) → schema field names.
 # Covers both the old fragment-style labels and the new Bootstrap-grid labels.
@@ -247,48 +253,25 @@ def _safe_float(val: str | None) -> float | None:
 
 # ── Listing ───────────────────────────────────────────────────────────────────
 
-def _post_listing(district: str, start_page: int, logger: CrawlerLogger) -> str | None:
-    """POST the search form for one district + page offset. Returns raw HTML text."""
-    payload = {
-        "districtId":    district,
-        "talukId":       "",
-        "projectName":   "",
-        "promoterName":  "",
-        "applicationNo": "",
-        "registrationNo": "",
-        "START_PAGE":    str(start_page),
-    }
-    # Fast-fail: the Karnataka portal regularly hangs mid-POST. The default
-    # retries=3, timeout=45 ladder burns up to ~280s per stuck district and
-    # the crawler walks 31 districts sequentially, so even a handful of
-    # timeouts adds tens of minutes to every run. One attempt with a 30s cap
-    # lets the checkpoint resume the failed district on the next crawl.
-    resp = safe_post(LISTING_URL, data=payload, retries=1, logger=logger, timeout=30.0)
-    return resp.text if resp else None
+def _parse_search_table(html: str) -> list[dict]:
+    """Parse the search-results <table> returned by POST /projectViewDetails.
 
-
-def _search_by_reg_no(reg_no: str, logger: CrawlerLogger) -> dict | None:
-    """Direct lookup: POST /projectViewDetails with regNo=<reg_no> and parse the
-    single-row search result into a listing-row dict.  Returns ``None`` when the
-    portal yields no matching row.  Used by the ``--target-reg-no`` shortcut so
-    targeted runs skip the district walk entirely.
+    Returns a list of dicts (one per drillable row) with header-derived keys:
+    ``acknowledgement_no``, ``project_registration_no``, ``project_name``,
+    ``promoter_name``, ``district``, ``status``, ``project_type``,
+    ``approved_on``.  Rows without a ``showFileApplicationPreview`` view link
+    (e.g. REJECTED applications) are skipped — the detail fetch needs the
+    numeric DB id that link carries.
     """
-    resp = safe_post(
-        PROJECT_URL,
-        data={"appNo": "", "regNo": reg_no, "project": "", "firm": "",
-              "district": "0", "subdistrict": "0"},
-        retries=2, logger=logger, timeout=30.0,
-    )
-    if not resp:
-        return None
-    tbl = BeautifulSoup(resp.text, "lxml").find("table")
+    soup = BeautifulSoup(html, "lxml")
+    tbl = soup.find("table")
     if not tbl:
-        return None
-    rows = tbl.find_all("tr")
-    if len(rows) < 2:
-        return None
+        return []
+    trs = tbl.find_all("tr")
+    if len(trs) < 2:
+        return []
     headers = [_clean(c.get_text()).lower()
-               for c in rows[0].find_all(["th", "td"])]
+               for c in trs[0].find_all(["th", "td"])]
 
     def col(*needles: str) -> int:
         for needle in needles:
@@ -297,92 +280,174 @@ def _search_by_reg_no(reg_no: str, logger: CrawlerLogger) -> dict | None:
                     return i
         return -1
 
-    ack_i  = col("acknowledg", "application")
-    reg_i  = col("registration")
-    name_i = col("project name")
-    prom_i = col("promoter")
-    dist_i = col("district")
-    target = reg_no.strip().upper()
-    for row in rows[1:]:
+    ack_i   = col("acknowledg", "application")
+    reg_i   = col("registration")
+    name_i  = col("project name")
+    prom_i  = col("promoter")
+    dist_i  = col("district")
+    stat_i  = col("status")
+    type_i  = col("project type")
+    appr_i  = col("approved on")
+
+    out: list[dict] = []
+    for row in trs[1:]:
         if not row.find("a", onclick=lambda s: s and "showFileApplicationPreview" in s):
             continue
         cells = [_clean(c.get_text()) for c in row.find_all("td")]
         def at(i: int) -> str:
             return cells[i] if 0 <= i < len(cells) else ""
-        if at(reg_i).upper() != target:
+        ack_no = at(ack_i)
+        if not ack_no:
             continue
-        district = at(dist_i)
+        out.append({
+            "acknowledgement_no":      ack_no,
+            "project_registration_no": at(reg_i) or None,
+            "project_name":            at(name_i) or None,
+            "promoter_name":           at(prom_i) or None,
+            "district":                at(dist_i),
+            "status":                  at(stat_i),
+            "project_type":            at(type_i),
+            "approved_on":             at(appr_i),
+        })
+    return out
+
+
+def _submit_search_form(
+    *,
+    district: str = "0",
+    app_no: str = "",
+    reg_no: str = "",
+    logger: CrawlerLogger,
+    step: str,
+) -> str | None:
+    """Drive the actual browser through the /viewAllProjects search form and
+    return the rendered results-page HTML.
+
+    Loads the form page, fills the requested field(s) via DOM interaction
+    (select-by-value on the District dropdown; ``send_keys`` on the Application
+    No / Registration No inputs), clicks the Search submit button, waits for
+    the results <table> to render on /projectViewDetails, and returns
+    ``driver.page_source``.  Returns ``None`` on navigation timeout or
+    WebDriver errors so callers can checkpoint-and-continue.
+
+    Held under ``_DRIVER_LOCK`` so the detail-pool's parallel workers do not
+    race over the single shared headless-Chrome driver.
+    """
+    from selenium.common.exceptions import (
+        NoSuchElementException, TimeoutException, WebDriverException,
+    )
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.support.ui import Select, WebDriverWait
+
+    with _DRIVER_LOCK:
+        try:
+            driver = _session().driver()
+            driver.set_page_load_timeout(30.0)
+            driver.get(LISTING_URL)
+            WebDriverWait(driver, 20).until(
+                EC.presence_of_element_located((By.ID, "projectDist"))
+            )
+            if district and district != "0":
+                Select(driver.find_element(By.ID, "projectDist")).select_by_value(district)
+            if app_no:
+                el = driver.find_element(By.ID, "regNo")     # name="appNo"
+                el.clear(); el.send_keys(app_no)
+            if reg_no:
+                el = driver.find_element(By.ID, "regNo2")    # name="regNo"
+                el.clear(); el.send_keys(reg_no)
+            driver.find_element(By.CSS_SELECTOR, 'input[name="btn1"]').click()
+            WebDriverWait(driver, 30).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "table"))
+            )
+            # Each results table is wrapped in jQuery DataTables with a default
+            # page length of 10, which pulls all other rows out of the DOM.
+            # Expand every DataTables instance so ``page_source`` carries the
+            # complete set of result rows.
+            driver.execute_script(_EXPAND_DATATABLES_JS)
+            return driver.page_source
+        except (TimeoutException, NoSuchElementException, WebDriverException) as exc:
+            logger.warning(
+                f"Browser search failed ({exc.__class__.__name__}): "
+                f"district={district!r} app_no={app_no!r} reg_no={reg_no!r}",
+                step=step,
+            )
+            return None
+
+
+def _post_listing(district: str, logger: CrawlerLogger) -> str | None:
+    """Drive the browser through the search form for one district and return
+    the rendered results-page HTML.
+
+    The portal's /viewAllProjects page renders a form whose <select
+    name='district'> filter is honoured only when the form is submitted; the
+    raw endpoint returns the global catalogue.  Selecting the district from
+    the rendered dropdown and clicking Search reproduces the user flow
+    exactly.
+    """
+    return _submit_search_form(district=district, logger=logger, step="listing")
+
+
+def _search_by_reg_no(reg_no: str, logger: CrawlerLogger) -> dict | None:
+    """Direct lookup: drive the browser through the search form with the
+    Registration No field filled in and parse the single-row search result
+    into a listing-row dict.  Returns ``None`` when the portal yields no
+    matching row.  Used by the ``--target-reg-no`` shortcut so targeted runs
+    skip the district walk entirely.
+    """
+    html = _submit_search_form(reg_no=reg_no, logger=logger, step="listing")
+    if not html:
+        return None
+    target = reg_no.strip().upper()
+    for r in _parse_search_table(html):
+        if (r.get("project_registration_no") or "").upper() != target:
+            continue
+        district = r.get("district") or ""
         return {
-            "acknowledgement_no": at(ack_i),
-            "project_registration_no": at(reg_i),
-            "project_name": at(name_i),
-            "promoter_name": at(prom_i),
+            "acknowledgement_no":       r["acknowledgement_no"],
+            "project_registration_no":  r["project_registration_no"],
+            "project_name":             r["project_name"],
+            "promoter_name":            r["promoter_name"],
             "promoter_registration_no": None,
-            "project_city": district.upper(),
-            "project_location_raw": {"district": district} if district else {},
+            "project_city":             district.upper(),
+            "project_location_raw":     {"district": district} if district else {},
             "data": {
-                "search_district": district,
-                "listing_fallback": True,
-                "target_lookup": True,
+                "search_district":      district,
+                "listing_fallback":     True,
+                "target_lookup":        True,
+                "listing_status":       r.get("status") or "",
+                "listing_project_type": r.get("project_type") or "",
+                "listing_approved_on":  r.get("approved_on") or "",
             },
         }
     return None
 
 
-def _extract_ack_nos(html: str) -> list[str]:
-    """
-    Extract acknowledgement numbers from the JavaScript arrays embedded in the
-    listing page HTML. Each project appears as:
-        var localObj = { appNo : 'ACK/KA/RERA/.../...' };
-    Returns a deduplicated list preserving document order.
-    """
-    seen: set[str] = set()
-    result: list[str] = []
-    for m in _ACK_RE.finditer(html):
-        ack = m.group(1).strip()
-        if ack and ack not in seen:
-            seen.add(ack)
-            result.append(ack)
-    return result
-
-
 def _extract_listing_rows(html: str, district: str) -> list[dict]:
-    """Recover per-project listing data from the JS arrays embedded in the page.
+    """Recover per-project listing data from the search-results <table>.
 
-    Registration numbers (``applicationNameList1``) are extracted alongside
-    acknowledgement numbers so the project key can be generated at listing time,
-    avoiding a detail-page fetch for ``daily_light`` dedup checks.
+    The table is rendered by POST /projectViewDetails for the requested
+    district and contains ACK NO, REGISTRATION NO, PROJECT/PROMOTER NAME,
+    STATUS, DISTRICT, TALUK, PROJECT TYPE and APPROVED ON columns directly —
+    so the project key can be generated at listing time, avoiding a detail-page
+    fetch for ``daily_light`` dedup checks.
     """
-    acks = _extract_ack_nos(html)
-
-    # Extract registration numbers from applicationNameList1.
-    # Fall back to checking for a regNo field inside localObj (older portal versions).
-    reg_nos = [m.group(1).strip() for m in _REG_NO_RE.finditer(html)]
-    if not reg_nos:
-        reg_nos = [m.group(1).strip() for m in _LOCAL_OBJ_REG_RE.finditer(html)]
-
-    promoter_regs = [m.group(1).strip() for m in _PROMO_RE.finditer(html)]
-    project_names = [m.group(1).strip() for m in _PROJECT_NAME_RE.finditer(html)]
-    promoter_names = [m.group(1).strip() for m in _PROMOTER_NAME_RE.finditer(html)]
-
     rows: list[dict] = []
-    for idx, ack_no in enumerate(acks):
-        reg_no = reg_nos[idx] if idx < len(reg_nos) else None
-        promo_reg = promoter_regs[idx] if idx < len(promoter_regs) else None
+    for r in _parse_search_table(html):
         rows.append({
-            "acknowledgement_no": ack_no,                                                 # FIELD: acknowledgement_no <- listing JS appNo
-            # Use the real registration number; None means it wasn't on the
-            # listing page and the detail page must supply it (fallback only).
-            "project_registration_no": reg_no,                                            # FIELD: project_registration_no <- applicationNameList1 / localObj regNo
-            "project_name": project_names[idx] if idx < len(project_names) else None,     # FIELD: project_name <- applicationNameList3
-            "promoter_name": promoter_names[idx] if idx < len(promoter_names) else None,  # FIELD: promoter_name <- applicationNameList4
-            "promoter_registration_no": promo_reg,                                        # FIELD: promoter_registration_no <- applicationNameList2
-            "project_city": district.upper(),                                             # FIELD: project_city <- searched district (upper)
-            "project_location_raw": {"district": district},                               # FIELD: project_location_raw.district <- searched district
+            "acknowledgement_no":       r["acknowledgement_no"],                # FIELD: acknowledgement_no <- search table "ACKNOWLEDGEMENT NO"
+            "project_registration_no":  r["project_registration_no"],           # FIELD: project_registration_no <- search table "REGISTRATION NO"
+            "project_name":             r["project_name"],                      # FIELD: project_name <- search table "PROJECT NAME"
+            "promoter_name":            r["promoter_name"],                     # FIELD: promoter_name <- search table "PROMOTER NAME"
+            "promoter_registration_no": None,                                   # FIELD: promoter_registration_no <- None (not in listing table)
+            "project_city":             district.upper(),                       # FIELD: project_city <- searched district (upper)
+            "project_location_raw":     {"district": district},                 # FIELD: project_location_raw.district <- searched district
             "data": {
-                "search_district": district,                                              # FIELD: data.search_district <- searched district
-                "promoter_registration_no": promo_reg,                                    # FIELD: data.promoter_registration_no <- applicationNameList2
-                "listing_fallback": True,                                                 # FIELD: data.listing_fallback <- literal True
+                "search_district":      district,                               # FIELD: data.search_district <- searched district
+                "listing_fallback":     True,                                   # FIELD: data.listing_fallback <- literal True
+                "listing_status":       r.get("status") or "",                  # FIELD: data.listing_status <- search table "STATUS"
+                "listing_project_type": r.get("project_type") or "",            # FIELD: data.listing_project_type <- search table "PROJECT TYPE"
+                "listing_approved_on":  r.get("approved_on") or "",             # FIELD: data.listing_approved_on <- search table "APPROVED ON"
             },
         })
     return rows
@@ -392,26 +457,30 @@ def _extract_listing_rows(html: str, district: str) -> list[dict]:
 
 def _fetch_detail(ack_no: str, logger: CrawlerLogger) -> tuple[str | None, dict]:
     """
-    Two-step detail fetch (new portal behaviour as of 2025):
-      1. POST /projectViewDetails with appNo=<ack_no>
-         → parse search-results table → extract numeric DB id + approved_on date.
-      2. POST /projectDetails with action=<numeric_id>
-         → full project detail page (~200–450 KB HTML).
-    Returns (html | None, meta_dict).
-    meta_dict keys: approved_on_date, status_of_the_project, project_type_listing
+    Drive the rendered browser through the two-step detail flow:
+      1. Submit the /viewAllProjects search form with Application No = <ack_no>
+         → parse the rendered results <table> → extract numeric DB id +
+         approved_on / status / project_type from the listing row.
+      2. Click the row's "View Project Details" anchor (which fires the portal's
+         own ``showFileApplicationPreview`` AJAX into the ``#result`` div) and
+         read the rendered detail HTML back out of that div.
+
+    Returns (html | None, meta_dict).  meta_dict keys: approved_on_date,
+    status_of_the_project, project_type_listing.
     """
-    # Step 1: search for project to get its numeric DB id
-    search_resp = safe_post(
-        PROJECT_URL,
-        data={"appNo": ack_no, "regNo": "", "project": "", "firm": "",
-              "district": "0", "subdistrict": "0"},
-        retries=2, logger=logger, timeout=30.0,
+    from selenium.common.exceptions import (
+        NoSuchElementException, TimeoutException, WebDriverException,
     )
-    if not search_resp:
-        logger.warning(f"Search POST failed for {ack_no!r}", step="detail")
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.support.ui import WebDriverWait
+
+    # Step 1: search via the rendered form to land on the results page.
+    search_html = _submit_search_form(app_no=ack_no, logger=logger, step="detail")
+    if not search_html:
         return None, {}
 
-    search_soup = BeautifulSoup(search_resp.text, "lxml")
+    search_soup = BeautifulSoup(search_html, "lxml")
     tbl = search_soup.find("table")
     if not tbl:
         logger.warning(f"No table in search results for {ack_no!r}", step="detail")
@@ -450,16 +519,42 @@ def _fetch_detail(ack_no: str, logger: CrawlerLogger) -> tuple[str | None, dict]
         logger.warning(f"Numeric DB id not found for {ack_no!r}", step="detail")
         return None, meta
 
-    # Step 2: fetch full detail page
-    detail_resp = safe_post(
-        DETAIL_URL, data={"action": numeric_id},
-        retries=2, logger=logger, timeout=30.0,
-    )
-    if not detail_resp:
-        logger.warning(f"Detail POST failed for numeric_id={numeric_id!r}", step="detail")
-        return None, meta
+    # Step 2: click the row's view-details anchor; the portal's own JS POSTs
+    # to /projectDetails and injects the response HTML into <div id="result">.
+    # Read it back from the rendered DOM.
+    with _DRIVER_LOCK:
+        try:
+            driver = _session().driver()
+            # Clear any stale modal content from a previous detail click so the
+            # wait below can reliably detect the new payload landing.
+            driver.execute_script(
+                "var r=document.getElementById('result'); if(r){r.innerHTML='';}"
+            )
+            link = driver.find_element(By.CSS_SELECTOR, f'a[id="{numeric_id}"]')
+            try:
+                link.click()
+            except WebDriverException:
+                # Modal/backdrop or off-screen position can intercept a normal
+                # click; fall back to the page's own handler invocation.
+                driver.execute_script(
+                    "showFileApplicationPreview(document.getElementById(arguments[0]));",
+                    numeric_id,
+                )
+            WebDriverWait(driver, 30).until(
+                lambda d: len(
+                    (d.find_element(By.ID, "result").get_attribute("innerHTML") or "").strip()
+                ) > 0
+            )
+            detail_html = driver.find_element(By.ID, "result").get_attribute("innerHTML") or ""
+        except (TimeoutException, NoSuchElementException, WebDriverException) as exc:
+            logger.warning(
+                f"Detail navigation failed for numeric_id={numeric_id!r}: "
+                f"{exc.__class__.__name__}",
+                step="detail",
+            )
+            return None, meta
 
-    return detail_resp.text, meta
+    return detail_html, meta
 
 
 # ── Detail page parsing ───────────────────────────────────────────────────────
@@ -1499,7 +1594,6 @@ def _collect_candidates(
     start_district_idx: int,
     *,
     item_limit: int,
-    max_pages: int,
     delay_range: tuple[float, float],
     logger: CrawlerLogger,
     run_id: int,
@@ -1554,53 +1648,36 @@ def _collect_candidates(
             f"District {district_idx + 1}/{len(districts)}: {district!r}",
             step="listing",
         )
-        start_page = 0
-        page_number = 0
-        while True:
-            html = _post_listing(district, start_page, logger)
-            if html is None:
-                logger.error(
-                    f"Listing POST failed for district={district!r} start={start_page}",
-                    step="listing",
-                )
-                insert_crawl_error(
-                    run_id, site_id, "HTTP_ERROR",
-                    f"listing POST failed: district={district} start={start_page}",
-                    url=LISTING_URL,
-                )
-                break
-            listing_rows = _extract_listing_rows(html, district)
-            ack_nos = [row["acknowledgement_no"] for row in listing_rows]
-            logger.info(
-                f"  start={start_page}: {len(ack_nos)} ack_nos",
-                district=district, step="listing",
+        html = _post_listing(district, logger)
+        if html is None:
+            logger.error(
+                f"Listing POST failed for district={district!r}",
+                step="listing",
             )
-            if not ack_nos:
-                break
-            total_found += len(ack_nos)
+            insert_crawl_error(
+                run_id, site_id, "HTTP_ERROR",
+                f"listing POST failed: district={district}",
+                url=PROJECT_URL,
+            )
+            save_checkpoint(site_id, mode, district_idx + 1, None, run_id)
+            continue
+        listing_rows = _extract_listing_rows(html, district)
+        logger.info(
+            f"  {len(listing_rows)} drillable rows",
+            district=district, step="listing",
+        )
+        if listing_rows:
+            total_found += len(listing_rows)
             if not first_district_logged:
-                logger.timing("search", time.monotonic() - t0, rows=len(ack_nos))
+                logger.timing("search", time.monotonic() - t0, rows=len(listing_rows))
                 first_district_logged = True
-
             for row in listing_rows:
-                candidates.append((district_idx, page_number, row))
+                candidates.append((district_idx, 0, row))
                 if cap is not None and len(candidates) >= cap:
                     save_checkpoint(site_id, mode, district_idx, None, run_id)
                     return candidates, total_found, last_district_idx
-
-            page_number += 1
-            if max_pages and page_number >= max_pages:
-                logger.info(
-                    f"Reached max_pages={max_pages} for district={district!r}",
-                    step="listing",
-                )
-                break
-            next_start = start_page + len(ack_nos)
-            if next_start == start_page:
-                break
-            start_page = next_start
-            random_delay(*delay_range)
         save_checkpoint(site_id, mode, district_idx + 1, None, run_id)
+        random_delay(*delay_range)
     return candidates, total_found, last_district_idx
 
 
@@ -1776,7 +1853,6 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     machine_name, machine_ip = get_machine_context()
     site_id     = config["id"]
     item_limit  = settings.CRAWL_ITEM_LIMIT or 0
-    max_pages   = settings.MAX_PAGES or 0
     delay_range = config.get("rate_limit_delay", (2, 5))
     state       = config.get("state", "karnataka")
     districts   = DISTRICTS
@@ -1806,7 +1882,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     # ── Phase A: Lister — collect candidates up to item_limit ────────────────
     candidates, total_found_walked, last_district_idx = _collect_candidates(
         districts, start_district_idx,
-        item_limit=item_limit, max_pages=max_pages,
+        item_limit=item_limit,
         delay_range=delay_range,
         logger=logger, run_id=run_id, site_id=site_id, mode=mode,
     )
