@@ -44,6 +44,8 @@ _CONTENT_TYPES: dict[str, str] = {
     ".jpeg": "image/jpeg",
     ".png":  "image/png",
     ".zip":  "application/zip",
+    ".html": "text/html; charset=utf-8",
+    ".htm":  "text/html; charset=utf-8",
 }
 
 

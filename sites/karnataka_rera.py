@@ -1098,7 +1098,6 @@ def _build_qpr_snapshot(
         "dated_on": sub_date.strftime("%Y-%m-%d"),
         "_inline_bytes": data,
         "_inline_filename": "quarterly_progress_report.html",
-        "_inline_content_type": "text/html; charset=utf-8",
     }
 
 
