@@ -1449,6 +1449,12 @@ def _collect_candidates(
     total_found = 0
     last_district_idx = start_district_idx
     cap = item_limit if item_limit > 0 else None
+    target_reg_no = (settings.TARGET_REG_NO or "").strip().upper()
+    if target_reg_no:
+        logger.info(
+            f"Targeted run — filtering listings for reg_no={target_reg_no!r}",
+            step="listing",
+        )
     first_district_logged = False
     t0 = time.monotonic()
     for district_idx in range(start_district_idx, len(districts)):
@@ -1487,6 +1493,18 @@ def _collect_candidates(
                 first_district_logged = True
 
             for row in listing_rows:
+                if target_reg_no:
+                    row_reg = (row.get("project_registration_no") or "").strip().upper()
+                    if row_reg != target_reg_no:
+                        continue
+                    candidates.append((district_idx, page_number, row))
+                    logger.info(
+                        f"Target reg_no matched in district={district!r} "
+                        f"(ack={row.get('acknowledgement_no')!r}) — stopping lister",
+                        step="listing",
+                    )
+                    save_checkpoint(site_id, mode, district_idx, None, run_id)
+                    return candidates, total_found, last_district_idx
                 candidates.append((district_idx, page_number, row))
                 if cap is not None and len(candidates) >= cap:
                     save_checkpoint(site_id, mode, district_idx, None, run_id)
@@ -1505,6 +1523,11 @@ def _collect_candidates(
             start_page = next_start
             random_delay(*delay_range)
         save_checkpoint(site_id, mode, district_idx + 1, None, run_id)
+    if target_reg_no and not candidates:
+        logger.warning(
+            f"Target reg_no={target_reg_no!r} not found in any district",
+            step="listing",
+        )
     return candidates, total_found, last_district_idx
 
 
@@ -1687,14 +1710,22 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     t_run = time.monotonic()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    t0 = time.monotonic()
-    if not _sentinel_check(config, run_id, logger):
-        logger.error("Sentinel failed — aborting crawl", step="sentinel")
-        counters["sentinel_passed"] = False
-        counters["error_count"] += 1
-        return counters
-    counters["sentinel_passed"] = True
-    logger.timing("sentinel", time.monotonic() - t0)
+    # Skipped for targeted runs (--target-reg-no): the caller is exercising a
+    # single project and a sentinel failure would abort before we get there.
+    if (settings.TARGET_REG_NO or "").strip():
+        logger.info(
+            "Sentinel skipped (targeted run via --target-reg-no)",
+            step="sentinel",
+        )
+    else:
+        t0 = time.monotonic()
+        if not _sentinel_check(config, run_id, logger):
+            logger.error("Sentinel failed — aborting crawl", step="sentinel")
+            counters["sentinel_passed"] = False
+            counters["error_count"] += 1
+            return counters
+        counters["sentinel_passed"] = True
+        logger.timing("sentinel", time.monotonic() - t0)
 
     checkpoint = load_checkpoint(config["id"], mode) or {}
     start_district_idx = int(checkpoint.get("last_page", 0))

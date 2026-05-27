@@ -13,6 +13,8 @@ Usage:
     python run_crawlers.py --sequential         # disable parallel execution
     python run_crawlers.py --test               # skip S3 uploads and DB writes (dry run)
     python run_crawlers.py --test-logs          # like --test but still write log tables (visible on dashboard)
+    python run_crawlers.py --site karnataka_rera --target-reg-no "PRM/KA/RERA/1251/446/PR/181122/005482"
+                                                # crawl only the matching project (skips sentinel)
 """
 from __future__ import annotations
 
@@ -134,6 +136,18 @@ def parse_args() -> argparse.Namespace:
             "button — never use in cron."
         ),
     )
+    parser.add_argument(
+        "--target-reg-no",
+        dest="target_reg_no",
+        default=None,
+        help=(
+            "Restrict the run to a single project whose registration number "
+            "matches this value (case-insensitive).  Crawlers that support it "
+            "filter their listing rows down to that one project and skip the "
+            "sentinel health check.  Combine with --test for a dry-run.  "
+            "Currently implemented for karnataka_rera."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -228,6 +242,12 @@ def apply_runtime_overrides(args: argparse.Namespace) -> int:
         os.environ["CRAWL_DELAY_SCALE"] = str(delay_scale)
         settings.CRAWL_DELAY_SCALE = delay_scale
 
+    target_reg_no = getattr(args, "target_reg_no", None)
+    if target_reg_no is not None:
+        target_reg_no = target_reg_no.strip()
+        os.environ["TARGET_REG_NO"] = target_reg_no
+        settings.TARGET_REG_NO = target_reg_no
+
     if args.no_item_limit:
         os.environ.pop("CRAWL_ITEM_LIMIT", None)
         settings.CRAWL_ITEM_LIMIT = 0
@@ -288,6 +308,8 @@ def main():
     print(f"  Item Limit: {item_limit or 'unlimited'}")
     print(f"  Host      : {host}")
     print(f"  States    : {', '.join(site_ids)}")
+    if settings.TARGET_REG_NO:
+        print(f"  Target    : {settings.TARGET_REG_NO}")
     print(f"  Started   : {started.strftime('%Y-%m-%d %H:%M:%S UTC')}")
     if getattr(args, "test", False):
         if getattr(args, "tester", False):

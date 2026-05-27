@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     CRAWLER_TESTER: bool = False
     CRAWL_ITEM_LIMIT: int = 0        # 0 = unlimited
     CRAWL_DELAY_SCALE: float = 1.0   # scales random crawler throttling delays
+    # --target-reg-no flag: when non-empty, crawlers that support it filter
+    # listing rows down to the single project whose registration number
+    # matches (case-insensitive) and skip the sentinel/health check for the
+    # run.  Intended for targeted debugging of a specific project.
+    TARGET_REG_NO: str = ""
     SCRAPE_DETAILS: bool = True      # set False to skip detail-page fetches
     MAX_PAGES: int | None = None     # None = unlimited
     MAX_PARALLEL_CRAWLERS: int = 8   # hard cap on concurrent worker processes
