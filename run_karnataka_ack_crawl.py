@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-Targeted Karnataka RERA deep crawl — processes all acknowledgement numbers
-from keys.txt using the existing crawler internals. No changes to any existing file.
+Targeted Karnataka RERA deep crawl — for each DB key in keys.txt, looks up
+the project_registration_no from rera_projects, then runs the same flow as
+--target-reg-no: _search_by_reg_no (portal reg-no lookup) → _process_candidate
+(full detail fetch + upsert + S3 docs). No changes to any existing file.
 
 Usage:
-    python run_karnataka_ack_crawl.py                          # run all 613 keys
+    python run_karnataka_ack_crawl.py                          # run all keys
     python run_karnataka_ack_crawl.py --test                   # dry-run (no S3/DB writes)
-    python run_karnataka_ack_crawl.py --resume-from <ack_no>   # skip keys before this one
+    python run_karnataka_ack_crawl.py --resume-from <db_key>   # skip keys before this one
     python run_karnataka_ack_crawl.py --keys-file /other/keys.txt
 """
 import sys
@@ -25,7 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from core.config import settings
-from core.db import insert_crawl_run, update_crawl_run
+from core.db import get_connection, insert_crawl_run, update_crawl_run
 from core.logger import CrawlerLogger
 from core.project_normalizer import get_machine_context
 from sites import karnataka_rera
@@ -34,9 +36,35 @@ from sites_config import select_sites
 KEYS_FILE = Path(__file__).parent / "keys.txt"
 
 
+def _resolve_reg_nos(keys: list[str]) -> list[dict]:
+    """
+    Batch-fetch project_registration_no (and project_name for logging) from
+    rera_projects for every DB key. Returns rows in input order; keys with no
+    matching DB row get {"key": k, "_not_found": True}.
+    """
+    if not keys:
+        return []
+    conn = get_connection()
+    placeholders = ", ".join(["%s"] * len(keys))
+    rows = conn.execute(
+        f"SELECT key, project_registration_no, project_name "
+        f"FROM rera_projects WHERE key IN ({placeholders})",
+        keys,
+    ).fetchall()
+    row_by_key = {r["key"]: r for r in rows}
+    resolved = []
+    for k in keys:
+        row = row_by_key.get(k)
+        if row:
+            resolved.append(dict(row))
+        else:
+            resolved.append({"key": k, "_not_found": True})
+    return resolved
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Targeted Karnataka RERA deep crawl by acknowledgement number"
+        description="Targeted Karnataka RERA deep crawl by DB project key"
     )
     parser.add_argument(
         "--test", action="store_true",
@@ -44,11 +72,11 @@ def main() -> None:
     )
     parser.add_argument(
         "--keys-file", default=str(KEYS_FILE),
-        help=f"Path to the acknowledgement-number keys file (default: {KEYS_FILE})",
+        help=f"Path to the DB-keys file (default: {KEYS_FILE})",
     )
     parser.add_argument(
-        "--resume-from", default=None, metavar="ACK_NO",
-        help="Start from this acknowledgement number (inclusive); skip all earlier keys",
+        "--resume-from", default=None, metavar="DB_KEY",
+        help="Start from this DB key (inclusive); skip all earlier keys",
     )
     args = parser.parse_args()
 
@@ -76,7 +104,19 @@ def main() -> None:
             keys = keys[start_idx:]
             print(f"Resuming from key #{start_idx + 1}: {args.resume_from} ({len(keys)} remaining)")
         else:
-            print(f"[WARN] resume key {args.resume_from!r} not found in keys file — running all {len(keys)} keys")
+            print(f"[WARN] resume key {args.resume_from!r} not in keys file — running all {len(keys)} keys")
+
+    # ── Resolve DB keys → registration numbers ───────────────────────────────
+    print(f"Resolving {len(keys)} DB keys against rera_projects …", flush=True)
+    projects = _resolve_reg_nos(keys)
+    not_found = [p["key"] for p in projects if p.get("_not_found")]
+    if not_found:
+        print(f"[WARN] {len(not_found)} keys not found in DB and will be skipped:")
+        for k in not_found[:10]:
+            print(f"       {k}")
+        if len(not_found) > 10:
+            print(f"       … and {len(not_found) - 10} more")
+    projects = [p for p in projects if not p.get("_not_found")]
 
     # ── Resolve Karnataka site config ─────────────────────────────────────────
     sites, unknown, _ = select_sites(["karnataka_rera"])
@@ -88,50 +128,49 @@ def main() -> None:
     machine_name, machine_ip = get_machine_context()
     site_id = config["id"]
     state   = config.get("state", "karnataka")
-    total   = len(keys)
+    total   = len(projects)
 
     overall = dict(projects_new=0, projects_updated=0, projects_skipped=0,
                    documents_uploaded=0, error_count=0)
 
     print(f"\n{'='*60}")
-    print(f"  Karnataka RERA — Targeted Ack-Number Deep Crawl")
-    print(f"  Keys file : {keys_path}")
-    print(f"  Keys total: {total}")
+    print(f"  Karnataka RERA — Targeted DB-Key Deep Crawl")
+    print(f"  Keys file  : {keys_path}")
+    print(f"  Resolved   : {total}  (skipped {len(not_found)} not found in DB)")
     if args.test:
-        print(f"  Mode      : TEST (no S3 / no DB writes)")
+        print(f"  Mode       : TEST (no S3 / no DB writes)")
     print(f"{'='*60}\n")
 
     t_start = time.monotonic()
     try:
-        for i, ack_no in enumerate(keys, 1):
-            print(f"[{i}/{total}] {ack_no}", end="  ", flush=True)
+        for i, proj in enumerate(projects, 1):
+            reg_no = proj.get("project_registration_no") or ""
+            db_key = proj["key"]
+
+            print(f"[{i}/{total}] key={db_key}  reg_no={reg_no}", end="  ", flush=True)
+
+            if not reg_no:
+                print("→ SKIP (no project_registration_no in DB)")
+                overall["error_count"] += 1
+                continue
 
             run_id = insert_crawl_run(site_id, "weekly_deep")
             logger = CrawlerLogger(site_id, run_id)
 
-            # Synthetic listing row — only acknowledgement_no is known up front;
-            # the rest is populated by _fetch_detail + _parse_detail from the portal.
-            listing_row = {
-                "acknowledgement_no":       ack_no,
-                "project_registration_no":  None,
-                "project_name":             None,
-                "promoter_name":            None,
-                "promoter_registration_no": None,
-                "project_city":             "",
-                "project_location_raw":     {},
-                "data": {
-                    "search_district":      "",
-                    "listing_fallback":     True,
-                    "listing_status":       "",
-                    "listing_project_type": "",
-                    "listing_approved_on":  "",
-                    "targeted_ack_crawl":   True,
-                },
-            }
-
             try:
-                # district_idx=0 only affects data.district fallback label;
-                # the real district is parsed from the detail page HTML.
+                # Exact same flow as --target-reg-no:
+                # Step 1 — search the portal by registration number to get the
+                #           listing row (which includes the ack_no + district).
+                listing_row = karnataka_rera._search_by_reg_no(reg_no, logger)
+                if listing_row is None:
+                    print(f"→ NOT FOUND on portal")
+                    overall["error_count"] += 1
+                    update_crawl_run(run_id, "completed",
+                                     {"projects_found": 0, "error_count": 1})
+                    logger.close()
+                    continue
+
+                # Step 2 — full detail fetch, parse, upsert, S3 docs.
                 deltas = karnataka_rera._process_candidate(
                     0, 0, listing_row, config, run_id, site_id,
                     "weekly_deep", machine_name, machine_ip, state, logger,
@@ -162,12 +201,12 @@ def main() -> None:
             print(f"→ {tag}  docs={docs}")
 
     finally:
-        # Always tear down the Selenium driver, even if interrupted.
+        # Always tear down the Selenium driver, even on Ctrl+C.
         karnataka_rera._quit_driver()
 
     elapsed = time.monotonic() - t_start
     print(f"\n{'='*60}")
-    print(f"  DONE — {total} keys processed in {elapsed:.0f}s")
+    print(f"  DONE — {total} projects in {elapsed:.0f}s")
     print(
         f"  new={overall['projects_new']}  "
         f"updated={overall['projects_updated']}  "
