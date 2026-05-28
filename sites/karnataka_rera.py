@@ -88,25 +88,38 @@ _SESSION: SeleniumSession | None = None
 # through this lock — the driver itself is effectively single-threaded anyway.
 _DRIVER_LOCK = threading.Lock()
 
-# Expand every jQuery DataTables instance on the current page to its full row
-# set. The Karnataka results page uses DataTables to paginate at 10 rows per
-# page client-side and physically removes the other rows from the DOM, so
-# without this expansion ``page_source`` only contains the first page's rows.
-_EXPAND_DATATABLES_JS = (
-    "if (window.jQuery && jQuery.fn.dataTable) {"
-    "  var t = jQuery.fn.dataTable.tables();"
-    "  for (var i = 0; i < t.length; i++) {"
-    "    try { jQuery(t[i]).DataTable().page.len(-1).draw(false); } catch (e) {}"
-    "  }"
-    "}"
-)
-
 
 def _session() -> SeleniumSession:
-    """Return the active SeleniumSession, lazy-initialising on first use."""
+    """Return the active SeleniumSession, lazy-initialising on first use.
+
+    The portal's /viewAllProjects and /projectViewDetails responses are ~6 MB
+    each (uncompressed — the server doesn't honour ``Accept-Encoding: gzip``)
+    and dominated by inline <script> blocks that push ~9.6k localObj entries
+    for an autocomplete dataset the crawler never uses.  Executing those
+    blocks dominates page-load time — ~5s on a fast laptop, >60s on the
+    2 vCPU production droplet — so launch Chrome with
+    ``--blink-settings=scriptEnabled=false`` to skip in-page JS entirely.
+
+    With page JS off:
+      * The form's <input name="btn1"> submit button still posts the form
+        natively (handled by Blink, not page JS); we hide the document-ready
+        loader overlay via ``execute_script`` so it doesn't intercept the
+        click.  ``execute_script`` itself still runs because WebDriver's
+        Runtime.evaluate path is independent of Blink's scriptEnabled.
+      * The results ``<table id="approvedTable">`` is fully rendered
+        server-side, so DataTables never runs and every row is in the static
+        HTML — no row-expansion step is needed.
+      * The detail-page modal (``showFileApplicationPreview``) is replaced
+        by a direct ``fetch('/projectDetails')`` issued from
+        ``execute_async_script`` — that runs in WebDriver's execution context
+        regardless of Blink's scriptEnabled flag.
+    """
     global _SESSION
     if _SESSION is None:
-        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+        _SESSION = SeleniumSession(
+            ignore_certificate_errors=True,
+            extra_chrome_args=("--blink-settings=scriptEnabled=false",),
+        )
     return _SESSION
 
 
@@ -372,15 +385,24 @@ def _submit_search_form(
                 if reg_no:
                     el = driver.find_element(By.ID, "regNo2")    # name="regNo"
                     el.clear(); el.send_keys(reg_no)
-                driver.find_element(By.CSS_SELECTOR, 'input[name="btn1"]').click()
-                WebDriverWait(driver, 90).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "table"))
+                # Page JS is disabled (see ``_session``), so the document-ready
+                # handler that hides ``<div id="loader">`` never fires and the
+                # overlay intercepts the button click.  Hide it manually and
+                # submit the form natively — ``form.submit()`` is a Blink-
+                # level action that doesn't need page JS.
+                driver.execute_script(
+                    "var l=document.getElementById('loader');"
+                    " if(l){l.style.display='none';}"
+                    " document.querySelector('input[name=\"btn1\"]').form.submit();"
                 )
-                # Each results table is wrapped in jQuery DataTables with a
-                # default page length of 10 which pulls all other rows out of
-                # the DOM.  Expand every DataTables instance so ``page_source``
-                # carries the complete set of result rows.
-                driver.execute_script(_EXPAND_DATATABLES_JS)
+                # Wait for the actual results table — ``#approvedTable`` is
+                # unique to /projectViewDetails (the form page has zero
+                # ``<table>`` elements), so this doubles as a navigation gate.
+                WebDriverWait(driver, 90).until(
+                    EC.presence_of_element_located((By.ID, "approvedTable"))
+                )
+                # DataTables never runs (page JS off) so every row is in the
+                # static HTML — no expand step needed.
                 return driver.page_source
             except (TimeoutException, NoSuchElementException, WebDriverException) as exc:
                 last_exc = exc
@@ -570,33 +592,36 @@ def _fetch_detail(
         logger.warning(f"Numeric DB id not found for {reg_no!r}", step="detail")
         return None, meta
 
-    # Step 2: click the row's view-details anchor; the portal's own JS POSTs
-    # to /projectDetails and injects the response HTML into <div id="result">.
-    # Read it back from the rendered DOM.
+    # Step 2: issue the same POST /projectDetails request the portal's own
+    # ``showFileApplicationPreview`` handler would have fired, but do it from
+    # the browser's WebDriver context via ``fetch`` — page JS is disabled
+    # (see ``_session``) so the original click handler isn't wired up, and
+    # WebDriver's Runtime.evaluate is independent of Blink's scriptEnabled
+    # flag.  Issuing the fetch from the page preserves the browser's cookie
+    # and TLS state without any extra setup.
     with _DRIVER_LOCK:
         try:
             driver = _session().driver()
-            # Clear any stale modal content from a previous detail click so the
-            # wait below can reliably detect the new payload landing.
-            driver.execute_script(
-                "var r=document.getElementById('result'); if(r){r.innerHTML='';}"
+            # ``execute_async_script`` uses the driver's script timeout, not
+            # the page-load timeout — give the fetch a generous budget since
+            # the detail response can be ~400 KB and the portal is slow.
+            driver.set_script_timeout(60.0)
+            detail_html = driver.execute_async_script(
+                "var id = arguments[0];"
+                " var cb = arguments[arguments.length - 1];"
+                " fetch('/projectDetails', {"
+                "   method: 'POST',"
+                "   headers: {"
+                "     'Content-Type': 'application/x-www-form-urlencoded',"
+                "     'X-Requested-With': 'XMLHttpRequest'"
+                "   },"
+                "   body: 'action=' + encodeURIComponent(id),"
+                "   credentials: 'include'"
+                " }).then(function(r){return r.text();})"
+                "   .then(function(t){cb(t);})"
+                "   .catch(function(){cb(null);});",
+                numeric_id,
             )
-            link = driver.find_element(By.CSS_SELECTOR, f'a[id="{numeric_id}"]')
-            try:
-                link.click()
-            except WebDriverException:
-                # Modal/backdrop or off-screen position can intercept a normal
-                # click; fall back to the page's own handler invocation.
-                driver.execute_script(
-                    "showFileApplicationPreview(document.getElementById(arguments[0]));",
-                    numeric_id,
-                )
-            WebDriverWait(driver, 30).until(
-                lambda d: len(
-                    (d.find_element(By.ID, "result").get_attribute("innerHTML") or "").strip()
-                ) > 0
-            )
-            detail_html = driver.find_element(By.ID, "result").get_attribute("innerHTML") or ""
         except (TimeoutException, NoSuchElementException, WebDriverException) as exc:
             logger.warning(
                 f"Detail navigation failed for numeric_id={numeric_id!r}: "
@@ -604,6 +629,13 @@ def _fetch_detail(
                 step="detail",
             )
             return None, meta
+
+    if not detail_html:
+        logger.warning(
+            f"Empty detail response for numeric_id={numeric_id!r}",
+            step="detail",
+        )
+        return None, meta
 
     return detail_html, meta
 
