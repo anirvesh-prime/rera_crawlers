@@ -522,7 +522,18 @@ def _fetch_detail(
         return None, {}
 
     soup = BeautifulSoup(search_html, "lxml")
-    tbl = soup.find("table")
+    # DataTables with scrollX splits the results <table> into two siblings:
+    # a header-only "scrollHead" clone and the body table (``id="approvedTable"``)
+    # that actually carries the data rows.  Prefer the table whose rows contain
+    # a ``showFileApplicationPreview`` anchor; fall back to ``#approvedTable``
+    # and finally to the first <table>.
+    tbl = None
+    for cand in soup.find_all("table"):
+        if cand.find("a", onclick=lambda s: s and "showFileApplicationPreview" in s):
+            tbl = cand
+            break
+    if tbl is None:
+        tbl = soup.find("table", id="approvedTable") or soup.find("table")
     if not tbl:
         logger.warning(f"No table in search results for {reg_no!r}", step="detail")
         return None, {}
