@@ -485,12 +485,16 @@ def _extract_listing_rows(html: str, district: str) -> list[dict]:
 
 # ── Detail page fetching ─────────────────────────────────────────────────────
 
-def _fetch_detail(ack_no: str, logger: CrawlerLogger) -> tuple[str | None, dict]:
+def _fetch_detail(
+    ack_no: str,
+    logger: CrawlerLogger,
+    reg_no: str | None = None,
+) -> tuple[str | None, dict]:
     """
     Drive the rendered browser through the two-step detail flow:
-      1. Submit the /viewAllProjects search form with Application No = <ack_no>
+      1. Submit the /viewAllProjects search form with Registration No = <reg_no>
          → parse the rendered results <table> → extract numeric DB id +
-         approved_on / status / project_type from the listing row.
+         approved_on / status / project_type from the matching row.
       2. Click the row's "View Project Details" anchor (which fires the portal's
          own ``showFileApplicationPreview`` AJAX into the ``#result`` div) and
          read the rendered detail HTML back out of that div.
@@ -505,15 +509,22 @@ def _fetch_detail(ack_no: str, logger: CrawlerLogger) -> tuple[str | None, dict]
     from selenium.webdriver.support import expected_conditions as EC
     from selenium.webdriver.support.ui import WebDriverWait
 
-    # Step 1: search via the rendered form to land on the results page.
-    search_html = _submit_search_form(app_no=ack_no, logger=logger, step="detail")
+    if not reg_no:
+        logger.warning(
+            f"No registration number available for {ack_no!r} — cannot fetch detail",
+            step="detail",
+        )
+        return None, {}
+
+    # Step 1: search by Registration No to land on the results page.
+    search_html = _submit_search_form(reg_no=reg_no, logger=logger, step="detail")
     if not search_html:
         return None, {}
 
-    search_soup = BeautifulSoup(search_html, "lxml")
-    tbl = search_soup.find("table")
+    soup = BeautifulSoup(search_html, "lxml")
+    tbl = soup.find("table")
     if not tbl:
-        logger.warning(f"No table in search results for {ack_no!r}", step="detail")
+        logger.warning(f"No table in search results for {reg_no!r}", step="detail")
         return None, {}
 
     rows = tbl.find_all("tr")
@@ -523,10 +534,9 @@ def _fetch_detail(ack_no: str, logger: CrawlerLogger) -> tuple[str | None, dict]
     if rows:
         hdr_cells = rows[0].find_all(["th", "td"])
         headers = [_clean(c.get_text()).lower() for c in hdr_cells]
-        approved_idx   = next((i for i, h in enumerate(headers) if "approved on" in h), -1)
-        status_idx     = next((i for i, h in enumerate(headers) if h.strip() == "status"), -1)
-        proj_type_idx  = next((i for i, h in enumerate(headers) if "project type" in h), -1)
-
+        approved_idx = next((i for i, h in enumerate(headers) if "approved on" in h), -1)
+        status_idx   = next((i for i, h in enumerate(headers) if h.strip() == "status"), -1)
+        type_idx     = next((i for i, h in enumerate(headers) if "project type" in h), -1)
         for row in rows[1:]:
             a = row.find("a", onclick=lambda s: s and "showFileApplicationPreview" in s)
             if not a:
@@ -541,12 +551,12 @@ def _fetch_detail(ack_no: str, logger: CrawlerLogger) -> tuple[str | None, dict]
                 )
             if status_idx >= 0 and status_idx < len(cells):
                 meta["status_of_the_project"] = _clean(cells[status_idx].get_text())
-            if proj_type_idx >= 0 and proj_type_idx < len(cells):
-                meta["project_type_listing"] = _clean(cells[proj_type_idx].get_text())
+            if type_idx >= 0 and type_idx < len(cells):
+                meta["project_type_listing"] = _clean(cells[type_idx].get_text())
             break
 
     if not numeric_id:
-        logger.warning(f"Numeric DB id not found for {ack_no!r}", step="detail")
+        logger.warning(f"Numeric DB id not found for {reg_no!r}", step="detail")
         return None, meta
 
     # Step 2: click the row's view-details anchor; the portal's own JS POSTs
@@ -1754,7 +1764,7 @@ def _process_candidate(
     else:
         logger.set_project(reg_no=ack_no, url=PROJECT_URL, page=page_number)
     try:
-        detail_html, fetch_meta = _fetch_detail(ack_no, logger)
+        detail_html, fetch_meta = _fetch_detail(ack_no, logger, reg_no=listing_reg_no)
         if detail_html:
             detail = _parse_detail(
                 detail_html, ack_no, DISTRICTS[district_idx], 0, meta=fetch_meta)
@@ -1791,12 +1801,11 @@ def _process_candidate(
                 deltas["error_count"] += 1
                 return deltas
             logger.warning(
-                f"Detail fetch failed for {ack_no!r}; using listing fallback",
+                f"Detail fetch failed for {ack_no!r}; skipping (no listing fallback)",
                 step="detail",
             )
-            detail = dict(listing_row)
-            reg_no = listing_reg_no
-            uploaded_docs = []
+            deltas["error_count"] += 1
+            return deltas
 
         merged: dict = {
             **detail,
