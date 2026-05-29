@@ -21,8 +21,11 @@ Strategy:
 """
 from __future__ import annotations
 
+import base64
 import re
 import time
+from datetime import datetime
+from urllib.parse import parse_qs, urlparse
 
 from bs4 import BeautifulSoup
 from pydantic import ValidationError
@@ -52,6 +55,8 @@ from core.s3 import compute_md5, upload_document, get_s3_url
 
 LISTING_URL  = "https://rera.bihar.gov.in/RegisteredPP.aspx"
 FILANPRINT   = "https://rera.bihar.gov.in/Filanprint.aspx"
+# QPR (Quarterly Progress Report) listing page — keyed on the project's <rid>-<N> id.
+QRCODE_URL   = "https://rera.bihar.gov.in/QRCODE.aspx"
 STATE_CODE   = "BR"
 DOMAIN       = "rera.bihar.gov.in"
 # ASP.NET GridView control ID
@@ -680,6 +685,143 @@ def _parse_detail_page(html: str) -> dict:
     return out
 
 
+# ── Quarterly Progress Report snapshot ────────────────────────────────────────
+# Bihar QPRs are not on the Filanprint detail page; they live on a separate
+# QRCODE.aspx?id=<rid>-<N> page whose GridView1 lists every (financial year,
+# quarter) with a "View Document" link to QPR/QPR-Show.aspx (a full Form-7 HTML
+# report).  Mirroring the Karnataka crawler, we capture the LATEST quarter as a
+# self-contained HTML snapshot (images inlined as base64) and emit it as one
+# uploaded_documents entry that _process_documents uploads to S3.
+_QPR_DOC_TYPE   = "Quarterly Progress Report"
+_QPR_QUARTER_RE = re.compile(r"Q\s*(\d)", re.I)
+_QPR_FY_RE      = re.compile(r"(\d{4})\s*-\s*\d{4}")
+_QPR_IMG_MIME   = {"jpg": "jpeg", "jpeg": "jpeg", "png": "png", "gif": "gif", "webp": "webp"}
+
+
+def _qpr_resolve_pj(detail_url: str, detail_html: str) -> str | None:
+    """Derive the QRCODE/QPR ``pj`` id (``<base>-<N>``) for a project.
+
+    The Filanprint detail URL's ``id`` query param may be the bare registration
+    id (``RERAP...``) or the versioned form (``RERAP...-N``).  Bihar's
+    All_Document file paths embed the bare id twice followed by the
+    project-instance suffix (``...105734RERAP03162019105734-1Project...``);
+    QRCODE.aspx is keyed on ``<base>-<N>``, so we strip any suffix already on
+    the id to get the base, then recover N from that pattern in the detail HTML.
+    """
+    try:
+        rid = (parse_qs(urlparse(detail_url).query).get("id") or [""])[0].strip()
+    except Exception:
+        rid = ""
+    if not rid:
+        return None
+    # The id param may already carry the -N version suffix; strip it so the
+    # pattern matches the base id and we don't double the suffix (-N-N).
+    base = re.sub(r"-\d+$", "", rid)
+    m = re.search(re.escape(base) + r"-(\d+)", detail_html)
+    if not m:
+        return None
+    return f"{base}-{m.group(1)}"
+
+
+def _qpr_pick_latest(qr_html: str) -> dict | None:
+    """Pick the most recent QPR-Show link from a QRCODE.aspx GridView1 table."""
+    soup = BeautifulSoup(qr_html, "lxml")
+    gv = soup.find("table", id="GridView1")
+    if not gv:
+        return None
+    best: dict | None = None
+    best_key: tuple[int, int] = (-1, -1)
+    for row in gv.find_all("tr")[1:]:
+        a = row.find("a", href=True)
+        if not a or "QPR-Show.aspx" not in a["href"]:
+            continue
+        cells = [c.get_text(" ", strip=True) for c in row.find_all(["td", "th"])]
+        fy       = cells[1] if len(cells) > 1 else ""
+        quarter  = cells[2] if len(cells) > 2 else ""
+        uploaded = cells[3] if len(cells) > 3 else ""
+        fy_m, q_m = _QPR_FY_RE.search(fy), _QPR_QUARTER_RE.search(quarter)
+        key = (int(fy_m.group(1)) if fy_m else 0, int(q_m.group(1)) if q_m else 0)
+        if key > best_key:
+            best_key = key
+            best = {"href": a["href"], "fy": fy, "quarter": quarter, "uploaded": uploaded}
+    return best
+
+
+def _qpr_inline_images(soup: BeautifulSoup, logger: CrawlerLogger) -> tuple[int, int]:
+    """Replace every QPR-Show <img> src with a base64 data URI (in place)."""
+    ok = fail = 0
+    for img in soup.find_all("img"):
+        src = (img.get("src") or "").strip()
+        if not src or src.startswith("data:"):
+            continue
+        # QPR-Show references images as ../QPRimages/<name>; resolve to the host root.
+        clean = src.lstrip("./")
+        full = clean if clean.startswith("http") else f"https://{DOMAIN}/{clean}"
+        try:
+            resp = download_response(full, logger=logger, timeout=30.0, verify=False)
+            if not resp or not resp.content:
+                fail += 1
+                continue
+            ext = full.rsplit(".", 1)[-1].split("?")[0].lower()
+            mime = _QPR_IMG_MIME.get(ext, "jpeg")
+            img["src"] = f"data:image/{mime};base64," + base64.b64encode(resp.content).decode("ascii")
+            ok += 1
+        except Exception as exc:
+            logger.warning(f"QPR image inline failed: {exc}", url=full, step="documents")
+            fail += 1
+    return ok, fail
+
+
+def _build_qpr_snapshot(detail_url: str, detail_html: str, logger: CrawlerLogger) -> dict | None:
+    """Build a self-contained HTML snapshot for the latest QPR, or None.
+
+    The returned dict carries ``_inline_bytes`` / ``_inline_filename`` so
+    _process_documents uploads the pre-built HTML straight to S3.
+    """
+    pj = _qpr_resolve_pj(detail_url, detail_html)
+    if not pj:
+        return None
+
+    qr_resp = safe_get(f"{QRCODE_URL}?id={pj}", retries=2, logger=logger, verify=False)
+    if not qr_resp or not qr_resp.text:
+        return None
+    latest = _qpr_pick_latest(qr_resp.text)
+    if not latest:
+        return None
+
+    href = latest["href"].lstrip("/")
+    qpr_url = href if href.startswith("http") else f"https://{DOMAIN}/{href}"
+    show_resp = safe_get(qpr_url, retries=2, logger=logger, verify=False)
+    if not show_resp or not show_resp.text:
+        return None
+
+    soup = BeautifulSoup(show_resp.text, "lxml")
+    # Strip scripts and ASP.NET hidden inputs so the snapshot is static & offline.
+    for tag in soup.find_all("script"):
+        tag.decompose()
+    for inp in soup.find_all("input", attrs={"type": "hidden"}):
+        inp.decompose()
+    ok, fail = _qpr_inline_images(soup, logger)
+
+    data = str(soup).encode("utf-8")
+    label = " ".join(p for p in (latest.get("fy", ""), latest.get("quarter", "")) if p).strip()
+    logger.info(
+        f"QPR snapshot built: {label} (images ok={ok} failed={fail}, size={len(data)/1024:.0f} KB)",
+        step="documents",
+    )
+    doc: dict = {
+        "link": qpr_url,
+        "type": _QPR_DOC_TYPE,
+        "_inline_bytes": data,
+        "_inline_filename": "quarterly_progress_report.html",
+    }
+    try:
+        doc["dated_on"] = datetime.strptime(latest["uploaded"], "%d %b %Y").strftime("%Y-%m-%d")
+    except (ValueError, KeyError):
+        pass
+    return doc
+
+
 # ── Sentinel ──────────────────────────────────────────────────────────────────
 
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
@@ -803,6 +945,11 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 
 # ── Document processing ────────────────────────────────────────────────────────
 
+def _public_doc(doc: dict) -> dict:
+    """Drop internal ``_inline_*`` keys so they never reach the project record."""
+    return {k: v for k, v in doc.items() if not k.startswith("_inline_")}
+
+
 def _process_documents(
     project_key: str,
     documents: list[dict],
@@ -827,17 +974,18 @@ def _process_documents(
     for doc in documents:
         selected = select_document_for_download("bihar", doc, doc_name_counts, domain=DOMAIN)
         if not selected:
-            enriched.append(doc)
+            enriched.append(_public_doc(doc))
             continue
 
         url = selected.get("link") or selected.get("url")
         doc_type = selected.get("type", "document")
-        if not url:
-            enriched.append(selected)
+        inline_bytes = selected.get("_inline_bytes")
+        if not url and inline_bytes is None:
+            enriched.append(_public_doc(selected))
             continue
 
         reused, existing_s3_key = existing_uploaded_document_entry(
-            project_key, {**selected, "link": url}
+            project_key, {**_public_doc(selected), "link": url}
         )
         if reused:
             logger.info(f"Document reused: {doc_type!r}", s3_key=existing_s3_key, step="documents")
@@ -848,19 +996,28 @@ def _process_documents(
         filename = build_document_filename(selected)
 
         try:
-            resp = download_response(url, logger=logger, timeout=60.0, verify=False)
-            if not resp or len(resp.content) < 100:
-                enriched.append(selected)
-                logger.warning(f"Document download failed or too small: {url}", step="documents")
-                continue
+            if inline_bytes is not None:
+                # Pre-built snapshot (e.g. the QPR HTML) — skip the network
+                # download and force the inline content's extension.
+                data = inline_bytes
+                inline_name = selected.get("_inline_filename") or "snapshot.html"
+                ext = inline_name[inline_name.rfind("."):] if "." in inline_name else ".html"
+                base = filename.rsplit(".", 1)[0] if "." in filename else filename
+                filename = f"{base}{ext}"
+            else:
+                resp = download_response(url, logger=logger, timeout=60.0, verify=False)
+                if not resp or len(resp.content) < 100:
+                    enriched.append(_public_doc(selected))
+                    logger.warning(f"Document download failed or too small: {url}", step="documents")
+                    continue
+                data = resp.content
 
-            data = resp.content
             md5 = compute_md5(data)
             s3_key = upload_document(
                 project_key, filename, data, dry_run=settings.DRY_RUN_S3
             )
             if s3_key is None:
-                enriched.append(selected)
+                enriched.append(_public_doc(selected))
                 logger.warning(f"S3 upload returned None for {url}", step="documents")
                 continue
 
@@ -875,13 +1032,13 @@ def _process_documents(
                 md5_checksum=md5,
                 file_size_bytes=len(data),
             )
-            enriched.append({**selected, "link": url, "s3_link": s3_url, "updated": True})
+            enriched.append({**_public_doc(selected), "link": url, "s3_link": s3_url, "updated": True})
             upload_count += 1
             logger.info(f"Document uploaded: {doc_type!r}", s3_key=s3_key, step="documents")
             logger.log_document(doc_type, url, "uploaded", s3_key=s3_key, file_size_bytes=len(data))
 
         except Exception as exc:
-            enriched.append(selected)
+            enriched.append(_public_doc(selected))
             logger.error(f"Document processing error: {exc}", url=url, step="documents")
             insert_crawl_error(
                 run_id, site_id, "S3_UPLOAD_FAILED", str(exc),
@@ -1002,11 +1159,16 @@ def _process_bihar_candidate(
             return deltas
 
         detail_extra: dict = {}
+        qpr_doc: dict | None = None
         if detail_url:
             detail_resp = safe_get(detail_url, retries=2, logger=logger, verify=False)
             if detail_resp and "Invalid Project ID" not in detail_resp.text:
                 detail_extra = _parse_detail_page(detail_resp.text)
                 logger.info(f"Detail parsed for {reg_no!r}", step="detail")
+                try:
+                    qpr_doc = _build_qpr_snapshot(detail_url, detail_resp.text, logger)
+                except Exception as exc:
+                    logger.warning(f"QPR snapshot failed for {reg_no!r}: {exc}", step="documents")
             elif detail_resp:
                 logger.warning(
                     f"Detail page returned 'Invalid Project ID' for {reg_no!r}",
@@ -1059,7 +1221,9 @@ def _process_bihar_candidate(
                 deltas["projects_updated"] += 1
                 logger.info(f"Updated: {reg_no}", step="upsert")
 
-            uploaded_docs = detail_extra.get("uploaded_documents") or []
+            uploaded_docs = list(detail_extra.get("uploaded_documents") or [])
+            if qpr_doc is not None:
+                uploaded_docs.append(qpr_doc)  # FIELD: uploaded_documents[] <- inline QPR snapshot (latest quarter)
             if uploaded_docs:
                 enriched_docs, doc_count = _process_documents(
                     key, uploaded_docs, run_id, site_id, logger,

@@ -7,390 +7,258 @@
   "project_name": "The Residency-City Centre Patna",
   "project_type": "Residential/Group Housing",
   "promoter_name": "UTKARSH SFATIK LIMITED",
-  "status_of_the_project": "Completed",
-  "project_pin_code": "700160",
-  "project_city": "Patna",
+  "status_of_the_project": "New Project Launch",
+  "project_pin_code": "801503",
+  "project_city": "PATNA",
   "project_state": "Bihar",
-  "project_description": "Proposed residential building of Utkarsh Sfatik Ltd at Patna",
-  "crawl_machine_ip": "127.0.0.1",
+  "project_description": "IT IS B+G+6 APPROVED RESIDENTIAL PROJECT",
+  "crawl_machine_ip": "10.20.81.103",
   "machine_name": "Anirveshs-MacBook-Air.local",
   "project_location_raw": {
     "state": "Bihar",
-    "taluk": "अङरा",
-    "plot_no": "On a portion of plot nos. 157, 158, 159-P, 160, 161, 162 AND 60-P",
+    "taluk": "जलालपुर",
+    "plot_no": "86P",
     "village": "Lodhipur",
     "district": "Patna",
-    "latitude": "25.375",
-    "longitude": "85.083",
-    "raw_address": "Lodhipur, Budha Marg, Patna",
-    "processed_latitude": 25.375,
-    "processed_longitude": 85.083
+    "latitude": "25.613118",
+    "longitude": "85.056026",
+    "raw_address": "NEAR GOLA ROAD PETROL PUMP, RAJDHANI NAGAR,P.S REPASPUR, PATNA",
+    "processed_latitude": 25.613118,
+    "processed_longitude": 85.056026
   },
   "promoter_address_raw": {
-    "raw_address": "Ecospace Business Park, Block-4B, Action Area-II, New Town, Kolkata"
+    "raw_address": "GROUND FLOOR,3D COMPLEX, GOLA ROAD, NEAR PETROL PUMP, DANAPUR, PATNA"
   },
   "promoter_contact_details": {
-    "phone": "9835027474",
-    "email": "USL.compliance@ambujaneotia.com",
-    "telephone_no": "3340406060"
+    "phone": "9771412024",
+    "email": "sanjay.eiipl@gmail.com"
   },
   "bank_details": {
-    "bank_name": "Ratnakar Bank Ltd",
-    "branch": "Thapar House, 25 Brabourne Road, Kolkata",
-    "account_no": "409001025508",
-    "IFSC": "RATN0000161",
-    "scan_copy_of_cheque": "https://rera.bihar.gov.in/PassBook/RERAP0316201910573405271247082019.pdf"
+    "bank_name": "IDBI Bank",
+    "branch": "KASHI PALACE, DAKBUNGLOW, PATNA",
+    "account_no": "0065102000044572",
+    "IFSC": "IBKL0000065",
+    "scan_copy_of_cheque": "https://rera.bihar.gov.in/PassBook/RERAP0128202520513802072149592025.pdf"
   },
   "project_cost_detail": {
-    "estimated_construction_cost": "3447.38",
-    "cost_of_land": "215.81"
+    "estimated_construction_cost": "400.0",
+    "cost_of_land": "200.46"
   },
   "building_details": [
     {
-      "block_name": "Tower-A G+17",
-      "flat_type": "4 BHK",
-      "no_of_units": "1",
-      "carpet_area": "2413.00",
-      "balcony_area": "248.00",
-      "open_area": "0.00"
-    },
-    {
-      "block_name": "Tower-A G+17",
-      "flat_type": "3 BHK",
-      "no_of_units": "1",
-      "carpet_area": "1327.00",
-      "balcony_area": "167.00",
-      "open_area": "0.00"
-    },
-    {
-      "block_name": "Tower-A G+17",
-      "flat_type": "6 BHK",
-      "no_of_units": "1",
-      "carpet_area": "3141.00",
-      "balcony_area": "510.00",
-      "open_area": "0.00"
-    },
-    {
-      "block_name": "Tower-A G+17",
-      "flat_type": "3 BHK",
-      "no_of_units": "1",
-      "carpet_area": "1184.00",
-      "balcony_area": "153.00",
-      "open_area": "0.00"
-    },
-    {
-      "block_name": "Tower-A G+17",
-      "flat_type": "3 BHK",
-      "no_of_units": "1",
-      "carpet_area": "1159.00",
-      "balcony_area": "150.00",
-      "open_area": "0.00"
-    },
-    {
-      "block_name": "Tower-A G+17",
-      "flat_type": "3 BHK",
-      "no_of_units": "16",
-      "carpet_area": "19728.00",
-      "balcony_area": "2448.00",
-      "open_area": "0.00"
-    },
-    {
-      "block_name": "Tower-A G+17",
-      "flat_type": "3 BHK",
-      "no_of_units": "16",
-      "carpet_area": "20000.00",
-      "balcony_area": "1488.00",
-      "open_area": "0.00"
-    },
-    {
-      "block_name": "Tower-A G+17",
-      "flat_type": "4 BHK",
-      "no_of_units": "16",
-      "carpet_area": "26144.00",
-      "balcony_area": "3360.00",
-      "open_area": "0.00"
-    },
-    {
-      "block_name": "Tower-A G+17",
-      "flat_type": "3 BHK",
-      "no_of_units": "16",
-      "carpet_area": "19344.00",
-      "balcony_area": "2400.00",
-      "open_area": "0.00"
-    },
-    {
-      "block_name": "Tower-A G+17",
-      "flat_type": "3 BHK",
-      "no_of_units": "8",
-      "carpet_area": "10616.00",
-      "balcony_area": "1336.00",
-      "open_area": "0.00"
-    },
-    {
-      "block_name": "Tower-B G+17",
-      "flat_type": "4 BHK",
-      "no_of_units": "1",
-      "carpet_area": "2391.00",
-      "balcony_area": "148.00",
-      "open_area": "0.00"
-    },
-    {
-      "block_name": "Tower-B G+17",
-      "flat_type": "5 BHK",
-      "no_of_units": "1",
-      "carpet_area": "2837.00",
-      "balcony_area": "157.00",
-      "open_area": "68.00"
-    },
-    {
-      "block_name": "Tower-B G+17",
-      "flat_type": "3 BHK",
-      "no_of_units": "16",
-      "carpet_area": "23184.00",
-      "balcony_area": "2288.00",
-      "open_area": "0.00"
-    },
-    {
-      "block_name": "Tower-B G+17",
-      "flat_type": "3 BHK",
-      "no_of_units": "16",
-      "carpet_area": "24000.00",
-      "balcony_area": "2288.00",
-      "open_area": "0.00"
-    },
-    {
-      "block_name": "Tower-B G+17",
-      "flat_type": "4 BHK",
-      "no_of_units": "8",
-      "carpet_area": "19128.00",
-      "balcony_area": "1352.00",
-      "open_area": "0.00"
-    },
-    {
-      "block_name": "Tower-B G+17",
-      "flat_type": "4 BHK",
-      "no_of_units": "8",
-      "carpet_area": "19128.00",
-      "balcony_area": "1184.00",
+      "block_name": "3D APARTMENT",
+      "flat_type": "3.5 BHK",
+      "no_of_units": "12",
+      "carpet_area": "19110.00",
+      "balcony_area": "3452.76",
       "open_area": "0.00"
     }
   ],
   "uploaded_documents": [
     {
-      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1ProjectRelatedDocuments.pdf",
-      "type": "Any other Project Related Documents(enviromental clearance, NOCs, IT Return etc.)",
-      "s3_link": "https://s3.example.com/dry-run"
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1EncumbranceCertificate.pdf",
+      "type": "A certificate from a Chartered accountant declaring that no advance booking amount has been taken from the customers against the current project duly signed by the promoter and countersigned by CA"
     },
     {
-      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1ApprovedLayoutPlan.pdf",
-      "type": "Approved Layout Plan",
-      "s3_link": "https://s3.example.com/dry-run"
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1SharePart.pdf",
+      "type": "Affidavit stating therein the proportion of the share of promoter including the number of blocks/shops/flats/plots/etc. in the project and which are exclusively available in the share of the Promoter for marketing and selling"
     },
     {
-      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1AreaDevelopmentPlan.pdf",
-      "type": "Area Development Plan",
-      "s3_link": "https://s3.example.com/dry-run"
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1ProjectRelatedDocuments.pdf",
+      "type": "Any other Project related documents"
     },
     {
-      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1DeclarationFormB.pdf",
-      "type": "Declaration (Form B)",
-      "s3_link": "https://s3.example.com/dry-run"
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1BrochureofCurrentProject.pdf",
+      "type": "Brochure 1",
+      "label": "Brochure 1",
+      "source_label": "Brochure of Current Project",
+      "matched_category": "Brochure",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
-      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1EncumbranceCertificate.pdf",
-      "type": "Encumbrance Certificate",
-      "s3_link": "https://s3.example.com/dry-run"
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1DeclarationFormB.pdf",
+      "type": "Declaration (Form B)"
     },
     {
-      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1LandDeedAgreement.pdf",
-      "type": "Land Deed Agreement",
-      "s3_link": "https://s3.example.com/dry-run"
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1EnvironmentalDocuments.pdf",
+      "type": "Environmental Clearance Certificate"
     },
     {
-      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1LanddocumentsLocation.pdf",
-      "type": "Land documents & Location",
-      "s3_link": "https://s3.example.com/dry-run"
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1AirportDocuments.pdf",
+      "type": "NOC From Airport Authority of India"
     },
     {
-      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1PANCard.pdf",
-      "type": "PAN Card",
-      "s3_link": "https://s3.example.com/dry-run"
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1ProjectRelatedDocuments.pdf",
+      "type": "NOC from Fire Service Authority"
     },
     {
-      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1ProformaforSaleofAgreement.pdf",
-      "type": "Proforma for Sale of Agreement",
-      "s3_link": "https://s3.example.com/dry-run"
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1NoticeofCommencement.pdf",
+      "type": "Notice of Commencement in form X"
     },
     {
-      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1ProformaofAllotmentLetter.pdf",
-      "type": "Proforma of Allotment Letter",
-      "s3_link": "https://s3.example.com/dry-run"
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1AreaDevelopmentPlan.pdf",
+      "type": "Development Plan 1",
+      "label": "Development Plan 1",
+      "source_label": "Permit Letter of MAP.",
+      "matched_category": "Development Plan",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
-      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1SanctionedbuildingPlan.pdf",
-      "type": "Sanctioned building Plan",
-      "s3_link": "https://s3.example.com/dry-run"
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1ApprovedLayoutPlan.pdf",
+      "type": "Layout Plan 1",
+      "label": "Layout Plan 1",
+      "source_label": "Proforma of agreement for sale with all schedules",
+      "matched_category": "Layout Plan",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
-      "link": "https://rera.bihar.gov.in/All_Document/RERAP03162019105734RERAP03162019105734-1SanctionedLayoutPlan.pdf",
-      "type": "Sanctioned Layout Plan",
-      "s3_link": "https://s3.example.com/dry-run"
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1ProformaofAllotmentLetter.pdf",
+      "type": "Proforma of Allotment Letter"
     },
     {
-      "link": "https://rera.bihar.gov.in/Registration_Certificate/RERAP03162019105734.pdf",
-      "type": "Registration Certificate",
-      "s3_link": "https://s3.example.com/dry-run"
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1ProformaforSaleofAgreement.pdf",
+      "type": "Proforma of convyence deed"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1SanctionedbuildingPlan.pdf",
+      "type": "building Plan 1",
+      "label": "building Plan 1",
+      "source_label": "Sanctioned building plan",
+      "matched_category": "building Plan",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1SanctionedLayoutPlan.pdf",
+      "type": "Layout Plan 2",
+      "label": "Layout Plan 2",
+      "source_label": "Sanctioned Layout Plan",
+      "matched_category": "Layout Plan",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138-1_409.pdf",
+      "type": "Mutation(Correction-Slip)"
+    },
+    {
+      "link": "https://rera.bihar.gov.in/Registration_Certificate/RERAP01282025205138.pdf",
+      "type": "Registration Certificate 1",
+      "label": "Registration Certificate 1",
+      "source_label": "Registration Certificate",
+      "matched_category": "Registration Certificate",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.bihar.gov.in/QPR/QPR-Show.aspx?pr=RERAP01282025205138&ld=pan&pj=RERAP01282025205138-1&f=2025-2026&q=4",
+      "type": "Quarterly Progress Report 1",
+      "dated_on": "2026-04-17",
+      "label": "Quarterly Progress Report 1",
+      "source_label": "Quarterly Progress Report",
+      "matched_category": "Quarterly Progress Report",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     }
   ],
   "professional_information": [
     {
-      "name": "SALIENT",
+      "name": "MANOJ KUMAR",
       "role": "Architects",
-      "address": "Ecostation, BP-7, 8th Floor, sector V, Salt Lake City, Kolkata",
+      "address": "202-B GHAROUNDA COMPLEX, JAGDEO PATH, PATNA",
       "effective_date": "2005",
-      "key_real_estate_projects": "City Centre-Raipur, City Centre-Haldia, Anaya Kutir-Raichak, Frengipani-Raichak, Club Montana Vista-Siliguri, Auto Mall-Newtown, Media City-Salt Lake, Holiday Inn-Uluberia, Kolkata Police Housing"
+      "key_real_estate_projects": "Residential and Commercial Project Completed"
     },
     {
-      "name": "M. N. Consultants Pvt. Ltd.",
+      "name": "SCON PRIVATE LIMITED",
       "role": "Engineers",
-      "address": "MNC House, 1516, Rajdanga Main Road, Kolkata 700107",
-      "effective_date": "1989",
-      "key_real_estate_projects": "Atmosphere-Kolkata, Godrej Platinum-Kolkata, Siddha Suburbia-Kolkata, Vatika Seeven Elements, Tata Eden Court"
+      "address": "FLAT NO-G01, SUNDAR NAGENDRA NIWAS, GORAKHNATH LANE, EAST BORING CANAL RD, PATNA",
+      "effective_date": "1998",
+      "key_real_estate_projects": "Residential and Commercial Project Completed"
     },
     {
-      "name": "Simples Infrastructures Limited",
+      "name": "SANJAY KUMAR",
       "role": "Contractors",
-      "address": "Simplex House, 27, Shakespeare Sarani, Kolkata",
-      "effective_date": "1924",
-      "key_real_estate_projects": "Airport Terminal-Udaipur, Imphal High Court Building, Beaumonde Towers-Mumbai"
+      "address": "Road No-1A, Shivpuri, Patna",
+      "effective_date": "1995",
+      "key_real_estate_projects": "Experience in working on Multi Story Building"
     }
   ],
   "members_details": [
     {
-      "name": "PRAMOD RANJAN DWIVEDI",
-      "position": "Director",
-      "phone": "9831255455",
-      "photo": "https://rera.bihar.gov.in/Member_Photo/RERAP0316201910573416320191127.jpg"
-    },
-    {
       "name": "SANJAY KUMAR SINGH",
-      "position": "Director",
-      "phone": "9331020778",
-      "photo": "https://rera.bihar.gov.in/Member_Photo/RERAP0316201910573416320191130.jpg"
+      "position": "Partner",
+      "phone": "9771412024",
+      "photo": "https://rera.bihar.gov.in/Member_Photo/RERAP012820252051383220251059.jpeg"
     },
     {
-      "name": "SADAY KRISHNA KANORIA",
-      "position": "Director",
-      "phone": "9955576043",
-      "photo": "https://rera.bihar.gov.in/Member_Photo/RERAP0316201910573416320191133.jpg"
-    },
-    {
-      "name": "ABHAY KRISHNA KANORIA",
-      "position": "Director",
-      "phone": "9835023930",
-      "photo": "https://rera.bihar.gov.in/Member_Photo/RERAP0316201910573416320191135.jpg"
-    },
-    {
-      "name": "TARUN GUPTA",
-      "position": "Director",
-      "phone": "9835027474",
-      "photo": "https://rera.bihar.gov.in/Member_Photo/RERAP0316201910573416320191138.jpg"
-    },
-    {
-      "name": "RAJESH KUMAR JAIN",
-      "position": "Director",
-      "phone": "9836080488",
-      "photo": "https://rera.bihar.gov.in/Member_Photo/RERAP0316201910573416320191141.jpg"
-    },
-    {
-      "name": "CHANDRA PRAKASH KAKARANIA",
-      "position": "Director",
-      "phone": "9831388201",
-      "photo": "https://rera.bihar.gov.in/Member_Photo/RERAP031620191057348420191118.jpg"
+      "name": "SEEMA SINGH",
+      "position": "Partner",
+      "phone": "7464036918",
+      "photo": "https://rera.bihar.gov.in/Member_Photo/RERAP012820252051383220251110.jpeg"
     }
   ],
   "data": {
     "govt_type": "state",
     "land_area_unit": "Total Area of Land (Sq mt)",
     "construction_area_unit": "Total Builtup Area (Sq. Mtr.)",
-    "link": "https://rera.bihar.gov.in/Registration_Certificate/RERAP03162019105734.pdf",
+    "link": "https://rera.bihar.gov.in/Registration_Certificate/RERAP01282025205138.pdf",
     "type": "Registration Certificate"
   },
   "promoters_details": {
-    "type_of_firm": "Company",
-    "pan_no": "AAACU8592J",
-    "registration_no": "U14101WB1992PLC195097"
+    "type_of_firm": "Partnership Firm",
+    "pan_no": "AAYFV6368A",
+    "registration_no": "378/03-05-24"
   },
   "land_area_details": {
-    "land_area": "8102.60",
+    "land_area": "885.14",
     "land_area_unit": "Total Area of Land (Sq mt)",
-    "construction_area": "25778.15",
+    "construction_area": "2203.96",
     "construction_area_unit": "Total Builtup Area (Sq. Mtr.)"
   },
   "submitted_date": "2019-05-29 01:11:31+00:00",
-  "estimated_commencement_date": "2012-06-01 00:00:00+00:00",
-  "estimated_finish_date": "2022-03-30 00:00:00+00:00",
+  "estimated_commencement_date": "2025-01-20 00:00:00+00:00",
+  "estimated_finish_date": "2029-10-27 00:00:00+00:00",
   "config_id": 5,
-  "land_area": 8102.6,
-  "construction_area": 25778.15,
+  "land_area": 885.14,
+  "construction_area": 2203.96,
   "is_updated": false,
   "is_duplicate": false,
   "iw_processed": false,
   "checked_updates": false,
   "rera_housing_found": false,
-  "is_live": false,
+  "is_live": true,
   "document_urls": [
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Any other Project Related Documents(enviromental clearance, NOCs, IT Return etc.)"
+      "type": "Brochure 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Approved Layout Plan"
+      "type": "Development Plan 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Area Development Plan"
+      "type": "Layout Plan 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Declaration (Form B)"
+      "type": "building Plan 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Encumbrance Certificate"
+      "type": "Layout Plan 2"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Land Deed Agreement"
+      "type": "Registration Certificate 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Land documents & Location"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "PAN Card"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Proforma for Sale of Agreement"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Proforma of Allotment Letter"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Sanctioned building Plan"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Sanctioned Layout Plan"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Registration Certificate"
+      "type": "Quarterly Progress Report 1"
     }
   ],
   "acknowledgement_no": null,

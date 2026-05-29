@@ -124,7 +124,7 @@ STATE_DOC_DICT: dict[str, list[str]] = {
     "bihar": [
         "Registration Certificate", "Layout Plan", "Brochure", "building Plan", "Layout Plan",
         "Development Plan", "Engineer", "ARCHITECT", "Occupation Certificate",
-        "Occupancy Certificate",
+        "Occupancy Certificate", "Quarterly Progress Report",
     ],
     "madhya pradesh": [
         "Project Specifications", "Building Plan", "Layout Plan", "Engineer", "ARCHITECT",
