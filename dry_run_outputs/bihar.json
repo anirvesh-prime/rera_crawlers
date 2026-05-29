@@ -12,7 +12,7 @@
   "project_city": "PATNA",
   "project_state": "Bihar",
   "project_description": "IT IS B+G+6 APPROVED RESIDENTIAL PROJECT",
-  "crawl_machine_ip": "10.20.81.103",
+  "crawl_machine_ip": "127.0.0.1",
   "machine_name": "Anirveshs-MacBook-Air.local",
   "project_location_raw": {
     "state": "Bihar",
@@ -57,7 +57,12 @@
   "uploaded_documents": [
     {
       "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1EncumbranceCertificate.pdf",
-      "type": "A certificate from a Chartered accountant declaring that no advance booking amount has been taken from the customers against the current project duly signed by the promoter and countersigned by CA"
+      "type": "Chartered Accountant 1",
+      "label": "Chartered Accountant 1",
+      "source_label": "A certificate from a Chartered accountant declaring that no advance booking amount has been taken from the customers against the current project duly signed by the promoter and countersigned by CA",
+      "matched_category": "Chartered Accountant",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     },
     {
       "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1SharePart.pdf",
@@ -162,6 +167,36 @@
       "matched_category": "Quarterly Progress Report",
       "s3_link": "https://s3.example.com/dry-run",
       "updated": true
+    },
+    {
+      "link": "https://rera.bihar.gov.in/QPRimages/fuCA_170426120026.pdf",
+      "type": "Chartered Accountant 2",
+      "dated_on": "2026-04-17",
+      "label": "Chartered Accountant 2",
+      "source_label": "Chartered Accountant Certificate",
+      "matched_category": "Chartered Accountant",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.bihar.gov.in/QPRimages/fuarchitect_170426120955.pdf",
+      "type": "ARCHITECT Certificate 1",
+      "dated_on": "2026-04-17",
+      "label": "ARCHITECT Certificate 1",
+      "source_label": "Architect Certificate",
+      "matched_category": "ARCHITECT",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://rera.bihar.gov.in/QPRimages/fuengineer_170426120955.pdf",
+      "type": "Engineer Certificate 1",
+      "dated_on": "2026-04-17",
+      "label": "Engineer Certificate 1",
+      "source_label": "Engineer Certificate",
+      "matched_category": "Engineer",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
     }
   ],
   "professional_information": [
@@ -234,6 +269,10 @@
   "document_urls": [
     {
       "link": "https://s3.example.com/dry-run",
+      "type": "Chartered Accountant 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
       "type": "Brochure 1"
     },
     {
@@ -259,6 +298,18 @@
     {
       "link": "https://s3.example.com/dry-run",
       "type": "Quarterly Progress Report 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Chartered Accountant 2"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "ARCHITECT Certificate 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Engineer Certificate 1"
     }
   ],
   "acknowledgement_no": null,

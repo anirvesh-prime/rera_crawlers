@@ -25,7 +25,7 @@ import base64
 import re
 import time
 from datetime import datetime
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urljoin, urlparse
 
 from bs4 import BeautifulSoup
 from pydantic import ValidationError
@@ -699,14 +699,16 @@ _QPR_IMG_MIME   = {"jpg": "jpeg", "jpeg": "jpeg", "png": "png", "gif": "gif", "w
 
 
 def _qpr_resolve_pj(detail_url: str, detail_html: str) -> str | None:
-    """Derive the QRCODE/QPR ``pj`` id (``<base>-<N>``) for a project.
+    """Derive the QRCODE/QPR ``pj`` id for a project.
 
-    The Filanprint detail URL's ``id`` query param may be the bare registration
-    id (``RERAP...``) or the versioned form (``RERAP...-N``).  Bihar's
-    All_Document file paths embed the bare id twice followed by the
-    project-instance suffix (``...105734RERAP03162019105734-1Project...``);
-    QRCODE.aspx is keyed on ``<base>-<N>``, so we strip any suffix already on
-    the id to get the base, then recover N from that pattern in the detail HTML.
+    The Filanprint detail URL's ``id`` query param appears in three forms, each
+    mapping to the ``pj`` id that QRCODE.aspx is keyed on:
+
+      * ``RERAP..._NNN`` (newer instance ids) — already the ``pj`` id verbatim.
+      * ``RERAP...-N`` (versioned) — used as-is.
+      * ``RERAP...`` (bare, older) — N is recovered from the All_Document file
+        paths, which embed the bare id twice followed by ``-N`` (e.g.
+        ``...105734RERAP03162019105734-1Project...``), giving ``<base>-N``.
     """
     try:
         rid = (parse_qs(urlparse(detail_url).query).get("id") or [""])[0].strip()
@@ -714,13 +716,19 @@ def _qpr_resolve_pj(detail_url: str, detail_html: str) -> str | None:
         rid = ""
     if not rid:
         return None
-    # The id param may already carry the -N version suffix; strip it so the
+    # Newer instance ids (RERAP..._NNN) are themselves the QRCODE/QPR pj id.
+    if re.search(r"_\d+$", rid):
+        return rid
+    # Otherwise the id is the hyphen-versioned form; strip any -N suffix so the
     # pattern matches the base id and we don't double the suffix (-N-N).
     base = re.sub(r"-\d+$", "", rid)
     m = re.search(re.escape(base) + r"-(\d+)", detail_html)
-    if not m:
-        return None
-    return f"{base}-{m.group(1)}"
+    if m:
+        return f"{base}-{m.group(1)}"
+    # Fall back to the id verbatim when it already carries a -N suffix.
+    if re.search(r"-\d+$", rid):
+        return rid
+    return None
 
 
 def _qpr_pick_latest(qr_html: str) -> dict | None:
@@ -772,30 +780,83 @@ def _qpr_inline_images(soup: BeautifulSoup, logger: CrawlerLogger) -> tuple[int,
     return ok, fail
 
 
-def _build_qpr_snapshot(detail_url: str, detail_html: str, logger: CrawlerLogger) -> dict | None:
-    """Build a self-contained HTML snapshot for the latest QPR, or None.
+def _qpr_extract_certificates(
+    soup: BeautifulSoup, page_url: str, dated_on: str | None, logger: CrawlerLogger
+) -> list[dict]:
+    """Extract certificate PDFs (Architect/Engineer/CA) linked in a QPR-Show report.
 
-    The returned dict carries ``_inline_bytes`` / ``_inline_filename`` so
-    _process_documents uploads the pre-built HTML straight to S3.
+    These live under ../QPRimages/ and are frequently absent from the Filanprint
+    detail page, so we capture them as standalone documents.  The label is taken
+    from the surrounding table row (e.g. "Architect Certificate (.pdf)").
+    """
+    docs: list[dict] = []
+    seen: set[str] = set()
+    for a in soup.find_all("a", href=True):
+        href = (a.get("href") or "").strip()
+        low = href.lower()
+        if "qprimages" not in low or not low.split("?")[0].endswith(".pdf"):
+            continue
+        full = urljoin(page_url, href)
+        if full in seen:
+            continue
+        seen.add(full)
+        label = ""
+        row = a.find_parent("tr")
+        if row:
+            label = row.get_text(" ", strip=True)
+            link_txt = a.get_text(" ", strip=True)
+            if link_txt:
+                label = label.replace(link_txt, " ")
+            label = re.sub(r"\(\s*\.?\s*pdf\s*\)", " ", label, flags=re.I)
+            label = " ".join(label.split())
+        if not label:
+            label = "QPR Certificate"
+        doc: dict = {"link": full, "type": label}
+        if dated_on:
+            doc["dated_on"] = dated_on
+        docs.append(doc)
+    if docs:
+        logger.info(f"QPR certificates found: {len(docs)}", step="documents")
+    return docs
+
+
+def _build_qpr_snapshot(detail_url: str, detail_html: str, logger: CrawlerLogger) -> list[dict]:
+    """Build documents for the latest QPR: a self-contained HTML snapshot plus any
+    certificate PDFs (Architect/Engineer/CA) linked within the report.
+
+    The snapshot dict carries ``_inline_bytes`` / ``_inline_filename`` so
+    _process_documents uploads the pre-built HTML straight to S3; the certificate
+    entries are plain ``link``/``type`` docs downloaded normally.  Returns an
+    empty list when no QPR is available.
     """
     pj = _qpr_resolve_pj(detail_url, detail_html)
     if not pj:
-        return None
+        return []
 
     qr_resp = safe_get(f"{QRCODE_URL}?id={pj}", retries=2, logger=logger, verify=False)
     if not qr_resp or not qr_resp.text:
-        return None
+        return []
     latest = _qpr_pick_latest(qr_resp.text)
     if not latest:
-        return None
+        return []
 
     href = latest["href"].lstrip("/")
     qpr_url = href if href.startswith("http") else f"https://{DOMAIN}/{href}"
     show_resp = safe_get(qpr_url, retries=2, logger=logger, verify=False)
     if not show_resp or not show_resp.text:
-        return None
+        return []
 
     soup = BeautifulSoup(show_resp.text, "lxml")
+
+    dated_on: str | None = None
+    try:
+        dated_on = datetime.strptime(latest["uploaded"], "%d %b %Y").strftime("%Y-%m-%d")
+    except (ValueError, KeyError):
+        pass
+
+    # Certificate PDFs linked within the report (often missing from Filanprint).
+    certs = _qpr_extract_certificates(soup, qpr_url, dated_on, logger)
+
     # Strip scripts and ASP.NET hidden inputs so the snapshot is static & offline.
     for tag in soup.find_all("script"):
         tag.decompose()
@@ -815,11 +876,9 @@ def _build_qpr_snapshot(detail_url: str, detail_html: str, logger: CrawlerLogger
         "_inline_bytes": data,
         "_inline_filename": "quarterly_progress_report.html",
     }
-    try:
-        doc["dated_on"] = datetime.strptime(latest["uploaded"], "%d %b %Y").strftime("%Y-%m-%d")
-    except (ValueError, KeyError):
-        pass
-    return doc
+    if dated_on:
+        doc["dated_on"] = dated_on
+    return [doc, *certs]
 
 
 # ── Sentinel ──────────────────────────────────────────────────────────────────
@@ -1159,14 +1218,14 @@ def _process_bihar_candidate(
             return deltas
 
         detail_extra: dict = {}
-        qpr_doc: dict | None = None
+        qpr_docs: list[dict] = []
         if detail_url:
             detail_resp = safe_get(detail_url, retries=2, logger=logger, verify=False)
             if detail_resp and "Invalid Project ID" not in detail_resp.text:
                 detail_extra = _parse_detail_page(detail_resp.text)
                 logger.info(f"Detail parsed for {reg_no!r}", step="detail")
                 try:
-                    qpr_doc = _build_qpr_snapshot(detail_url, detail_resp.text, logger)
+                    qpr_docs = _build_qpr_snapshot(detail_url, detail_resp.text, logger)
                 except Exception as exc:
                     logger.warning(f"QPR snapshot failed for {reg_no!r}: {exc}", step="documents")
             elif detail_resp:
@@ -1222,8 +1281,7 @@ def _process_bihar_candidate(
                 logger.info(f"Updated: {reg_no}", step="upsert")
 
             uploaded_docs = list(detail_extra.get("uploaded_documents") or [])
-            if qpr_doc is not None:
-                uploaded_docs.append(qpr_doc)  # FIELD: uploaded_documents[] <- inline QPR snapshot (latest quarter)
+            uploaded_docs.extend(qpr_docs)  # FIELD: uploaded_documents[] <- inline QPR snapshot + QPR certificate PDFs (latest quarter)
             if uploaded_docs:
                 enriched_docs, doc_count = _process_documents(
                     key, uploaded_docs, run_id, site_id, logger,
