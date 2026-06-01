@@ -528,6 +528,45 @@ def update_crawl_run(
         conn.commit()
 
 
+def update_crawl_run_progress(run_id: int, counts: dict | None = None) -> None:
+    """Update a running crawl_runs row's counters in place for live dashboard
+    progress, without finalising the run.
+
+    Unlike update_crawl_run(), this leaves ``status`` and ``finished_at``
+    untouched so the dashboard keeps rendering the run as in-flight (and omits a
+    bogus duration).  Safe to call repeatedly during a run; each call writes the
+    current cumulative counters.
+    """
+    if settings.TEST_MODE and not settings.TEST_MODE_LOG_TO_DB:
+        return
+    if run_id is None or run_id < 0:
+        return
+    counts = counts or {}
+    with _db_lock, get_connection() as conn:
+        conn.execute(
+            """
+            UPDATE crawl_runs SET
+                projects_found = COALESCE(%s, projects_found),
+                projects_new = COALESCE(%s, projects_new),
+                projects_updated = COALESCE(%s, projects_updated),
+                projects_skipped = COALESCE(%s, projects_skipped),
+                documents_uploaded = COALESCE(%s, documents_uploaded),
+                error_count = COALESCE(%s, error_count)
+            WHERE id = %s
+            """,
+            (
+                counts.get("projects_found"),
+                counts.get("projects_new"),
+                counts.get("projects_updated"),
+                counts.get("projects_skipped"),
+                counts.get("documents_uploaded"),
+                counts.get("error_count"),
+                run_id,
+            ),
+        )
+        conn.commit()
+
+
 # crawl_errors
 
 def insert_crawl_error(

@@ -39,7 +39,13 @@ from core.crawler_base import (
     page_adapter,
     random_delay,
 )
-from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error
+from core.db import (
+    get_project_by_key,
+    upsert_project,
+    upsert_document,
+    insert_crawl_error,
+    update_crawl_run_progress,
+)
 from core.details_pool import get_detail_workers, process_details
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -112,6 +118,7 @@ def _collect_listing_pages(
     max_items: int | None = None,
     max_pages: int | None = None,
     capture_detail_urls: bool = True,
+    on_progress=None,
 ) -> list[dict]:
     """
     Use Selenium to traverse listing pages and capture aligned detail popup URLs.
@@ -247,6 +254,14 @@ def _collect_listing_pages(
                     "detail_urls": detail_urls,
                 })
                 items_seen += len(rows)
+
+                # Stream listing progress so the dashboard's projects_found
+                # climbs page-by-page rather than jumping at the end.
+                if on_progress is not None:
+                    try:
+                        on_progress(items_seen)
+                    except Exception:
+                        pass
 
                 if (max_items and items_seen >= max_items) or (max_pages and current_listing_pg >= max_pages):
                     break
@@ -1366,11 +1381,17 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         f" capture_detail={capture_detail_urls})",
         step="detail_collect",
     )
+    def _on_listing_progress(found_so_far: int) -> None:
+        # Push the running projects_found to crawl_runs for live dashboard view.
+        counters["projects_found"] = found_so_far
+        update_crawl_run_progress(run_id, counters)
+
     listing_pages = _collect_listing_pages(
         logger,
         max_items=listing_max_items,
         max_pages=max_pages or None,
         capture_detail_urls=capture_detail_urls,
+        on_progress=_on_listing_progress,
     )
     logger.info(
         f"Collected {sum(len(p['rows']) for p in listing_pages)} listing rows across"
@@ -1392,12 +1413,15 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     )
 
     # ── Phase A counters: project_found enumerated from listing parser ───────
+    # Set (not accumulate) — the listing walk already streamed running totals
+    # via _on_listing_progress; this fixes the authoritative final value.
+    counters["projects_found"] = sum(len(p["rows"]) for p in listing_pages)
     for payload in listing_pages:
-        counters["projects_found"] += len(payload["rows"])
         logger.info(
             f"Page {payload['page']}: {len(payload['rows'])} projects",
             step="listing",
         )
+    update_crawl_run_progress(run_id, counters)
 
     # ── Phase B: flatten candidates and process in parallel ──────────────────
     candidates: list[tuple[dict, str, int]] = []  # (raw, detail_url, page)
@@ -1445,14 +1469,20 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             machine_name, machine_ip, logger,
         )
 
-    results = process_details(candidates, _worker, n_workers=n_workers)
-    for _idx, deltas, exc in results:
+    def _on_detail_result(_idx: int, deltas: dict | None, exc: Exception | None) -> None:
+        # Fold each completed candidate's deltas into the running counters and
+        # push them to crawl_runs so the dashboard updates per project, not just
+        # once at the end.  Runs serially in this thread (see process_details).
         if exc is not None:
             counters["error_count"] += 1
             logger.exception("Worker raised", exc, step="project_loop")
-            continue
-        for k, v in (deltas or {}).items():
-            counters[k] = counters.get(k, 0) + v
+        else:
+            for k, v in (deltas or {}).items():
+                counters[k] = counters.get(k, 0) + v
+        update_crawl_run_progress(run_id, counters)
+
+    process_details(candidates, _worker, n_workers=n_workers,
+                    on_result=_on_detail_result)
     logger.timing("details", time.monotonic() - tB,
                   items=len(candidates), workers=n_workers)
 

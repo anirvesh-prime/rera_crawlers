@@ -52,6 +52,7 @@ def process_details(
     *,
     n_workers: int | None = None,
     ordered: bool = True,
+    on_result: Callable[[int, R | None, Exception | None], None] | None = None,
 ) -> list[tuple[int, R | None, Exception | None]]:
     """
     Run `worker_fn(idx, item)` across `items` using a ThreadPoolExecutor.
@@ -61,6 +62,13 @@ def process_details(
     list is sorted by `idx` so callers can iterate it identically to a
     sequential `for` loop.  When `ordered=False` the list is returned in
     completion order, which is useful for streaming progress logs.
+
+    `on_result`, when supplied, is invoked as `on_result(idx, result, exc)`
+    immediately after each item completes — in the calling thread, serialised
+    in completion order — so callers can stream live progress (e.g. update a
+    dashboard counter) without waiting for the whole batch.  Exceptions raised
+    by the callback are swallowed so a faulty progress hook can never break the
+    pool.
 
     Workers are short-lived — the executor is shut down before returning.
     """
@@ -77,9 +85,15 @@ def process_details(
             idx = futures[fut]
             try:
                 result = fut.result()
-                out.append((idx, result, None))
+                entry: tuple[int, R | None, Exception | None] = (idx, result, None)
             except Exception as exc:        # noqa: BLE001 — propagate to caller
-                out.append((idx, None, exc))
+                entry = (idx, None, exc)
+            out.append(entry)
+            if on_result is not None:
+                try:
+                    on_result(*entry)
+                except Exception:           # noqa: BLE001 — never let a hook break the pool
+                    pass
 
     if ordered:
         out.sort(key=lambda t: t[0])
