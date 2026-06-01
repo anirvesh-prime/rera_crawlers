@@ -252,38 +252,46 @@ def _collect_listing_pages(
                     break
 
                 # ── Navigate to the next listing page ─────────────────────────
+                # The pager exposes the next page as an anchor whose href is a
+                # javascript:__doPostBack(...) call.  The same href targets both
+                # the direct numeric link and the "..." overflow link (which
+                # jumps to the first page of the next block), so one selector
+                # covers every case.  A physical Selenium click on the pager row
+                # (anchored to the page bottom) is unreliable — Chrome reports
+                # "element click intercepted" — so trigger the anchor's postback
+                # via a JS click, mirroring the per-project popup-click path.
                 next_pg = current_listing_pg + 1
                 next_href = (
                     f"javascript:__doPostBack('{_GRID_TARGET}','Page${next_pg}')"
                 )
-                next_link = listing_page.query_selector(f'a[href="{next_href}"]')
-                if next_link:
-                    next_link.click()
+                clicked = listing_page.eval_on_selector_all(
+                    f'a[href="{next_href}"]',
+                    "els => { if (els[0]) { els[0].click(); return true; } return false; }",
+                )
+                if clicked:
                     listing_page.wait_for_load_state("domcontentloaded", timeout=15_000)
-                    current_listing_pg = next_pg
-                else:
-                    # "..." overflow link — find any pager link pointing to next_pg
-                    pager_info: list[dict] = listing_page.eval_on_selector_all(
-                        f"table#{_GRID_ID} tr:last-child a",
-                        "els => els.map(e => ({text: e.innerText.trim(), href: e.getAttribute('href')}))",
-                    )
-                    overflow = next(
-                        (
-                            info for info in pager_info
-                            if info.get("href", "").endswith(f"'Page${next_pg}')")
-                        ),
-                        None,
-                    )
-                    if overflow:
-                        listing_page.click(f'a[href="{overflow["href"]}"]')
-                        listing_page.wait_for_load_state("domcontentloaded", timeout=15_000)
-                        current_listing_pg = next_pg
-                    else:
-                        logger.info(
-                            f"Selenium: no link to page {next_pg} — all pages collected",
+                    # The postback reloads the GridView in place; confirm the
+                    # pager's active page (rendered as a <span>) advanced before
+                    # parsing so we never read a stale page.
+                    try:
+                        listing_page.wait_for_function(
+                            "() => { var s = document.querySelector("
+                            f"\"table#{_GRID_ID} tr.pagingDiv span\");"
+                            f" return s && s.innerText.trim() === '{next_pg}'; }}",
+                            timeout=15_000,
+                        )
+                    except SeleniumTimeout:
+                        logger.warning(
+                            f"Selenium: pager did not confirm page {next_pg} — proceeding",
                             step="detail_collect",
                         )
-                        break
+                    current_listing_pg = next_pg
+                else:
+                    logger.info(
+                        f"Selenium: no link to page {next_pg} — all pages collected",
+                        step="detail_collect",
+                    )
+                    break
 
         listing_page.close()
     except Exception as e:
