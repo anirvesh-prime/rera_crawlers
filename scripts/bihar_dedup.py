@@ -64,6 +64,15 @@ _DOC_COLLECTION_DEDUP_KEYS = {
 _HISTORY_COLLECTIONS = {"old_updates"}
 _SET_COLLECTIONS = set(ARRAY_FIELDS)
 
+# Columns that store S3 URLs (or document/image references). Skipped from the
+# merge when --skip-docs is passed, on the assumption that the operator will
+# purge the legacy S3 prefix and let a recrawl repopulate these on the prod
+# row. Merging them would otherwise inject soon-to-be-broken legacy URLs.
+_SKIP_DOC_FIELDS = frozenset({
+    "uploaded_documents", "document_urls", "doc_ocr_url",
+    "project_images", "detail_images", "lister_images", "images",
+})
+
 # Fields the merge handles with bespoke rules (skipped from the generic loop)
 _SPECIAL_FIELDS = (
     {"key", "retrieved_on", "last_updated", "last_crawled_date",
@@ -212,19 +221,27 @@ def _union_set(rows: list[dict], col: str) -> list | None:
     return out or None
 
 
-def build_merge_plan(winner: dict, losers: list[dict]) -> tuple[dict, list[dict]]:
+def build_merge_plan(
+    winner: dict,
+    losers: list[dict],
+    skip_docs: bool = False,
+) -> tuple[dict, list[dict]]:
     """Compute the merged row and a list of per-field diff records.
 
     ``winner`` is the surviving prod-key row; ``losers`` are the rows that will
     be deleted. The merged dict is a shallow override of the winner's columns
-    (so unchanged columns are not rewritten).
+    (so unchanged columns are not rewritten). When ``skip_docs`` is true,
+    columns in ``_SKIP_DOC_FIELDS`` are not touched on the winner — useful
+    when the post-merge plan is to purge S3 and recrawl those columns.
     """
     rows = [winner, *losers]
     merged: dict = {}
     diffs: list[dict] = []
 
+    skip = _SPECIAL_FIELDS | (_SKIP_DOC_FIELDS if skip_docs else set())
+
     for col in PROJECT_COLUMNS:
-        if col in _SPECIAL_FIELDS:
+        if col in skip:
             continue
         chosen, source = _pick_latest(rows, col)
         if source in ("neither", "equal"):
@@ -243,6 +260,8 @@ def build_merge_plan(winner: dict, losers: list[dict]) -> tuple[dict, list[dict]
 
     # Bespoke handlers
     for col, dedup_keys in _DOC_COLLECTION_DEDUP_KEYS.items():
+        if skip_docs and col in _SKIP_DOC_FIELDS:
+            continue
         unioned = _union_collection(rows, col, dedup_keys)
         if unioned is not None and not _equal(unioned, winner.get(col)):
             merged[col] = unioned
@@ -251,6 +270,8 @@ def build_merge_plan(winner: dict, losers: list[dict]) -> tuple[dict, list[dict]
         if unioned is not None and not _equal(unioned, winner.get(col)):
             merged[col] = unioned
     for col in _SET_COLLECTIONS:
+        if skip_docs and col in _SKIP_DOC_FIELDS:
+            continue
         unioned = _union_set(rows, col)
         if unioned is not None and not _equal(unioned, winner.get(col)):
             merged[col] = unioned
@@ -311,6 +332,7 @@ def plan_cluster(
     reg_no: str,
     rows: list[dict],
     docs_by_key: dict[str, list[dict]],
+    skip_docs: bool = False,
 ) -> dict:
     """Decide the action for a single registration-number cluster.
 
@@ -372,9 +394,12 @@ def plan_cluster(
         out["winner_key"] = winner["key"]
         return out
 
-    merged, diffs = build_merge_plan(winner, legacy_rows)
+    merged, diffs = build_merge_plan(winner, legacy_rows, skip_docs=skip_docs)
     loser_keys = [r["key"] for r in legacy_rows]
-    repoint, delete = build_doc_plan(winner["key"], loser_keys, docs_by_key)
+    if skip_docs:
+        repoint, delete = [], []
+    else:
+        repoint, delete = build_doc_plan(winner["key"], loser_keys, docs_by_key)
 
     out.update({
         "status": "will_merge",
@@ -548,7 +573,11 @@ def summarize(plans: list[dict]) -> dict[str, int]:
 # ── Entrypoint ────────────────────────────────────────────────────────────────
 
 
-def build_plans(conn, reg_no: str | None = None) -> list[dict]:
+def build_plans(
+    conn,
+    reg_no: str | None = None,
+    skip_docs: bool = False,
+) -> list[dict]:
     projects = fetch_bihar_projects(conn, reg_no=reg_no)
     by_reg: dict[str, list[dict]] = defaultdict(list)
     for r in projects:
@@ -569,7 +598,7 @@ def build_plans(conn, reg_no: str | None = None) -> list[dict]:
                     "anomaly_reasons": [{"key": row["key"], "reason": "missing_reg_no"}],
                 })
             continue
-        plans.append(plan_cluster(reg_no, rows, docs_by_key))
+        plans.append(plan_cluster(reg_no, rows, docs_by_key, skip_docs=skip_docs))
     return plans
 
 
@@ -581,6 +610,13 @@ def main(argv: list[str] | None = None) -> int:
                         help="Directory for CSV reports (default: ./bihar_dedup_reports).")
     parser.add_argument("--limit", type=int, default=0,
                         help="Optional cap on cluster count (0 = no limit).")
+    parser.add_argument("--skip-docs", action="store_true",
+                        help="Skip merging document/image URL columns "
+                             "(uploaded_documents, document_urls, doc_ocr_url, "
+                             "project_images, detail_images, lister_images, images) "
+                             "and skip all rera_project_documents repoint/delete ops. "
+                             "Use when the post-merge plan is to purge the legacy "
+                             "S3 prefix and recrawl the docs from scratch.")
     target = parser.add_mutually_exclusive_group()
     target.add_argument("--reg-no", default=None,
                         help="Process only the cluster matching this project_registration_no "
@@ -600,7 +636,7 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         print(f"Resolved key={args.key} → project_registration_no={target_reg_no!r}")
 
-    plans = build_plans(conn, reg_no=target_reg_no)
+    plans = build_plans(conn, reg_no=target_reg_no, skip_docs=args.skip_docs)
     if target_reg_no and not plans:
         print(f"No Bihar rows found with project_registration_no={target_reg_no!r}", file=sys.stderr)
         return 2
@@ -612,6 +648,9 @@ def main(argv: list[str] | None = None) -> int:
 
     print("Bihar dedup plan summary")
     print("-" * 40)
+    if args.skip_docs:
+        print("  mode                           skip-docs (doc/image fields untouched,")
+        print("                                  rera_project_documents not modified)")
     for k in sorted(summary):
         print(f"  {k:30s} {summary[k]}")
     print("-" * 40)
