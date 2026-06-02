@@ -1230,7 +1230,15 @@ def _process_bihar_candidate(
     if not reg_no:
         deltas["error_count"] += 1
         return deltas
-    key = generate_project_key(reg_no)
+    # Bihar key recipe matches prod: project_name + reg_no + promoter_name, concatenated
+    # raw (no separator, no case/whitespace changes), then siphash24. Falling back to
+    # reg_no alone here is what created the historical duplicate rows — refuse the row.
+    project_name_raw  = raw.get("project_name", "") or ""
+    promoter_name_raw = raw.get("promoter_name", "") or ""
+    if not project_name_raw or not promoter_name_raw:
+        deltas["error_count"] += 1
+        return deltas
+    key = generate_project_key(project_name_raw + reg_no + promoter_name_raw)
     logger.set_project(
         key=key, reg_no=reg_no,
         url=detail_url or LISTING_URL, page=current_page,

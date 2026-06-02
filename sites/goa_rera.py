@@ -24,7 +24,7 @@ from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.crawler_base import SeleniumSession, generate_project_key, page_adapter, random_delay
-from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
+from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -703,6 +703,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
     # projects_found must reflect the total Goa listing — slice afterwards.
     counts["projects_found"] = len(cards)
+    update_crawl_run_progress(run_id, counts)
     if item_limit:
         cards = cards[:item_limit]
     logger.info(f"Goa RERA: {len(cards)} projects to process")
@@ -839,6 +840,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             counts["error_count"] += 1
         finally:
             logger.clear_project()
+            update_crawl_run_progress(run_id, counts)
 
     reset_checkpoint(site_id, mode)
     logger.info(f"Goa RERA complete: {counts}")

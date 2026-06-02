@@ -30,7 +30,13 @@ from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.crawler_base import SeleniumSession, generate_project_key, random_delay
-from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
+from core.db import (
+    get_project_by_key,
+    upsert_project,
+    insert_crawl_error,
+    upsert_document,
+    update_crawl_run_progress,
+)
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -1834,6 +1840,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 save_checkpoint(site_id, mode, year_index, project_key, run_id)
             finally:
                 logger.clear_project()
+                update_crawl_run_progress(run_id, counts)
 
         # Safety guard: if we scanned the entire listing and never found the
         # checkpoint project key, clear it so subsequent listings are processed
@@ -1846,6 +1853,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 url=year_url,
             )
             last_project_key = None
+
+        # Push at year boundary so the dashboard reflects per-year progress.
+        update_crawl_run_progress(run_id, counts)
 
         if item_limit and items_processed >= item_limit:
             logger.info(

@@ -34,6 +34,7 @@ from core.db import (
     insert_crawl_error,
     upsert_document,
     upsert_project,
+    update_crawl_run_progress,
 )
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -1134,6 +1135,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         return counts
 
     counts["projects_found"] = len(rows)
+    update_crawl_run_progress(run_id, counts)
     logger.info(f"Listing page: {len(rows)} projects found")
     logger.timing("search", time.monotonic() - t0, rows=len(rows))
     items_processed = 0
@@ -1280,6 +1282,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             counts["error_count"] += 1
         finally:
             logger.clear_project()
+            update_crawl_run_progress(run_id, counts)
 
     reset_checkpoint(site_id, mode)
     logger.info(f"West Bengal RERA complete: {counts}")

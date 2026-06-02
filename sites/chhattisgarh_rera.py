@@ -23,7 +23,7 @@ from bs4 import BeautifulSoup
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
 from core.crawler_base import SeleniumSession, generate_project_key, random_delay
-from core.db import get_project_by_key, insert_crawl_error, upsert_document, upsert_project
+from core.db import get_project_by_key, insert_crawl_error, upsert_document, upsert_project, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -897,6 +897,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     project_stubs = _parse_listing_map_data(resp.text)
     logger.info(f"Found {len(project_stubs)} project stubs from listing map data")
     counts["projects_found"] = len(project_stubs)
+    update_crawl_run_progress(run_id, counts)
     logger.timing("search", time.monotonic() - t0, rows=len(project_stubs))
 
     items_processed = 0
@@ -1048,6 +1049,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             counts["error_count"] += 1
         finally:
             logger.clear_project()
+            update_crawl_run_progress(run_id, counts)
 
     reset_checkpoint(site_id, mode)
     logger.info(f"Chhattisgarh RERA complete: {counts}")

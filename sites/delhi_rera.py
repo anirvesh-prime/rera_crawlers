@@ -27,7 +27,7 @@ from pydantic import ValidationError
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.config import settings
 from core.crawler_base import SeleniumSession, generate_project_key, page_adapter, random_delay
-from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error
+from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -1360,6 +1360,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             break
 
         counters["projects_found"] += len(rows)
+        # Push the running projects_found to crawl_runs for live dashboard view.
+        update_crawl_run_progress(run_id, counters)
         logger.info(f"Page {page}: {len(rows)} rows", step="listing")
         if not first_page_logged:
             logger.timing("search", time.monotonic() - t0, rows=len(rows))
@@ -1569,6 +1571,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     )
             finally:
                 logger.clear_project()
+                update_crawl_run_progress(run_id, counters)
 
             random_delay(*delay_range)
 

@@ -32,7 +32,7 @@ from core.crawler_base import (
     page_adapter,
     random_delay,
 )
-from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
+from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -1233,6 +1233,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             page.wait_for_timeout(400)
             cards = _parse_page_cards(page)
             counts["projects_found"] += len(cards)
+            # Push the running projects_found to crawl_runs for live dashboard view.
+            update_crawl_run_progress(run_id, counts)
             if page_num == 1:
                 logger.timing("search", time.monotonic() - t0, rows=len(cards))
 
@@ -1539,6 +1541,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                             pass
                 finally:
                     logger.clear_project()
+                    update_crawl_run_progress(run_id, counts)
 
             save_checkpoint(site_id, mode, page_num, None, run_id)
 

@@ -36,7 +36,7 @@ from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
 from core.crawler_base import SeleniumSession, generate_project_key, get_random_ua, random_delay
-from core.db import get_project_by_key, insert_crawl_error, upsert_document, upsert_project
+from core.db import get_project_by_key, insert_crawl_error, upsert_document, upsert_project, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -1194,6 +1194,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             # page is walked, which item_limit may interrupt).
             if total_records and counts["projects_found"] < total_records:
                 counts["projects_found"] = total_records
+            # Push the running projects_found to crawl_runs for live dashboard view.
+            update_crawl_run_progress(run_id, counts)
             if not first_page_logged:
                 logger.timing("search", time.monotonic() - t0, rows=len(rows))
                 first_page_logged = True
@@ -1204,6 +1206,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     machine_name, machine_ip, counts, done_regs,
                     items_processed, item_limit,
                 )
+                update_crawl_run_progress(run_id, counts)
                 if item_limit and items_processed >= item_limit:
                     logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached")
                     reset_checkpoint(site_id, mode)
@@ -1228,6 +1231,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                         f"{len(new_supp)} not seen in search")
             # Add only rows not already counted in the primary search total.
             counts["projects_found"] += len(new_supp)
+            # Push the running projects_found to crawl_runs for live dashboard view.
+            update_crawl_run_progress(run_id, counts)
 
             for row in new_supp:
                 items_processed = _process_row(
@@ -1235,6 +1240,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     machine_name, machine_ip, counts, done_regs,
                     items_processed, item_limit,
                 )
+                update_crawl_run_progress(run_id, counts)
                 if item_limit and items_processed >= item_limit:
                     logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached")
                     reset_checkpoint(site_id, mode)

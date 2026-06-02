@@ -22,7 +22,13 @@ from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.crawler_base import SeleniumSession, generate_project_key, random_delay
-from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
+from core.db import (
+    get_project_by_key,
+    upsert_project,
+    insert_crawl_error,
+    upsert_document,
+    update_crawl_run_progress,
+)
 from core.details_pool import get_detail_workers, process_details
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -1588,6 +1594,7 @@ def _collect_listing_cards(
     run_id: int,
     mode: str,
     item_limit: int = 0,
+    on_progress=None,
 ) -> tuple[list[tuple[int, dict]], int]:
     """
     Walk the explore-projects listing pages and return every parseable card.
@@ -1621,6 +1628,13 @@ def _collect_listing_cards(
             if card.get("cert_no_from_card"):
                 cards_with_page.append((page_num, card))
         save_checkpoint(site_id, mode, page_num, None, run_id)
+        # Stream listing progress so the dashboard's projects_found climbs
+        # page-by-page rather than jumping at the end.
+        if on_progress is not None:
+            try:
+                on_progress(len(cards_with_page))
+            except Exception:
+                pass
         if item_limit and len(cards_with_page) >= item_limit:
             logger.info(
                 f"Item limit {item_limit} reached after page {page_num} "
@@ -1824,13 +1838,21 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         f"| item_limit={item_limit or 'unlimited'}",
         step="listing",
     )
+
+    def _on_listing_progress(found_so_far: int) -> None:
+        # Push the running projects_found to crawl_runs for live dashboard view.
+        counts["projects_found"] = found_so_far
+        update_crawl_run_progress(run_id, counts)
+
     cards_with_page, lister_errors = _collect_listing_cards(
         start_page, effective_end, soup, logger,
         delay_min, delay_max, site_id, run_id, mode,
         item_limit=item_limit,
+        on_progress=_on_listing_progress,
     )
     counts["projects_found"] = len(cards_with_page)
     counts["error_count"] += lister_errors
+    update_crawl_run_progress(run_id, counts)
     logger.timing("search", time.monotonic() - t0,
                   pages=effective_end - start_page + 1,
                   rows=len(cards_with_page))
@@ -1861,14 +1883,20 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             machine_name, machine_ip, logger,
         )
 
-    results = process_details(to_process, _worker, n_workers=n_workers)
-    for _idx, deltas, exc in results:
+    def _on_detail_result(_idx: int, deltas: dict | None, exc: Exception | None) -> None:
+        # Fold each completed card's deltas into the running counts and push
+        # them to crawl_runs so the dashboard updates per project, not just
+        # once at the end.  Runs serially in this thread (see process_details).
         if exc is not None:
             counts["error_count"] += 1
             logger.exception("Worker raised", exc, step="project_loop")
-            continue
-        for k, v in (deltas or {}).items():
-            counts[k] = counts.get(k, 0) + v
+        else:
+            for k, v in (deltas or {}).items():
+                counts[k] = counts.get(k, 0) + v
+        update_crawl_run_progress(run_id, counts)
+
+    process_details(to_process, _worker, n_workers=n_workers,
+                    on_result=_on_detail_result)
     logger.timing("details", time.monotonic() - t0,
                   items=len(to_process), workers=n_workers)
 

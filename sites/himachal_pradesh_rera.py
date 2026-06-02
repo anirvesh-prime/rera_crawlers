@@ -30,7 +30,7 @@ from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.crawler_base import SeleniumSession, generate_project_key, random_delay
-from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
+from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document, update_crawl_run_progress
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
 from core.project_normalizer import (
@@ -989,6 +989,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
         all_reg_nos = list(qs_map.keys())
         counts["projects_found"] = len(all_reg_nos)
+        update_crawl_run_progress(run_id, counts)
         if item_limit:
             all_reg_nos = all_reg_nos[:item_limit]
             logger.info(f"HP RERA: CRAWL_ITEM_LIMIT={item_limit} — {len(all_reg_nos)} projects")
@@ -1242,6 +1243,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 counts["error_count"] += 1
             finally:
                 logger.clear_project()
+                update_crawl_run_progress(run_id, counts)
 
     reset_checkpoint(site_id, mode)
     logger.info(f"HP RERA crawl complete: {counts}")

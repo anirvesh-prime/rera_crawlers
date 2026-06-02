@@ -222,6 +222,4 @@ def select_document_for_download(
     renamed_label = rename_document_category(label or _url_filename(selected.get("url")), matched_name, counters)
     selected["label"] = renamed_label
     selected["type"] = renamed_label
-    selected.setdefault("source_label", label or matched_name)
-    selected.setdefault("matched_category", matched_name)
     return selected

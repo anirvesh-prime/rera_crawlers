@@ -32,7 +32,7 @@ from core.crawler_base import (
     page_adapter,
     random_delay,
 )
-from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
+from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -1305,6 +1305,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     if not listed_projects:
         return counts
     counts["projects_found"] = len(listed_projects)
+    update_crawl_run_progress(run_id, counts)
     total_listing = len(listed_projects)
     if item_limit:
         listed_projects = listed_projects[:item_limit]
@@ -1489,6 +1490,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 counts["error_count"] += 1
             finally:
                 logger.clear_project()
+                update_crawl_run_progress(run_id, counts)
 
     reset_checkpoint(site_id, mode)
     logger.info(f"Rajasthan RERA complete: {counts}")

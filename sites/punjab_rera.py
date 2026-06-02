@@ -38,7 +38,7 @@ from core.crawler_base import (
     random_delay,
 )
 from core.config import settings
-from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error
+from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -1091,6 +1091,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
         # projects_found must reflect the total Punjab listing — slice afterwards.
         counters["projects_found"] = len(rows)
+        update_crawl_run_progress(run_id, counters)
         if item_limit:
             rows = rows[:item_limit]
             logger.info(
@@ -1269,6 +1270,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 # Checkpoint after every project so a restart can resume mid-list
                 save_checkpoint(site_id, mode, 0, key, run_id)
                 logger.clear_project()
+                update_crawl_run_progress(run_id, counters)
 
             if idx > 0 and idx % 10 == 0:
                 random_delay(*delay_range)

@@ -30,7 +30,6 @@ class DocumentPolicyTests(unittest.TestCase):
         assert selected is not None
         self.assertEqual(selected["label"], "Approved layout 1")
         self.assertEqual(selected["type"], "Approved layout 1")
-        self.assertEqual(selected["matched_category"], "Approved layout")
 
     def test_select_document_falls_back_to_doc_filename_field(self):
         selected = select_document_for_download(
@@ -45,7 +44,6 @@ class DocumentPolicyTests(unittest.TestCase):
         assert selected is not None
         self.assertEqual(selected["label"], "Architect Certificate 1")
         self.assertEqual(selected["type"], "Architect Certificate 1")
-        self.assertEqual(selected["matched_category"], "Architect")
 
     def test_repeated_architect_docs_are_numbered(self):
         counters: dict[str, int] = {}
@@ -85,7 +83,7 @@ class DocumentPolicyTests(unittest.TestCase):
         )
         self.assertIsNotNone(selected)
         assert selected is not None
-        self.assertEqual(selected["matched_category"], "Form B")
+        self.assertEqual(selected["type"], "Form B 1")
 
     def test_puducherry_registration_certificate_allowed(self):
         # "Registration Certificate" in STATE_DOC_DICT matches the crawler's
@@ -100,7 +98,7 @@ class DocumentPolicyTests(unittest.TestCase):
         )
         self.assertIsNotNone(selected)
         assert selected is not None
-        self.assertEqual(selected["matched_category"], "Registration Certificate")
+        self.assertEqual(selected["type"], "Registration Certificate 1")
 
     def test_puducherry_unknown_doc_skipped(self):
         """Documents not in the Puducherry allowlist should be blocked."""

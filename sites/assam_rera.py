@@ -26,7 +26,7 @@ from bs4 import BeautifulSoup
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.crawler_base import SeleniumSession, generate_project_key, random_delay
-from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
+from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -1314,6 +1314,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     all_stubs = _fetch_listing(logger)
     logger.info("Listing parsed", total=len(all_stubs))
     counts["projects_found"] = len(all_stubs)
+    update_crawl_run_progress(run_id, counts)
     logger.timing("search", time.monotonic() - t0, rows=len(all_stubs))
 
     if not all_stubs:
@@ -1468,6 +1469,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 continue
         finally:
             logger.clear_project()
+            update_crawl_run_progress(run_id, counts)
 
     # ── Final checkpoint ──────────────────────────────────────────────────────
     # Clear the checkpoint so the next run starts fresh rather than replaying

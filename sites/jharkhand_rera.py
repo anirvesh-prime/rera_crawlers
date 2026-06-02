@@ -23,7 +23,7 @@ from pydantic import ValidationError
 from core.checkpoint import reset_checkpoint
 from core.config import settings
 from core.crawler_base import SeleniumSession, generate_project_key, random_delay
-from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error
+from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -882,6 +882,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         soup = BeautifulSoup(resp.text, "lxml")
         rows = _parse_listing_rows(soup)
         counters["projects_found"] += len(rows)
+        # Push the running projects_found to crawl_runs for live dashboard view.
+        update_crawl_run_progress(run_id, counters)
         logger.info(f"Page {current_page}: {len(rows)} projects", step="listing")
         if not first_page_logged:
             logger.timing("search", time.monotonic() - t0, rows=len(rows))
@@ -1002,6 +1004,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                                        project_key=key, url=detail_url)
             finally:
                 logger.clear_project()
+                update_crawl_run_progress(run_id, counters)
 
             random_delay(*delay_range)
 

@@ -34,7 +34,13 @@ from core.crawler_base import (
     page_adapter,
     random_delay,
 )
-from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
+from core.db import (
+    get_project_by_key,
+    upsert_project,
+    insert_crawl_error,
+    upsert_document,
+    update_crawl_run_progress,
+)
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -1076,6 +1082,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     for district_idx, district in pending_districts:
         stubs = district_stubs.get(district_idx, [])
         counts["projects_found"] += len(stubs)
+        update_crawl_run_progress(run_id, counts)
         logger.info(f"Processing district: {district} ({district_idx + 1}/{len(_UP_DISTRICTS)})")
         if not first_district_logged:
             logger.timing("search", time.monotonic() - t0, rows=len(stubs))
@@ -1260,6 +1267,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
             save_checkpoint(site_id, mode, district_idx, project_key, run_id)
             random_delay(delay_min, delay_max)
+            update_crawl_run_progress(run_id, counts)
 
         # Guard against a stale checkpoint whose key no longer exists in the
         # current listings (project removed / listing changed).  If we just

@@ -53,7 +53,7 @@ from core.crawler_base import (
     page_adapter,
     random_delay,
 )
-from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
+from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -1336,6 +1336,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
         # Every parsed card is a real reg-no enumerated from the listing.
         counters["projects_found"] += len(cards)
+        # Push the running projects_found to crawl_runs for live dashboard view.
+        update_crawl_run_progress(run_id, counters)
 
         for raw in cards:
             if item_limit and items_processed >= item_limit:
@@ -1481,6 +1483,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     insert_crawl_error(run_id, config["id"], "CRAWLER_EXCEPTION", str(exc), url, project_key=key)
             finally:
                 logger.clear_project()
+                update_crawl_run_progress(run_id, counters)
 
         save_checkpoint(config["id"], mode, page_no, None, run_id)
         if processing_done:

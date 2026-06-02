@@ -32,7 +32,7 @@ from core.crawler_base import (
     page_adapter,
     random_delay,
 )
-from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document
+from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document, update_crawl_run_progress
 from core.details_pool import get_detail_workers, process_details
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -1511,6 +1511,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             rows  = _parse_listing_rows(html)
             logger.info(f"  {len(rows)} project rows on page {current_page}")
             counts["projects_found"] += len(rows)
+            # Push the running projects_found to crawl_runs for live dashboard view.
+            update_crawl_run_progress(run_id, counts)
 
             for row in rows:
                 app_id = row.get("app_id") or row.get("project_id") or ""
@@ -1743,6 +1745,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     counts["error_count"] += 1
                 finally:
                     logger.clear_project()
+                    update_crawl_run_progress(run_id, counts)
 
             # ── Checkpoint after each listing page ────────────────────────────
             save_checkpoint(site_id, mode, current_page, None, run_id)

@@ -34,6 +34,7 @@ from core.db import (
     get_project_by_key,
     upsert_project,
     insert_crawl_error,
+    update_crawl_run_progress,
 )
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -1356,6 +1357,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     rows = _parse_listing_rows(soup)
     logger.info("Listing parsed", row_count=len(rows))
     counts["projects_found"] = len(rows)
+    update_crawl_run_progress(run_id, counts)
     logger.timing("search", time.monotonic() - t0, rows=len(rows))
 
     if not rows:
@@ -1518,6 +1520,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 counts["error_count"] += 1
         finally:
             logger.clear_project()
+            update_crawl_run_progress(run_id, counts)
 
     # ── Final checkpoint ──────────────────────────────────────────────────────
     save_checkpoint(site_id, mode, len(rows), None, run_id)
