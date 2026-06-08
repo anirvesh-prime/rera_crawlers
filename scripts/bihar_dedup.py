@@ -18,9 +18,9 @@ Merge policy (per user direction):
       ``old_updates``, ``updated_fields``, ``alternative_rera_ids``, image
       arrays, ``doc_ocr_url``) — union both rows, dedupe.
     * ``last_updated``, ``last_crawled_date`` → ``MAX``; ``retrieved_on`` → ``MIN``.
-    * Document rows in ``rera_project_documents`` are re-pointed to the surviving
-      key; ``(project_key, original_url)`` collisions are resolved by deleting
-      the loser's duplicate row.
+    * Document rows in ``rera_project_documents`` belonging to the legacy
+      (loser) reg-only key are deleted outright; the surviving prod-key row
+      keeps its own documents.
 
 Default mode is ``--dry-run``: reads only, writes three CSV reports.
 ``--apply`` performs the merges inside a per-cluster transaction.
@@ -293,7 +293,7 @@ def build_merge_plan(
     return merged, diffs
 
 
-# ── Document repointing ───────────────────────────────────────────────────────
+# ── Document cleanup ──────────────────────────────────────────────────────────
 
 
 def build_doc_plan(
@@ -301,26 +301,18 @@ def build_doc_plan(
     loser_keys: list[str],
     docs_by_key: dict[str, list[dict]],
 ) -> tuple[list[int], list[int]]:
-    """Plan document re-pointing for the cluster.
+    """Plan document cleanup for the cluster.
 
-    Returns (ids_to_repoint, ids_to_delete). Re-pointed rows have their
-    project_key updated to the winner. Deleted rows are losers' duplicates of a
-    document the winner already owns (would otherwise collide on the unique
-    index ``(project_key, original_url)``).
+    Returns (ids_to_repoint, ids_to_delete). Per user direction, the legacy
+    (loser) reg-only document rows are simply deleted rather than re-pointed to
+    the winner; the winner keeps its own documents untouched. ``repoint`` is
+    therefore always empty (kept for report/apply-path compatibility).
     """
-    winner_urls = {d["original_url"] for d in docs_by_key.get(winner_key, [])
-                   if d.get("original_url")}
     repoint: list[int] = []
     delete: list[int] = []
     for lk in loser_keys:
         for d in docs_by_key.get(lk, []):
-            url = d.get("original_url")
-            if url and url in winner_urls:
-                delete.append(d["id"])
-            else:
-                repoint.append(d["id"])
-                if url:
-                    winner_urls.add(url)
+            delete.append(d["id"])
     return repoint, delete
 
 

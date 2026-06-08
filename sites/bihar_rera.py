@@ -119,6 +119,7 @@ def _collect_listing_pages(
     max_pages: int | None = None,
     capture_detail_urls: bool = True,
     on_progress=None,
+    on_candidate=None,
 ) -> list[dict]:
     """
     Use Selenium to traverse listing pages and capture aligned detail popup URLs.
@@ -142,6 +143,12 @@ def _collect_listing_pages(
         clicks to surface detail URLs, so a full count-only walk would take
         many minutes; honouring the cap short-circuits the walk and
         projects_found reflects only the rows actually collected.
+
+    on_candidate: optional callback fired per-row immediately after the popup is
+        clicked and the detail URL/HTML is captured (but before closing). Signature:
+            on_candidate(raw: dict, detail_url: str, detail_html: str | None, page: int)
+        Enables inline parse+upsert during the listing walk so the dashboard's
+        per-project counters climb in real time rather than only after Phase B.
     """
     links_sel = f"table#{_GRID_ID} tr td:first-child a"
     pages: list[dict] = []
@@ -207,6 +214,8 @@ def _collect_listing_pages(
                     detail_urls = []
                     for rank, idx in enumerate(project_indices):
                         name = link_texts[idx]
+                        captured_url: str | None = None
+                        captured_html: str | None = None
                         try:
                             with ctx.expect_page(timeout=15_000) as popup_info:
                                 listing_page.eval_on_selector_all(
@@ -215,12 +224,26 @@ def _collect_listing_pages(
                             popup = popup_info.value
                             popup.wait_for_load_state("domcontentloaded", timeout=15_000)
                             url = popup.url
+                            # Capture the popup's rendered HTML before closing so
+                            # downstream inline processing can parse it without a
+                            # second Selenium GET (which would navigate the
+                            # listing tab away).
+                            if "Filanprint.aspx" in url:
+                                try:
+                                    captured_html = popup.content()
+                                except Exception as exc:
+                                    logger.warning(
+                                        f"  [pg{current_listing_pg}:{rank}] {name!r}:"
+                                        f" popup HTML capture failed — {exc}",
+                                        step="detail_collect",
+                                    )
                             popup.close()
                             # Postback already reloaded the listing page in-place;
                             # wait for it to settle before the next click.
                             listing_page.wait_for_load_state("domcontentloaded", timeout=15_000)
 
                             if "Filanprint.aspx" in url:
+                                captured_url = url
                                 detail_urls.append(url)
                                 logger.info(
                                     f"  [pg{current_listing_pg}:{rank}] {name!r} → {url}",
@@ -239,6 +262,22 @@ def _collect_listing_pages(
                                 step="detail_collect",
                             )
 
+                        # Fire the per-candidate callback immediately so parse +
+                        # upsert can run interleaved with the listing walk.
+                        if on_candidate is not None and rank < len(rows_for_detail):
+                            try:
+                                on_candidate(
+                                    rows_for_detail[rank],
+                                    captured_url or "",
+                                    captured_html,
+                                    current_listing_pg,
+                                )
+                            except Exception as exc:
+                                logger.warning(
+                                    f"  [pg{current_listing_pg}:{rank}] on_candidate raised: {exc}",
+                                    step="detail_collect",
+                                )
+
                     if len(detail_urls) < len(rows):
                         detail_urls.extend([None] * (len(rows) - len(detail_urls)))
                 else:
@@ -247,6 +286,18 @@ def _collect_listing_pages(
                         step="detail_collect",
                     )
                     detail_urls = [None] * len(rows)
+                    # daily_light / count-only walk: still invoke the candidate
+                    # callback so the orchestrator can run its dedup skip path
+                    # inline (avoids a separate post-listing iteration).
+                    if on_candidate is not None:
+                        for rank, raw in enumerate(rows_for_detail):
+                            try:
+                                on_candidate(raw, "", None, current_listing_pg)
+                            except Exception as exc:
+                                logger.warning(
+                                    f"  [pg{current_listing_pg}:{rank}] on_candidate raised: {exc}",
+                                    step="detail_collect",
+                                )
 
                 pages.append({
                     "page": current_listing_pg,
@@ -1204,9 +1255,10 @@ def _fetch_page(page: int, form_fields: dict, logger: CrawlerLogger) -> Beautifu
 
 # ── Details phase (per-candidate worker) ──────────────────────────────────────
 
-def _process_bihar_candidate(
+def _process_bihar_inline(
     raw: dict,
     detail_url: str,
+    detail_html: str | None,
     current_page: int,
     config: dict,
     run_id: int,
@@ -1215,21 +1267,25 @@ def _process_bihar_candidate(
     machine_name: str,
     machine_ip: str,
     logger: CrawlerLogger,
-) -> dict:
-    """Per-candidate worker — runs in the detail thread pool.
+) -> tuple[dict, dict | None]:
+    """Inline phase: parse detail HTML, merge with listing row, upsert project.
 
-    Fetches the Filanprint detail page via httpx, merges with listing data,
-    normalises, upserts, and processes documents.  Returns a counter-delta
-    dict aggregated by the orchestrator.
+    Designed to run interleaved with the listing walker (via on_candidate).
+    Skips QPR + document downloads — those would issue further Selenium GETs
+    which would navigate the listing tab away.  Returns:
+        (deltas, pending_doc_work | None)
+    where pending_doc_work carries the data the deferred documents phase
+    needs (key, detail_url, detail_html, uploaded_documents) so QPR snapshot
+    + PDF download/upload can run in a second pass after listing completes.
     """
     deltas = {
         "projects_skipped": 0, "projects_new": 0, "projects_updated": 0,
-        "documents_uploaded": 0, "error_count": 0,
+        "error_count": 0,
     }
     reg_no = raw.get("project_registration_no", "").strip()
     if not reg_no:
         deltas["error_count"] += 1
-        return deltas
+        return deltas, None
     # Bihar key recipe matches prod: project_name + reg_no + promoter_name, concatenated
     # raw (no separator, no case/whitespace changes), then siphash24. Falling back to
     # reg_no alone here is what created the historical duplicate rows — refuse the row.
@@ -1237,7 +1293,7 @@ def _process_bihar_candidate(
     promoter_name_raw = raw.get("promoter_name", "") or ""
     if not project_name_raw or not promoter_name_raw:
         deltas["error_count"] += 1
-        return deltas
+        return deltas, None
     key = generate_project_key(project_name_raw + reg_no + promoter_name_raw)
     logger.set_project(
         key=key, reg_no=reg_no,
@@ -1246,26 +1302,37 @@ def _process_bihar_candidate(
     try:
         if mode == "daily_light" and get_project_by_key(key):
             deltas["projects_skipped"] += 1
-            return deltas
+            return deltas, None
 
         detail_extra: dict = {}
-        qpr_docs: list[dict] = []
-        if detail_url:
+        effective_html: str | None = detail_html
+        if detail_html and "Invalid Project ID" not in detail_html:
+            detail_extra = _parse_detail_page(detail_html)
+            logger.info(f"Detail parsed (inline) for {reg_no!r}", step="detail")
+        elif detail_html:
+            logger.warning(
+                f"Popup HTML reported 'Invalid Project ID' for {reg_no!r}",
+                step="detail",
+            )
+            effective_html = None
+        elif detail_url:
+            # Fallback: no pre-captured popup HTML (e.g. compat wrapper /
+            # sentinel re-entry).  Issue a Selenium GET — safe here because
+            # the listing walker is not active.
             detail_resp = safe_get(detail_url, retries=2, logger=logger, verify=False)
             if detail_resp and "Invalid Project ID" not in detail_resp.text:
-                detail_extra = _parse_detail_page(detail_resp.text)
+                effective_html = detail_resp.text
+                detail_extra = _parse_detail_page(effective_html)
                 logger.info(f"Detail parsed for {reg_no!r}", step="detail")
-                try:
-                    qpr_docs = _build_qpr_snapshot(detail_url, detail_resp.text, logger)
-                except Exception as exc:
-                    logger.warning(f"QPR snapshot failed for {reg_no!r}: {exc}", step="documents")
             elif detail_resp:
                 logger.warning(
                     f"Detail page returned 'Invalid Project ID' for {reg_no!r}",
                     step="detail",
                 )
+                effective_html = None
             else:
                 logger.warning(f"Detail fetch failed for {reg_no!r}", step="detail")
+                effective_html = None
         else:
             logger.warning(
                 f"No detail URL for listing page {current_page} ({reg_no!r})",
@@ -1311,9 +1378,66 @@ def _process_bihar_candidate(
                 deltas["projects_updated"] += 1
                 logger.info(f"Updated: {reg_no}", step="upsert")
 
-            uploaded_docs = list(detail_extra.get("uploaded_documents") or [])
-            uploaded_docs.extend(qpr_docs)  # FIELD: uploaded_documents[] <- inline QPR snapshot + QPR certificate PDFs (latest quarter)
-            if uploaded_docs:
+            pending = {
+                "key": key,
+                "reg_no": reg_no,
+                "detail_url": detail_url or "",
+                "detail_html": effective_html or "",
+                "uploaded_documents": list(detail_extra.get("uploaded_documents") or []),
+                "current_page": current_page,
+            }
+            return deltas, pending
+
+        except ValidationError as exc:
+            deltas["error_count"] += 1
+            logger.error(f"Validation error for {reg_no}: {exc}", step="validate")
+            insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(exc),
+                               project_key=key, url=detail_url or LISTING_URL)
+            return deltas, None
+        except Exception as exc:
+            deltas["error_count"] += 1
+            logger.error(f"Unexpected error for {reg_no}: {exc}", step="upsert")
+            insert_crawl_error(run_id, site_id, "CRAWLER_EXCEPTION", str(exc),
+                               project_key=key, url=detail_url or LISTING_URL)
+            return deltas, None
+    finally:
+        logger.clear_project()
+
+
+def _process_bihar_documents(
+    pending: dict,
+    config: dict,
+    run_id: int,
+    site_id: str,
+    logger: CrawlerLogger,
+) -> dict:
+    """Deferred phase: build QPR snapshot, download PDFs, upload to S3, update record.
+
+    Runs after the listing walk completes so its Selenium GETs (QRCODE.aspx,
+    QPR-Show, document URLs) don't disturb the listing tab.
+    """
+    deltas = {"documents_uploaded": 0, "error_count": 0}
+    key          = pending["key"]
+    reg_no       = pending["reg_no"]
+    detail_url   = pending["detail_url"]
+    detail_html  = pending["detail_html"]
+    uploaded_docs = list(pending.get("uploaded_documents") or [])
+    current_page = pending.get("current_page", 0)
+
+    logger.set_project(
+        key=key, reg_no=reg_no,
+        url=detail_url or LISTING_URL, page=current_page,
+    )
+    try:
+        if detail_url and detail_html:
+            try:
+                qpr_docs = _build_qpr_snapshot(detail_url, detail_html, logger)
+                uploaded_docs.extend(qpr_docs)  # FIELD: uploaded_documents[] <- inline QPR snapshot + QPR certificate PDFs (latest quarter)
+            except Exception as exc:
+                logger.warning(f"QPR snapshot failed for {reg_no!r}: {exc}", step="documents")
+
+        if uploaded_docs:
+            try:
                 enriched_docs, doc_count = _process_documents(
                     key, uploaded_docs, run_id, site_id, logger,
                 )
@@ -1328,18 +1452,44 @@ def _process_bihar_candidate(
                         "uploaded_documents": enriched_docs,  # FIELD: uploaded_documents <- enriched_docs from _process_documents
                         "document_urls": doc_urls,  # FIELD: document_urls <- doc_urls built from enriched s3_link entries
                     })
-        except ValidationError as exc:
-            deltas["error_count"] += 1
-            logger.error(f"Validation error for {reg_no}: {exc}", step="validate")
-            insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(exc),
-                               project_key=key, url=detail_url or LISTING_URL)
-        except Exception as exc:
-            deltas["error_count"] += 1
-            logger.error(f"Unexpected error for {reg_no}: {exc}", step="upsert")
-            insert_crawl_error(run_id, site_id, "CRAWLER_EXCEPTION", str(exc),
-                               project_key=key, url=detail_url or LISTING_URL)
+            except Exception as exc:
+                deltas["error_count"] += 1
+                logger.error(f"Document processing failed for {reg_no}: {exc}", step="documents")
+                insert_crawl_error(run_id, site_id, "CRAWLER_EXCEPTION", str(exc),
+                                   project_key=key, url=detail_url or LISTING_URL)
     finally:
         logger.clear_project()
+    return deltas
+
+
+def _process_bihar_candidate(
+    raw: dict,
+    detail_url: str,
+    current_page: int,
+    config: dict,
+    run_id: int,
+    site_id: str,
+    mode: str,
+    machine_name: str,
+    machine_ip: str,
+    logger: CrawlerLogger,
+) -> dict:
+    """Backwards-compatible wrapper — runs inline + documents sequentially.
+
+    Preserves the original return shape (single deltas dict including
+    documents_uploaded) for callers that don't use the interleaved path
+    (sentinel re-entry, tests, dry_run_compare).
+    """
+    deltas, pending = _process_bihar_inline(
+        raw, detail_url, None, current_page,
+        config, run_id, site_id, mode,
+        machine_name, machine_ip, logger,
+    )
+    deltas.setdefault("documents_uploaded", 0)
+    if pending:
+        doc_deltas = _process_bihar_documents(pending, config, run_id, site_id, logger)
+        for k, v in doc_deltas.items():
+            deltas[k] = deltas.get(k, 0) + v
     return deltas
 
 
@@ -1375,7 +1525,14 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     max_pages    = settings.MAX_PAGES
     delay_range  = config.get("rate_limit_delay", (2, 4))
 
-    # ── Step 1: Collect paginated listing rows + popup URLs via Selenium ──
+    # ── Step 1: Walk listing pages and process each project inline ──────────
+    # The popup HTML for each project is captured during the listing walk and
+    # handed to _process_bihar_inline via on_candidate, so projects_new /
+    # projects_updated climb in real time on the dashboard rather than only
+    # after the listing phase completes.  QPR snapshots + S3 document uploads
+    # are deferred to Phase B (below) because they would issue Selenium GETs
+    # that navigate the listing tab away.
+    #
     # daily_light only needs project_registration_no for the DB dedup check,
     # never the detail URL — skip the per-project popup clicks entirely.
     capture_detail_urls = mode != "daily_light"
@@ -1384,14 +1541,36 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     listing_max_items = item_limit or None
     t0 = time.monotonic()
     logger.info(
-        f"Collecting paginated listing data via Selenium"
+        f"Walking listing + processing inline via Selenium"
         f" (item_limit={item_limit or 'unlimited'}, max_pages={max_pages or 'unlimited'},"
         f" capture_detail={capture_detail_urls})",
         step="detail_collect",
     )
+
+    pending_doc_work: list[dict] = []
+
     def _on_listing_progress(found_so_far: int) -> None:
         # Push the running projects_found to crawl_runs for live dashboard view.
         counters["projects_found"] = found_so_far
+        update_crawl_run_progress(run_id, counters)
+
+    def _on_candidate(raw: dict, detail_url: str, detail_html: str | None,
+                      current_page: int) -> None:
+        # Inline parse + upsert per candidate as the listing walker captures
+        # each popup.  Stash QPR/document work for a deferred second pass.
+        try:
+            deltas, pending = _process_bihar_inline(
+                raw, detail_url, detail_html, current_page,
+                config, run_id, site_id, mode,
+                machine_name, machine_ip, logger,
+            )
+            for k, v in deltas.items():
+                counters[k] = counters.get(k, 0) + v
+            if pending:
+                pending_doc_work.append(pending)
+        except Exception as exc:
+            counters["error_count"] += 1
+            logger.exception("Inline candidate processing failed", exc, step="project_loop")
         update_crawl_run_progress(run_id, counters)
 
     listing_pages = _collect_listing_pages(
@@ -1400,11 +1579,13 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         max_pages=max_pages or None,
         capture_detail_urls=capture_detail_urls,
         on_progress=_on_listing_progress,
+        on_candidate=_on_candidate,
     )
     logger.info(
-        f"Collected {sum(len(p['rows']) for p in listing_pages)} listing rows across"
+        f"Walked {sum(len(p['rows']) for p in listing_pages)} listing rows across"
         f" {len(listing_pages)} page(s);"
-        f" {sum(1 for p in listing_pages for u in p['detail_urls'] if u)} detail URLs captured",
+        f" {sum(1 for p in listing_pages for u in p['detail_urls'] if u)} detail URLs captured;"
+        f" {len(pending_doc_work)} pending documents",
         step="detail_collect",
     )
     if not listing_pages:
@@ -1414,15 +1595,13 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         return counters
 
     logger.warning(
-        f"Step timing [search]: {time.monotonic()-t0:.2f}s"
+        f"Step timing [search+inline]: {time.monotonic()-t0:.2f}s"
         f"  pages={len(listing_pages)}"
         f"  rows={sum(len(p['rows']) for p in listing_pages)}",
         step="timing",
     )
 
-    # ── Phase A counters: project_found enumerated from listing parser ───────
-    # Set (not accumulate) — the listing walk already streamed running totals
-    # via _on_listing_progress; this fixes the authoritative final value.
+    # Final authoritative projects_found from the walked listing.
     counters["projects_found"] = sum(len(p["rows"]) for p in listing_pages)
     for payload in listing_pages:
         logger.info(
@@ -1431,68 +1610,40 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         )
     update_crawl_run_progress(run_id, counters)
 
-    # ── Phase B: flatten candidates and process in parallel ──────────────────
-    candidates: list[tuple[dict, str, int]] = []  # (raw, detail_url, page)
-    for payload in listing_pages:
-        current_page = payload["page"]
-        rows = payload["rows"]
-        detail_urls = payload["detail_urls"]
-        for row_idx, raw in enumerate(rows):
-            reg_no = (raw.get("project_registration_no") or "").strip()
-            if not reg_no:
-                continue
-            detail_url = (
-                detail_urls[row_idx]
-                if row_idx < len(detail_urls) and detail_urls[row_idx]
-                else ""
-            )
-            candidates.append((raw, detail_url, current_page))
-            if item_limit and len(candidates) >= item_limit:
-                break
-        if item_limit and len(candidates) >= item_limit:
-            break
-
-    if not candidates:
+    if not pending_doc_work:
         reset_checkpoint(config["id"], mode)
-        logger.info(f"Bihar RERA complete (no candidates): {counters}", step="done")
+        logger.info(f"Bihar RERA complete (no documents to process): {counters}", step="done")
         logger.timing("total_run", time.monotonic() - t_run)
         return counters
 
-    # Bihar's Filanprint document server is fragile under load — capping at 3
-    # workers keeps per-document GET latency under the 60 s timeout that would
-    # otherwise erase the parallel-fetch speedup.
+    # ── Phase B: deferred QPR snapshots + document downloads ────────────────
     # SeleniumSession driver is not thread-safe — force serial processing.
     n_workers = 1
     logger.info(
-        f"Phase B: parallel detail fetch ({len(candidates)} candidates, "
+        f"Phase B: deferred documents ({len(pending_doc_work)} projects, "
         f"{n_workers} workers)",
         step="detail_fetch",
     )
     tB = time.monotonic()
 
-    def _worker(_idx: int, item: tuple[dict, str, int]) -> dict:
-        raw, detail_url, current_page = item
-        return _process_bihar_candidate(
-            raw, detail_url, current_page, config, run_id, site_id, mode,
-            machine_name, machine_ip, logger,
-        )
+    def _doc_worker(_idx: int, pending: dict) -> dict:
+        return _process_bihar_documents(pending, config, run_id, site_id, logger)
 
-    def _on_detail_result(_idx: int, deltas: dict | None, exc: Exception | None) -> None:
-        # Fold each completed candidate's deltas into the running counters and
-        # push them to crawl_runs so the dashboard updates per project, not just
-        # once at the end.  Runs serially in this thread (see process_details).
+    def _on_doc_result(_idx: int, deltas: dict | None, exc: Exception | None) -> None:
+        # Fold each completed document task's deltas into the running counters
+        # and push them to crawl_runs so documents_uploaded climbs live.
         if exc is not None:
             counters["error_count"] += 1
-            logger.exception("Worker raised", exc, step="project_loop")
+            logger.exception("Doc worker raised", exc, step="documents")
         else:
             for k, v in (deltas or {}).items():
                 counters[k] = counters.get(k, 0) + v
         update_crawl_run_progress(run_id, counters)
 
-    process_details(candidates, _worker, n_workers=n_workers,
-                    on_result=_on_detail_result)
+    process_details(pending_doc_work, _doc_worker, n_workers=n_workers,
+                    on_result=_on_doc_result)
     logger.timing("details", time.monotonic() - tB,
-                  items=len(candidates), workers=n_workers)
+                  items=len(pending_doc_work), workers=n_workers)
 
     reset_checkpoint(config["id"], mode)
     logger.info(f"Bihar RERA complete: {counters}", step="done")
