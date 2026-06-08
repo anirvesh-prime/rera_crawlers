@@ -653,14 +653,40 @@ def main(argv: list[str] | None = None) -> int:
         print("\nDry run only — no changes applied. Re-run with --apply to execute.")
         return 0
 
+    actionable = [p for p in plans if p["status"] in ("will_merge", "rekey_only")]
+    total = len(actionable)
     print(f"\nApplying {summary.get('will_merge', 0)} merges "
           f"and {summary.get('rekey_only', 0)} rekeys...")
-    applied = 0
-    for plan in plans:
-        if plan["status"] in ("will_merge", "rekey_only"):
-            apply_plan(conn, plan)
-            applied += 1
-    print(f"Applied {applied} cluster plans.")
+
+    try:
+        from tqdm import tqdm
+        iterator = tqdm(actionable, total=total, unit="cluster", desc="Applying")
+        use_tqdm = True
+    except ImportError:
+        iterator = actionable
+        use_tqdm = False
+
+    merges = rekeys = proj_deleted = docs_deleted = 0
+    for i, plan in enumerate(iterator, 1):
+        apply_plan(conn, plan)
+        if plan["status"] == "will_merge":
+            merges += 1
+            proj_deleted += len(plan["loser_keys"])
+            docs_deleted += len(plan["docs_delete"])
+        else:  # rekey_only
+            rekeys += 1
+        stats = (f"merges={merges} rekeys={rekeys} "
+                 f"proj_deleted={proj_deleted} docs_deleted={docs_deleted}")
+        if use_tqdm:
+            iterator.set_postfix_str(stats)
+        else:
+            print(f"\r[{i}/{total}] {stats}", end="", flush=True)
+    if not use_tqdm and total:
+        print()  # newline after the carriage-return progress line
+
+    print(f"\nApplied {merges + rekeys} cluster plans "
+          f"({merges} merges, {rekeys} rekeys; "
+          f"{proj_deleted} loser rows deleted, {docs_deleted} legacy docs deleted).")
     return 0
 
 
