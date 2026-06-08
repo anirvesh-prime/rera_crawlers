@@ -620,6 +620,16 @@ def main(argv: list[str] | None = None) -> int:
 
     conn = get_connection()
 
+    # The shared connection defaults to autocommit=False. Reads in build_plans()
+    # open an implicit outer transaction; without autocommit, each apply_plan()
+    # `with conn.transaction()` block degrades to a nested SAVEPOINT that is
+    # released but never committed, so every change is rolled back when the
+    # process exits. Enabling autocommit before any read makes each cluster's
+    # transaction top-level and durable on block exit. The connection is idle
+    # here (ensure_schema commits during get_connection), so this is safe.
+    if args.apply:
+        conn.autocommit = True
+
     target_reg_no: str | None = args.reg_no.strip() if args.reg_no else None
     if args.key:
         target_reg_no = fetch_reg_no_for_key(conn, args.key.strip())
