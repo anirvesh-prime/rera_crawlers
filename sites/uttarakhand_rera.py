@@ -664,8 +664,9 @@ def _parse_detail_page(url: str, client, logger: CrawlerLogger) -> dict:
         logger.warning(f"Detail fetch failed: {exc}", url=url)
         return {}
 
-    if len(resp.content) < 500:
-        logger.warning("Detail page suspiciously small — skipping", url=url, bytes=len(resp.content))
+    body_len = len(resp.text or "") or len(resp.content or b"")
+    if body_len < 500:
+        logger.warning("Detail page suspiciously small — skipping", url=url, bytes=body_len)
         return {}
 
     soup = BeautifulSoup(resp.text, "lxml")
