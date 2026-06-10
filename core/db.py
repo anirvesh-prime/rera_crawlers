@@ -779,6 +779,9 @@ def _insert_project(data: dict[str, Any], conn: psycopg.Connection):
             f"Refusing to insert project without required fields: {', '.join(missing)}"
         )
 
+    data = dict(data)
+    data["iw_processed"] = False
+
     columns = list(data.keys())
     query = SQL("INSERT INTO rera_projects ({fields}) VALUES ({values})").format(
         fields=SQL(", ").join(Identifier(c) for c in columns),
@@ -793,7 +796,7 @@ def _touch_project(key: str, conn: psycopg.Connection,
     """No meaningful change — refresh last_crawled_date, clear updated_fields,
     and update machine tracking to the current crawler.
     Executes within the caller's transaction — no commit here."""
-    parts = ["last_crawled_date = now()", "updated_fields = NULL"]
+    parts = ["last_crawled_date = now()", "updated_fields = NULL", "iw_processed = false"]
     values: list[Any] = []
     if machine_name:
         parts.append("machine_name = %s")
