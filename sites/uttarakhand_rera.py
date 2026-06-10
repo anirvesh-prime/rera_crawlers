@@ -473,36 +473,65 @@ def _parse_description(soup: BeautifulSoup, out: dict) -> None:
             break
 
 
-def _parse_applicant_table(soup: BeautifulSoup, out: dict) -> None:
+def _parse_promoter_table(soup: BeautifulSoup, out: dict) -> None:
     """
-    Extract applicant details (promoter contact).
-    Table structure: thead=[Name, E-mail, Mobile], tbody=[name, email, mobile].
+    Extract promoter contact details from the 'Promoter Details' table.
+    Headers: Type of Promoter | Name | E-mail | Mobile Number.
+    Columns are resolved by header name (order-independent); falls back to
+    positional [Name, E-mail, Mobile] for an 'Applicant'-headed legacy layout.
     """
     for h1 in soup.find_all("h1"):
-        if "applicant" in _clean(h1).lower():
-            table = h1.find_next("table")
-            if not table:
-                break
-            rows = table.select("tbody tr")
-            for tr in rows:
-                tds = tr.find_all("td")
-                if len(tds) < 3:
-                    continue
-                name  = _clean(tds[0])
-                email = _decode_email(_clean(tds[1]))
-                phone = _clean(tds[2])
-                contact: dict = {}
-                if email and "@" in email:
-                    contact["email"] = email
-                elif "[at]" in _clean(tds[1]):
-                    contact["email"] = _decode_email(_clean(tds[1]))
-                if phone:
-                    contact["phone"] = phone
-                if contact:
-                    out.setdefault("promoter_contact_details", contact)
-                if name and not out.get("promoter_name"):
-                    out["promoter_name"] = name
+        heading = _clean(h1).lower()
+        if "promoter details" not in heading and "applicant" not in heading:
+            continue
+        table = h1.find_next("table")
+        if not table:
             break
+
+        thead = table.find("thead")
+        headers = [_clean(th).lower() for th in thead.find_all("th")] if thead else []
+
+        def _col(row_tds, *names):
+            for nm in names:
+                for i, h in enumerate(headers):
+                    if nm in h and i < len(row_tds):
+                        return row_tds[i]
+            return None
+
+        for tr in table.select("tbody tr"):
+            tds = tr.find_all("td")
+            if not tds:
+                continue
+
+            if headers:
+                name_td  = _col(tds, "name")
+                email_td = _col(tds, "e-mail", "email")
+                phone_td = _col(tds, "mobile", "phone", "contact")
+            else:
+                name_td  = tds[0] if len(tds) > 0 else None
+                email_td = tds[1] if len(tds) > 1 else None
+                phone_td = tds[2] if len(tds) > 2 else None
+
+            name = _clean(name_td) if name_td else ""
+
+            email = ""
+            if email_td is not None:
+                p_tag = email_td.find("p")
+                raw_email = _clean(p_tag) if p_tag else _clean(email_td)
+                email = _decode_email(raw_email) if raw_email else ""
+
+            phone = _clean(phone_td) if phone_td else ""
+
+            contact: dict = {}
+            if email and "@" in email:
+                contact["email"] = email
+            if phone:
+                contact["phone"] = phone
+            if contact:
+                out.setdefault("promoter_contact_details", contact)
+            if name and not out.get("promoter_name"):
+                out["promoter_name"] = name
+        break
 
 
 def _parse_professionals(soup: BeautifulSoup, out: dict) -> None:
@@ -676,7 +705,7 @@ def _parse_detail_page(url: str, client, logger: CrawlerLogger) -> dict:
     _parse_reg_info(soup, out)
     _parse_profile_detail(soup, out, raw_data)
     _parse_description(soup, out)
-    _parse_applicant_table(soup, out)
+    _parse_promoter_table(soup, out)
     _parse_professionals(soup, out)
     _parse_inventory(soup, out)
 
