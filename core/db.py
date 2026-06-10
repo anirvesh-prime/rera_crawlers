@@ -818,7 +818,7 @@ def _update_project_fields(
     """Write only changed business fields + bookkeeping columns.
     Executes within the caller's transaction — no commit here."""
     _BOOKKEEPING = ["updated_fields", "last_updated", "last_crawled_date",
-                    "old_updates", "config_id", "is_updated",
+                    "old_updates", "config_id", "is_updated", "iw_processed",
                     "machine_name", "crawl_machine_ip"]
     # Deduplicate preserving order: changed fields first, then bookkeeping
     seen: set[str] = set()
@@ -832,6 +832,7 @@ def _update_project_fields(
     write: dict[str, Any] = dict(item)
     write["updated_fields"]  = updated_fields
     write["is_updated"]      = True
+    write["iw_processed"]    = False
     write["last_updated"]    = datetime.now(UTC)
     write["last_crawled_date"] = datetime.now(UTC)
     write["old_updates"]     = old_updates
