@@ -363,7 +363,7 @@ _DETAIL_LABEL_MAP: dict[str, str] = {
     "promoter":                         "promoter_name",
     "date of registration":             "submitted_date",
     "project type":                     "project_type",
-    "project end date":                 "estimated_finish_date",
+    "project end date":                 "actual_finish_date",
     "approved map validity date":       "_map_validity_date",
     "project status":                   "status_of_the_project",
     "total area of project land":       "_land_area_raw",
@@ -412,10 +412,10 @@ def _parse_profile_detail(soup: BeautifulSoup, out: dict, raw_data: dict) -> Non
                     out.setdefault("submitted_date", parsed)
             elif schema_field == "project_type":
                 out.setdefault("project_type", value or None)
-            elif schema_field == "estimated_finish_date":
+            elif schema_field == "actual_finish_date":
                 parsed = _parse_dmy(value)
                 if parsed:
-                    out.setdefault("estimated_finish_date", parsed)
+                    out.setdefault("actual_finish_date", parsed)
             elif schema_field == "status_of_the_project":
                 out.setdefault("status_of_the_project", value or None)
             elif schema_field == "_land_area_raw":
