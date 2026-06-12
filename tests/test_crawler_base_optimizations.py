@@ -47,15 +47,24 @@ class CrawlerBaseOptimizationTests(unittest.TestCase):
 
 
 class _FakeElement:
-    def __init__(self, text: str, displayed: bool = True):
+    def __init__(self, text: str, displayed: bool = True, raise_on_click: bool = False,
+                 tag_name: str = "div", attrs: dict | None = None):
         self.text = text
         self._displayed = displayed
+        self._raise_on_click = raise_on_click
+        self.tag_name = tag_name
+        self._attrs = attrs or {}
         self.clicked = False
 
     def is_displayed(self) -> bool:
         return self._displayed
 
+    def get_attribute(self, name: str):
+        return self._attrs.get(name)
+
     def click(self) -> None:
+        if self._raise_on_click:
+            raise RuntimeError("element click intercepted")
         self.clicked = True
 
 
@@ -68,6 +77,12 @@ class _FakeDriver:
         # query string so tests don't have to mirror the generated XPath.
         self._results = results
         self.calls: list[tuple[str, str]] = []
+        self.scripts: list[str] = []
+
+    def execute_script(self, script, *args):
+        # scrollIntoView / JS-click helpers invoked by SeleniumPageAdapter.click.
+        self.scripts.append(script)
+        return None
 
     def find_elements(self, by, selector):
         self.calls.append((by, selector))
@@ -120,6 +135,19 @@ class TextSelectorEngineTests(unittest.TestCase):
         self.assertIn("translate(", xpath)
         self.assertIn("promoter details", xpath)  # lower-cased for matching
 
+    def test_find_by_text_prefers_clickable_anchor_over_wrapper(self):
+        from selenium.webdriver.common.by import By
+
+        # Same label text on an <li> wrapper and its inner <a> — the anchor must
+        # win so a JS-dispatched click reaches the framework's tab handler.
+        li = _FakeElement("Promoter Details", tag_name="li")
+        anchor = _FakeElement("Promoter Details", tag_name="a")
+        driver = _FakeDriver({(By.XPATH, "*"): [li, anchor]})
+
+        elems = _find_by_text(driver, "Promoter Details", exact=False)
+
+        self.assertEqual(elems[0], anchor)
+
 
 class AdapterSelectorRoutingTests(unittest.TestCase):
     def _adapter(self, results):
@@ -171,6 +199,18 @@ class AdapterSelectorRoutingTests(unittest.TestCase):
 
         self.assertFalse(hidden.clicked)
         self.assertTrue(visible.clicked)
+
+    def test_click_falls_back_to_js_when_native_click_intercepted(self):
+        from selenium.webdriver.common.by import By
+
+        el = _FakeElement("Documents", displayed=True, raise_on_click=True)
+        adapter, driver = self._adapter({(By.XPATH, "*"): [el]})
+
+        # Native el.click() raises (intercepted); adapter must dispatch a JS
+        # click instead of giving up.
+        adapter.click("text=Documents", timeout=1000)
+
+        self.assertIn("arguments[0].click();", driver.scripts)
 
 
 if __name__ == "__main__":

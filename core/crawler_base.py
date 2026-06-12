@@ -967,9 +967,12 @@ def _xpath_literal(value: str) -> str:
 def _find_by_text(root: Any, text: str, exact: bool) -> list:
     """Find Selenium elements whose visible text matches *text*.
 
-    Candidates are ordered innermost-first (shortest normalized text) so that a
-    tab/link label is preferred over its enclosing containers (``body``/``html``
-    also "contain" the text but are never the intended click target).
+    Candidates are ordered innermost-first (shortest normalized text) and, within
+    an equal-length tie, natively-clickable elements (``a`` / ``button`` /
+    ``role=tab``) sort ahead of their wrappers. This matters for SPA tabs whose
+    label lives in both an ``<li class="nav-item">`` and the inner
+    ``<a class="nav-link">`` — only a click dispatched on the anchor fires the
+    framework's handler, so the anchor must win.
     """
     from selenium.webdriver.common.by import By
 
@@ -983,8 +986,32 @@ def _find_by_text(root: Any, text: str, exact: bool) -> list:
             f"{lit})]"
         )
     elems = root.find_elements(By.XPATH, xpath)
-    elems.sort(key=lambda e: len((e.text or "").strip()))
+    elems.sort(key=lambda e: (len((e.text or "").strip()), _element_click_rank(e)))
     return elems
+
+
+def _element_click_rank(element: Any) -> int:
+    """Rank an element for click preference (lower sorts first).
+
+    Natively-clickable elements (anchors, buttons, anything with a ``tab`` /
+    ``button`` / ``link`` role or an ``onclick`` handler) rank ahead of inert
+    containers so a ``text=`` selector resolves to the element that actually
+    handles the click.
+    """
+    try:
+        tag = (element.tag_name or "").lower()
+    except Exception:
+        return 3
+    if tag in ("a", "button"):
+        return 0
+    try:
+        if (element.get_attribute("role") or "").lower() in ("tab", "button", "link"):
+            return 0
+        if element.get_attribute("onclick"):
+            return 0
+    except Exception:
+        pass
+    return 1
 
 
 class _SeleniumLocator:
@@ -1290,11 +1317,16 @@ class SeleniumPageAdapter:
             f"wait_for_selector({selector!r}, state={state!r}) exceeded {timeout}ms"
         )
 
-    def wait_for_function(self, script: str, *, timeout: int = 30_000, **_kw) -> None:
+    def wait_for_function(self, script: str, *, arg: Any = None,
+                          timeout: int = 30_000, **_kw) -> None:
+        # Forward *arg* into the in-page function (Playwright passes it as the
+        # first parameter). Dropping it leaves arrow params undefined, which
+        # silently breaks predicates like ``(selector) => …`` / ``(re) => …``.
         deadline = time.monotonic() + _ms_to_s(timeout)
         while time.monotonic() < deadline:
             try:
-                result = self.evaluate(script)
+                result = (self.evaluate(script) if arg is None
+                          else self.evaluate(script, arg))
                 if result:
                     return
             except Exception:
@@ -1385,13 +1417,38 @@ class SeleniumPageAdapter:
 
     def click(self, selector: str, *, timeout: int = 30_000) -> None:
         deadline = time.monotonic() + _ms_to_s(timeout)
+        last_exc: Exception | None = None
         while time.monotonic() < deadline:
             for el in self._find_elements(selector):
-                if el.is_displayed():
+                if not el.is_displayed():
+                    continue
+                # Mirror Playwright's actionability: scroll the target into the
+                # viewport centre first. SPA tabs frequently render under a
+                # sticky header at negative Y, where a native click is rejected
+                # with "element click intercepted".
+                try:
+                    self._driver.execute_script(
+                        "arguments[0].scrollIntoView({block:'center',"
+                        "inline:'center'});", el,
+                    )
+                except Exception:
+                    pass
+                try:
                     el.click()
                     return
+                except Exception as exc:
+                    last_exc = exc
+                    # An overlay/header intercepted the hit-test — dispatch the
+                    # click directly via JS, which bypasses the obscuring layer.
+                    try:
+                        self._driver.execute_script("arguments[0].click();", el)
+                        return
+                    except Exception as exc2:
+                        last_exc = exc2
             time.sleep(0.2)
-        raise SeleniumTimeout(f"click({selector!r}) — element not found")
+        raise SeleniumTimeout(
+            f"click({selector!r}) — element not found: {last_exc}"
+        )
 
     # ── selector-array evaluation (Selenium eval_on_selector_all) ──────────
     def eval_on_selector_all(self, selector: str, js: str, *args):
