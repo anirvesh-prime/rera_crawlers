@@ -46,6 +46,7 @@ import time
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
+from typing import Any
 
 from bs4 import BeautifulSoup, Tag
 from pydantic import ValidationError
@@ -255,10 +256,20 @@ _LABEL_MAP: dict[str, str] = {
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _clean(text: str | None) -> str:
+def _clean(text: Any) -> str:
     if not text:
         return ""
+    if isinstance(text, (list, tuple)):
+        text = " ".join(_clean(t) for t in text)
+    elif not isinstance(text, str):
+        text = str(text)
     return re.sub(r"\s+", " ", text).strip()
+
+
+def _row_values(row: dict) -> list:
+    """Ordered cell values from a _parse_section_table row, excluding the
+    auxiliary '__links' entries so positional indexing matches the columns."""
+    return [v for k, v in row.items() if not str(k).endswith("__links")]
 
 
 def _safe_float(val: str | None) -> float | None:
@@ -962,12 +973,13 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
         skip_keys = {"s.no", "sl.no", "sl no.", "#", "no.", "total"}
         for r in brows:
             # Use header-keyed values; fall back to positional
+            vals = _row_values(r)
             flat_type = (r.get("Plot Type (Site Dimension in Mtr)")
                          or r.get("Type of Inventory") or r.get("Flat Type")
-                         or list(r.values())[1] if len(r) > 1 else "")
+                         or (vals[1] if len(vals) > 1 else ""))
             total_area = (r.get("Total Area (in Sq.Mtr)")
                           or r.get("Carpet Area (Sq Mtr)") or r.get("Total Area")
-                          or list(r.values())[3] if len(r) > 3 else "")
+                          or (vals[3] if len(vals) > 3 else ""))
             flat_type = _clean(str(flat_type))
             total_area = _clean(str(total_area))
             if flat_type and flat_type.lower() not in skip_keys:
@@ -1008,7 +1020,7 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
     for kw, role_label in role_keywords:
         prows = _parse_section_table(soup, [kw])
         for r in prows:
-            vals = list(r.values())
+            vals = _row_values(r)
             # Columns: Sl No. | Name | Address | Year | Licence No.
             name = _clean(vals[1]) if len(vals) > 1 else ""
             if not name:
@@ -1026,7 +1038,7 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
     if not profs:
         prows = _parse_section_table(soup, ["professional", "engineer", "architect"])
         for r in prows:
-            vals = list(r.values())
+            vals = _row_values(r)
             e = {
                 "name":                     _clean(vals[0]) if vals else "",
                 "role":                     _clean(vals[1]) if len(vals) > 1 else "",

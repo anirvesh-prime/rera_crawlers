@@ -28,6 +28,7 @@ from core.crawler_base import (
     SeleniumPageAdapter as Page,
     SeleniumTimeout as PWTimeout,
     SeleniumSession,
+    download_response,
     generate_project_key,
     page_adapter,
     random_delay,
@@ -1267,6 +1268,10 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     logger.clear_project()
                     continue
 
+                # Bind before navigation so an early failure (e.g. detail-URL
+                # wait timing out) is logged per-project instead of crashing the
+                # whole crawl with "detail_url referenced before assignment".
+                detail_url = ""
                 try:
                     # ── Navigate to detail page ───────────────────────────
                     logger.info("Opening detail page", step="detail_fetch")

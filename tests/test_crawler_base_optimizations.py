@@ -7,7 +7,9 @@ from core.config import settings
 from core.crawler_base import (
     SeleniumPageAdapter,
     _find_by_text,
+    _glob_to_regex,
     _parse_text_selector,
+    _url_matches,
     _xpath_literal,
     get_scaled_delay_range,
     random_delay,
@@ -211,6 +213,60 @@ class AdapterSelectorRoutingTests(unittest.TestCase):
         adapter.click("text=Documents", timeout=1000)
 
         self.assertIn("arguments[0].click();", driver.scripts)
+
+
+class UrlMatchingTests(unittest.TestCase):
+    def test_glob_double_star_spans_path_separators(self):
+        rx = _glob_to_regex("**/project-details/**")
+        self.assertTrue(rx.match("https://rera.odisha.gov.in/x/project-details/123"))
+        self.assertFalse(rx.match("https://rera.odisha.gov.in/project-list"))
+
+    def test_glob_single_star_stays_within_segment(self):
+        rx = _glob_to_regex("https://host/*/end")
+        self.assertTrue(rx.match("https://host/seg/end"))
+        self.assertFalse(rx.match("https://host/a/b/end"))  # * must not span '/'
+
+    def test_url_matches_supports_glob_regex_callable_exact(self):
+        import re as _re
+
+        self.assertTrue(_url_matches("**/project-details/**",
+                                     "https://h/p/project-details/9"))
+        self.assertTrue(_url_matches(_re.compile(r"project-details"),
+                                     "https://h/project-details/9"))
+        self.assertTrue(_url_matches(lambda u: u.endswith("/9"),
+                                     "https://h/9"))
+        self.assertTrue(_url_matches("https://h/exact", "https://h/exact"))
+        self.assertFalse(_url_matches("https://h/exact", "https://h/other"))
+
+
+class _UrlSeqDriver:
+    """Returns a scripted sequence of current_url values (last value sticks)."""
+
+    def __init__(self, urls):
+        self._urls = list(urls)
+
+    @property
+    def current_url(self):
+        return self._urls.pop(0) if len(self._urls) > 1 else self._urls[0]
+
+
+class WaitForUrlTests(unittest.TestCase):
+    def test_wait_for_url_returns_once_glob_matches(self):
+        driver = _UrlSeqDriver([
+            "https://h/project-list",
+            "https://h/project-details/42",
+        ])
+        adapter = SeleniumPageAdapter(_FakeSession(driver))
+        # Should return without raising once the detail URL appears.
+        adapter.wait_for_url("**/project-details/**", timeout=2000)
+
+    def test_wait_for_url_times_out_when_never_matches(self):
+        from core.crawler_base import SeleniumTimeout
+
+        driver = _UrlSeqDriver(["https://h/project-list"])
+        adapter = SeleniumPageAdapter(_FakeSession(driver))
+        with self.assertRaises(SeleniumTimeout):
+            adapter.wait_for_url("**/project-details/**", timeout=300)
 
 
 if __name__ == "__main__":

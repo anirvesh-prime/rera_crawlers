@@ -964,6 +964,44 @@ def _xpath_literal(value: str) -> str:
     return "concat(" + ', \'"\', '.join(f'"{p}"' for p in parts) + ")"
 
 
+def _glob_to_regex(pattern: str) -> "re.Pattern":
+    """Convert a Playwright URL glob to a regex (``**`` spans ``/``, ``*`` does not)."""
+    out = ["^"]
+    i, n = 0, len(pattern)
+    while i < n:
+        c = pattern[i]
+        if c == "*":
+            if i + 1 < n and pattern[i + 1] == "*":
+                out.append(".*")  # ** — match across path separators
+                i += 2
+            else:
+                out.append("[^/]*")  # * — match within a path segment
+                i += 1
+        elif c == "?":
+            out.append("[^/]")
+            i += 1
+        else:
+            out.append(re.escape(c))
+            i += 1
+    out.append("$")
+    return re.compile("".join(out))
+
+
+def _url_matches(pattern: Any, url: str) -> bool:
+    """Test *url* against a Playwright-style URL matcher (callable / regex / glob / exact)."""
+    if callable(pattern):
+        try:
+            return bool(pattern(url))
+        except Exception:
+            return False
+    if hasattr(pattern, "search"):  # compiled regex
+        return bool(pattern.search(url))
+    text = str(pattern)
+    if any(ch in text for ch in "*?"):
+        return bool(_glob_to_regex(text).match(url))
+    return url == text
+
+
 def _find_by_text(root: Any, text: str, exact: bool) -> list:
     """Find Selenium elements whose visible text matches *text*.
 
@@ -1372,6 +1410,24 @@ class SeleniumPageAdapter:
             except Exception:
                 pass
             time.sleep(0.2)
+
+    def wait_for_url(self, url, *, timeout: int = 30_000,
+                     wait_until: str | None = None, **_kw) -> None:
+        # Poll ``current_url`` until it matches *url* (Playwright accepts a glob
+        # string, a compiled regex, or a predicate). Globs follow Playwright's
+        # rules: ``**`` spans ``/`` while ``*`` does not.
+        deadline = time.monotonic() + _ms_to_s(timeout)
+        while time.monotonic() < deadline:
+            try:
+                current = self._driver.current_url or ""
+                if _url_matches(url, current):
+                    return
+            except Exception:
+                pass
+            time.sleep(0.2)
+        raise SeleniumTimeout(
+            f"wait_for_url({url!r}) exceeded {timeout}ms"
+        )
 
     _XHR_TRACKER_JS = """
         if (!window.__augNetInstalled) {
