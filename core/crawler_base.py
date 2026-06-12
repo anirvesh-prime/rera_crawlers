@@ -933,6 +933,60 @@ def _split_has_text(selector: str, has_text: str | None) -> tuple[str, str | Non
     return cleaned or "*", combined
 
 
+_TEXT_ENGINE_RE = re.compile(r"^\s*text\s*=\s*(.+?)\s*$", re.DOTALL)
+
+
+def _parse_text_selector(selector: str) -> tuple[str, bool] | None:
+    """Parse a Playwright ``text=`` engine selector.
+
+    Returns ``(text, exact)`` when *selector* uses the ``text=`` engine, else
+    ``None``. A quoted value (``text="Foo"`` / ``text='Foo'``) requests an exact,
+    whitespace-trimmed match; an unquoted value matches a case-insensitive
+    substring — mirroring Playwright's behaviour closely enough for the tab/link
+    clicks the migrated crawlers rely on.
+    """
+    m = _TEXT_ENGINE_RE.match(selector)
+    if not m:
+        return None
+    val = m.group(1).strip()
+    if len(val) >= 2 and val[0] == val[-1] and val[0] in ("'", '"'):
+        return val[1:-1], True
+    return val, False
+
+
+def _xpath_literal(value: str) -> str:
+    """Quote *value* as an XPath 1.0 string literal (handles embedded quotes)."""
+    if '"' not in value:
+        return f'"{value}"'
+    if "'" not in value:
+        return f"'{value}'"
+    parts = value.split('"')
+    return "concat(" + ', \'"\', '.join(f'"{p}"' for p in parts) + ")"
+
+
+def _find_by_text(root: Any, text: str, exact: bool) -> list:
+    """Find Selenium elements whose visible text matches *text*.
+
+    Candidates are ordered innermost-first (shortest normalized text) so that a
+    tab/link label is preferred over its enclosing containers (``body``/``html``
+    also "contain" the text but are never the intended click target).
+    """
+    from selenium.webdriver.common.by import By
+
+    if exact:
+        xpath = f".//*[normalize-space(.)={_xpath_literal(text)}]"
+    else:
+        lit = _xpath_literal(text.lower())
+        xpath = (
+            ".//*[contains(translate(normalize-space(.), "
+            "'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), "
+            f"{lit})]"
+        )
+    elems = root.find_elements(By.XPATH, xpath)
+    elems.sort(key=lambda e: len((e.text or "").strip()))
+    return elems
+
+
 class _SeleniumLocator:
     """Thin Selenium-Locator-style wrapper around CSS selectors.
 
@@ -1183,21 +1237,32 @@ class SeleniumPageAdapter:
         return self.evaluate(script, *args)
 
     # ── selectors ────────────────────────────────────────────────────────────
-    def query_selector(self, selector: str):
+    def _find_elements(self, selector: str) -> list:
+        """Resolve a Playwright-style *selector* to a list of WebElements.
+
+        Supports the ``text=`` engine and an ``xpath=`` prefix in addition to
+        plain CSS (with Selenium's ``:has-text(...)`` pseudo-class). Centralising
+        this keeps ``click`` / ``wait_for_selector`` / ``query_selector*`` in
+        sync so a ``text=`` tab click no longer reaches Selenium as invalid CSS.
+        """
         from selenium.webdriver.common.by import By
+        text_sel = _parse_text_selector(selector)
+        if text_sel is not None:
+            return _find_by_text(self._driver, *text_sel)
+        if selector.startswith("xpath="):
+            return self._driver.find_elements(By.XPATH, selector[len("xpath="):])
         sel, has_text = _split_has_text(selector, None)
         elems = self._driver.find_elements(By.CSS_SELECTOR, sel)
         if has_text:
             elems = [e for e in elems if has_text in (e.text or "")]
+        return elems
+
+    def query_selector(self, selector: str):
+        elems = self._find_elements(selector)
         return _SeleniumElement(elems[0]) if elems else None
 
     def query_selector_all(self, selector: str):
-        from selenium.webdriver.common.by import By
-        sel, has_text = _split_has_text(selector, None)
-        elems = self._driver.find_elements(By.CSS_SELECTOR, sel)
-        if has_text:
-            elems = [e for e in elems if has_text in (e.text or "")]
-        return [_SeleniumElement(e) for e in elems]
+        return [_SeleniumElement(e) for e in self._find_elements(selector)]
 
     def locator(self, selector: str, has_text: str | None = None) -> _SeleniumLocator:
         return _SeleniumLocator(self._driver, selector, has_text=has_text)
@@ -1205,13 +1270,9 @@ class SeleniumPageAdapter:
     # ── waits ────────────────────────────────────────────────────────────────
     def wait_for_selector(self, selector: str, *, timeout: int = 30_000,
                           state: str = "visible") -> None:
-        from selenium.webdriver.common.by import By
-        selector, has_text = _split_has_text(selector, None)
         deadline = time.monotonic() + _ms_to_s(timeout)
         while time.monotonic() < deadline:
-            elems = self._driver.find_elements(By.CSS_SELECTOR, selector)
-            if has_text:
-                elems = [e for e in elems if has_text in (e.text or "")]
+            elems = self._find_elements(selector)
             if state in ("attached",):
                 if elems:
                     return
@@ -1323,13 +1384,12 @@ class SeleniumPageAdapter:
         raise SeleniumTimeout(f"fill({selector!r}) — element not found")
 
     def click(self, selector: str, *, timeout: int = 30_000) -> None:
-        from selenium.webdriver.common.by import By
         deadline = time.monotonic() + _ms_to_s(timeout)
         while time.monotonic() < deadline:
-            elems = self._driver.find_elements(By.CSS_SELECTOR, selector)
-            if elems and elems[0].is_displayed():
-                elems[0].click()
-                return
+            for el in self._find_elements(selector):
+                if el.is_displayed():
+                    el.click()
+                    return
             time.sleep(0.2)
         raise SeleniumTimeout(f"click({selector!r}) — element not found")
 

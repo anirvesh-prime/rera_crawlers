@@ -957,15 +957,34 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
     t_run = time.monotonic()
 
+    # ── Targeted run handling ────────────────────────────────────────────────
+    # --target-reg-no restricts the run to one or more specific projects
+    # (comma-separated, case-insensitive).  The whole UK listing is returned on
+    # a single page, so we simply filter the parsed cards down to the requested
+    # registration numbers below.  The sentinel health check is skipped for
+    # targeted runs (mirrors karnataka_rera).
+    target_regs: set[str] = {
+        t.strip().upper()
+        for t in (settings.TARGET_REG_NO or "").split(",")
+        if t.strip()
+    }
+
     # ── Sentinel health check ────────────────────────────────────────────────
-    t0 = time.monotonic()
-    if not _sentinel_check(config, run_id, logger):
-        logger.error("Sentinel failed — aborting crawl", step="sentinel")
-        counts["sentinel_passed"] = False
-        counts["error_count"] += 1
-        return counts
-    counts["sentinel_passed"] = True
-    logger.timing("sentinel", time.monotonic() - t0)
+    if target_regs:
+        logger.info(
+            "Sentinel skipped (targeted run via --target-reg-no)",
+            step="sentinel",
+        )
+        counts["sentinel_passed"] = True
+    else:
+        t0 = time.monotonic()
+        if not _sentinel_check(config, run_id, logger):
+            logger.error("Sentinel failed — aborting crawl", step="sentinel")
+            counts["sentinel_passed"] = False
+            counts["error_count"] += 1
+            return counts
+        counts["sentinel_passed"] = True
+        logger.timing("sentinel", time.monotonic() - t0)
 
     # ── Checkpoint handling ──────────────────────────────────────────────────
     if mode == "full":
@@ -1006,6 +1025,34 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                            url=LISTING_URL)
         counts["error_count"] += 1
         return counts
+
+    # ── Targeted filtering ───────────────────────────────────────────────────
+    # Restrict to the requested registration number(s) before counting/slicing.
+    if target_regs:
+        matched = [
+            c for c in cards
+            if (c.get("project_registration_no") or "").upper() in target_regs
+        ]
+        found_regs = {
+            (c.get("project_registration_no") or "").upper() for c in matched
+        }
+        for missing in sorted(target_regs - found_regs):
+            logger.warning(
+                f"Target reg_no={missing!r} not found in listing",
+                step="listing",
+            )
+        if not matched:
+            logger.error("No target projects matched the listing", step="listing")
+            insert_crawl_error(run_id, site_id, "LISTING_EMPTY",
+                               f"No listing rows matched targets: {sorted(target_regs)}",
+                               url=LISTING_URL)
+            counts["error_count"] += 1
+            return counts
+        cards = matched
+        logger.info(
+            f"Targeted run — {len(cards)} of {len(target_regs)} requested "
+            f"project(s) matched", step="listing",
+        )
 
     # projects_found must reflect the total Uttarakhand listing — slice afterwards.
     counts["projects_found"] = len(cards)

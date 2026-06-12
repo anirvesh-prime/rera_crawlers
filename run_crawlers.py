@@ -141,11 +141,12 @@ def parse_args() -> argparse.Namespace:
         dest="target_reg_no",
         default=None,
         help=(
-            "Restrict the run to a single project whose registration number "
-            "matches this value (case-insensitive).  Crawlers that support it "
-            "filter their listing rows down to that one project and skip the "
-            "sentinel health check.  Combine with --test for a dry-run.  "
-            "Currently implemented for karnataka_rera."
+            "Restrict the run to one or more projects whose registration number "
+            "matches this value (case-insensitive; pass a comma-separated list "
+            "to target several).  Crawlers that support it filter their listing "
+            "rows down to those projects and skip the sentinel health check.  "
+            "Combine with --test for a dry-run.  Currently implemented for "
+            "karnataka_rera and uttarakhand_rera."
         ),
     )
     return parser.parse_args()
