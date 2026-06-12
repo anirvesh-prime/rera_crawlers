@@ -35,7 +35,7 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
-from core.crawler_base import SeleniumSession, generate_project_key, get_random_ua, random_delay
+from core.crawler_base import SeleniumSession, generate_project_key, get_random_ua, get_target_reg_nos, random_delay
 from core.db import get_project_by_key, insert_crawl_error, upsert_document, upsert_project, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -1135,6 +1135,14 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     # Pass mode through config so _process_row can check daily_light
     config = {**config, "mode": mode}
 
+    # ── Targeted run handling ──────────────────────────────────────────────────
+    # --target-reg-no restricts the run to one or more specific projects
+    # (comma-separated, case-insensitive). Both the primary search listing and
+    # the supplementary listing are filtered to the requested registration
+    # number(s) below and the sentinel health check is skipped.
+    target_regs = get_target_reg_nos()
+    matched_regs: set[str] = set()
+
     with _make_client() as client:
         # ── Warm up session (acquire JSESSIONID cookie) ──────────────────────
         logger.info("Warming up session", url=HOME_URL, step="session")
@@ -1144,14 +1152,18 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             logger.warning(f"Session warm-up failed (non-fatal): {exc}", step="session")
 
         # ── Sentinel health check ────────────────────────────────────────────
-        t0 = time.monotonic()
-        if not _sentinel_check(config, run_id, logger, client=client):
-            logger.error("Sentinel failed — aborting crawl", step="sentinel")
-            counts["sentinel_passed"] = False
-            counts["error_count"] += 1
-            return counts
-        counts["sentinel_passed"] = True
-        logger.timing("sentinel", time.monotonic() - t0)
+        if target_regs:
+            logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+            counts["sentinel_passed"] = True
+        else:
+            t0 = time.monotonic()
+            if not _sentinel_check(config, run_id, logger, client=client):
+                logger.error("Sentinel failed — aborting crawl", step="sentinel")
+                counts["sentinel_passed"] = False
+                counts["error_count"] += 1
+                return counts
+            counts["sentinel_passed"] = True
+            logger.timing("sentinel", time.monotonic() - t0)
 
         # ── Phase 1: Primary listing — POST /search ──────────────────────────
         logger.info("Phase 1: POST /search (primary listing)", url=SEARCH_URL, step="listing")
@@ -1186,13 +1198,25 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 logger.info("No rows on search page — stopping", start_from=start_from)
                 break
 
+            # Restrict the page's rows to the requested registration number(s).
+            if target_regs:
+                rows = [
+                    r for r in rows
+                    if (r.get("project_registration_no") or "").strip().upper() in target_regs
+                ]
+                matched_regs.update(
+                    (r.get("project_registration_no") or "").strip().upper() for r in rows
+                )
+
             logger.info(f"Search page {search_page + 1}: {len(rows)} rows (total={total_records})")
             # projects_found should reflect the entire Tripura listing — the
             # primary search API exposes total_records on the first page, so
             # pin projects_found to that value once and ignore per-page deltas
             # (the per-page accumulator would only equal the total after every
             # page is walked, which item_limit may interrupt).
-            if total_records and counts["projects_found"] < total_records:
+            if target_regs:
+                counts["projects_found"] += len(rows)
+            elif total_records and counts["projects_found"] < total_records:
                 counts["projects_found"] = total_records
             # Push the running projects_found to crawl_runs for live dashboard view.
             update_crawl_run_progress(run_id, counts)
@@ -1227,6 +1251,15 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             soup = BeautifulSoup(resp.text, "lxml")
             supp_rows = _parse_listing_rows(soup)
             new_supp  = [r for r in supp_rows if r["project_registration_no"] not in done_regs]
+            # Restrict the supplementary rows to the requested registration number(s).
+            if target_regs:
+                new_supp = [
+                    r for r in new_supp
+                    if (r.get("project_registration_no") or "").strip().upper() in target_regs
+                ]
+                matched_regs.update(
+                    (r.get("project_registration_no") or "").strip().upper() for r in new_supp
+                )
             logger.info(f"Supplementary listing: {len(supp_rows)} total, "
                         f"{len(new_supp)} not seen in search")
             # Add only rows not already counted in the primary search total.
@@ -1246,6 +1279,14 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     reset_checkpoint(site_id, mode)
                     return counts
                 random_delay(*config.get("rate_limit_delay", (1, 3)))
+
+    if target_regs:
+        for missing in sorted(target_regs - matched_regs):
+            logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
+        logger.info(
+            f"Targeted run — {len(matched_regs)} of {len(target_regs)} requested "
+            f"project(s) matched", step="listing",
+        )
 
     reset_checkpoint(site_id, mode)
     logger.info(f"Tripura RERA complete: {counts}")

@@ -35,6 +35,7 @@ from core.crawler_base import (
     SeleniumSession,
     SeleniumTimeout as PWTimeout,
     generate_project_key,
+    get_target_reg_nos,
     random_delay,
 )
 from core.config import settings
@@ -1048,16 +1049,28 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     item_limit = settings.CRAWL_ITEM_LIMIT or 0
     t_run = time.monotonic()
 
+    # ── Targeted run handling ────────────────────────────────────────────────
+    # --target-reg-no restricts the run to one or more specific projects
+    # (comma-separated, case-insensitive). The reg-no is present on every listing
+    # row, so the listing is filtered down to the requested project(s) and the
+    # sentinel check is skipped (mirrors karnataka_rera / uttarakhand_rera).
+    target_regs = get_target_reg_nos()
+
     # ── Sentinel health check ────────────────────────────────────────────────
-    t0 = time.monotonic()
-    sentinel_ok = _sentinel_check(config, run_id, logger)
-    if not sentinel_ok:
-        logger.error("Sentinel failed — aborting crawl", step="sentinel")
-        counters["sentinel_passed"] = False
-        counters["error_count"] += 1
-        return counters
-    counters["sentinel_passed"] = True
-    logger.timing("sentinel", time.monotonic() - t0)
+    if target_regs:
+        logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+        sentinel_ok = True
+        counters["sentinel_passed"] = True
+    else:
+        t0 = time.monotonic()
+        sentinel_ok = _sentinel_check(config, run_id, logger)
+        if not sentinel_ok:
+            logger.error("Sentinel failed — aborting crawl", step="sentinel")
+            counters["sentinel_passed"] = False
+            counters["error_count"] += 1
+            return counters
+        counters["sentinel_passed"] = True
+        logger.timing("sentinel", time.monotonic() - t0)
 
     site_id = config["id"]
 
@@ -1087,6 +1100,23 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             logger.warning(
                 f"Resuming: skipped {original_count - len(rows)} already-processed rows",
                 step="checkpoint",
+            )
+
+        # ── Targeted filtering ───────────────────────────────────────────────
+        # Restrict the listing to the requested registration number(s).
+        if target_regs:
+            rows = [
+                r for r in rows
+                if (r.get("project_registration_no") or "").strip().upper() in target_regs
+            ]
+            matched_regs = {
+                (r.get("project_registration_no") or "").strip().upper() for r in rows
+            }
+            for missing in sorted(target_regs - matched_regs):
+                logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
+            logger.info(
+                f"Targeted run — {len(matched_regs)} of {len(target_regs)} requested "
+                f"project(s) matched", step="listing",
             )
 
         # projects_found must reflect the total Punjab listing — slice afterwards.

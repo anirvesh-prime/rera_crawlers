@@ -29,7 +29,7 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import SeleniumSession, generate_project_key, random_delay
+from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, random_delay
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document, update_crawl_run_progress
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -966,16 +966,27 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         markers, qs_map = _fetch_listing(client, logger)
         logger.timing("search", time.monotonic() - t0, rows=len(qs_map))
 
+        # ── Targeted run handling ────────────────────────────────────────────
+        # --target-reg-no restricts the run to one or more specific projects
+        # (comma-separated, case-insensitive). The listing is filtered down to
+        # the requested registration number(s) below and the sentinel health
+        # check is skipped (mirrors karnataka_rera / uttarakhand_rera).
+        target_regs = get_target_reg_nos()
+
         # ── Sentinel health check (uses already-fetched listing) ─────────────
-        t0 = time.monotonic()
-        if not _sentinel_check(config, run_id, logger,
-                               markers=markers, qs_map=qs_map, client=client):
-            logger.error("Sentinel failed — aborting crawl", step="sentinel")
-            counts["sentinel_passed"] = False
-            counts["error_count"] += 1
-            return counts
-        counts["sentinel_passed"] = True
-        logger.timing("sentinel", time.monotonic() - t0)
+        if target_regs:
+            logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+            counts["sentinel_passed"] = True
+        else:
+            t0 = time.monotonic()
+            if not _sentinel_check(config, run_id, logger,
+                                   markers=markers, qs_map=qs_map, client=client):
+                logger.error("Sentinel failed — aborting crawl", step="sentinel")
+                counts["sentinel_passed"] = False
+                counts["error_count"] += 1
+                return counts
+            counts["sentinel_passed"] = True
+            logger.timing("sentinel", time.monotonic() - t0)
 
         # Build marker lookup by registration number (try multiple key names)
         marker_by_reg: dict[str, dict] = {}
@@ -988,6 +999,21 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 marker_by_reg[reg] = m
 
         all_reg_nos = list(qs_map.keys())
+        # ── Targeted filtering ───────────────────────────────────────────────
+        # Restrict the listing to the requested registration number(s).
+        if target_regs:
+            matched_regs: set[str] = set()
+            all_reg_nos = [
+                r for r in all_reg_nos
+                if (r or "").strip().upper() in target_regs
+            ]
+            matched_regs.update((r or "").strip().upper() for r in all_reg_nos)
+            for missing in sorted(target_regs - matched_regs):
+                logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
+            logger.info(
+                f"Targeted run — {len(matched_regs)} of {len(target_regs)} requested "
+                f"project(s) matched", step="listing",
+            )
         counts["projects_found"] = len(all_reg_nos)
         update_crawl_run_progress(run_id, counts)
         if item_limit:

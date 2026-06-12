@@ -31,6 +31,7 @@ from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.crawler_base import (
     SeleniumSession,
     generate_project_key,
+    get_target_reg_nos,
     page_adapter,
     random_delay,
 )
@@ -1021,14 +1022,25 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
     t_run = time.monotonic()
 
+    # ── Targeted run handling ──────────────────────────────────────────────────
+    # --target-reg-no restricts the run to one or more specific projects
+    # (comma-separated, case-insensitive). Each district listing is filtered down
+    # to the requested registration number(s) below and the sentinel health check
+    # is skipped (mirrors karnataka_rera / uttarakhand_rera).
+    target_regs = get_target_reg_nos()
+
     # ── Sentinel check ─────────────────────────────────────────────────────────
-    t0 = time.monotonic()
-    if not _sentinel_check(config, run_id, logger):
-        logger.error("Sentinel failed — aborting UP RERA crawl")
-        counts["sentinel_passed"] = False
-        return counts
-    counts["sentinel_passed"] = True
-    logger.timing("sentinel", time.monotonic() - t0)
+    if target_regs:
+        logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+        counts["sentinel_passed"] = True
+    else:
+        t0 = time.monotonic()
+        if not _sentinel_check(config, run_id, logger):
+            logger.error("Sentinel failed — aborting UP RERA crawl")
+            counts["sentinel_passed"] = False
+            return counts
+        counts["sentinel_passed"] = True
+        logger.timing("sentinel", time.monotonic() - t0)
 
     # ── Checkpoint / resume support ───────────────────────────────────────────
     checkpoint = load_checkpoint(site_id, mode) or {}
@@ -1078,6 +1090,24 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                     f"Listing fetch failed for {dist}: {exc}", step="listing"
                 )
                 district_stubs[idx] = []
+
+    # ── Targeted filtering ─────────────────────────────────────────────────────
+    # Restrict every district's stubs to the requested registration number(s).
+    if target_regs:
+        matched_regs: set[str] = set()
+        for idx in list(district_stubs.keys()):
+            kept = [
+                s for s in district_stubs[idx]
+                if (s.get("reg_no") or "").upper() in target_regs
+            ]
+            matched_regs.update((s.get("reg_no") or "").upper() for s in kept)
+            district_stubs[idx] = kept
+        for missing in sorted(target_regs - matched_regs):
+            logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
+        logger.info(
+            f"Targeted run — {len(matched_regs)} of {len(target_regs)} requested "
+            f"project(s) matched", step="listing",
+        )
 
     for district_idx, district in pending_districts:
         stubs = district_stubs.get(district_idx, [])

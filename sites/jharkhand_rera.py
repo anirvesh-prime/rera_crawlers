@@ -22,7 +22,7 @@ from pydantic import ValidationError
 
 from core.checkpoint import reset_checkpoint
 from core.config import settings
-from core.crawler_base import SeleniumSession, generate_project_key, random_delay
+from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, random_delay
 from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -847,15 +847,28 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     machine_name, machine_ip = get_machine_context()
     t_run = time.monotonic()
 
+    # ── Targeted run handling ──────────────────────────────────────────────────
+    # --target-reg-no restricts the run to one or more specific projects
+    # (comma-separated, case-insensitive). The reg-no is present on every listing
+    # row, so each page is filtered down to the requested project(s) and the page
+    # walk stops as soon as all targets are found. The sentinel check is skipped
+    # for targeted runs (mirrors karnataka_rera / uttarakhand_rera).
+    target_regs = get_target_reg_nos()
+    found_targets: set[str] = set()
+
     # ── Sentinel health check ────────────────────────────────────────────────
-    t0 = time.monotonic()
-    if not _sentinel_check(config, run_id, logger):
-        logger.error("Sentinel failed — aborting crawl", step="sentinel")
-        counters["sentinel_passed"] = False
-        counters["error_count"] += 1
-        return counters
-    counters["sentinel_passed"] = True
-    logger.timing("sentinel", time.monotonic() - t0)
+    if target_regs:
+        logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+        counters["sentinel_passed"] = True
+    else:
+        t0 = time.monotonic()
+        if not _sentinel_check(config, run_id, logger):
+            logger.error("Sentinel failed — aborting crawl", step="sentinel")
+            counters["sentinel_passed"] = False
+            counters["error_count"] += 1
+            return counters
+        counters["sentinel_passed"] = True
+        logger.timing("sentinel", time.monotonic() - t0)
 
     item_limit    = settings.CRAWL_ITEM_LIMIT or 0
     items_processed = 0
@@ -881,10 +894,6 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
         soup = BeautifulSoup(resp.text, "lxml")
         rows = _parse_listing_rows(soup)
-        counters["projects_found"] += len(rows)
-        # Push the running projects_found to crawl_runs for live dashboard view.
-        update_crawl_run_progress(run_id, counters)
-        logger.info(f"Page {current_page}: {len(rows)} projects", step="listing")
         if not first_page_logged:
             logger.timing("search", time.monotonic() - t0, rows=len(rows))
             first_page_logged = True
@@ -892,6 +901,23 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         if not rows:
             logger.warning(f"No rows on page {current_page} — stopping", step="listing")
             break
+
+        # ── Targeted filtering ───────────────────────────────────────────────
+        # Keep only the requested registration number(s); the page walk stops
+        # once every target has been found (see end of the page loop).
+        if target_regs:
+            rows = [
+                r for r in rows
+                if (r.get("project_registration_no") or "").strip().upper() in target_regs
+            ]
+            found_targets.update(
+                (r.get("project_registration_no") or "").strip().upper() for r in rows
+            )
+
+        counters["projects_found"] += len(rows)
+        # Push the running projects_found to crawl_runs for live dashboard view.
+        update_crawl_run_progress(run_id, counters)
+        logger.info(f"Page {current_page}: {len(rows)} projects", step="listing")
 
         for raw in rows:
             if item_limit and items_processed >= item_limit:
@@ -1010,6 +1036,12 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
         # ── Advance pagination ────────────────────────────────────────────
         if done_processing:
+            break
+        # Targeted run: stop once every requested project has been processed.
+        if target_regs and target_regs <= found_targets:
+            logger.info(
+                "All targeted projects found — stopping listing walk", step="listing",
+            )
             break
         if max_pages and current_page >= max_pages:
             logger.info(f"Reached max_pages={max_pages}, stopping", step="listing")

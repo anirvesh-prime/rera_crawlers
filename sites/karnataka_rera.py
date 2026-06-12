@@ -272,6 +272,17 @@ def _row_values(row: dict) -> list:
     return [v for k, v in row.items() if not str(k).endswith("__links")]
 
 
+def _has_name_column(rows: list[dict]) -> bool:
+    """True if the parsed table has a column header containing 'name'.
+    Empty professional sections on the new portal (a bare <h1> with no table)
+    bind to an unrelated later table; a genuine professional table always has
+    a '<Role> Name' column, so this guards against that mis-binding."""
+    if not rows:
+        return False
+    return any("name" in str(col).lower()
+               for col in rows[0] if not str(col).endswith("__links"))
+
+
 def _safe_float(val: str | None) -> float | None:
     if not val:
         return None
@@ -1019,6 +1030,8 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
     ]
     for kw, role_label in role_keywords:
         prows = _parse_section_table(soup, [kw])
+        if not _has_name_column(prows):
+            continue
         for r in prows:
             vals = _row_values(r)
             # Columns: Sl No. | Name | Address | Year | Licence No.
@@ -1037,6 +1050,8 @@ def _parse_detail(html: str, ack_no: str, search_district: str,
     # Fall back to legacy search
     if not profs:
         prows = _parse_section_table(soup, ["professional", "engineer", "architect"])
+        if not _has_name_column(prows):
+            prows = []
         for r in prows:
             vals = _row_values(r)
             e = {

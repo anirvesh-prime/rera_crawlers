@@ -29,7 +29,7 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import SeleniumSession, generate_project_key, random_delay
+from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, random_delay
 from core.db import (
     get_project_by_key,
     upsert_project,
@@ -1330,15 +1330,26 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     machine_name, machine_ip = get_machine_context()
     t_run = time.monotonic()
 
+    # ── Targeted run handling ────────────────────────────────────────────────
+    # --target-reg-no restricts the run to one or more specific projects
+    # (comma-separated, case-insensitive). The reg-no is present on every listing
+    # row, so the listing is filtered down to the requested project(s) below and
+    # the sentinel check is skipped for targeted runs.
+    target_regs = get_target_reg_nos()
+
     # ── Sentinel health check ────────────────────────────────────────────────
-    t0 = time.monotonic()
-    if not _sentinel_check(config, run_id, logger):
-        logger.error("Sentinel failed — aborting crawl", step="sentinel")
-        counts["sentinel_passed"] = False
-        counts["error_count"] += 1
-        return counts
-    counts["sentinel_passed"] = True
-    logger.timing("sentinel", time.monotonic() - t0)
+    if target_regs:
+        logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+        counts["sentinel_passed"] = True
+    else:
+        t0 = time.monotonic()
+        if not _sentinel_check(config, run_id, logger):
+            logger.error("Sentinel failed — aborting crawl", step="sentinel")
+            counts["sentinel_passed"] = False
+            counts["error_count"] += 1
+            return counts
+        counts["sentinel_passed"] = True
+        logger.timing("sentinel", time.monotonic() - t0)
 
     # ── Checkpoint ────────────────────────────────────────────────────────────
     checkpoint  = load_checkpoint(site_id, mode) or {}
@@ -1356,6 +1367,24 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
     rows = _parse_listing_rows(soup)
     logger.info("Listing parsed", row_count=len(rows))
+
+    # ── Targeted filtering ────────────────────────────────────────────────────
+    # Restrict the listing to the requested registration number(s).
+    if target_regs:
+        matched_regs = {
+            (r.get("project_registration_no") or "").strip().upper() for r in rows
+        } & target_regs
+        rows = [
+            r for r in rows
+            if (r.get("project_registration_no") or "").strip().upper() in target_regs
+        ]
+        for missing in sorted(target_regs - matched_regs):
+            logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
+        logger.info(
+            f"Targeted run — {len(matched_regs)} of {len(target_regs)} requested "
+            f"project(s) matched", step="listing",
+        )
+
     counts["projects_found"] = len(rows)
     update_crawl_run_progress(run_id, counts)
     logger.timing("search", time.monotonic() - t0, rows=len(rows))

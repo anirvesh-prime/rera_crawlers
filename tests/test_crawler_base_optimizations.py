@@ -6,6 +6,7 @@ from unittest.mock import patch
 from core.config import settings
 from core.crawler_base import (
     SeleniumPageAdapter,
+    SeleniumResponse,
     _find_by_text,
     _glob_to_regex,
     _parse_text_selector,
@@ -267,6 +268,17 @@ class WaitForUrlTests(unittest.TestCase):
         adapter = SeleniumPageAdapter(_FakeSession(driver))
         with self.assertRaises(SeleniumTimeout):
             adapter.wait_for_url("**/project-details/**", timeout=300)
+
+
+class SeleniumResponseJsonTests(unittest.TestCase):
+    def test_json_parses_text_body(self):
+        resp = SeleniumResponse(text='{"status": 200, "result": {"filePath": "/x"}}')
+        self.assertEqual(resp.json()["result"]["filePath"], "/x")
+
+    def test_json_parses_content_when_text_empty(self):
+        # fetch-backed responses carry the body in .content (bytes), .text="".
+        resp = SeleniumResponse(content=b'{"status": 200}')
+        self.assertEqual(resp.json()["status"], 200)
 
 
 if __name__ == "__main__":

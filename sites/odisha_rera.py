@@ -30,6 +30,7 @@ from core.crawler_base import (
     SeleniumSession,
     download_response,
     generate_project_key,
+    get_target_reg_nos,
     page_adapter,
     random_delay,
 )
@@ -1176,18 +1177,31 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     machine_name, machine_ip = get_machine_context()
     t_run = time.monotonic()
 
+    # ── Targeted run handling ────────────────────────────────────────────────
+    # --target-reg-no restricts the run to one or more specific projects
+    # (comma-separated, case-insensitive). The reg-no is present on every listing
+    # card, so each page is filtered down to the requested project(s) and the page
+    # walk stops as soon as all targets are found. The sentinel check is skipped
+    # for targeted runs (mirrors karnataka_rera / uttarakhand_rera).
+    target_regs = get_target_reg_nos()
+    found_targets: set[str] = set()
+
     if True:
         page = page_adapter(_session())
 
         # ── Sentinel health check ────────────────────────────────────────────
-        t0 = time.monotonic()
-        if not _sentinel_check(config, run_id, logger, page):
-            logger.error("Sentinel failed — aborting crawl", step="sentinel")
-            counts["sentinel_passed"] = False
-            counts["error_count"] += 1
-            return counts
-        counts["sentinel_passed"] = True
-        logger.timing("sentinel", time.monotonic() - t0)
+        if target_regs:
+            logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+            counts["sentinel_passed"] = True
+        else:
+            t0 = time.monotonic()
+            if not _sentinel_check(config, run_id, logger, page):
+                logger.error("Sentinel failed — aborting crawl", step="sentinel")
+                counts["sentinel_passed"] = False
+                counts["error_count"] += 1
+                return counts
+            counts["sentinel_passed"] = True
+            logger.timing("sentinel", time.monotonic() - t0)
 
         t0 = time.monotonic()
         # Odisha is an Angular SPA with background polling that never reaches
@@ -1233,6 +1247,19 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             page.evaluate("window.scrollTo(0, 0)")
             page.wait_for_timeout(400)
             cards = _parse_page_cards(page)
+
+            # ── Targeted filtering ───────────────────────────────────────────
+            # Keep only the requested registration number(s); the page walk stops
+            # once every target has been found (see end of the page loop).
+            if target_regs:
+                cards = [
+                    c for c in cards
+                    if (c.get("project_registration_no") or "").strip().upper() in target_regs
+                ]
+                found_targets.update(
+                    (c.get("project_registration_no") or "").strip().upper() for c in cards
+                )
+
             counts["projects_found"] += len(cards)
             # Push the running projects_found to crawl_runs for live dashboard view.
             update_crawl_run_progress(run_id, counts)
@@ -1566,6 +1593,13 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     break
 
             if processing_done:
+                break
+
+            # Targeted run: stop once every requested project has been processed.
+            if target_regs and target_regs <= found_targets:
+                logger.info(
+                    "All targeted projects found — stopping listing walk", step="listing",
+                )
                 break
 
             _dismiss_modal(page)

@@ -35,6 +35,7 @@ from core.crawler_base import (
     SeleniumSession,
     SeleniumTimeout,
     generate_project_key,
+    get_target_reg_nos,
     page_adapter,
     random_delay,
 )
@@ -1266,15 +1267,26 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     # compatibility, which Chrome handles natively via Selenium.
     session = None
 
+    # ── Targeted run handling ──────────────────────────────────────────────────
+    # --target-reg-no restricts the run to one or more specific projects
+    # (comma-separated, case-insensitive). The bulk enumeration stub list is
+    # filtered down to the requested registration number(s) below and the sentinel
+    # health check is skipped (mirrors karnataka_rera / uttarakhand_rera).
+    target_regs = get_target_reg_nos()
+
     # ── Sentinel health check ────────────────────────────────────────────────
-    t0 = time.monotonic()
-    if not _sentinel_check(config, run_id, logger):
-        logger.error("Sentinel failed — aborting crawl", step="sentinel")
-        counts["sentinel_passed"] = False
-        counts["error_count"] += 1
-        return counts
-    counts["sentinel_passed"] = True
-    logger.timing("sentinel", time.monotonic() - t0)
+    if target_regs:
+        logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+        counts["sentinel_passed"] = True
+    else:
+        t0 = time.monotonic()
+        if not _sentinel_check(config, run_id, logger):
+            logger.error("Sentinel failed — aborting crawl", step="sentinel")
+            counts["sentinel_passed"] = False
+            counts["error_count"] += 1
+            return counts
+        counts["sentinel_passed"] = True
+        logger.timing("sentinel", time.monotonic() - t0)
 
     checkpoint     = load_checkpoint(site_id, mode) or {}
     resume_proj_id = int(checkpoint.get("last_page", 0))
@@ -1299,6 +1311,24 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         if not all_stubs:
             logger.error("No project stubs returned from enumeration — aborting")
             return counts
+
+        # ── Targeted filtering ─────────────────────────────────────────────────
+        # Restrict the enumeration to the requested registration number(s).
+        if target_regs:
+            matched_regs: set[str] = set()
+            all_stubs = [
+                s for s in all_stubs
+                if (s.get("project_registration_no") or "").strip().upper() in target_regs
+            ]
+            matched_regs.update(
+                (s.get("project_registration_no") or "").strip().upper() for s in all_stubs
+            )
+            for missing in sorted(target_regs - matched_regs):
+                logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
+            logger.info(
+                f"Targeted run — {len(matched_regs)} of {len(target_regs)} requested "
+                f"project(s) matched", step="listing",
+            )
 
         logger.info(f"Total projects to process: {len(all_stubs)}")
         logger.timing("search", time.monotonic() - t0, rows=len(all_stubs))

@@ -38,6 +38,23 @@ def generate_project_key(registration_number: str) -> str:
     return str(int_hash & _UINT64_MASK)
 
 
+def get_target_reg_nos() -> set[str]:
+    """Return the set of targeted registration numbers from ``settings.TARGET_REG_NO``.
+
+    The ``--target-reg-no`` CLI flag (and the ``TARGET_REG_NO`` env var) accepts a
+    single registration number or a comma-separated list.  This helper normalises
+    that value into an upper-cased, whitespace-trimmed set so every crawler can
+    consistently (a) skip its sentinel health check and (b) filter its listing
+    rows down to the requested project(s) for a targeted run.  Returns an empty
+    set when no target is configured (i.e. a normal full crawl).
+    """
+    return {
+        token.strip().upper()
+        for token in (settings.TARGET_REG_NO or "").split(",")
+        if token.strip()
+    }
+
+
 def random_delay(min_s: float = 1.0, max_s: float = 3.0) -> None:
     scaled_min, scaled_max = get_scaled_delay_range(min_s, max_s)
     if scaled_max <= 0:
@@ -426,6 +443,20 @@ class SeleniumResponse:
 
     def __bool__(self) -> bool:
         return bool(self.text or self.content)
+
+    def json(self) -> Any:
+        """Parse the body as JSON (parity with httpx/Playwright ``.json()``).
+
+        ``fetch``-backed responses carry the body in ``content`` (bytes) with an
+        empty ``text``, so fall back to decoding ``content`` when ``text`` is
+        empty.
+        """
+        import json as _json
+
+        raw = self.text
+        if not raw and self.content:
+            raw = self.content.decode("utf-8", "replace")
+        return _json.loads(raw)
 
 
 class SeleniumSession:

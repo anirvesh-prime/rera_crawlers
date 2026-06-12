@@ -25,7 +25,7 @@ from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import SeleniumSession, generate_project_key, random_delay
+from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, random_delay
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -1299,19 +1299,48 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     item_limit = settings.CRAWL_ITEM_LIMIT or 0
     t_run = time.monotonic()
 
+    # ── Targeted run handling ────────────────────────────────────────────────
+    # --target-reg-no restricts the run to one or more specific projects
+    # (comma-separated, case-insensitive). The reg-no is present on every listing
+    # stub, so the listing is filtered down to the requested project(s) below and
+    # the sentinel check is skipped for targeted runs.
+    target_regs = get_target_reg_nos()
+
     # ── Step 0: Sentinel check (spec Section 10) ─────────────────────────────
     logger.info("Starting Assam RERA crawl", mode=mode, listing_url=LISTING_URL)
-    t0 = time.monotonic()
-    if not _sentinel_check(config, logger, run_id):
-        logger.error("Sentinel check failed — aborting Assam RERA crawl")
-        counts["sentinel_passed"] = False
-        return counts
-    counts["sentinel_passed"] = True
-    logger.timing("sentinel", time.monotonic() - t0)
+    if target_regs:
+        logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+        counts["sentinel_passed"] = True
+    else:
+        t0 = time.monotonic()
+        if not _sentinel_check(config, logger, run_id):
+            logger.error("Sentinel check failed — aborting Assam RERA crawl")
+            counts["sentinel_passed"] = False
+            return counts
+        counts["sentinel_passed"] = True
+        logger.timing("sentinel", time.monotonic() - t0)
 
     # ── Step 1: Fetch listing ────────────────────────────────────────────────
     t0 = time.monotonic()
     all_stubs = _fetch_listing(logger)
+
+    # ── Targeted filtering ────────────────────────────────────────────────────
+    # Restrict the listing to the requested registration number(s).
+    if target_regs:
+        matched_regs = {
+            (s.get("project_registration_no") or "").strip().upper() for s in all_stubs
+        } & target_regs
+        all_stubs = [
+            s for s in all_stubs
+            if (s.get("project_registration_no") or "").strip().upper() in target_regs
+        ]
+        for missing in sorted(target_regs - matched_regs):
+            logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
+        logger.info(
+            f"Targeted run — {len(matched_regs)} of {len(target_regs)} requested "
+            f"project(s) matched", step="listing",
+        )
+
     logger.info("Listing parsed", total=len(all_stubs))
     counts["projects_found"] = len(all_stubs)
     update_crawl_run_progress(run_id, counts)
