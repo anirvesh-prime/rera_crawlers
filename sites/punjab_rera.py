@@ -920,6 +920,18 @@ def _search_projects(
     return []
 
 
+_REG_NO_TRAILING_MARKER = re.compile(r"\s*\*+\s*$")
+
+
+def _clean_reg_no(value: str) -> str:
+    """Strip the trailing ``*`` marker the Punjab portal appends to projects
+    whose registration has been extended/amended.  The asterisk is a display
+    artifact; persisting it would (a) bake the marker into the DB column and
+    (b) change the deterministic project key, breaking row continuity with
+    the legacy system."""
+    return _REG_NO_TRAILING_MARKER.sub("", (value or "").strip())
+
+
 def _parse_partial_rows(html: str) -> list[dict]:
     soup = BeautifulSoup(html, "lxml")
     rows: list[dict] = []
@@ -932,7 +944,7 @@ def _parse_partial_rows(html: str) -> list[dict]:
             "district": cells[1].get_text(" ", strip=True),
             "project_name": cells[2].get_text(" ", strip=True),
             "promoter_name": cells[3].get_text(" ", strip=True),
-            "project_registration_no": cells[4].get_text(" ", strip=True),
+            "project_registration_no": _clean_reg_no(cells[4].get_text(" ", strip=True)),
             "valid_upto": cells[5].get_text(" ", strip=True),
             "project_id": hidden.get("hdnProjectID", ""),
             "promoter_id": hidden.get("hdnPromoterID", ""),
