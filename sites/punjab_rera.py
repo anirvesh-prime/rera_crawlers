@@ -504,7 +504,12 @@ def _parse_detail_page(
                 else:
                     _capture_mobile = True
                 continue
-            if state == "name" and re.match(r"[A-Z0-9 .\-]+$", ln):
+            # Name lines: alphanumerics + ``.-`` only. Mixed-case allowed
+            # because Punjab LLP representatives are not always typed in
+            # uppercase (e.g. "Ankush Goyal" vs "GAURAV BANSAL").  The first
+            # line that introduces address punctuation (comma, ``/``, ``#``,
+            # digits adjacent to letters etc.) trips the transition to addr.
+            if state == "name" and re.match(r"^[A-Za-z0-9 .\-]+$", ln):
                 name_parts.append(ln)
             elif state == "name":
                 state = "addr"
@@ -920,18 +925,6 @@ def _search_projects(
     return []
 
 
-_REG_NO_TRAILING_MARKER = re.compile(r"\s*\*+\s*$")
-
-
-def _clean_reg_no(value: str) -> str:
-    """Strip the trailing ``*`` marker the Punjab portal appends to projects
-    whose registration has been extended/amended.  The asterisk is a display
-    artifact; persisting it would (a) bake the marker into the DB column and
-    (b) change the deterministic project key, breaking row continuity with
-    the legacy system."""
-    return _REG_NO_TRAILING_MARKER.sub("", (value or "").strip())
-
-
 def _parse_partial_rows(html: str) -> list[dict]:
     soup = BeautifulSoup(html, "lxml")
     rows: list[dict] = []
@@ -944,7 +937,7 @@ def _parse_partial_rows(html: str) -> list[dict]:
             "district": cells[1].get_text(" ", strip=True),
             "project_name": cells[2].get_text(" ", strip=True),
             "promoter_name": cells[3].get_text(" ", strip=True),
-            "project_registration_no": _clean_reg_no(cells[4].get_text(" ", strip=True)),
+            "project_registration_no": cells[4].get_text(" ", strip=True),
             "valid_upto": cells[5].get_text(" ", strip=True),
             "project_id": hidden.get("hdnProjectID", ""),
             "promoter_id": hidden.get("hdnPromoterID", ""),
@@ -1181,19 +1174,19 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             )
 
         # ── Targeted filtering ───────────────────────────────────────────────
-        # Restrict the listing to the requested registration number(s).
+        # Restrict the listing to the requested registration number(s).  Match
+        # by project key so trailing display markers (e.g. Punjab's ``*``) on
+        # the raw listing reg_no don't break the comparison — generate_project_key
+        # is the single normalising chokepoint.
         if target_regs:
-            rows = [
-                r for r in rows
-                if (r.get("project_registration_no") or "").strip().upper() in target_regs
-            ]
-            matched_regs = {
-                (r.get("project_registration_no") or "").strip().upper() for r in rows
-            }
-            for missing in sorted(target_regs - matched_regs):
-                logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
+            target_keys = {generate_project_key(r) for r in target_regs}
+            rows = [r for r in rows if generate_project_key(r.get("project_registration_no") or "") in target_keys]
+            matched_keys = {generate_project_key(r.get("project_registration_no") or "") for r in rows}
+            for missing in sorted(target_regs):
+                if generate_project_key(missing) not in matched_keys:
+                    logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
             logger.info(
-                f"Targeted run — {len(matched_regs)} of {len(target_regs)} requested "
+                f"Targeted run — {len(matched_keys)} of {len(target_regs)} requested "
                 f"project(s) matched", step="listing",
             )
 

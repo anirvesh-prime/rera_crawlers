@@ -20,6 +20,12 @@ _UINT64_MASK = (1 << 64) - 1
 _HTTP_CLIENTS_LOCK = threading.Lock()
 _HTTP_CLIENTS: dict[tuple[bool | int, ...], httpx.Client] = {}
 
+# Portal display markers some states append to a registration number
+# (e.g. Punjab uses a trailing ``*`` to flag amended/extended registrations).
+# Stripped at key-gen time so the hash matches the legacy system even when
+# the upstream parser or a cached row preserves the raw marker.
+_REG_NO_DISPLAY_MARKER = re.compile(r"\s*\*+\s*$")
+
 
 def _project_hash_seed() -> bytes:
     seed_text = os.environ.get("PYTHONHASHSEED", "0")
@@ -32,8 +38,9 @@ def _project_hash_seed() -> bytes:
 
 
 def generate_project_key(registration_number: str) -> str:
-    """Generate a deterministic unsigned project key from the stripped registration number."""
-    key_string = registration_number.strip()
+    """Generate a deterministic unsigned project key from the registration number,
+    after stripping whitespace and portal display markers (trailing ``*``)."""
+    key_string = _REG_NO_DISPLAY_MARKER.sub("", (registration_number or "").strip())
     int_hash = siphash24.siphash24(key_string.encode("utf-8"), key=_project_hash_seed()).intdigest()
     return str(int_hash & _UINT64_MASK)
 
