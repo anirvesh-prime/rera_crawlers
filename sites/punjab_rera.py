@@ -339,8 +339,8 @@ def _parse_detail_page(
         if email:
             contact["email"] = email
         if phone:
-            contact["mobile no"] = phone
-        result["promoter_contact_details"] = contact  # FIELD: promoter_contact_details <- contact {email, mobile no}
+            contact["phone"] = phone
+        result["promoter_contact_details"] = contact  # FIELD: promoter_contact_details <- contact {email, phone}
 
     # ── Promoter experience ───────────────────────────────────────────────────
     exp_state = _find_by_label(
@@ -540,7 +540,7 @@ def _parse_detail_page(
         if signatory.get("email"):
             fallback["email"] = signatory["email"]  # FIELD: promoter_contact_details.email <- co_promoter_details.email (authorised signatory fallback)
         if signatory.get("mobile"):
-            fallback["mobile no"] = signatory["mobile"]  # FIELD: promoter_contact_details["mobile no"] <- co_promoter_details.mobile (authorised signatory fallback)
+            fallback["phone"] = signatory["mobile"]  # FIELD: promoter_contact_details.phone <- co_promoter_details.mobile (authorised signatory fallback)
         if fallback:
             result["promoter_contact_details"] = fallback
 
