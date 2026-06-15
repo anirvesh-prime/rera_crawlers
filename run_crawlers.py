@@ -143,10 +143,9 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Restrict the run to one or more projects whose registration number "
             "matches this value (case-insensitive; pass a comma-separated list "
-            "to target several).  Crawlers that support it filter their listing "
-            "rows down to those projects and skip the sentinel health check.  "
-            "Combine with --test for a dry-run.  Currently implemented for "
-            "karnataka_rera and uttarakhand_rera."
+            "to target several).  Crawlers filter their listing rows down to "
+            "those projects and skip the sentinel health check.  Combine with "
+            "--test for a dry-run.  Supported by all state crawlers."
         ),
     )
     return parser.parse_args()

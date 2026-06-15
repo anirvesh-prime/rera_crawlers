@@ -21,7 +21,7 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import SeleniumSession, generate_project_key, random_delay
+from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, random_delay
 from core.db import (
     get_project_by_key,
     upsert_project,
@@ -1802,15 +1802,26 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
               "projects_skipped": 0, "documents_uploaded": 0, "error_count": 0}
     t_run = time.monotonic()
 
+    # ── Targeted run handling ──────────────────────────────────────────────────
+    # --target-reg-no restricts the run to one or more specific projects
+    # (comma-separated, case-insensitive). The certificate number is present on
+    # every listing card, so the collected cards are filtered down to the
+    # requested registration number(s) below and the sentinel check is skipped.
+    target_regs = get_target_reg_nos()
+
     # ── Sentinel health check ────────────────────────────────────────────────
-    t0 = time.monotonic()
-    if not _sentinel_check(config, run_id, logger):
-        logger.error("Sentinel failed — aborting crawl", step="sentinel")
-        counts["sentinel_passed"] = False
-        counts["error_count"] += 1
-        return counts
-    counts["sentinel_passed"] = True
-    logger.timing("sentinel", time.monotonic() - t0)
+    if target_regs:
+        logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+        counts["sentinel_passed"] = True
+    else:
+        t0 = time.monotonic()
+        if not _sentinel_check(config, run_id, logger):
+            logger.error("Sentinel failed — aborting crawl", step="sentinel")
+            counts["sentinel_passed"] = False
+            counts["error_count"] += 1
+            return counts
+        counts["sentinel_passed"] = True
+        logger.timing("sentinel", time.monotonic() - t0)
 
     item_limit = settings.CRAWL_ITEM_LIMIT or 0  # 0 = unlimited
 
@@ -1850,6 +1861,25 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         item_limit=item_limit,
         on_progress=_on_listing_progress,
     )
+
+    # ── Targeted filtering ───────────────────────────────────────────────────
+    # Restrict the collected cards to the requested registration number(s).
+    if target_regs:
+        matched_regs = {
+            (c.get("cert_no_from_card") or "").strip().upper()
+            for _, c in cards_with_page
+        } & target_regs
+        cards_with_page = [
+            (p, c) for p, c in cards_with_page
+            if (c.get("cert_no_from_card") or "").strip().upper() in target_regs
+        ]
+        for missing in sorted(target_regs - matched_regs):
+            logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
+        logger.info(
+            f"Targeted run — {len(matched_regs)} of {len(target_regs)} requested "
+            f"project(s) matched", step="listing",
+        )
+
     counts["projects_found"] = len(cards_with_page)
     counts["error_count"] += lister_errors
     update_crawl_run_progress(run_id, counts)

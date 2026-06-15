@@ -29,6 +29,7 @@ from core.crawler_base import (
     SeleniumSession,
     SeleniumTimeout,
     generate_project_key,
+    get_target_reg_nos,
     page_adapter,
     random_delay,
 )
@@ -1278,15 +1279,26 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     machine_name, machine_ip = get_machine_context()
     t_run = time.monotonic()
 
+    # ── Targeted run handling ────────────────────────────────────────────────
+    # --target-reg-no restricts the run to one or more specific projects
+    # (comma-separated, case-insensitive). The reg-no is present on every listing
+    # row, so the listing is filtered down to the requested project(s) and the
+    # sentinel check is skipped (mirrors karnataka_rera / uttarakhand_rera).
+    target_regs = get_target_reg_nos()
+
     # ── Sentinel health check ────────────────────────────────────────────────
-    t0 = time.monotonic()
-    if not _sentinel_check(config, run_id, logger):
-        logger.error("Sentinel failed — aborting crawl", step="sentinel")
-        counts["sentinel_passed"] = False
-        counts["error_count"] += 1
-        return counts
-    counts["sentinel_passed"] = True
-    logger.timing("sentinel", time.monotonic() - t0)
+    if target_regs:
+        logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+        counts["sentinel_passed"] = True
+    else:
+        t0 = time.monotonic()
+        if not _sentinel_check(config, run_id, logger):
+            logger.error("Sentinel failed — aborting crawl", step="sentinel")
+            counts["sentinel_passed"] = False
+            counts["error_count"] += 1
+            return counts
+        counts["sentinel_passed"] = True
+        logger.timing("sentinel", time.monotonic() - t0)
 
     checkpoint       = load_checkpoint(site_id, mode) or {}
     resume_after_key = checkpoint.get("last_project_key")
@@ -1304,6 +1316,24 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     )
     if not listed_projects:
         return counts
+
+    # ── Targeted filtering ─────────────────────────────────────────────────────
+    # Restrict the listing to the requested registration number(s).
+    if target_regs:
+        listed_projects = [
+            p for p in listed_projects
+            if (p.get("reg_no") or "").strip().upper() in target_regs
+        ]
+        matched_regs = {
+            (p.get("reg_no") or "").strip().upper() for p in listed_projects
+        }
+        for missing in sorted(target_regs - matched_regs):
+            logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
+        logger.info(
+            f"Targeted run — {len(matched_regs)} of {len(target_regs)} requested "
+            f"project(s) matched", step="listing",
+        )
+
     counts["projects_found"] = len(listed_projects)
     update_crawl_run_progress(run_id, counts)
     total_listing = len(listed_projects)

@@ -1635,6 +1635,16 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 logger.warning(f"Pagination error at page {page_num}: {e}")
                 break
 
+    # ── Targeted run summary ─────────────────────────────────────────────────
+    # After walking the listing, report which requested project(s) were matched.
+    if target_regs:
+        for missing in sorted(target_regs - found_targets):
+            logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
+        logger.info(
+            f"Targeted run — {len(found_targets)} of {len(target_regs)} requested "
+            f"project(s) matched", step="listing",
+        )
+
     reset_checkpoint(site_id, mode)
     logger.info(f"Odisha RERA complete: {counts}")
     logger.timing("total_run", time.monotonic() - t_run)

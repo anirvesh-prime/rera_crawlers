@@ -29,7 +29,7 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import SeleniumSession, generate_project_key, random_delay
+from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, random_delay
 from core.db import (
     get_project_by_key,
     upsert_project,
@@ -1614,15 +1614,28 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     items_processed = 0
     t_run = time.monotonic()
 
+    # ── Targeted run handling ────────────────────────────────────────────────
+    # --target-reg-no restricts the run to one or more specific projects
+    # (comma-separated, case-insensitive). The reg-no is present on every listing
+    # row, so each year listing is filtered down to the requested project(s) and
+    # the year walk stops as soon as all targets are found. The sentinel check is
+    # skipped for targeted runs (mirrors karnataka_rera / uttarakhand_rera).
+    target_regs = get_target_reg_nos()
+    found_targets: set[str] = set()
+
     # ── Sentinel health check ────────────────────────────────────────────────
-    t0 = time.monotonic()
-    if not _sentinel_check(config, run_id, logger):
-        logger.error("Sentinel failed — aborting crawl", step="sentinel")
-        counts["sentinel_passed"] = False
-        counts["error_count"] += 1
-        return counts
-    counts["sentinel_passed"] = True
-    logger.timing("sentinel", time.monotonic() - t0)
+    if target_regs:
+        logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+        counts["sentinel_passed"] = True
+    else:
+        t0 = time.monotonic()
+        if not _sentinel_check(config, run_id, logger):
+            logger.error("Sentinel failed — aborting crawl", step="sentinel")
+            counts["sentinel_passed"] = False
+            counts["error_count"] += 1
+            return counts
+        counts["sentinel_passed"] = True
+        logger.timing("sentinel", time.monotonic() - t0)
 
     # ── Checkpoint handling ──────────────────────────────────────────────────
     checkpoint = (load_checkpoint(site_id, mode) if mode != "full" else {}) or {}
@@ -1690,6 +1703,20 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         if not rows:
             logger.warning(f"No rows found for year {year_label}", url=year_url)
             continue
+
+        # ── Targeted filtering ───────────────────────────────────────────────
+        # Keep only the requested registration number(s); the year walk stops
+        # once every target has been found (see end of the year loop).
+        if target_regs:
+            rows = [
+                r for r in rows
+                if (r.get("project_registration_no") or "").strip().upper() in target_regs
+            ]
+            found_targets.update(
+                (r.get("project_registration_no") or "").strip().upper() for r in rows
+            )
+            if not rows:
+                continue
 
         if not first_listing_logged:
             logger.timing("search", time.monotonic() - t0, rows=len(rows))
@@ -1863,6 +1890,23 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 f"stopping listing walk",
             )
             break
+
+        # Targeted run: stop once every requested project has been processed.
+        if target_regs and target_regs <= found_targets:
+            logger.info(
+                "All targeted projects found — stopping listing walk", step="listing",
+            )
+            break
+
+    # ── Targeted run summary ─────────────────────────────────────────────────
+    # After walking the year listings, report which requested project(s) matched.
+    if target_regs:
+        for missing in sorted(target_regs - found_targets):
+            logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
+        logger.info(
+            f"Targeted run — {len(found_targets)} of {len(target_regs)} requested "
+            f"project(s) matched", step="listing",
+        )
 
     reset_checkpoint(site_id, mode)
     logger.info("Tamil Nadu RERA crawl complete", **counts)

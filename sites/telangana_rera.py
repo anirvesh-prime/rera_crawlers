@@ -29,6 +29,7 @@ from core.crawler_base import (
     SeleniumSession,
     SeleniumTimeout,
     generate_project_key,
+    get_target_reg_nos,
     page_adapter,
     random_delay,
 )
@@ -1448,15 +1449,28 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     machine_name, machine_ip = get_machine_context()
     t_run = time.monotonic()
 
+    # ── Targeted run handling ──────────────────────────────────────────────────
+    # --target-reg-no restricts the run to one or more specific projects
+    # (comma-separated, case-insensitive). Telangana's listing exposes no
+    # registration number (the key is project_name|promoter_name|state|doc_decoded),
+    # so each project is filtered after the detail fetch below, the page walk stops
+    # once all targets are found, and the sentinel check is skipped.
+    target_regs = get_target_reg_nos()
+    found_targets: set[str] = set()
+
     # ── Sentinel health check ────────────────────────────────────────────────
-    t0 = time.monotonic()
-    if not _sentinel_check(config, run_id, logger):
-        logger.error("Sentinel failed — aborting crawl", step="sentinel")
-        counts["sentinel_passed"] = False
-        counts["error_count"] += 1
-        return counts
-    counts["sentinel_passed"] = True
-    logger.timing("sentinel", time.monotonic() - t0)
+    if target_regs:
+        logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+        counts["sentinel_passed"] = True
+    else:
+        t0 = time.monotonic()
+        if not _sentinel_check(config, run_id, logger):
+            logger.error("Sentinel failed — aborting crawl", step="sentinel")
+            counts["sentinel_passed"] = False
+            counts["error_count"] += 1
+            return counts
+        counts["sentinel_passed"] = True
+        logger.timing("sentinel", time.monotonic() - t0)
 
     checkpoint = load_checkpoint(site_id, mode)
     start_page = (checkpoint["last_page"] + 1) if checkpoint else 1
@@ -1510,7 +1524,10 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             html  = page.content()
             rows  = _parse_listing_rows(html)
             logger.info(f"  {len(rows)} project rows on page {current_page}")
-            counts["projects_found"] += len(rows)
+            # Targeted runs count only matched projects (reg-no is detail-only),
+            # so projects_found is incremented per match in the loop below.
+            if not target_regs:
+                counts["projects_found"] += len(rows)
             # Push the running projects_found to crawl_runs for live dashboard view.
             update_crawl_run_progress(run_id, counts)
 
@@ -1585,6 +1602,14 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     reg_no = _clean(detail_data.get("project_registration_no"))
                     if reg_no:
                         detail_data["project_registration_no"] = reg_no  # FIELD: project_registration_no <- cleaned detail_data registration no
+
+                    # Targeted run: keep only the requested registration number(s).
+                    if target_regs:
+                        if (reg_no or "").strip().upper() not in target_regs:
+                            logger.clear_project()
+                            continue
+                        found_targets.add((reg_no or "").strip().upper())
+                        counts["projects_found"] += 1
 
                     # ── Assemble document list ────────────────────────────────
                     raw_docs = _build_uploaded_documents(row, detail_data)
@@ -1753,6 +1778,12 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             # ── Paginate ──────────────────────────────────────────────────────
             if processing_done:
                 break
+            # Targeted run: stop once every requested project has been processed.
+            if target_regs and target_regs <= found_targets:
+                logger.info(
+                    "All targeted projects found — stopping listing walk", step="listing",
+                )
+                break
             if current_page < effective_end:
                 random_delay(delay_min, delay_max)
                 if not _goto_next_page(page):
@@ -1760,6 +1791,14 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     break
 
             current_page += 1
+
+    if target_regs:
+        for missing in sorted(target_regs - found_targets):
+            logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
+        logger.info(
+            f"Targeted run — {len(found_targets)} of {len(target_regs)} requested "
+            f"project(s) matched", step="listing",
+        )
 
     reset_checkpoint(site_id, mode)
     logger.info("Telangana RERA crawl finished", **counts)

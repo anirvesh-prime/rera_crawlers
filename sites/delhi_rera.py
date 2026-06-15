@@ -26,7 +26,7 @@ from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.config import settings
-from core.crawler_base import SeleniumSession, generate_project_key, page_adapter, random_delay
+from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, page_adapter, random_delay
 from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -1317,15 +1317,28 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     max_pages    = settings.MAX_PAGES
     t_run = time.monotonic()
 
+    # ── Targeted run handling ────────────────────────────────────────────────
+    # --target-reg-no restricts the run to one or more specific projects
+    # (comma-separated, case-insensitive). The reg-no is present on every listing
+    # row, so each page is filtered down to the requested project(s) and the page
+    # walk stops as soon as all targets are found. The sentinel check is skipped
+    # for targeted runs (mirrors maharashtra_rera).
+    target_regs = get_target_reg_nos()
+    found_targets: set[str] = set()
+
     # ── Sentinel health check ────────────────────────────────────────────────
-    t0 = time.monotonic()
-    if not _sentinel_check(config, run_id, logger):
-        logger.error("Sentinel failed — aborting crawl", step="sentinel")
-        counters["sentinel_passed"] = False
-        counters["error_count"] += 1
-        return counters
-    counters["sentinel_passed"] = True
-    logger.timing("sentinel", time.monotonic() - t0)
+    if target_regs:
+        logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+        counters["sentinel_passed"] = True
+    else:
+        t0 = time.monotonic()
+        if not _sentinel_check(config, run_id, logger):
+            logger.error("Sentinel failed — aborting crawl", step="sentinel")
+            counters["sentinel_passed"] = False
+            counters["error_count"] += 1
+            return counters
+        counters["sentinel_passed"] = True
+        logger.timing("sentinel", time.monotonic() - t0)
 
     # ── Resume from checkpoint ────────────────────────────────────────────────
     checkpoint = load_checkpoint(config["id"], mode)
@@ -1358,6 +1371,18 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         if not rows:
             logger.info(f"No rows on page {page} — pagination complete", step="listing")
             break
+
+        # ── Targeted filtering ────────────────────────────────────────────────
+        # Keep only the requested registration number(s); the page walk stops
+        # once every target has been found (see end of the page loop).
+        if target_regs:
+            rows = [
+                r for r in rows
+                if (r.get("project_registration_no") or "").strip().upper() in target_regs
+            ]
+            found_targets.update(
+                (r.get("project_registration_no") or "").strip().upper() for r in rows
+            )
 
         counters["projects_found"] += len(rows)
         # Push the running projects_found to crawl_runs for live dashboard view.
@@ -1579,6 +1604,10 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         save_checkpoint(config["id"], mode, page, None, run_id)
 
         if done_processing:
+            break
+        # Targeted run: stop once every requested project has been processed.
+        if target_regs and target_regs <= found_targets:
+            logger.info("All targeted projects found — stopping listing walk", step="listing")
             break
         if max_pages is not None and page >= max_pages - 1:
             logger.info(f"Reached max_pages={max_pages}, stopping", step="listing")

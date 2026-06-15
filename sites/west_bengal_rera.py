@@ -28,7 +28,7 @@ from bs4 import BeautifulSoup, Tag
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
-from core.crawler_base import SeleniumSession, generate_project_key, random_delay
+from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, random_delay
 from core.db import (
     get_project_by_key,
     insert_crawl_error,
@@ -1113,15 +1113,25 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     machine_name, machine_ip = get_machine_context()
     t_run = time.monotonic()
 
+    # ── Targeted run handling ──────────────────────────────────────────────────
+    # --target-reg-no restricts the run to one or more specific projects
+    # (comma-separated, case-insensitive). The listing is filtered to the
+    # requested registration number(s) below and the sentinel check is skipped.
+    target_regs = get_target_reg_nos()
+
     # ── Sentinel health check ────────────────────────────────────────────────
-    t0 = time.monotonic()
-    if not _sentinel_check(config, run_id, logger):
-        logger.error("Sentinel failed — aborting crawl", step="sentinel")
-        counts["sentinel_passed"] = False
-        counts["error_count"] += 1
-        return counts
-    counts["sentinel_passed"] = True
-    logger.timing("sentinel", time.monotonic() - t0)
+    if target_regs:
+        logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+        counts["sentinel_passed"] = True
+    else:
+        t0 = time.monotonic()
+        if not _sentinel_check(config, run_id, logger):
+            logger.error("Sentinel failed — aborting crawl", step="sentinel")
+            counts["sentinel_passed"] = False
+            counts["error_count"] += 1
+            return counts
+        counts["sentinel_passed"] = True
+        logger.timing("sentinel", time.monotonic() - t0)
 
     # Use Selenium to fetch all rows via the DataTables JS API.
     # Direct httpx is blocked by the site (Connection reset by peer).
@@ -1133,6 +1143,22 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         insert_crawl_error(run_id, site_id, "PARSE_ERROR", "No rows parsed", url=LISTING_URL)
         counts["error_count"] += 1
         return counts
+
+    # Restrict the listing to the requested registration number(s).
+    if target_regs:
+        matched_regs = {
+            (r.get("project_registration_no") or "").strip().upper() for r in rows
+        } & target_regs
+        rows = [
+            r for r in rows
+            if (r.get("project_registration_no") or "").strip().upper() in target_regs
+        ]
+        for missing in sorted(target_regs - matched_regs):
+            logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
+        logger.info(
+            f"Targeted run — {len(matched_regs)} of {len(target_regs)} requested "
+            f"project(s) matched", step="listing",
+        )
 
     counts["projects_found"] = len(rows)
     update_crawl_run_progress(run_id, counts)

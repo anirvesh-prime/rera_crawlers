@@ -73,7 +73,7 @@ class OdishaTargetedCrawlTests(unittest.TestCase):
             mock.patch.object(odisha_rera, "_open_detail_page", return_value=True),
             mock.patch.object(
                 odisha_rera, "_parse_overview",
-                return_value={"project_registration_no": "X", "_doc_links": []},
+                return_value={"_doc_links": []},
             ),
             mock.patch.object(odisha_rera, "_parse_promoter_tab", return_value={}),
             mock.patch.object(odisha_rera, "_parse_booking_status_cards", return_value=[]),

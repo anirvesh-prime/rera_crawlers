@@ -149,6 +149,12 @@ class _ClientAdapter:
             url, method="POST", data=data, headers=headers, json_body=json,
         ))
 
+    def download(self, url: str, *, headers=None, **_kw):
+        # Browser-fetch path: returns real binary bytes in resp.content (the
+        # plain .get() page-navigation path leaves .content empty, which
+        # breaks any caller that base64-encodes the body — e.g. captcha img).
+        return self._wrap(self._s.download(url, headers=headers))
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -304,6 +310,11 @@ def _parse_detail_page(
             }
         except (ValueError, TypeError):
             pass
+
+    # ── Promoter registered address ───────────────────────────────────────────
+    reg_addr = _find_by_label(soup, "Registered Address of Organization")
+    if reg_addr:
+        result["promoter_address_raw"] = {"raw_address": reg_addr}  # FIELD: promoter_address_raw.raw_address <- label "Registered Address of Organization"
 
     # ── Promoter contact details ──────────────────────────────────────────────
     email: str | None = None
@@ -516,6 +527,22 @@ def _parse_detail_page(
                 "raw_data": span_html,  # FIELD: co_promoter_details.raw_data <- span_html (entire span HTML)
             }
         break
+
+    # ── Promoter contact fallback ─────────────────────────────────────────────
+    # Punjab detail pages typically do not publish a phone/email row for the
+    # promoter organisation itself; those values only appear on the Authorised
+    # Representative row of the Organization Members table (captured above as
+    # co_promoter_details). When the promoter has no direct contact details,
+    # surface the signatory's email/mobile under promoter_contact_details.
+    if not result.get("promoter_contact_details"):
+        signatory = result.get("co_promoter_details") or {}
+        fallback: dict = {}
+        if signatory.get("email"):
+            fallback["email"] = signatory["email"]  # FIELD: promoter_contact_details.email <- co_promoter_details.email (authorised signatory fallback)
+        if signatory.get("mobile"):
+            fallback["mobile no"] = signatory["mobile"]  # FIELD: promoter_contact_details["mobile no"] <- co_promoter_details.mobile (authorised signatory fallback)
+        if fallback:
+            result["promoter_contact_details"] = fallback
 
     # ── Complaints / litigation ───────────────────────────────────────────────
     # Parse litigation table first; fall back to label check
@@ -793,7 +820,10 @@ def _solve_listing_captcha(session, logger: CrawlerLogger) -> tuple[str | None, 
             return None, soup
         img_url = urljoin(LISTING_URL, captcha_img["src"])
         t_img = time.monotonic()
-        img_resp = session.get(img_url)
+        # Use .download() (browser fetch API) to get real PNG bytes; .get()
+        # is page-navigation and leaves .content empty, which would feed an
+        # empty data URL to the captcha solver.
+        img_resp = session.download(img_url)
         img_resp.raise_for_status()
         img_elapsed = time.monotonic() - t_img
         data_url = "data:image/png;base64," + base64.b64encode(img_resp.content).decode()
@@ -814,23 +844,55 @@ def _solve_listing_captcha(session, logger: CrawlerLogger) -> tuple[str | None, 
         return None, None
 
 
-def _search_projects(session, logger: CrawlerLogger) -> list[dict]:
+def _serialize_search_form(soup: BeautifulSoup) -> list[tuple[str, str]]:
+    """Mirror the page JS's ``$('form').serialize()`` — emit every named field
+    on the search form so the server-side model binder gets the payload shape
+    it validates against.  Submitting only a handful of hardcoded fields
+    triggers a generic "Invalid Capcha Text" rejection even when the captcha
+    itself is correct."""
+    form = soup.find("form", {"id": "ProjectPVform"}) or soup.find("form")
+    if form is None:
+        return []
+    payload: list[tuple[str, str]] = []
+    for inp in form.find_all(["input", "select", "textarea"]):
+        name = inp.get("name")
+        if not name:
+            continue
+        itype = (inp.get("type") or "").lower()
+        if itype == "submit":
+            continue
+        if itype in ("radio", "checkbox"):
+            if inp.has_attr("checked"):
+                payload.append((name, inp.get("value", "on")))
+            continue
+        if inp.name == "select":
+            opt = inp.find("option", selected=True) or inp.find("option")
+            payload.append((name, opt.get("value", "") if opt else ""))
+            continue
+        payload.append((name, inp.get("value") or ""))
+    return payload
+
+
+def _search_projects(
+    session, logger: CrawlerLogger, target_regs: set[str] | None = None,
+) -> list[dict]:
+    # When the run is targeted at a specific reg-no, push it into the search
+    # form so the server returns only that project (avoids pulling the entire
+    # ~2k-row listing for a one-project crawl).
+    target_reg = next(iter(target_regs)) if target_regs and len(target_regs) == 1 else ""
     for attempt in range(1, 21):
         captcha_text, soup = _solve_listing_captcha(session, logger)
         if not captcha_text or soup is None:
             continue
 
-        token_input = soup.find("input", {"name": "__RequestVerificationToken"})
-        payload = {
-            "__RequestVerificationToken": token_input.get("value", "") if token_input else "",
-            "Input_SearchOptionTabFlag": "1",
-            "Input_AdvSearch_MoreOptionsFlag": "0",
-            "Input_RegdProject_DistrictName": "",
-            "Input_RegdProject_ProjectName": "",
-            "Input_RegdProject_PromoterName": "",
-            "Input_RegdProject_RERAnumberRegistration": "",
-            "Input_RegdProject_CaptchaText": captcha_text,
-        }
+        payload = _serialize_search_form(soup)
+        payload = [(k, v) for k, v in payload if k not in (
+            "Input_RegdProject_CaptchaText",
+            "Input_RegdProject_RERAnumberRegistration",
+        )]
+        payload.append(("Input_RegdProject_CaptchaText", captcha_text))
+        payload.append(("Input_RegdProject_RERAnumberRegistration", target_reg))
+
         try:
             resp = session.post(
                 SEARCH_URL,
@@ -1075,15 +1137,19 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     site_id = config["id"]
 
     # ── Listing: try cache first, fall back to live fetch ────────────────────
+    # Targeted runs bypass the cache entirely (a one-row server response would
+    # poison the on-disk cache for the next full crawl) and push the reg-no
+    # into the search form so the server returns just that project.
     with _ClientAdapter(_session()) as session:
         t0 = time.monotonic()
-        rows = _load_listing_cache(logger)
+        rows = None if target_regs else _load_listing_cache(logger)
         if rows is None:
-            rows = _search_projects(session, logger)
+            rows = _search_projects(session, logger, target_regs=target_regs)
             logger.timing("search", time.monotonic() - t0, rows=len(rows))
             if not rows:
                 return counters
-            _save_listing_cache(rows, logger)
+            if not target_regs:
+                _save_listing_cache(rows, logger)
         else:
             logger.timing("search", 0.0, cache_hit=True)
 

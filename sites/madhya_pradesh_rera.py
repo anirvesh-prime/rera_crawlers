@@ -21,7 +21,7 @@ from typing import Any
 from bs4 import BeautifulSoup, Tag
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
-from core.crawler_base import SeleniumSession, generate_project_key, random_delay
+from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, random_delay
 from core.db import get_project_by_key, insert_crawl_error, upsert_document, upsert_project, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -732,15 +732,27 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
     t_run = time.monotonic()
 
+    # ── Targeted run handling ──────────────────────────────────────────────────
+    # --target-reg-no restricts the run to one or more specific projects
+    # (comma-separated, case-insensitive). The registration number is only on the
+    # detail page (the listing stub has none), so each project is filtered after
+    # the detail fetch below and the sentinel check is skipped for targeted runs.
+    target_regs = get_target_reg_nos()
+    matched_regs: set[str] = set()
+
     # ── Sentinel check ─────────────────────────────────────────────────────────
-    t0 = time.monotonic()
-    if not _sentinel_check(config, run_id, logger):
-        logger.error("Sentinel failed — aborting crawl", step="sentinel")
-        counts["sentinel_passed"] = False
-        counts["error_count"] += 1
-        return counts
-    counts["sentinel_passed"] = True
-    logger.timing("sentinel", time.monotonic() - t0)
+    if target_regs:
+        logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+        counts["sentinel_passed"] = True
+    else:
+        t0 = time.monotonic()
+        if not _sentinel_check(config, run_id, logger):
+            logger.error("Sentinel failed — aborting crawl", step="sentinel")
+            counts["sentinel_passed"] = False
+            counts["error_count"] += 1
+            return counts
+        counts["sentinel_passed"] = True
+        logger.timing("sentinel", time.monotonic() - t0)
 
     checkpoint     = load_checkpoint(site_id, mode) or {}
     done_regs: set = set(checkpoint.get("done_regs", []))
@@ -759,7 +771,10 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         counts["error_count"] += 1
         return counts
 
-    counts["projects_found"] = len(stubs)
+    # Targeted runs count only matched projects (reg-no is detail-only),
+    # so projects_found is incremented per match in the loop below.
+    if not target_regs:
+        counts["projects_found"] = len(stubs)
     update_crawl_run_progress(run_id, counts)
 
     # Filter out projects that are known to have no registration number on their
@@ -823,6 +838,14 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 counts["error_count"] += 1
                 logger.clear_project()
                 continue
+
+            # Targeted run: keep only the requested registration number(s).
+            if target_regs:
+                if reg_no.strip().upper() not in target_regs:
+                    logger.clear_project()
+                    continue
+                matched_regs.add(reg_no.strip().upper())
+                counts["projects_found"] += 1
 
             if reg_no in done_regs:
                 counts["projects_skipped"] += 1
@@ -956,6 +979,14 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         finally:
             logger.clear_project()
             update_crawl_run_progress(run_id, counts)
+
+    if target_regs:
+        for missing in sorted(target_regs - matched_regs):
+            logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
+        logger.info(
+            f"Targeted run — {len(matched_regs)} of {len(target_regs)} requested "
+            f"project(s) matched", step="listing",
+        )
 
     reset_checkpoint(site_id, mode)
     logger.info(f"Madhya Pradesh RERA complete: {counts}")
