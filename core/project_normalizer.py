@@ -166,6 +166,34 @@ _STATE_JSON_FIELD_ALLOWED_KEYS: dict[str, dict[str, set[str]]] = {
         "project_location_raw": {"state", "taluk", "village", "locality", "pin_code", "raw_address", "house_no_building_name"},
         "data": {"temp", "type", "no_of_plots", "is_processed", "land_area_unit", "construction_area_unit"},
     },
+    "tamil_nadu": {
+        "building_details": {
+            "type_of_building", "category", "registration_applied_for",
+            "block_details", "floor_details", "no_of_blocks",
+            "no_of_dwelling_units_in_block",
+            "license_no", "license_date", "license_issued_by",
+            "license_issued_to", "license_valid_upto",
+            "planning_permission_no", "planning_permission_issued_by",
+            "planning_permission_issued_to", "planning_permission_validity",
+            "local_body_letter_no", "local_body_letter_date",
+            "local_body_name", "local_body_issued_by",
+        },
+        "provided_faciltiy": {
+            "internal_road", "water_supply", "sewage_disposal",
+            "solid_waste_disposal", "fire_fighting", "renewable_energy",
+            "amenity_building", "amenity_details", "clearance_noc",
+        },
+        "land_area_details": {
+            "site_extent", "fsi_area", "osr_gifted", "road_area_gifted",
+            "plottable_area", "public_purpose_gifted",
+            "lig_residential_area", "other_residential_area",
+            "commercial_area", "commercial_floor_area", "other_uses_area",
+        },
+        "promoters_details": {
+            "name", "type_of_firm", "registration_no", "GSTIN",
+            "pan_number", "project_developed_by", "registration_certificate",
+        },
+    },
 }
 
 _STATE_JSON_SINGLETON_OBJECT_FIELDS: dict[str, set[str]] = {

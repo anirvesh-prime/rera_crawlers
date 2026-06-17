@@ -1,35 +1,35 @@
 """
 Tamil Nadu RERA Crawler — rera.tn.gov.in
-Type: static (httpx + BeautifulSoup)
+Type: hybrid (httpx for listings, Selenium for JS-rendered detail pages)
 
 Strategy:
-- Building projects are split across two sources:
-    1. Master listing page (https://rera.tn.gov.in/registered-building/tn) — holds
-       the current year's (e.g. 2026) projects not yet archived to CMS year pages.
-    2. CMS year-specific pages (https://rera.tn.gov.in/cms/reg_projects_tamilnadu/
-       Building/<YYYY>.php) — discovered via the building CMS index; holds all
-       archived projects from 2017 to the most recent completed year (2025).
-       These pages are fetched in weekly_deep / full / incremental modes.
-- Layout projects are on the master layout listing only
-  (https://rera.tn.gov.in/registered-layout/tn); layout CMS index pages return 404.
+- Listings live on two master pages and use a POST-driven year selector:
+    1. https://rera.tn.gov.in/registered-building/tn
+    2. https://rera.tn.gov.in/registered-layout/tn
+  Each page renders a Laravel CSRF ``_token`` hidden input + a year ``<select>``
+  whose options are the years the portal exposes (currently 2023-2026).
+  Selecting a year submits a POST back to the same URL with ``_token`` + ``year``
+  and returns the full server-rendered table for that year.  Listings are
+  fetched via httpx because they are static HTML; no JS execution required.
 - Each row yields: reg_no, promoter name, project name/description, expiry date,
-  promoter-UUID (public-view1), project-UUID (public-view2), lat/lng, form-C URL
-- For each project: fetch public-view1 (promoter details) and
-  public-view2 (project details) detail pages
-- Documents: form-C QR code PDF + /public/storage/upload/*.pdf links from detail pages
+  promoter-UUID (public-view1), project-UUID (public-view2), lat/lng, form-C URL.
+- Detail pages (public-view1 / public-view2) are JS-rendered, so they go
+  through the shared SeleniumSession.
+- Documents: form-C QR code PDF + /public/storage/upload/*.pdf links from detail pages.
 """
 from __future__ import annotations
 
 import re
 import time
 from datetime import timezone
-from typing import Any
+from typing import Any, Iterator
 
+import httpx
 from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, random_delay
+from core.crawler_base import SeleniumSession, generate_project_key, get_random_ua, get_target_reg_nos, random_delay
 from core.db import (
     get_project_by_key,
     upsert_project,
@@ -94,28 +94,14 @@ def download_response(url, *, logger=None, **_ignored):
     return _session().download(url, logger=logger)
 
 
-BASE_URL              = "https://rera.tn.gov.in"
-CMS_INDEX_URL         = f"{BASE_URL}/cms/reg_projects_building_tamilnadu.php"
-# CMS index pages for layout project types (Normal and Regularisation)
-CMS_LAYOUT_INDEX_URLS = [
-    f"{BASE_URL}/cms/reg_projects_nlayout_tamilnadu.php",
-    f"{BASE_URL}/cms/reg_projects_rlayout_tamilnadu.php",
-]
-# URL templates for each project type (used as fallback when CMS index is unreachable)
-_TYPE_URL_TEMPLATES = {
-    "Building":               f"{BASE_URL}/cms/reg_projects_tamilnadu/Building/{{year}}.php",
-    "Normal_Layout":          f"{BASE_URL}/cms/reg_projects_tamilnadu/Normal_Layout/{{year}}.php",
-    "Regularisation_Layout":  f"{BASE_URL}/cms/reg_projects_tamilnadu/Regularisation_Layout/{{year}}.php",
-}
-# Maps short CMS filename key → _TYPE_URL_TEMPLATES key (for fallback URL generation)
-_LAYOUT_CMS_TO_TYPE: dict[str, str] = {
-    "nlayout": "Normal_Layout",
-    "rlayout": "Regularisation_Layout",
-}
-STATE_CODE       = "TN"
-DOMAIN           = "rera.tn.gov.in"
-# Years present on the portal (oldest to newest; new years auto-discovered from CMS pages)
-_KNOWN_YEARS     = list(range(2017, 2027))
+BASE_URL          = "https://rera.tn.gov.in"
+STATE_CODE        = "TN"
+DOMAIN            = "rera.tn.gov.in"
+# Master listing pages walked by run(); each uses POST-based year selection.
+LISTING_BASE_URLS = (
+    f"{BASE_URL}/registered-building/tn",
+    f"{BASE_URL}/registered-layout/tn",
+)
 
 
 # ── Date utilities ────────────────────────────────────────────────────────────
@@ -150,70 +136,99 @@ def _extract_number(text: str | None) -> float | None:
     return None
 
 
-# ── CMS index → year listing URLs ────────────────────────────────────────────
+# ── Listing HTTP client + POST-driven year walker ────────────────────────────
 
-def _discover_urls_from_cms(index_url: str, logger: CrawlerLogger) -> list[str]:
+# Portal certificate is intermittently expired; we already pin the domain so
+# disabling verification here is the same trade-off the Selenium session makes
+# via ``ignore_certificate_errors=True``.
+_LISTING_TIMEOUT = httpx.Timeout(120.0, connect=30.0)
+
+
+def _make_listing_client() -> httpx.Client:
+    """Return an httpx.Client configured for the TN RERA listing endpoints."""
+    return httpx.Client(
+        verify=False,
+        follow_redirects=True,
+        headers={"User-Agent": get_random_ua()},
+        timeout=_LISTING_TIMEOUT,
+    )
+
+
+def _extract_listing_form(soup: BeautifulSoup) -> tuple[str | None, list[str]]:
+    """Return (csrf_token, years[]) parsed from the master listing's year form."""
+    token = None
+    tok_input = soup.find("input", attrs={"name": "_token"})
+    if tok_input and tok_input.get("value"):
+        token = tok_input["value"].strip()
+    years: list[str] = []
+    sel = soup.find("select", attrs={"name": "year"})
+    if sel:
+        for opt in sel.find_all("option"):
+            val = (opt.get("value") or "").strip()
+            if val.isdigit():
+                years.append(val)
+    return token, years
+
+
+def _iter_listing_rows(
+    logger: CrawlerLogger,
+) -> Iterator[tuple[str, str, list[dict]]]:
     """
-    Fetch one CMS index page and return all year-listing URLs found on it.
-    Matches any /cms/reg_projects_tamilnadu/<Type>/<YYYY>.php pattern.
+    Walk each master listing (building + layout) and yield rows year-by-year.
+
+    For each base URL:
+      1. GET the page → grab CSRF ``_token`` + year ``<select>`` options +
+         the initial table (which corresponds to the first / current year).
+      2. For every subsequent year, POST ``{_token, year}`` back to the same
+         URL and parse the returned table.
+
+    Yields ``(base_url, year_label, rows)`` tuples, newest year first per base.
     """
-    resp = safe_get(index_url, logger=logger, timeout=30.0)
-    if not resp:
-        return []
-    found: list[str] = []
-    seen: set[str] = set()
-    for href in re.findall(
-        r'https?://rera\.tn\.gov\.in/cms/reg_projects_tamilnadu/[^/]+/\d{4}\.php',
-        resp.text,
-    ):
-        if href not in seen:
-            seen.add(href)
-            found.append(href)
-    return found
+    for base_url in LISTING_BASE_URLS:
+        with _make_listing_client() as client:
+            try:
+                resp = client.get(base_url)
+                resp.raise_for_status()
+            except Exception as exc:
+                logger.error(f"Listing GET failed: {exc}", url=base_url)
+                continue
+            soup = BeautifulSoup(resp.text, "html.parser")
+            token, years = _extract_listing_form(soup)
+            if not years:
+                logger.warning("Listing year dropdown not found", url=base_url)
+                continue
+            current_year = years[0]
+            rows = _parse_listing_html(resp.text)
+            logger.info(
+                f"Listing GET parsed: {len(rows)} rows",
+                url=base_url, year=current_year,
+            )
+            yield base_url, current_year, rows
 
-
-def _get_year_listing_urls(logger: CrawlerLogger) -> list[str]:
-    """
-    Fetch all CMS index pages (Building + Layout types) and return all
-    year-specific listing URLs, sorted newest-first.
-    Falls back to _KNOWN_YEARS for each type when the index page is unreachable.
-    """
-    all_urls: list[str] = []
-    seen: set[str] = set()
-
-    # Discover building listing URLs
-    building_urls = _discover_urls_from_cms(CMS_INDEX_URL, logger)
-    if not building_urls:
-        logger.warning("Building CMS index unreachable; using fallback years", url=CMS_INDEX_URL)
-        building_urls = [
-            _TYPE_URL_TEMPLATES["Building"].format(year=y)
-            for y in sorted(_KNOWN_YEARS, reverse=True)
-        ]
-    for u in building_urls:
-        if u not in seen:
-            seen.add(u)
-            all_urls.append(u)
-
-    # Discover layout listing URLs
-    for layout_index in CMS_LAYOUT_INDEX_URLS:
-        layout_urls = _discover_urls_from_cms(layout_index, logger)
-        if not layout_urls:
-            logger.warning("Layout CMS index unreachable; using fallback", url=layout_index)
-            # Derive the type from the index URL filename (nlayout→Normal_Layout, etc.)
-            m = re.search(r"reg_projects_(\w+)_tamilnadu", layout_index, re.I)
-            raw_key = m.group(1).lower() if m else "nlayout"
-            type_key = _LAYOUT_CMS_TO_TYPE.get(raw_key, "Normal_Layout")
-            tmpl = _TYPE_URL_TEMPLATES.get(type_key, _TYPE_URL_TEMPLATES["Normal_Layout"])
-            layout_urls = [tmpl.format(year=y) for y in sorted(_KNOWN_YEARS, reverse=True)]
-        for u in layout_urls:
-            if u not in seen:
-                seen.add(u)
-                all_urls.append(u)
-
-    # Sort newest year first within each type by year number, preserving type grouping
-    all_urls.sort(key=lambda u: re.search(r"(\d{4})\.php", u).group(1), reverse=True)
-    logger.info(f"Discovered {len(all_urls)} year listing URLs (building + layout)")
-    return all_urls
+            if not token:
+                logger.warning(
+                    "CSRF _token missing; skipping POST year walk", url=base_url,
+                )
+                continue
+            for year in years[1:]:
+                try:
+                    resp2 = client.post(
+                        base_url,
+                        data={"_token": token, "year": year},
+                        headers={"Referer": base_url},
+                    )
+                    resp2.raise_for_status()
+                except Exception as exc:
+                    logger.error(
+                        f"Listing POST failed: {exc}", url=base_url, year=year,
+                    )
+                    continue
+                rows = _parse_listing_html(resp2.text)
+                logger.info(
+                    f"Listing POST parsed: {len(rows)} rows",
+                    url=base_url, year=year,
+                )
+                yield base_url, year, rows
 
 
 # ── Listing table parser ──────────────────────────────────────────────────────
@@ -229,7 +244,7 @@ _REGNO_RE = re.compile(
 
 def _parse_listing_row(tds) -> dict | None:
     """
-    Parse one <tr> of a Tamil Nadu building listing table.
+    Parse one <tr> of a Tamil Nadu master listing table (9 columns).
 
     Column layout (0-indexed):
       0 – S.No
@@ -239,148 +254,11 @@ def _parse_listing_row(tds) -> dict | None:
       4 – Approval details (planning/building permission text)
       5 – Expiry / completion date (DD.MM.YYYY or "Completed")
       6 – Links: Promoter Details (view1), Project Details (view2), Lat/Lng span
-      7 – Form C QR code link
-      8 – (empty / reserved)
+      7 – Form C QR code link (image button)
+      8 – Status / reserved (often empty for active projects)
     """
     if len(tds) < 7:
         return None
-
-    # Current portal layout is a flat 8-column listing page with direct PDFs.
-    if len(tds) == 8:
-        td1_text = tds[1].get_text(separator=" ", strip=True)
-        reg_match = _REGNO_RE.search(td1_text)
-        if not reg_match:
-            return None
-        reg_no = reg_match.group(0).strip()
-        dated_m = re.search(r"dated\s+(\d{2}[/-]\d{2}[/-]\d{4})", td1_text, re.I)
-        approved_on = _parse_tn_date(dated_m.group(1).replace("/", "-")) if dated_m else None
-
-        promoter_raw = tds[2].get_text(separator=" ", strip=True)
-        promoter_name = promoter_raw.split(",")[0].strip() if promoter_raw else None
-
-        td3_text = tds[3].get_text(separator=" ", strip=True)
-        # Pattern 1: "Project Name: <name> - <description>" (standard)
-        _pn_m = re.search(r'Project\s+Name\s*:\s*(.+?)\s*-\s*(.+)', td3_text, re.I)
-        # Pattern 2: "Project Name changed from X to Y - description" (name-change notice)
-        _pn_chg = None
-        if not _pn_m:
-            _pn_chg = re.search(
-                r'Project\s+Name\s+changed.*?\bto\b\s*[^\w]?([\w][^\-]{1,80}?)\s*-\s*(.+)',
-                td3_text, re.I,
-            )
-        if _pn_m:
-            project_name = _pn_m.group(1).strip().strip('\u201c\u201d"\'\u2018\u2019')
-            description  = _pn_m.group(2).strip()
-        elif _pn_chg:
-            project_name = _pn_chg.group(1).strip().strip('\u201c\u201d"\'\u2018\u2019')
-            description  = _pn_chg.group(2).strip()
-        else:
-            # No "Project Name:" — fallback name applied in _build_project_record
-            project_name = None
-            description  = td3_text
-
-        approval_url = None
-        approval_a = tds[4].find("a", href=True)
-        if approval_a:
-            href = approval_a["href"]
-            approval_url = href if href.startswith("http") else f"{BASE_URL}{href}"
-
-        td5_text = tds[5].get_text(strip=True)
-        status_text = tds[7].get_text(strip=True) or td5_text
-        is_completed = "completed" in status_text.lower() or "completed" in td5_text.lower()
-        expiry_date = None if is_completed else _parse_tn_date(td5_text.replace("/", "-"))
-
-        td6_html = str(tds[6])
-        td6_soup = tds[6]
-        promoter_uuid = project_uuid = lat = lng = None
-        promoter_full_url = project_full_url = None
-        # Legacy UUID-based detail page links (older projects still served via /public-view1/2)
-        for a in td6_soup.find_all("a", href=True):
-            href = a["href"]
-            uuid_match = _UUID_RE.search(href)
-            if not uuid_match:
-                continue
-            full = href if href.startswith("http") else f"{BASE_URL}{href}"
-            if "public-view1" in href:
-                promoter_uuid = uuid_match.group(0)
-                promoter_full_url = full
-            elif "public-view2" in href:
-                project_uuid = uuid_match.group(0)
-                project_full_url = full
-
-        lat_m = _LAT_RE.search(td6_html)
-        lng_m = _LNG_RE.search(td6_html)
-        if lat_m:
-            lat = lat_m.group(1)
-        if lng_m:
-            lng = lng_m.group(1)
-
-        # -- Document links from td[6]: Form A / Approval Details / Carpet Area PDFs
-        #    (current portal serves static PDFs; formcqr links may still exist on older rows)
-        form_c_url = None
-        docs: list[dict] = []
-        _td6_seen: set[str] = set()
-        for a in td6_soup.find_all("a", href=True):
-            href = a["href"]
-            if href.lower().startswith("javascript"):
-                continue
-            if "formcqr" in href.lower():
-                form_c_url = href if href.startswith("http") else f"{BASE_URL}{href}"
-                continue
-            full = href if href.startswith("http") else f"{BASE_URL}{href}"
-            if full in _td6_seen:
-                continue
-            _td6_seen.add(full)
-            label_text = a.get_text(strip=True) or "document"
-            docs.append({"label": label_text, "type": label_text, "url": full})
-
-        # -- Approval Details from td[4] (may duplicate one td[6] entry; deduplicate)
-        if approval_url and approval_url not in _td6_seen:
-            docs.insert(0, {"label": "Approval Details", "type": "Approval Details", "url": approval_url})
-
-        # -- Work-progress / current-status PDF from td[7] if present
-        for a in tds[7].find_all("a", href=True):
-            href = a["href"]
-            if href.lower().startswith("javascript"):
-                continue
-            if "formcqr" in href.lower():
-                form_c_url = href if href.startswith("http") else f"{BASE_URL}{href}"
-                continue
-            full = href if href.startswith("http") else f"{BASE_URL}{href}"
-            if full not in _td6_seen:
-                _td6_seen.add(full)
-                label_text = a.get_text(strip=True) or "Work Progress"
-                docs.append({"label": label_text, "type": label_text, "url": full})
-
-        if form_c_url:
-            docs.insert(0, {"label": "Form C", "type": "Form C", "url": form_c_url})
-
-        row = {
-            "project_registration_no": reg_no,
-            # TNRERA registration date ("dated DD-MM-YYYY") = planned commencement date.
-            # The planning permission approval date (approved_on_date) comes from the
-            # detail page and will override this field during record assembly.
-            "estimated_commencement_date": approved_on,
-            "approved_on_date": approved_on,
-            "promoter_name": promoter_name,
-            "promoter_raw_text": promoter_raw,
-            "project_name": project_name,
-            "project_description": description or None,
-            "approval_details": approval_url,
-            "estimated_finish_date": expiry_date,
-            "is_completed": is_completed,
-            "status_of_the_project": "Completed" if is_completed else (status_text or None),
-            "promoter_uuid": promoter_uuid,
-            "project_uuid": project_uuid,
-            "latitude": lat,
-            "longitude": lng,
-            "form_c_url": form_c_url,
-            # Use the actual href from the listing to preserve project type (building/layout)
-            "promoter_url": promoter_full_url,
-            "detail_url": project_full_url,
-            "uploaded_documents": docs or None,
-        }
-        return {k: v for k, v in row.items() if v not in (None, "", [], {})}
 
     # td[1]: registration number
     td1_text = tds[1].get_text(separator=" ", strip=True)
@@ -482,13 +360,9 @@ def _parse_listing_row(tds) -> dict | None:
     }
 
 
-def _parse_year_listing(url: str, logger: CrawlerLogger) -> list[dict]:
-    """Fetch a single year listing page and return parsed row dicts."""
-    resp = safe_get(url, logger=logger, timeout=120.0)
-    if not resp:
-        logger.warning("Year listing page fetch failed", url=url)
-        return []
-    soup = BeautifulSoup(resp.text, "html.parser")
+def _parse_listing_html(html: str) -> list[dict]:
+    """Parse a master-listing HTML body and return the list of row dicts."""
+    soup = BeautifulSoup(html, "html.parser")
     rows: list[dict] = []
     for table in soup.find_all("table"):
         for tr in table.find_all("tr"):
@@ -496,7 +370,6 @@ def _parse_year_listing(url: str, logger: CrawlerLogger) -> list[dict]:
             parsed = _parse_listing_row(tds)
             if parsed:
                 rows.append(parsed)
-    logger.info(f"Year listing parsed: {len(rows)} rows", url=url)
     return rows
 
 
@@ -612,6 +485,9 @@ _PROMOTER_LABEL_MAP: dict[str, str] = {
     "mobile no":                      "_phone",
     "phone":                          "_phone",
     "pan number":                     "_pan",
+    "pan card no":                    "_pan",
+    "pan card number":                "_pan",
+    "project developed by":           "_project_developed_by",
     "address":                        "_address",
     "permanent address":              "_address",
     "registered address":             "_address",
@@ -694,6 +570,61 @@ _PROJECT_LABEL_MAP: dict[str, str] = {
     "total project cost":                           "_total_project_cost",
     "development cost":                             "_estimated_construction_cost",
     "estimated construction cost":                  "_estimated_construction_cost",
+    "construction cost":                            "_estimated_construction_cost",
+    # Building / approval characteristics → building_details
+    "usage":                                        "project_type",
+    "type of building":                             "_building_type",
+    "category":                                     "_project_category",
+    "registration applied for":                     "_registration_applied_for",
+    "block details":                                "_block_details",
+    "floor details":                                "_floor_details",
+    "no.of blocks applied now":                     "_no_of_blocks",
+    "no. of blocks applied now":                    "_no_of_blocks",
+    "no. of dwelling units":                        "_no_of_dwelling_units_in_block",
+    "total no. of dwelling units including all phases/villas":
+                                                    "number_of_residential_units",
+    "building license / permit no":                 "_license_no",
+    "building license / permit date":               "_license_date",
+    "building license / permit issued by":          "_license_issued_by",
+    "building license / permit issued in the name of": "_license_issued_to",
+    "license valid upto":                           "_license_valid_upto",
+    "planning permission approval / renewal letter no": "_planning_permission_no",
+    "planning permission issued by":                "_planning_permission_issued_by",
+    "planning permission issued in the name of":    "_planning_permission_issued_to",
+    "validity of planning permission / renewal":    "_planning_permission_validity",
+    # Layout local-body approval
+    "local body approval letter no":                "_local_body_letter_no",
+    "local body approval letter date":              "_local_body_letter_date",
+    "name of the local body":                       "_local_body_name",
+    "permission issued by local body":              "_local_body_issued_by",
+    # Land/area breakdown → land_area_details
+    "site extent(sq.m)":                            "_site_extent",
+    "site extent":                                  "_site_extent",
+    "fsi area (sq.m)":                              "_fsi_area",
+    "fsi area":                                     "_fsi_area",
+    "osr gifted (sq.m)":                            "_osr_gifted",
+    "road area gifted (sq.m)":                      "_road_area_gifted",
+    "plottable area (sq.m)":                        "_plottable_area",
+    "public purpose gifted (tangedco / local body) (sq.m)": "_public_purpose_gifted",
+    "< 60 sq.m (lig residential)":                  "_lig_residential_area",
+    "> 60 sq.m (other residential)":                "_other_residential_area",
+    "commercial":                                   "_commercial_area",
+    "commercial floor area":                        "_commercial_floor_area",
+    "other uses (other than residential / commercial)": "_other_uses_area",
+    # Provided facilities → provided_faciltiy
+    "internal road":                                "_facility_internal_road",
+    "water supply source":                          "_facility_water_supply",
+    "sewage disposal by":                           "_facility_sewage",
+    "solid waste disposal by":                      "_facility_solid_waste",
+    "fire fighting & emergency evacuation services as per msb norms for msb's (ie., more than stilt + 5 floors)":
+                                                    "_facility_fire_fighting",
+    "renewable energy if applicable(provision made in terrace floor)":
+                                                    "_facility_renewable_energy",
+    "amenity building details as per brochure / prospectus / agreement":
+                                                    "_facility_amenity_building",
+    "amenity details as per brochure / prospectus / agreement":
+                                                    "_facility_amenity_details",
+    "clearance / noc":                              "_facility_clearance_noc",
 }
 
 
@@ -814,7 +745,10 @@ def _extract_surveyor_blocks_p1p(soup: BeautifulSoup) -> list[dict]:
     Extract surveyor / professional info from sequential <p1>/<p> form-group pairs
     on the project detail page (layout project format).
     """
-    _PROF_KEYS = ("surveyor name", "architect name", "engineer name", "professional name")
+    _PROF_KEYS = (
+        "surveyor name", "architect name", "engineer name",
+        "contractor name", "professional name",
+    )
 
     all_pairs: list[tuple[str, str, str]] = []
     for fg in soup.find_all("div", class_="form-group"):
@@ -840,6 +774,8 @@ def _extract_surveyor_blocks_p1p(soup: BeautifulSoup) -> list[dict]:
                 role = "Architect"
             elif "engineer" in low_key:
                 role = "Engineer"
+            elif "contractor" in low_key:
+                role = "Contractor"
             else:
                 role = raw_key.replace(" Name", "").replace(" name", "").strip()
             name = val.strip()
@@ -932,6 +868,10 @@ def _parse_promoter_page(url: str, logger: CrawlerLogger) -> dict:
         promoters_details["registration_no"] = mapped["_promoter_reg_no"]
     if mapped.get("_promoter_gst"):
         promoters_details["GSTIN"] = mapped["_promoter_gst"]
+    if mapped.get("_pan"):
+        promoters_details["pan_number"] = mapped["_pan"]
+    if mapped.get("_project_developed_by"):
+        promoters_details["project_developed_by"] = mapped["_project_developed_by"]
     if promoters_details:
         out["promoters_details"] = promoters_details
 
@@ -1111,6 +1051,73 @@ def _parse_project_page(url: str, logger: CrawlerLogger) -> dict:
             cost[tgt] = out.pop(src)
     if cost:
         out["project_cost_detail"] = cost
+
+    # Building / approval characteristics → building_details JSONB
+    building: dict = {}
+    for tgt, src in [
+        ("type_of_building",            "_building_type"),
+        ("category",                    "_project_category"),
+        ("registration_applied_for",    "_registration_applied_for"),
+        ("block_details",               "_block_details"),
+        ("floor_details",               "_floor_details"),
+        ("no_of_blocks",                "_no_of_blocks"),
+        ("no_of_dwelling_units_in_block", "_no_of_dwelling_units_in_block"),
+        ("license_no",                  "_license_no"),
+        ("license_date",                "_license_date"),
+        ("license_issued_by",           "_license_issued_by"),
+        ("license_issued_to",           "_license_issued_to"),
+        ("license_valid_upto",          "_license_valid_upto"),
+        ("planning_permission_no",      "_planning_permission_no"),
+        ("planning_permission_issued_by", "_planning_permission_issued_by"),
+        ("planning_permission_issued_to", "_planning_permission_issued_to"),
+        ("planning_permission_validity", "_planning_permission_validity"),
+        ("local_body_letter_no",        "_local_body_letter_no"),
+        ("local_body_letter_date",      "_local_body_letter_date"),
+        ("local_body_name",             "_local_body_name"),
+        ("local_body_issued_by",        "_local_body_issued_by"),
+    ]:
+        if out.get(src):
+            building[tgt] = out.pop(src)
+    if building:
+        out["building_details"] = building
+
+    # Provided facilities (utilities + amenities) → provided_faciltiy JSONB
+    facilities: dict = {}
+    for tgt, src in [
+        ("internal_road",       "_facility_internal_road"),
+        ("water_supply",        "_facility_water_supply"),
+        ("sewage_disposal",     "_facility_sewage"),
+        ("solid_waste_disposal","_facility_solid_waste"),
+        ("fire_fighting",       "_facility_fire_fighting"),
+        ("renewable_energy",    "_facility_renewable_energy"),
+        ("amenity_building",    "_facility_amenity_building"),
+        ("amenity_details",     "_facility_amenity_details"),
+        ("clearance_noc",       "_facility_clearance_noc"),
+    ]:
+        if out.get(src):
+            facilities[tgt] = out.pop(src)
+    if facilities:
+        out["provided_faciltiy"] = facilities
+
+    # Land area breakdown → land_area_details JSONB
+    land_breakdown: dict = {}
+    for tgt, src in [
+        ("site_extent",            "_site_extent"),
+        ("fsi_area",               "_fsi_area"),
+        ("osr_gifted",             "_osr_gifted"),
+        ("road_area_gifted",       "_road_area_gifted"),
+        ("plottable_area",         "_plottable_area"),
+        ("public_purpose_gifted",  "_public_purpose_gifted"),
+        ("lig_residential_area",   "_lig_residential_area"),
+        ("other_residential_area", "_other_residential_area"),
+        ("commercial_area",        "_commercial_area"),
+        ("commercial_floor_area",  "_commercial_floor_area"),
+        ("other_uses_area",        "_other_uses_area"),
+    ]:
+        if out.get(src):
+            land_breakdown[tgt] = out.pop(src)
+    if land_breakdown:
+        out["land_area_details"] = land_breakdown
 
     # Professional information — try table format first, fall back to p1/p blocks
     professionals = _extract_professionals_table(soup)
@@ -1444,21 +1451,21 @@ def _build_project_record(
 
 def _fetch_sentinel_listing_row(reg_no: str, detail_url: str, logger: CrawlerLogger) -> dict | None:
     """
-    Look up the sentinel project's listing row in the master listing page.
+    Look up the sentinel project's listing row across the master listings.
     Used to retrieve fields only available from the listing (e.g. estimated_commencement_date).
     """
-    listing_url = f"{BASE_URL}/registered-building/tn"
-    rows = _parse_year_listing(listing_url, logger)
-    for row in rows:
-        if row.get("project_registration_no", "").upper() == reg_no.upper():
-            logger.info(
-                "Sentinel: found listing row",
-                reg=reg_no, listing_url=listing_url, step="sentinel",
-            )
-            return row
+    target = reg_no.upper()
+    for base_url, year, rows in _iter_listing_rows(logger):
+        for row in rows:
+            if (row.get("project_registration_no") or "").upper() == target:
+                logger.info(
+                    "Sentinel: found listing row",
+                    reg=reg_no, listing_url=base_url, year=year, step="sentinel",
+                )
+                return row
 
     logger.warning(
-        "Sentinel listing lookup: project not found in master listing",
+        "Sentinel listing lookup: project not found in master listings",
         reg=reg_no, step="sentinel",
     )
     return None
@@ -1654,52 +1661,24 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     if mode == "full":
         reset_checkpoint(site_id, mode)
 
-    # ── Build year URL list ──────────────────────────────────────────────────
-    # The master building listing only exposes current-year projects (e.g. 2026)
-    # that have not yet been archived to the CMS year-specific pages.
-    # Historical projects (2017-2025) live on CMS year pages which are
-    # auto-discovered from the CMS index and must be included for a full refresh.
-    # Layout CMS index pages return 404; the master layout listing is the only
-    # source for layout projects and covers all years.
-    year_urls: list[str] = [f"{BASE_URL}/registered-building/tn"]
-
-    if mode in ("weekly_deep", "full", "incremental"):
-        # Discover CMS building year pages (2017-2025)
-        cms_building_urls = _discover_urls_from_cms(CMS_INDEX_URL, logger)
-        if not cms_building_urls:
-            logger.warning(
-                "Building CMS index unreachable; falling back to known years",
-                url=CMS_INDEX_URL,
-            )
-            cms_building_urls = [
-                _TYPE_URL_TEMPLATES["Building"].format(year=y)
-                for y in sorted(_KNOWN_YEARS, reverse=True)
-            ]
-        seen_urls: set[str] = {year_urls[0]}
-        for url in cms_building_urls:
-            if url not in seen_urls:
-                seen_urls.add(url)
-                year_urls.append(url)
-        logger.info(
-            f"Added {len(year_urls) - 1} CMS building year pages to crawl queue",
-            cms_urls=cms_building_urls,
-        )
-
-    year_urls.append(f"{BASE_URL}/registered-layout/tn")
-    logger.info("Crawling listings", url_count=len(year_urls))
+    # ── Iterate master listings via POST-driven year walk ────────────────────
+    # _iter_listing_rows() yields (base_url, year, rows) tuples for each
+    # master listing × year combination, newest year first.  The two master
+    # listings (building + layout) cover everything the portal currently
+    # exposes (2023-2026 at time of writing); pre-2024 archived CMS pages
+    # are intentionally not scraped (the portal does not publish detail-page
+    # links for those rows).
+    logger.info("Crawling master listings (POST year walk)", bases=list(LISTING_BASE_URLS))
 
     machine_name, machine_ip = get_machine_context()
 
     t0 = time.monotonic()
     first_listing_logged = False
-    for year_index, year_url in enumerate(year_urls):
+    for year_index, (year_url, year_label, rows) in enumerate(_iter_listing_rows(logger)):
         if year_index < last_page:
             continue
-        year_label = re.search(r"(\d{4})\.php", year_url)
-        year_label = year_label.group(1) if year_label else year_url
 
-        logger.info(f"Crawling year {year_label}", url=year_url)
-        rows = _parse_year_listing(year_url, logger)
+        logger.info(f"Crawling year {year_label}", url=year_url, rows=len(rows))
         if not rows:
             logger.warning(f"No rows found for year {year_label}", url=year_url)
             continue

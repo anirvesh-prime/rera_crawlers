@@ -55,11 +55,15 @@ class TamilNaduTargetedCrawlTests(unittest.TestCase):
         def build_record(row, promoter_data, project_data, config_id, run_id):
             return {"project_registration_no": row["project_registration_no"]}
 
+        rows = self._rows()
+
+        def fake_iter_listings(logger):
+            yield "https://rera.tn.gov.in/registered-building/tn", "2026", rows
+
         sentinel = mock.MagicMock(return_value=True)
         patches = [
             mock.patch.object(tamil_nadu_rera, "_sentinel_check", sentinel),
-            mock.patch.object(tamil_nadu_rera, "_discover_urls_from_cms", return_value=[]),
-            mock.patch.object(tamil_nadu_rera, "_parse_year_listing", return_value=self._rows()),
+            mock.patch.object(tamil_nadu_rera, "_iter_listing_rows", side_effect=fake_iter_listings),
             mock.patch.object(tamil_nadu_rera, "_build_project_record", side_effect=build_record),
             mock.patch.object(tamil_nadu_rera, "load_checkpoint", return_value={}),
             mock.patch.object(tamil_nadu_rera, "save_checkpoint"),

@@ -5,13 +5,7 @@ Tests for two Tamil Nadu RERA crawler fixes:
      checkpoint in the DB.  (Bug: interrupted weekly_deep left a checkpoint that
      caused the next run to silently skip thousands of projects.)
 
-  2. CMS year-specific building pages (/cms/reg_projects_tamilnadu/Building/<YYYY>.php)
-     must be included in the crawl queue for weekly_deep / full / incremental modes,
-     but NOT for daily_light / single modes.
-     (Bug: run() only used the master listing — 165 rows — and missed ~2 934 archived
-     building projects from 2017-2025.)
-
-  3. Safety guard: if last_project_key is not found anywhere in a listing (e.g. the
+  2. Safety guard: if last_project_key is not found anywhere in a listing (e.g. the
      listing was reordered or the project was removed), the key must be cleared after
      that listing so subsequent listings are NOT silently skipped wholesale.
 """
@@ -35,9 +29,8 @@ _CONFIG = {
     "state_code": "TN",
 }
 
-_FAKE_CMS_URL = (
-    "https://rera.tn.gov.in/cms/reg_projects_tamilnadu/Building/2024.php"
-)
+_BUILDING_URL = "https://rera.tn.gov.in/registered-building/tn"
+_LAYOUT_URL   = "https://rera.tn.gov.in/registered-layout/tn"
 
 _REG_A = "TN/01/BLG/0001/2024"
 _REG_B = "TN/01/BLG/0002/2024"
@@ -62,25 +55,20 @@ def _row(reg_no: str) -> dict:
 
 def _make_patches(
     checkpoint: dict,
-    rows_by_url_substr: dict[str, list[dict]],
-    cms_urls: list[str] | None = None,
+    listings: list[tuple[str, str, list[dict]]],
     item_limit: int = 0,
 ) -> list:
     """
     Build the minimal set of mock.patch.object calls needed to exercise run()
     without any network, DB, or S3 I/O.
 
-    rows_by_url_substr maps a URL substring → list of row dicts that
-    _parse_year_listing should return for that URL.
+    ``listings`` is the sequence of (base_url, year, rows) tuples that the
+    fake _iter_listing_rows generator will yield, in order.
     """
-    if cms_urls is None:
-        cms_urls = [_FAKE_CMS_URL]
 
-    def fake_parse_listing(url, logger):
-        for substr, rows in rows_by_url_substr.items():
-            if substr in url:
-                return rows
-        return []
+    def fake_iter_listings(logger):
+        for tup in listings:
+            yield tup
 
     def fake_build_record(row, pd, pj, cfg, rid):
         return {"project_registration_no": row["project_registration_no"]}
@@ -93,8 +81,7 @@ def _make_patches(
         mock.patch.object(tamil_nadu_rera, "load_checkpoint", return_value=checkpoint),
         mock.patch.object(tamil_nadu_rera, "save_checkpoint"),
         mock.patch.object(tamil_nadu_rera, "reset_checkpoint"),
-        mock.patch.object(tamil_nadu_rera, "_discover_urls_from_cms", return_value=cms_urls),
-        mock.patch.object(tamil_nadu_rera, "_parse_year_listing", side_effect=fake_parse_listing),
+        mock.patch.object(tamil_nadu_rera, "_iter_listing_rows", side_effect=fake_iter_listings),
         mock.patch.object(tamil_nadu_rera, "_parse_promoter_page", return_value={}),
         mock.patch.object(tamil_nadu_rera, "_parse_project_page", return_value={}),
         mock.patch.object(tamil_nadu_rera, "_build_project_record", side_effect=fake_build_record),
@@ -118,11 +105,10 @@ class TestWeeklyDeepIgnoresCheckpoint(unittest.TestCase):
     def _run(self, mode: str, checkpoint: dict, rows_building: list) -> dict:
         patches = _make_patches(
             checkpoint=checkpoint,
-            rows_by_url_substr={
-                "registered-building": rows_building,
-                "registered-layout": [],
-                "2024.php": [],
-            },
+            listings=[
+                (_BUILDING_URL, "2026", rows_building),
+                (_LAYOUT_URL,   "2026", []),
+            ],
         )
         with ExitStack() as stack:
             for p in patches:
@@ -184,11 +170,10 @@ class TestCheckpointSafetyGuard(unittest.TestCase):
 
         patches = _make_patches(
             checkpoint=checkpoint,
-            rows_by_url_substr={
-                "registered-building": [_row(_REG_A), _row(_REG_B)],
-                "2024.php": [],
-                "registered-layout": [_row(_REG_LAYOUT)],
-            },
+            listings=[
+                (_BUILDING_URL, "2026", [_row(_REG_A), _row(_REG_B)]),
+                (_LAYOUT_URL,   "2026", [_row(_REG_LAYOUT)]),
+            ],
         )
         with ExitStack() as stack:
             for p in patches:
@@ -207,11 +192,10 @@ class TestCheckpointSafetyGuard(unittest.TestCase):
 
         patches = _make_patches(
             checkpoint=checkpoint,
-            rows_by_url_substr={
-                "registered-building": [_row(_REG_A), _row(_REG_B)],
-                "2024.php": [],
-                "registered-layout": [_row(_REG_LAYOUT)],
-            },
+            listings=[
+                (_BUILDING_URL, "2026", [_row(_REG_A), _row(_REG_B)]),
+                (_LAYOUT_URL,   "2026", [_row(_REG_LAYOUT)]),
+            ],
         )
         with ExitStack() as stack:
             for p in patches:
@@ -221,84 +205,6 @@ class TestCheckpointSafetyGuard(unittest.TestCase):
         # REG_A skipped (checkpoint), REG_B processed, REG_LAYOUT processed
         self.assertEqual(counts["projects_skipped"], 1)
         self.assertEqual(counts["projects_updated"], 2)
-
-
-# ── Test suite 3: CMS year pages in the crawl queue ──────────────────────────
-
-class TestCMSYearPagesInQueue(unittest.TestCase):
-    """CMS building year pages must be queued in the right modes."""
-
-    _CMS_2025 = "https://rera.tn.gov.in/cms/reg_projects_tamilnadu/Building/2025.php"
-    _CMS_2024 = "https://rera.tn.gov.in/cms/reg_projects_tamilnadu/Building/2024.php"
-
-    def _fetched_urls(self, mode: str, cms_urls: list[str]) -> list[str]:
-        captured: list[str] = []
-
-        def fake_parse(url, logger):
-            captured.append(url)
-            return []
-
-        patches = [
-            mock.patch.object(tamil_nadu_rera, "_sentinel_check", return_value=True),
-            mock.patch.object(tamil_nadu_rera, "load_checkpoint", return_value={}),
-            mock.patch.object(tamil_nadu_rera, "save_checkpoint"),
-            mock.patch.object(tamil_nadu_rera, "reset_checkpoint"),
-            mock.patch.object(tamil_nadu_rera, "_discover_urls_from_cms", return_value=cms_urls),
-            mock.patch.object(tamil_nadu_rera, "_parse_year_listing", side_effect=fake_parse),
-            mock.patch.object(tamil_nadu_rera, "get_machine_context", return_value=("host", "127.0.0.1")),
-            mock.patch.object(tamil_nadu_rera, "random_delay"),
-            mock.patch.object(settings, "CRAWL_ITEM_LIMIT", 0),
-        ]
-        with ExitStack() as stack:
-            for p in patches:
-                stack.enter_context(p)
-            tamil_nadu_rera.run(_CONFIG, run_id=10, mode=mode)
-
-        return captured
-
-    def test_weekly_deep_fetches_cms_year_pages(self):
-        urls = self._fetched_urls("weekly_deep", [self._CMS_2025, self._CMS_2024])
-        self.assertIn("https://rera.tn.gov.in/registered-building/tn", urls)
-        self.assertIn(self._CMS_2025, urls)
-        self.assertIn(self._CMS_2024, urls)
-        self.assertIn("https://rera.tn.gov.in/registered-layout/tn", urls)
-        self.assertEqual(len(urls), 4)  # master_building + 2 CMS + master_layout
-
-    def test_full_fetches_cms_year_pages(self):
-        urls = self._fetched_urls("full", [self._CMS_2025])
-        self.assertIn(self._CMS_2025, urls)
-        self.assertEqual(len(urls), 3)  # master_building + 1 CMS + master_layout
-
-    def test_incremental_fetches_cms_year_pages(self):
-        urls = self._fetched_urls("incremental", [self._CMS_2024])
-        self.assertIn(self._CMS_2024, urls)
-        self.assertEqual(len(urls), 3)
-
-    def test_daily_light_does_not_fetch_cms_year_pages(self):
-        urls = self._fetched_urls("daily_light", [self._CMS_2025])
-        self.assertNotIn(self._CMS_2025, urls,
-                         "daily_light must not crawl CMS year pages")
-        self.assertEqual(len(urls), 2,
-                         "daily_light must only fetch master building + master layout")
-
-    def test_single_does_not_fetch_cms_year_pages(self):
-        urls = self._fetched_urls("single", [self._CMS_2025])
-        self.assertNotIn(self._CMS_2025, urls)
-        self.assertEqual(len(urls), 2)
-
-    def test_cms_fallback_used_when_discover_returns_empty(self):
-        """When _discover_urls_from_cms returns [], known-years fallback kicks in."""
-        urls = self._fetched_urls("weekly_deep", [])
-        self.assertIn("https://rera.tn.gov.in/registered-building/tn", urls)
-        self.assertIn("https://rera.tn.gov.in/registered-layout/tn", urls)
-        self.assertGreater(len(urls), 2,
-                           "fallback year pages must be appended when CMS index unreachable")
-
-    def test_cms_urls_not_duplicated(self):
-        """Duplicate URLs returned by _discover_urls_from_cms must appear only once."""
-        urls = self._fetched_urls("weekly_deep", [self._CMS_2025, self._CMS_2025])
-        self.assertEqual(urls.count(self._CMS_2025), 1,
-                         "each CMS URL must appear exactly once in the queue")
 
 
 if __name__ == "__main__":

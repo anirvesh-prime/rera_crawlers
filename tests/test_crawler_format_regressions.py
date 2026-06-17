@@ -113,6 +113,8 @@ class CrawlerFormatRegressionTests(unittest.TestCase):
         self.assertNotIn("promoter_address_raw", parsed)
 
     def test_tamil_nadu_current_listing_branch_preserves_detail_links(self):
+        # 9-column master listing row layout: S.No, Reg+date, Promoter, Project,
+        # Approval text, Expiry date, Links/lat-lng, FormC img, Status/empty.
         html = """
         <tr>
           <td>1</td>
@@ -124,10 +126,10 @@ class CrawlerFormatRegressionTests(unittest.TestCase):
           <td>
             <a href="/public-view1/building/pfirm/3c289c20-ca91-11f0-bd54-ef6224abb025">Promoter</a>
             <a href="/public-view2/building/pfirm/060e6e00-cab8-11f0-a493-1dc986406559">Project</a>
-            Latitude 12.770558 Longitude 80.186468
-            <a href="/formcqr/3c2c3140-ca91-11f0-be7a-49ff3448b535">Form C</a>
+            <span>Latitude 12.770558 Longitude 80.186468</span>
           </td>
-          <td>Under Construction</td>
+          <td><a href="/formcqr/3c2c3140-ca91-11f0-be7a-49ff3448b535"><img alt="" /></a></td>
+          <td></td>
         </tr>
         """
         row = BeautifulSoup(html, "lxml").find_all("td")
