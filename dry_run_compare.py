@@ -274,14 +274,16 @@ def _listing_patches_maharashtra(module, sample_url: str, reg_no: str, sample: d
 
 
 def _listing_patches_gujarat(module, sample_url: str, reg_no: str, sample: dict) -> list:
-    """Bypass the map-API listing phase and directly inject the sample project ID.
+    """Bypass the bulk-enumeration phase by injecting a stub for the sample project.
 
     Gujarat's run() has two phases:
-      Phase 1 — _fetch_all_project_ids(page, logger) → list[int]  (all project IDs)
-      Phase 2 — scrape each detail page via Selenium
+      Phase 1 — _fetch_listing_stubs(page, logger) → list[dict]  (all stubs from
+                the ~18 MB dashboard enumeration endpoint)
+      Phase 2 — scrape each project's detail page via Selenium
 
-    We patch _fetch_all_project_ids to return only the known-good project ID
-    extracted from the sample's data.project_id (base64-encoded integer).
+    We patch _fetch_listing_stubs to return a single-element list containing
+    the sample project's stub (proj_id + reg_no are mandatory; other fields
+    are passed through from the sample for parity with the real flow).
     """
     import base64, re as _re
 
@@ -307,11 +309,22 @@ def _listing_patches_gujarat(module, sample_url: str, reg_no: str, sample: dict)
         print("  [GUJARAT] Could not determine project ID from sample — Phase 1 will run normally")
         return []
 
-    print(f"  [GUJARAT] Injecting project ID {proj_id} directly (bypassing map-API listing)")
+    stub = {
+        "proj_id":                  proj_id,
+        "project_registration_no":  reg_no,
+        "project_name":             sample.get("project_name"),
+        "project_type":             sample.get("project_type"),
+        "promoter_name":            sample.get("promoter_name"),
+        "project_city":             sample.get("project_city"),
+        "approved_on_date":         sample.get("approved_on_date"),
+        "estimated_finish_date":    sample.get("estimated_finish_date"),
+    }
+
+    print(f"  [GUJARAT] Injecting stub for proj_id={proj_id} (bypassing bulk enumeration)")
     return [
-        # Patch _fetch_all_project_ids (the new map-API listing function) to return
-        # only the sample project ID — avoids fetching the full ~14 MB locations payload.
-        patch.object(module, "_fetch_all_project_ids", return_value=[proj_id]),
+        # Patch _fetch_listing_stubs (the bulk dashboard enumeration) to return
+        # only the sample project's stub — avoids fetching the full ~18 MB payload.
+        patch.object(module, "_fetch_listing_stubs", return_value=[stub]),
     ]
 
 

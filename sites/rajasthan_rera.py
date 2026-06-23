@@ -945,17 +945,14 @@ def _fetch_viewproject_html(page, logger: CrawlerLogger) -> str | None:
 
     Returns the popup HTML string, or None if the link isn't found.
     """
-    # Wait for Angular to finish rendering the detail divs
-    page.wait_for_timeout(3_000)
-
-    # Use JS to find the ViewProject href — element.href is already fully encoded.
-    # When multiple "Updated project" links exist (one per periodic update), pick
-    # the one whose surrounding text has the latest "as of DD/MM/YYYY" date.
-    viewproject_url: str | None = page.evaluate("""() => {
+    # Wait for Angular to finish rendering the detail divs.
+    # The site uses "as on DD/MM/YYYY" (not "as of") in the label — the regex
+    # covers both variants.
+    _VIEWPROJECT_JS = """() => {
         const links = Array.from(document.querySelectorAll('a[href*="ViewProject"]'));
 
-        // Collect all "Updated project" links and parse their "as of" date.
-        const DATE_RE = /as\\s+of\\s+(\\d{1,2})[\\/-](\\d{1,2})[\\/-](\\d{4})/i;
+        // Collect all "Updated project" links and parse their date (as of / as on).
+        const DATE_RE = /as\\s+(?:of|on)\\s+(\\d{1,2})[\\/-](\\d{1,2})[\\/-](\\d{4})/i;
         let bestLink = null;
         let bestVal  = -1;
 
@@ -978,7 +975,50 @@ def _fetch_viewproject_html(page, logger: CrawlerLogger) -> str | None:
         // If no "Updated project" links at all, fall back to the first ViewProject link.
         const chosen = bestLink || links[0];
         return chosen ? chosen.href : null;
-    }""")
+    }"""
+
+    page.wait_for_timeout(3_000)
+    viewproject_url: str | None = page.evaluate(_VIEWPROJECT_JS)
+
+    if not viewproject_url:
+        # Tabs may not have been clicked yet (Angular renders them lazily).
+        # Click any remaining inactive tabs and retry once.
+        # Also log diagnostic info to help debug future structure changes.
+        try:
+            diag = page.evaluate("""() => {
+                const allLinks = Array.from(document.querySelectorAll('a[href]'))
+                    .map(a => a.href).filter(h => h && !h.startsWith('javascript'));
+                const vpLinks = allLinks.filter(h => h.toLowerCase().includes('viewproject'));
+                const detailDivs = Array.from(document.querySelectorAll('div.details')).length;
+                const tabs = Array.from(document.querySelectorAll('div.tab')).length;
+                return {allLinks: allLinks.length, vpLinks, detailDivs, tabs};
+            }""")
+            logger.info(
+                f"ViewProject retry diagnostic: "
+                f"total_links={diag.get('allLinks', '?')} "
+                f"vp_links={diag.get('vpLinks', [])} "
+                f"detail_divs={diag.get('detailDivs', '?')} "
+                f"tabs={diag.get('tabs', '?')}",
+                step="detail",
+            )
+        except Exception:
+            pass
+
+        logger.info(
+            "ViewProject link not found — clicking tabs and retrying", step="detail"
+        )
+        try:
+            tabs = page.locator("div.tab:not(.selected)").all()
+            for tab in tabs:
+                try:
+                    tab.click(timeout=5_000)
+                    page.wait_for_timeout(1_000)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        page.wait_for_timeout(3_000)
+        viewproject_url = page.evaluate(_VIEWPROJECT_JS)
 
     if not viewproject_url:
         logger.warning("ViewProject link not found on detail page", step="detail")
@@ -1011,8 +1051,15 @@ def _scrape_detail_html_via_browser(
     Returns (data_dict, doc_links).
     """
     try:
+        # Wait for Angular to render the tab bar before attempting to click tabs.
+        # Without this, _try_expand_tabs finds no elements and silently exits
+        # while the ViewProject link remains hidden behind an unclicked tab.
+        try:
+            page.wait_for_selector("div.tab", timeout=8_000)
+        except Exception:
+            pass  # proceed even if the selector never appears
         _try_expand_tabs(page)
-        page.wait_for_timeout(1_000)
+        page.wait_for_timeout(2_000)
         soup = BeautifulSoup(page.content(), "lxml")
         data = _parse_detail_html(soup)
         docs = _parse_detail_docs(soup)

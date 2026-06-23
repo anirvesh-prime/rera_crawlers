@@ -1323,10 +1323,18 @@ class SeleniumPageAdapter:
         pass  # session lifecycle owned by the caller
 
     # ── scripts ──────────────────────────────────────────────────────────────
+    # Match async arrow / async function at the start of the script (after an
+    # optional wrapping paren).  These return Promises that Selenium's sync
+    # execute_script would never await, so they must be routed through
+    # execute_async_script with a callback wrapper.
+    _ASYNC_RE = re.compile(r"^\s*\(?\s*async\b")
+
     def evaluate(self, script: str, *args):
         # Selenium wraps top-level expressions like "() => ..."; convert to
         # Selenium's execute_script (which expects a body, not an arrow IIFE).
         s = script.strip()
+        if self._ASYNC_RE.match(s):
+            return self._evaluate_async(script, *args)
         if s.startswith("(") and "=>" in s:
             # () => EXPR  or  (a, b) => { ... } — wrap as (FN)(...arguments)
             wrapped = f"return ({script}).apply(null, arguments);"
@@ -1335,6 +1343,28 @@ class SeleniumPageAdapter:
         else:
             wrapped = script if "return" in s else f"return ({script});"
         return self._driver.execute_script(wrapped, *args)
+
+    def _evaluate_async(self, script: str, *args):
+        """Run an async JS function and await its promise via execute_async_script.
+
+        The user's args are exposed to the JS via ``arguments[0..N-1]``; the
+        last entry is the Selenium callback, used here to resolve the promise.
+        Returns the resolved value, or raises ``RuntimeError`` with the JS
+        error message on rejection.
+        """
+        wrapped = (
+            "const _cb = arguments[arguments.length - 1];"
+            "const _args = Array.prototype.slice.call(arguments, 0, -1);"
+            f"Promise.resolve(({script}).apply(null, _args))"
+            " .then(function(v) { _cb({__ok:true, value:v}); },"
+            "       function(e) { _cb({__ok:false, error:(e && e.message) ? e.message : String(e)}); });"
+        )
+        result = self._driver.execute_async_script(wrapped, *args)
+        if isinstance(result, dict) and "__ok" in result:
+            if result["__ok"]:
+                return result.get("value")
+            raise RuntimeError(f"async evaluate failed: {result.get('error')}")
+        return result
 
     def evaluate_handle(self, script: str, *args):
         return self.evaluate(script, *args)
