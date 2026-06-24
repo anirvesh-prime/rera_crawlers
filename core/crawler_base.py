@@ -498,6 +498,7 @@ class SeleniumSession:
         window_size: str = "1920,1080",
         eager: bool = True,
         block_images: bool = True,
+        headless: bool = True,
         extra_chrome_args: tuple[str, ...] = (),
     ):
         self.ignore_certificate_errors = ignore_certificate_errors
@@ -507,6 +508,7 @@ class SeleniumSession:
         self.window_size = window_size
         self.eager = eager
         self.block_images = block_images
+        self.headless = headless
         self.extra_chrome_args = tuple(extra_chrome_args)
         self._driver = None
         self._lock = threading.Lock()
@@ -526,7 +528,8 @@ class SeleniumSession:
         from webdriver_manager.chrome import ChromeDriverManager
 
         opts = _ChromeOptions()
-        opts.add_argument("--headless=new")
+        if self.headless:
+            opts.add_argument("--headless=new")
         opts.add_argument("--no-sandbox")
         opts.add_argument("--disable-dev-shm-usage")
         opts.add_argument("--disable-gpu")

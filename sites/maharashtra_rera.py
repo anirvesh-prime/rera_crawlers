@@ -740,7 +740,113 @@ def _parse_mh_building_tab(soup: BeautifulSoup, out: dict) -> None:
                 except (ValueError, TypeError):
                     out["project_cost_detail"] = {"estimated_construction_cost": value}   # FIELD: project_cost_detail <- form label in _COST_LABELS (str)
 
-    # Building unit details from wing/unit summary table
+    def _table_headers(table) -> list[str]:
+        headers = [th.get_text(strip=True) for th in table.select("thead th")]
+        if headers:
+            return headers
+        first_row = table.select_one("tr")
+        return [c.get_text(strip=True) for c in first_row.find_all(["th", "td"])] if first_row else []
+
+    def _clean_unit_count(value: str | None) -> str | None:
+        if value is None:
+            return None
+        text = value.strip().replace(",", "")
+        if not text or text.lower() in {"none", "null", "n/a", "na", "-"}:
+            return None
+        try:
+            number = float(text)
+        except ValueError:
+            return None
+        if number <= 0:
+            return None
+        return str(int(number)) if number.is_integer() else str(number)
+
+    def _rows_by_headers(table, headers: list[str]) -> list[dict[str, str]]:
+        rows: list[dict[str, str]] = []
+        for tr in table.select("tbody tr"):
+            cells = [td.get_text(strip=True) for td in tr.find_all("td")]
+            if not cells or cells[0].strip().lower() == "total":
+                continue
+            row = {headers[i].strip().lower(): cells[i] for i in range(min(len(headers), len(cells)))}
+            rows.append(row)
+        return rows
+
+    # Prefer the explicit Summary of Apartments/Units / plotted inventory tables.
+    # The adjacent Building Details table has sanctioned wing metadata and often
+    # lacks the actual residential/commercial unit split required downstream.
+    summary_units: list[dict] = []
+    for table in soup.select("table"):
+        raw_headers = _table_headers(table)
+        headers = [h.lower() for h in raw_headers]
+
+        if any("apartment type" in h for h in headers) and any("number of apartment" in h for h in headers):
+            rows = _rows_by_headers(table, raw_headers)
+            for row in rows:
+                unit_count = _clean_unit_count(row.get("number of apartment"))
+                if not unit_count:
+                    continue
+                apt_type = row.get("apartment type") or "Apartment"
+                entry = {
+                    "flat_type": apt_type if "apartment" in apt_type.lower() else f"{apt_type} Apartment",
+                    "no_of_units": unit_count,
+                }
+                if row.get("carpet area (in sqmts)"):
+                    entry["carpet_area"] = row["carpet area (in sqmts)"]
+                if row.get("building name"):
+                    entry["block_name"] = row["building name"]
+                summary_units.append(entry)
+            continue
+
+        res_idx = next((
+            i for i, h in enumerate(headers)
+            if "non-residential" not in h
+            and ("residential apartments" in h or "residential apartments/ units" in h)
+        ), None)
+        non_res_idx = next((i for i, h in enumerate(headers) if "non-residential apartments" in h or "non-residential apartments/ units" in h), None)
+        name_idx = next((i for i, h in enumerate(headers) if "identification of building" in h or "building name" in h), None)
+        if res_idx is not None or non_res_idx is not None:
+            for tr in table.select("tbody tr"):
+                cells = [td.get_text(strip=True) for td in tr.find_all("td")]
+                if not cells or cells[0].strip().lower() == "total":
+                    continue
+                block_name = cells[name_idx] if name_idx is not None and name_idx < len(cells) else ""
+                if res_idx is not None and res_idx < len(cells):
+                    unit_count = _clean_unit_count(cells[res_idx])
+                    if unit_count:
+                        entry = {"flat_type": "Residential Apartment", "no_of_units": unit_count}
+                        if block_name:
+                            entry["block_name"] = block_name
+                        summary_units.append(entry)
+                if non_res_idx is not None and non_res_idx < len(cells):
+                    unit_count = _clean_unit_count(cells[non_res_idx])
+                    if unit_count:
+                        entry = {"flat_type": "Commercial Unit", "no_of_units": unit_count}
+                        if block_name:
+                            entry["block_name"] = block_name
+                        summary_units.append(entry)
+            continue
+
+        plot_idx = next((i for i, h in enumerate(headers) if "total no of plots" in h), None)
+        plot_name_idx = next((i for i, h in enumerate(headers) if "plot details" in h), None)
+        if plot_idx is not None:
+            for tr in table.select("tbody tr"):
+                cells = [td.get_text(strip=True) for td in tr.find_all("td")]
+                if not cells or cells[0].strip().lower() == "total" or plot_idx >= len(cells):
+                    continue
+                unit_count = _clean_unit_count(cells[plot_idx])
+                if not unit_count:
+                    continue
+                plot_name = cells[plot_name_idx] if plot_name_idx is not None and plot_name_idx < len(cells) else "Plot"
+                summary_units.append({
+                    "flat_type": f"Residential {plot_name}".strip(),
+                    "no_of_units": unit_count,
+                })
+
+    if summary_units:
+        out["building_details"] = summary_units   # FIELD: building_details <- Summary of Apartments/Units / plot inventory rows
+        return
+
+    # Fallback: wing/unit metadata table when no explicit inventory summary exists.
     for table in soup.select("table"):
         headers = [th.get_text(strip=True).lower() for th in table.select("thead th")]
         if not any("wing" in h or "identification" in h for h in headers):

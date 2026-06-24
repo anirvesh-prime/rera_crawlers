@@ -15,6 +15,8 @@ import unittest
 from contextlib import ExitStack
 from unittest import mock
 
+from bs4 import BeautifulSoup
+
 from core.config import settings
 from sites import maharashtra_rera
 
@@ -118,6 +120,78 @@ class MaharashtraTargetedCrawlTests(unittest.TestCase):
             )
         sentinel.assert_called_once()
         self.assertFalse(counts["sentinel_passed"])
+
+
+class MaharashtraBuildingDetailsTests(unittest.TestCase):
+    def _parse_building_details(self, html: str) -> list[dict]:
+        out: dict = {}
+        maharashtra_rera._parse_mh_building_tab(BeautifulSoup(html, "lxml"), out)
+        return out.get("building_details") or []
+
+    def test_old_summary_apartment_type_table_feeds_legacy_units(self):
+        details = self._parse_building_details("""
+            <table>
+              <thead><tr>
+                <th>#</th><th>Building Name</th><th>Apartment Type</th>
+                <th>Carpet Area (in Sqmts)</th><th>Number of Apartment</th>
+              </tr></thead>
+              <tbody>
+                <tr><td>1</td><td>AANAND SHILP APARTMENT</td><td>3BHK</td><td>71.7</td><td>4</td></tr>
+                <tr><td>2</td><td>AANAND SHILP APARTMENT</td><td>2BHK</td><td>63.5</td><td>1</td></tr>
+              </tbody>
+            </table>
+        """)
+        self.assertEqual(details, [
+            {
+                "flat_type": "3BHK Apartment",
+                "no_of_units": "4",
+                "carpet_area": "71.7",
+                "block_name": "AANAND SHILP APARTMENT",
+            },
+            {
+                "flat_type": "2BHK Apartment",
+                "no_of_units": "1",
+                "carpet_area": "63.5",
+                "block_name": "AANAND SHILP APARTMENT",
+            },
+        ])
+
+    def test_new_summary_residential_and_non_residential_columns_split_units(self):
+        details = self._parse_building_details("""
+            <table>
+              <thead><tr>
+                <th>#</th><th>Identification of Building/ Wing as per Sanctioned Plan</th>
+                <th>Identification of Wing as per Sanctioned Plan</th><th>Floor Type</th>
+                <th>Total No. Of Residential Apartments/ Units</th>
+                <th>Total No. Of Non-Residential Apartments/ Units</th>
+                <th>Total Apartments / Unit (NR+R)</th>
+              </tr></thead>
+              <tbody>
+                <tr><td>1</td><td>Dipti Opal Bay</td><td></td><td>Habitable Floor</td><td>35</td><td>2</td><td>37</td></tr>
+                <tr><td>Total</td><td>35</td><td>2</td><td>37</td></tr>
+              </tbody>
+            </table>
+        """)
+        self.assertEqual(details, [
+            {"flat_type": "Residential Apartment", "no_of_units": "35", "block_name": "Dipti Opal Bay"},
+            {"flat_type": "Commercial Unit", "no_of_units": "2", "block_name": "Dipti Opal Bay"},
+        ])
+
+    def test_plotted_inventory_table_becomes_residential_plot_units(self):
+        details = self._parse_building_details("""
+            <table>
+              <thead><tr>
+                <th>#</th><th>Plot Details</th><th>Total No of Plots</th>
+                <th>Permission Issued No of Plots</th><th>Remarks</th><th>View</th>
+              </tr></thead>
+              <tbody>
+                <tr><td>1</td><td>OPEN PLOTS</td><td>67</td><td>67</td><td></td><td></td></tr>
+              </tbody>
+            </table>
+        """)
+        self.assertEqual(details, [
+            {"flat_type": "Residential OPEN PLOTS", "no_of_units": "67"},
+        ])
 
 
 if __name__ == "__main__":
