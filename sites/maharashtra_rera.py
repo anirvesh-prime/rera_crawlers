@@ -70,6 +70,18 @@ DETAIL_BASE  = "https://maharerait.maharashtra.gov.in"
 STATE_CODE   = "MH"
 DOMAIN       = "maharera.maharashtra.gov.in"
 
+# Aggressive timing profile. Maharashtra's detail page is CAPTCHA-gated; long
+# waits make failed CAPTCHA/API states very expensive at scale.
+_MH_PAGE_TIMEOUT_MS = 25_000
+_MH_RELOAD_TIMEOUT_MS = 20_000
+_MH_CAPTCHA_CANVAS_TIMEOUT_MS = 6_000
+_MH_POST_SUBMIT_IDLE_TIMEOUT_MS = 3_000
+_MH_DATA_LABEL_TIMEOUT_MS = 8_000
+_MH_FALLBACK_LABEL_TIMEOUT_MS = 2_000
+_MH_DETAIL_IDLE_TIMEOUT_MS = 5_000
+_MH_DETAIL_SECOND_IDLE_TIMEOUT_MS = 3_000
+_MH_DOC_DOWNLOAD_TIMEOUT_S = 20
+
 # ── MH RERA document API endpoints (discovered via live network inspection) ───
 _MH_DOC_API_BASE = (
     f"{DETAIL_BASE}/api/maha-rera-public-view-project-registration-service"
@@ -104,6 +116,9 @@ def _session() -> SeleniumSession:
         _SESSION = SeleniumSession(
             ignore_certificate_errors=True,
             window_size="800,800",
+            page_load_timeout=_MH_PAGE_TIMEOUT_MS / 1000,
+            script_timeout=35,
+            client_timeout=70,
         )
     return _SESSION
 
@@ -282,7 +297,7 @@ _CAPTCHA_INTERCEPT_SCRIPT = """
 """
 
 
-_MAX_CAPTCHA_ATTEMPTS = 10
+_MAX_CAPTCHA_ATTEMPTS = 3
 
 _MH_UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -319,18 +334,18 @@ def _do_scrape_mh_detail(cert_id: str, logger: CrawlerLogger, browser=None) -> d
         pass
     page = page_adapter(sess)
     try:
-        page.goto(url, timeout=45_000)
+        page.goto(url, timeout=_MH_PAGE_TIMEOUT_MS)
 
         captcha_solved = False
         for attempt in range(1, _MAX_CAPTCHA_ATTEMPTS + 1):
             logger.info(f"Captcha attempt {attempt}/{_MAX_CAPTCHA_ATTEMPTS}", step="captcha")
 
             canvas_ready = wait_for_captcha_canvas(
-                page, "canvas", timeout_ms=20_000, logger=logger
+                page, "canvas", timeout_ms=_MH_CAPTCHA_CANVAS_TIMEOUT_MS, logger=logger
             )
             if not canvas_ready:
                 logger.warning("Canvas not ready — refreshing page", step="captcha")
-                page.reload(timeout=45_000)
+                page.reload(timeout=_MH_RELOAD_TIMEOUT_MS)
                 continue
 
             # Primary: canvas fillText interception — the init script patches
@@ -372,7 +387,7 @@ def _do_scrape_mh_detail(cert_id: str, logger: CrawlerLogger, browser=None) -> d
                 logger.warning(
                     f"Captcha solve failed on attempt {attempt} — refreshing", step="captcha"
                 )
-                page.reload(timeout=45_000)
+                page.reload(timeout=_MH_RELOAD_TIMEOUT_MS)
                 continue
 
             page.fill("input[name='captcha']", captcha_value)
@@ -382,7 +397,7 @@ def _do_scrape_mh_detail(cert_id: str, logger: CrawlerLogger, browser=None) -> d
             # networkidle gives Angular time to finish its XHR calls before
             # we inspect the DOM — more reliable than a fixed sleep(2).
             try:
-                page.wait_for_load_state("networkidle", timeout=10_000)
+                page.wait_for_load_state("networkidle", timeout=_MH_POST_SUBMIT_IDLE_TIMEOUT_MS)
             except Exception:
                 pass  # timeout is non-fatal; we still inspect the DOM below
 
@@ -407,7 +422,7 @@ def _do_scrape_mh_detail(cert_id: str, logger: CrawlerLogger, browser=None) -> d
                 pass
 
             if captcha_invalid:
-                page.reload(timeout=45_000)
+                page.reload(timeout=_MH_RELOAD_TIMEOUT_MS)
                 continue
 
             # Wait for Angular to render data — label.bg-blue.f-w-700 holds
@@ -415,7 +430,7 @@ def _do_scrape_mh_detail(cert_id: str, logger: CrawlerLogger, browser=None) -> d
             # Angular's data API calls complete (not just form structure).
             # Fall back to the broader form-label selector if it doesn't appear.
             try:
-                page.wait_for_selector("label.bg-blue.f-w-700", timeout=20_000)
+                page.wait_for_selector("label.bg-blue.f-w-700", timeout=_MH_DATA_LABEL_TIMEOUT_MS)
                 logger.info("CAPTCHA accepted — Angular data loaded", step="captcha")
                 captcha_solved = True
                 break
@@ -424,7 +439,10 @@ def _do_scrape_mh_detail(cert_id: str, logger: CrawlerLogger, browser=None) -> d
 
             # Broader fallback — catches older project page layouts
             try:
-                page.wait_for_selector("label.form-label, .col-md-4 .f-s-15", timeout=5_000)
+                page.wait_for_selector(
+                    "label.form-label, .col-md-4 .f-s-15",
+                    timeout=_MH_FALLBACK_LABEL_TIMEOUT_MS,
+                )
                 logger.info("CAPTCHA accepted — Angular form loaded (fallback)", step="captcha")
                 captcha_solved = True
                 break
@@ -435,7 +453,7 @@ def _do_scrape_mh_detail(cert_id: str, logger: CrawlerLogger, browser=None) -> d
                 f"No Angular content after submit on attempt {attempt} — refreshing",
                 step="captcha",
             )
-            page.reload(timeout=45_000)
+            page.reload(timeout=_MH_RELOAD_TIMEOUT_MS)
 
         if not captcha_solved:
             logger.error(
@@ -1081,7 +1099,7 @@ def _handle_mh_document(
             method="POST",
             json_data={"fileName": filename, "documentId": dms_ref},
             headers=headers,
-            timeout=60,
+            timeout=_MH_DOC_DOWNLOAD_TIMEOUT_S,
         )
         if not r or r.status_code != 200 or len(r.content) < 100:
             logger.warning(
@@ -1203,7 +1221,7 @@ def _extract_mh_html_fields(page, cert_id: str, logger: CrawlerLogger) -> dict:
 
     # Wait for Angular to finish rendering / API calls
     try:
-        page.wait_for_load_state("networkidle", timeout=20_000)
+        page.wait_for_load_state("networkidle", timeout=_MH_DETAIL_IDLE_TIMEOUT_MS)
     except Exception:
         logger.warning("networkidle timeout — scraping page as-is", step="detail")
 
@@ -1212,12 +1230,15 @@ def _extract_mh_html_fields(page, cert_id: str, logger: CrawlerLogger) -> dict:
     # API calls complete (unlike label.form-label which is just form structure).
     angular_ready = False
     try:
-        page.wait_for_selector("label.bg-blue.f-w-700", timeout=20_000)
+        page.wait_for_selector("label.bg-blue.f-w-700", timeout=_MH_DATA_LABEL_TIMEOUT_MS)
         angular_ready = True
     except Exception:
         # Broader fallback for older project layouts
         try:
-            page.wait_for_selector("label.form-label, .col-md-4 .f-s-15", timeout=5_000)
+            page.wait_for_selector(
+                "label.form-label, .col-md-4 .f-s-15",
+                timeout=_MH_FALLBACK_LABEL_TIMEOUT_MS,
+            )
             angular_ready = True
         except Exception:
             logger.warning("Angular data labels not found on detail page", step="detail")
@@ -1234,7 +1255,7 @@ def _extract_mh_html_fields(page, cert_id: str, logger: CrawlerLogger) -> dict:
     # info, bank details, partner tables) after the registration number appears.
     # A short extra wait lets those requests complete before we snapshot the HTML.
     try:
-        page.wait_for_load_state("networkidle", timeout=10_000)
+        page.wait_for_load_state("networkidle", timeout=_MH_DETAIL_SECOND_IDLE_TIMEOUT_MS)
     except Exception:
         pass  # non-fatal; proceed with whatever is rendered
 
