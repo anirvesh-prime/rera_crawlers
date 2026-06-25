@@ -82,6 +82,9 @@ _MH_DETAIL_SETTLE_TIMEOUT_MS = 2_500
 _MH_DETAIL_QUIET_MS = 350
 _MH_DOC_DOWNLOAD_TIMEOUT_S = 20
 _MH_DETAIL_DELAY_RANGE = (0.15, 0.35)
+_MH_LISTING_CARD_SELECTOR = "div.shadow.rounded"
+_MH_LISTING_CARD_TIMEOUT_MS = 5_000
+_MH_EMPTY_LISTING_RETRIES = 2
 
 # ── MH RERA document API endpoints (discovered via live network inspection) ───
 _MH_DOC_API_BASE = (
@@ -280,6 +283,50 @@ def _parse_cards(soup: BeautifulSoup) -> list[dict]:
             "data":                    extra_data or None,      # FIELD: data <- extra_data dict (or None)
         })
     return projects
+
+
+def _listing_debug_summary(soup: BeautifulSoup) -> str:
+    """Short page summary for diagnosing transient non-listing responses."""
+    title = soup.title.get_text(strip=True) if soup.title else ""
+    body = soup.get_text(" ", strip=True)
+    body = re.sub(r"\s+", " ", body)[:240]
+    return f"title={title!r} body={body!r}"
+
+
+def _get_listing_page(
+    url: str,
+    logger: CrawlerLogger,
+    *,
+    retries: int,
+) -> tuple[BeautifulSoup | None, list[dict]]:
+    """
+    Fetch and parse one listing page, waiting for card DOM when eager page-load
+    returns before the listing markup is visible.
+    """
+    resp = safe_get(url, retries=retries, logger=logger)
+    if not resp:
+        return None, []
+
+    soup = BeautifulSoup(resp.text, "lxml")
+    cards = _parse_cards(soup)
+    if cards:
+        return soup, cards
+
+    # The listing is server-rendered in normal cases, but Chrome's eager load
+    # strategy can occasionally hand back page_source before the card container
+    # is in the DOM. Re-check the live browser DOM before declaring it empty.
+    try:
+        page = page_adapter(_session())
+        page.wait_for_selector(
+            _MH_LISTING_CARD_SELECTOR,
+            state="attached",
+            timeout=_MH_LISTING_CARD_TIMEOUT_MS,
+        )
+        soup = BeautifulSoup(page.content(), "lxml")
+        cards = _parse_cards(soup)
+    except Exception:
+        pass
+    return soup, cards
 
 
 # ── Maharashtra detail API helpers ───────────────────────────────────────────
@@ -1509,14 +1556,12 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
     # ── Determine total pages ────────────────────────────────────────────────
     t0 = _time.monotonic()
-    resp0 = safe_get(LISTING_URL, retries=3, logger=logger)
-    if not resp0:
+    soup0, cards0 = _get_listing_page(LISTING_URL, logger, retries=3)
+    if soup0 is None:
         logger.error("Could not fetch first listing page", step="listing")
         return counters
 
-    soup0       = BeautifulSoup(resp0.text, "lxml")
     total_pages = _get_total_pages(soup0)
-    cards0      = _parse_cards(soup0)
     logger.timing("search", _time.monotonic() - t0, rows=len(cards0))
     # projects_found is accumulated across every listing page actually walked
     # (incremented per page below) so every reg-no in the state is enumerated
@@ -1549,20 +1594,53 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
         if page_no == 0:
             soup = soup0
+            cards = cards0
         else:
-            resp = safe_get(url, retries=config.get("max_retries", 3), logger=logger)
-            if not resp:
+            soup, cards = _get_listing_page(
+                url, logger, retries=config.get("max_retries", 3)
+            )
+            if soup is None:
                 insert_crawl_error(run_id, config["id"], "HTTP_ERROR", f"page {page_no} fetch failed", url)
                 counters["error_count"] += 1
                 if not processing_done:
                     random_delay(*delay_range)
                 continue
-            soup = BeautifulSoup(resp.text, "lxml")
 
-        cards = _parse_cards(soup) if page_no != 0 else cards0
         if not cards:
-            logger.warning(f"No cards on page {page_no} — stopping", step="listing")
-            break
+            is_catalog_tail = page_no >= total_pages - 1
+            if not is_catalog_tail:
+                retry_cards: list[dict] = []
+                retry_soup = soup
+                for empty_attempt in range(1, _MH_EMPTY_LISTING_RETRIES + 1):
+                    logger.warning(
+                        f"No cards on page {page_no + 1} before catalog end — "
+                        f"retry {empty_attempt}/{_MH_EMPTY_LISTING_RETRIES}; "
+                        f"{_listing_debug_summary(retry_soup) if retry_soup else 'no response'}",
+                        step="listing",
+                    )
+                    _quit_driver()
+                    retry_soup, retry_cards = _get_listing_page(
+                        url, logger, retries=config.get("max_retries", 3)
+                    )
+                    if retry_cards:
+                        soup = retry_soup
+                        cards = retry_cards
+                        break
+                if not cards:
+                    insert_crawl_error(
+                        run_id,
+                        config["id"],
+                        "LISTING_EMPTY_PAGE",
+                        f"page {page_no + 1} parsed no cards before catalog end; continuing",
+                        url,
+                    )
+                    counters["error_count"] += 1
+                    if not processing_done:
+                        random_delay(*delay_range)
+                    continue
+            else:
+                logger.warning(f"No cards on final page {page_no + 1} — stopping", step="listing")
+                break
 
         # ── Targeted filtering ───────────────────────────────────────────────
         # Keep only the requested registration number(s); the page walk stops
