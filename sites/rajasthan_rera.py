@@ -544,7 +544,8 @@ def _extract_kv_from_html(soup: BeautifulSoup) -> dict[str, str]:
     # Strategy 2: Bootstrap row with two-column label + value layout
     for row in soup.find_all(class_=re.compile(r"\brow\b")):
         cols = [c for c in row.children
-                if hasattr(c, "get_text") and re.search(r"\bcol\b", " ".join(c.get("class", [])))]
+                if hasattr(c, "get_text") and hasattr(c, "get")
+                and re.search(r"\bcol\b", " ".join(c.get("class", [])))]
         if len(cols) >= 2:
             label = _clean(cols[0].get_text())
             value = _clean(cols[1].get_text())
@@ -1074,7 +1075,10 @@ def _fetch_viewproject_html(page, logger: CrawlerLogger) -> str | None:
     # The site uses "as on DD/MM/YYYY" (not "as of") in the label — the regex
     # covers both variants.
     _VIEWPROJECT_JS = """() => {
-        const links = Array.from(document.querySelectorAll('a[href*="ViewProject"]'));
+        const links = Array.from(document.querySelectorAll('a[href*="ViewProject"]'))
+            // ViewProjectNew is the compact printable summary. The richer legacy
+            // popup remains available as /ViewProject?id=...&type=U/O.
+            .filter(a => /\\/ViewProject\\?/i.test(a.href));
 
         // Collect all "Updated project" links and parse their date (as of / as on).
         const DATE_RE = /as\\s+(?:of|on)\\s+(\\d{1,2})[\\/-](\\d{1,2})[\\/-](\\d{4})/i;
@@ -1082,9 +1086,10 @@ def _fetch_viewproject_html(page, logger: CrawlerLogger) -> str | None:
         let bestVal  = -1;
 
         for (const a of links) {
-            const p = a.closest('div.details');
-            if (!p || !p.textContent.includes('Updated project')) continue;
-            const m = DATE_RE.exec(p.textContent);
+            const p = a.closest('div.details, tr, td, p, li, div') || a.parentElement;
+            const text = p ? p.textContent : a.textContent;
+            if (!text || !/Updated project/i.test(text)) continue;
+            const m = DATE_RE.exec(text);
             if (m) {
                 // Build a numeric YYYYMMDD so we can compare without Date parsing.
                 const val = parseInt(m[3]) * 10000
@@ -1098,7 +1103,9 @@ def _fetch_viewproject_html(page, logger: CrawlerLogger) -> str | None:
         }
 
         // If no "Updated project" links at all, fall back to the first ViewProject link.
-        const chosen = bestLink || links[0];
+        const chosen = bestLink
+            || links.find(a => /type=U/i.test(a.href))
+            || links[0];
         return chosen ? chosen.href : null;
     }"""
 
@@ -1176,6 +1183,13 @@ def _scrape_detail_html_via_browser(
     Returns (data_dict, doc_links).
     """
     try:
+        # The current ProjectDetail page already contains the rich
+        # /ViewProject?id=...&type=U link. Fetch it before clicking any tabs:
+        # a "Project at a Glance" tab/link can route the browser to
+        # ViewProjectNew, which no longer has those rich ViewProject links.
+        page.wait_for_timeout(2_000)
+        popup_html = _fetch_viewproject_html(page, logger)
+
         # Wait for Angular to render the tab bar before attempting to click tabs.
         # Without this, _try_expand_tabs finds no elements and silently exits
         # while the ViewProject link remains hidden behind an unclicked tab.
@@ -1190,7 +1204,6 @@ def _scrape_detail_html_via_browser(
         docs = _parse_detail_docs(soup)
 
         # ── Open the full-detail popup and merge richer fields ────────────────
-        popup_html = _fetch_viewproject_html(page, logger)
         if popup_html:
             popup_soup = BeautifulSoup(popup_html, "lxml")
             rich = _parse_viewproject_html(popup_soup)
