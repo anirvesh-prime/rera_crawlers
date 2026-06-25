@@ -163,7 +163,7 @@ _STATE_JSON_FIELD_ALLOWED_KEYS: dict[str, dict[str, set[str]]] = {
         "promoter_contact_details": {"email", "phone"},
     },
     "rajasthan": {
-        "project_location_raw": {"state", "taluk", "village", "locality", "pin_code", "raw_address", "house_no_building_name"},
+        "project_location_raw": {"state", "district", "taluk", "village", "locality", "pin_code", "raw_address", "house_no_building_name"},
         "data": {"temp", "type", "no_of_plots", "is_processed", "land_area_unit", "construction_area_unit"},
     },
     "tamil_nadu": {

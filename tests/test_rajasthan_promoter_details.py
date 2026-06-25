@@ -3,9 +3,13 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock, patch
 
+from bs4 import BeautifulSoup
+
 from sites.rajasthan_rera import (
     BASE_URL,
     _build_doc_url,
+    _parse_detail_docs,
+    _parse_detail_html,
     _is_real_document,
     _resolve_relative_url,
 )
@@ -85,6 +89,81 @@ class TestBuildUrlHelpers(unittest.TestCase):
         self.assertIsNotNone(result)
 
 
+class TestCurrentViewProjectNewParser(unittest.TestCase):
+
+    def test_inline_label_layout_extracts_core_fields(self):
+        html = """
+        <div id="pdfContent">
+          <table>
+            <tr><td>
+              <p><span class="label">Project Name:</span> VENTURA</p>
+              <p><span class="label">Rajasthan RERA Reg. No.:</span> RAJ/P/2024/3058</p>
+              <p><span class="label">Project Address:</span> Khasra No./ Plot No.PLOT NO O-35 A , Village- JAIPUR , 6-D ENGINEERS COLONY , Jaipur - 302021 (Rajasthan)</p>
+              <p><span class="label">Tehsil:</span> Sanganer</p>
+              <p><span class="label">District:</span> Jaipur</p>
+              <p><span class="label">State:</span> Rajasthan</p>
+            </td></tr>
+          </table>
+          <table>
+            <tr>
+              <td><span class="label">Project Type:</span> Group Housing</td>
+              <td><span class="label">Actual Commencement Date:</span> 01-01-2024</td>
+            </tr>
+            <tr>
+              <td><span class="label">Estimated Finish Date:</span> 31-12-2026</td>
+              <td><span class="label">Total Area of Project:</span> 2429.23 Sq Mtrs</td>
+            </tr>
+            <tr>
+              <td><span class="label">Saleable Area:</span> 16681 Sq Mtrs</td>
+              <td><span class="label">Project Status:</span> COMPLETED</td>
+            </tr>
+          </table>
+          <table>
+            <tr><th colspan="2">Promoter Details</th></tr>
+            <tr>
+              <td><span class="label">Promoter Name:</span> J S BUILDCOM</td>
+              <td><span class="label">Promoter Type:</span> Partnership Firm</td>
+            </tr>
+            <tr><td><span class="label">Mobile Number:</span> 9460005613</td></tr>
+            <tr><td><span class="label">Office Address:</span> SHOP NO A-181, JAIPUR</td></tr>
+            <tr><td><span class="label">Partners:</span> JAMANA DEVI, SHWETA DALMIA</td></tr>
+            <tr><td><span class="label">Project Estimated Cost (Rs.):</span> 300000000</td></tr>
+          </table>
+        </div>
+        """
+
+        parsed = _parse_detail_html(BeautifulSoup(html, "lxml"))
+
+        self.assertEqual(parsed["project_name"], "VENTURA")
+        self.assertEqual(parsed["project_registration_no"], "RAJ/P/2024/3058")
+        self.assertEqual(parsed["project_type"], "group-housing")
+        self.assertEqual(parsed["actual_commencement_date"], "2024-01-01 00:00:00+00:00")
+        self.assertEqual(parsed["estimated_finish_date"], "2026-12-31 00:00:00+00:00")
+        self.assertEqual(parsed["land_area"], 2429.23)
+        self.assertEqual(parsed["construction_area"], 16681.0)
+        self.assertEqual(parsed["status_of_the_project"], "COMPLETED")
+        self.assertEqual(parsed["project_city"], "Jaipur")
+        self.assertEqual(parsed["project_location_raw"]["pin_code"], "302021")
+        self.assertEqual(parsed["promoter_contact_details"]["phone"], "9460005613")
+        self.assertEqual(parsed["promoters_details"]["type_of_firm"], "Partnership Firm")
+        self.assertEqual(parsed["members_details"], [{"name": "JAMANA DEVI"}, {"name": "SHWETA DALMIA"}])
+        self.assertEqual(parsed["project_cost_detail"]["estimated_project_cost"], "300000000")
+
+    def test_current_layout_ignores_footer_document_links(self):
+        html = """
+        <app-viewprojectnew>
+          <div id="pdfContent">
+            <p><span class="label">Project Name:</span> VENTURA</p>
+          </div>
+        </app-viewprojectnew>
+        <footer>
+          <a href="https://reraapp.rajasthan.gov.in/Content/pdf/Real_Estate_Act_2016.pdf">Act</a>
+        </footer>
+        """
+
+        self.assertEqual(_parse_detail_docs(BeautifulSoup(html, "lxml")), [])
+
+
 # NOTE: TestFetchProjectDetail, TestIterWebsiteDocuments,
 # TestIterViewProjectDocuments, TestExtractViewProjectFields, and
 # TestNewFieldsExtraction tested the old JSON-API based implementation
@@ -95,4 +174,3 @@ class TestBuildUrlHelpers(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
