@@ -194,5 +194,34 @@ class MaharashtraBuildingDetailsTests(unittest.TestCase):
         ])
 
 
+class MaharashtraDetailStatusTests(unittest.TestCase):
+    class _FakePage:
+        def __init__(self, status: str):
+            self.status = status
+
+        def evaluate(self, script: str):
+            if "__augNetPending" in script:
+                return 0
+            return self.status
+
+    def test_detail_status_detector_returns_data_immediately(self):
+        page = self._FakePage("data")
+
+        status = maharashtra_rera._wait_for_mh_detail_status(
+            page, timeout_ms=1_000, quiet_ms=0,
+        )
+
+        self.assertEqual(status, "data")
+
+    def test_detail_status_detector_prioritizes_invalid_captcha(self):
+        page = self._FakePage("invalid")
+
+        status = maharashtra_rera._wait_for_mh_detail_status(
+            page, timeout_ms=1_000, quiet_ms=0,
+        )
+
+        self.assertEqual(status, "invalid")
+
+
 if __name__ == "__main__":
     unittest.main()

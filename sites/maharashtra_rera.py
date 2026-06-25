@@ -75,12 +75,13 @@ DOMAIN       = "maharera.maharashtra.gov.in"
 _MH_PAGE_TIMEOUT_MS = 25_000
 _MH_RELOAD_TIMEOUT_MS = 20_000
 _MH_CAPTCHA_CANVAS_TIMEOUT_MS = 6_000
-_MH_POST_SUBMIT_IDLE_TIMEOUT_MS = 3_000
+_MH_POST_SUBMIT_READY_TIMEOUT_MS = 9_000
 _MH_DATA_LABEL_TIMEOUT_MS = 8_000
 _MH_FALLBACK_LABEL_TIMEOUT_MS = 2_000
-_MH_DETAIL_IDLE_TIMEOUT_MS = 5_000
-_MH_DETAIL_SECOND_IDLE_TIMEOUT_MS = 3_000
+_MH_DETAIL_SETTLE_TIMEOUT_MS = 2_500
+_MH_DETAIL_QUIET_MS = 350
 _MH_DOC_DOWNLOAD_TIMEOUT_S = 20
+_MH_DETAIL_DELAY_RANGE = (0.15, 0.35)
 
 # ── MH RERA document API endpoints (discovered via live network inspection) ───
 _MH_DOC_API_BASE = (
@@ -305,6 +306,94 @@ _MH_UA = (
 )
 
 
+_MH_DETAIL_STATUS_SCRIPT = """
+() => {
+    const visible = (el) => !!(
+        el && (el.offsetWidth || el.offsetHeight || el.getClientRects().length)
+    );
+    const body = document.body;
+    const text = body ? (body.innerText || "") : "";
+    if (/captcha\\s+is\\s+not\\s+valid/i.test(text)) return "invalid";
+
+    const values = Array.from(document.querySelectorAll(".f-w-700, .text-font"))
+        .filter(visible)
+        .map((el) => (el.textContent || "").trim())
+        .filter((value) => value && value !== "-");
+    const bgLabels = Array.from(document.querySelectorAll("label.bg-blue.f-w-700"))
+        .filter(visible)
+        .map((el) => (el.textContent || "").trim())
+        .filter(Boolean);
+    const hasRegValue = values.some((value) => /^P[A-Z0-9]{8,}$/i.test(value));
+    const hasRegLabel = bgLabels.some((value) => /registration\\s+(number|no|date)/i.test(value));
+    const hasSection = /Project Address Details|Promoter Details|Building Details|Bank Details|Summary of/i.test(text);
+
+    if ((bgLabels.length >= 2 && (hasRegLabel || hasRegValue)) ||
+        (bgLabels.length >= 1 && values.length >= 8) ||
+        (hasSection && values.length >= 6)) {
+        return "data";
+    }
+
+    const captchaInput = document.querySelector("input[name='captcha']");
+    if (visible(captchaInput)) return "captcha";
+    return "";
+}
+"""
+
+
+def _mh_detail_status(page) -> str:
+    """Return the rendered MH detail state: data, invalid, captcha, or empty."""
+    try:
+        return str(page.evaluate(_MH_DETAIL_STATUS_SCRIPT) or "")
+    except Exception:
+        return ""
+
+
+def _mh_pending_requests(page) -> int:
+    """Return the adapter's in-page XHR/fetch counter, defaulting to unknown=0."""
+    try:
+        return int(page.evaluate("() => window.__augNetPending || 0") or 0)
+    except Exception:
+        return 0
+
+
+def _wait_for_mh_detail_status(
+    page,
+    *,
+    timeout_ms: int,
+    quiet_ms: int = 0,
+    poll_ms: int = 100,
+) -> str:
+    """
+    Poll concrete DOM/API signals instead of sleeping for page-load events.
+
+    Returns as soon as the page shows invalid CAPTCHA, or once data content is
+    visible and the XHR/fetch counter has been quiet for quiet_ms.
+    """
+    deadline = _time.monotonic() + (timeout_ms / 1000.0)
+    quiet_since: float | None = None
+    saw_data = False
+    last_status = ""
+    while _time.monotonic() < deadline:
+        status = _mh_detail_status(page)
+        last_status = status or last_status
+        if status == "invalid":
+            return status
+        if status == "data":
+            saw_data = True
+            if quiet_ms <= 0:
+                return status
+            if _mh_pending_requests(page) == 0:
+                quiet_since = quiet_since or _time.monotonic()
+                if (_time.monotonic() - quiet_since) * 1000 >= quiet_ms:
+                    return status
+            else:
+                quiet_since = None
+        else:
+            quiet_since = None
+        _time.sleep(poll_ms / 1000.0)
+    return "data" if saw_data else last_status
+
+
 def _do_scrape_mh_detail(cert_id: str, logger: CrawlerLogger, browser=None) -> dict:
     """Inner detail scrape using the shared SeleniumSession.
 
@@ -393,13 +482,13 @@ def _do_scrape_mh_detail(cert_id: str, logger: CrawlerLogger, browser=None) -> d
             page.fill("input[name='captcha']", captcha_value)
             page.click("button.next")
 
-            # Wait for network to settle after submit, then check outcome.
-            # networkidle gives Angular time to finish its XHR calls before
-            # we inspect the DOM — more reliable than a fixed sleep(2).
-            try:
-                page.wait_for_load_state("networkidle", timeout=_MH_POST_SUBMIT_IDLE_TIMEOUT_MS)
-            except Exception:
-                pass  # timeout is non-fatal; we still inspect the DOM below
+            # Detect submit outcome from concrete DOM signals instead of
+            # waiting for generic page-load/network-idle states. The Angular
+            # route stays on the same URL, so the fastest reliable signal is
+            # either the invalid-captcha modal text or populated data labels.
+            submit_status = _wait_for_mh_detail_status(
+                page, timeout_ms=_MH_POST_SUBMIT_READY_TIMEOUT_MS
+            )
 
             # Check explicitly for "Captcha is not valid" error (mirrors old
             # crawler's verifier() check) before waiting for Angular content.
@@ -409,19 +498,28 @@ def _do_scrape_mh_detail(cert_id: str, logger: CrawlerLogger, browser=None) -> d
             # text and every subsequent attempt would submit a concatenated
             # wrong answer.
             captcha_invalid = False
-            try:
-                invalid_el = page.query_selector("h2:text('Captcha is not valid.')")
-                if invalid_el and invalid_el.is_visible():
-                    captcha_invalid = True
-                    logger.info(f"Captcha invalid on attempt {attempt} — reloading for fresh captcha", step="captcha")
-                    try:
-                        page.click("button.confirm", timeout=3_000)
-                    except Exception:
-                        pass
-            except Exception:
-                pass
+            if submit_status == "invalid":
+                captcha_invalid = True
+                logger.info(f"Captcha invalid on attempt {attempt} — reloading for fresh captcha", step="captcha")
+                try:
+                    page.click("button.confirm", timeout=1_000)
+                except Exception:
+                    pass
 
             if captcha_invalid:
+                page.reload(timeout=_MH_RELOAD_TIMEOUT_MS)
+                continue
+
+            if submit_status == "data":
+                logger.info("CAPTCHA accepted — Angular data loaded", step="captcha")
+                captcha_solved = True
+                break
+
+            if submit_status == "captcha":
+                logger.warning(
+                    f"Captcha form still visible after submit on attempt {attempt} — refreshing",
+                    step="captcha",
+                )
                 page.reload(timeout=_MH_RELOAD_TIMEOUT_MS)
                 continue
 
@@ -1215,25 +1313,24 @@ def _extract_mh_html_fields(page, cert_id: str, logger: CrawlerLogger) -> dict:
     """
     Scrape all detail fields from the rendered Angular page on maharerait.
     The site renders all sections in a single HTML page (no tab-click navigation
-    needed). We wait for network idle so Angular finishes its API calls.
+    needed). We wait on concrete data labels and the adapter's in-page
+    XHR/fetch counter rather than generic page-load states.
     """
     out: dict = {}
-
-    # Wait for Angular to finish rendering / API calls
-    try:
-        page.wait_for_load_state("networkidle", timeout=_MH_DETAIL_IDLE_TIMEOUT_MS)
-    except Exception:
-        logger.warning("networkidle timeout — scraping page as-is", step="detail")
 
     # Confirm data-populated Angular content is present — label.bg-blue.f-w-700
     # carries the registration number and is only rendered after Angular's data
     # API calls complete (unlike label.form-label which is just form structure).
-    angular_ready = False
-    try:
-        page.wait_for_selector("label.bg-blue.f-w-700", timeout=_MH_DATA_LABEL_TIMEOUT_MS)
-        angular_ready = True
-    except Exception:
-        # Broader fallback for older project layouts
+    detail_status = _wait_for_mh_detail_status(
+        page,
+        timeout_ms=_MH_DETAIL_SETTLE_TIMEOUT_MS,
+        quiet_ms=_MH_DETAIL_QUIET_MS,
+    )
+    angular_ready = detail_status == "data"
+
+    if not angular_ready:
+        # One compatibility fallback for older layouts that do not expose the
+        # blue registration labels used by the current Angular page.
         try:
             page.wait_for_selector(
                 "label.form-label, .col-md-4 .f-s-15",
@@ -1244,20 +1341,12 @@ def _extract_mh_html_fields(page, cert_id: str, logger: CrawlerLogger) -> dict:
             logger.warning("Angular data labels not found on detail page", step="detail")
 
     if not angular_ready:
-        # Still on captcha or an error page — no project data to extract
+        # Still on captcha or an error page — no project data to extract.
         logger.error(
             "Detail page content not loaded (possibly still on captcha page) — returning empty",
             step="detail",
         )
         return {}
-
-    # Second networkidle pass — Angular often fires additional XHR calls (professional
-    # info, bank details, partner tables) after the registration number appears.
-    # A short extra wait lets those requests complete before we snapshot the HTML.
-    try:
-        page.wait_for_load_state("networkidle", timeout=_MH_DETAIL_SECOND_IDLE_TIMEOUT_MS)
-    except Exception:
-        pass  # non-fatal; proceed with whatever is rendered
 
     soup = BeautifulSoup(page.content(), "lxml")
 
@@ -1538,7 +1627,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                             f"status={detail_fields.get('status_of_the_project')!r}",
                             step="detail",
                         )
-                    random_delay(1, 2)
+                    random_delay(*_MH_DETAIL_DELAY_RANGE)
 
                 try:
                     # Strip the temporary auth token before building the payload
