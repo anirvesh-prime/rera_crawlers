@@ -586,10 +586,14 @@ def existing_uploaded_document_entry(
     if not project_key or not doc_type:
         return None, None
 
-    from core.db import get_document_by_type
+    from core.db import get_document_by_type, get_document_by_type_and_url
     from core.s3 import get_s3_url
 
-    existing = get_document_by_type(project_key, doc_type)
+    original_url = document_identity_url(doc)
+    if original_url:
+        existing = get_document_by_type_and_url(project_key, doc_type, original_url)
+    else:
+        existing = get_document_by_type(project_key, doc_type)
     s3_key = clean_string(existing.get("s3_key")) if existing else None
     if not existing or not s3_key:
         return None, None

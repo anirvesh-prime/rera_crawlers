@@ -1375,8 +1375,10 @@ def _process_bihar_inline(
             )
 
         try:
+            source_url = detail_url or LISTING_URL
             merged: dict = {
                 **detail_extra,
+                "key":                     key,  # FIELD: key <- Bihar-specific project_name + reg_no + promoter_name hash
                 "project_name":            raw["project_name"],  # FIELD: project_name <- raw["project_name"] from listing row
                 "project_registration_no": reg_no,  # FIELD: project_registration_no <- reg_no var from listing row
                 "promoter_name":           raw["promoter_name"],  # FIELD: promoter_name <- raw["promoter_name"] from listing row
@@ -1388,12 +1390,15 @@ def _process_bihar_inline(
                 },
                 "project_state": config.get("state", "bihar").title(),  # FIELD: project_state <- config["state"] titled
                 "domain": DOMAIN,  # FIELD: domain <- DOMAIN constant
-                "url":    f"https://{DOMAIN}",  # FIELD: url <- f"https://{DOMAIN}"
+                "url":    source_url,  # FIELD: url <- Filanprint detail URL or listing URL fallback
                 "state":  config.get("state", "Bihar"),  # FIELD: state <- config["state"]
                 "is_live": True,  # FIELD: is_live <- literal True
                 "data": merge_data_sections(  # FIELD: data <- merge_data_sections(detail_extra.data, listing_address)
                     detail_extra.get("data"),
-                    {"listing_address": raw.get("project_location_raw", {}).get("address", "")},
+                    {
+                        "listing_address": raw.get("project_location_raw", {}).get("address", ""),
+                        "source_url": source_url,
+                    },
                 ),
             }
             merged = {k: v for k, v in merged.items() if v is not None}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest import mock
 
 from core.document_policy import (
     decide_download_rera,
@@ -8,6 +9,7 @@ from core.document_policy import (
     select_document_for_download,
 )
 from core.project_normalizer import build_document_filename
+from core.project_normalizer import existing_uploaded_document_entry
 
 
 class DocumentPolicyTests(unittest.TestCase):
@@ -129,6 +131,58 @@ class DocumentPolicyTests(unittest.TestCase):
             }
         )
         self.assertEqual(filename, "project_specification_2.docx")
+
+    def test_existing_uploaded_document_requires_matching_identity_url(self):
+        with mock.patch("core.db.get_document_by_type_and_url", return_value=None) as get_by_url, \
+             mock.patch("core.db.get_document_by_type") as get_by_type:
+            reused, s3_key = existing_uploaded_document_entry(
+                "project-1",
+                {
+                    "type": "Rera Registration Certificate 1",
+                    "url": "https://example.com/document?documentId=222",
+                },
+            )
+
+        self.assertIsNone(reused)
+        self.assertIsNone(s3_key)
+        get_by_url.assert_called_once_with(
+            "project-1",
+            "Rera Registration Certificate 1",
+            "https://example.com/document?documentId=222",
+        )
+        get_by_type.assert_not_called()
+
+    def test_existing_uploaded_document_reuses_same_type_and_identity_url(self):
+        existing = {
+            "s3_key": "documents/project-1/rera_registration_certificate_1.pdf",
+            "file_name": "rera_registration_certificate_1.pdf",
+        }
+        with mock.patch("core.db.get_document_by_type_and_url", return_value=existing), \
+             mock.patch(
+                 "core.s3.get_s3_url",
+                 return_value="http://docs.primetenders.com/documents/project-1/rera_registration_certificate_1.pdf",
+             ):
+            reused, s3_key = existing_uploaded_document_entry(
+                "project-1",
+                {
+                    "type": "Rera Registration Certificate 1",
+                    "url": "https://example.com/document?documentId=111",
+                },
+            )
+
+        self.assertEqual(s3_key, "documents/project-1/rera_registration_certificate_1.pdf")
+        self.assertEqual(
+            reused,
+            {
+                "type": "Rera Registration Certificate 1",
+                "link": "https://example.com/document?documentId=111",
+                "s3_link": (
+                    "http://docs.primetenders.com/documents/project-1/"
+                    "rera_registration_certificate_1.pdf"
+                ),
+                "updated": True,
+            },
+        )
 
 
 if __name__ == "__main__":
