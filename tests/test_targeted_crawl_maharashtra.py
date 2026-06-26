@@ -195,6 +195,65 @@ class MaharashtraTargetedCrawlTests(unittest.TestCase):
         self.assertNotIn("uploaded_documents", upsert_payloads[0])
         self.assertNotIn("document_urls", upsert_payloads[0])
 
+    def test_listing_loop_uses_portal_next_url(self):
+        settings.TARGET_REG_NO = ""
+        expected_next = (
+            "https://maharera.maharashtra.gov.in/projects-search-result?"
+            "project_state=27&page=2&op="
+        )
+        soup0 = BeautifulSoup(
+            f"<div class='pagination'><a class='next' href='{expected_next}'>Next</a></div>",
+            "lxml",
+        )
+        soup1 = BeautifulSoup("<div class='pagination'></div>", "lxml")
+        page0_cards = [{"project_registration_no": "P51700000001", "project_name": "Alpha"}]
+        page1_cards = [{"project_registration_no": "P51700000002", "project_name": "Beta"}]
+        fetched_urls: list[str] = []
+        upserted_regs: list[str] = []
+
+        def listing_side_effect(url: str, logger, *, retries: int):
+            fetched_urls.append(url)
+            if len(fetched_urls) == 1:
+                return soup0, page0_cards
+            return soup1, page1_cards
+
+        def upsert_side_effect(payload: dict) -> str:
+            upserted_regs.append(payload.get("project_registration_no"))
+            return "new"
+
+        patches = [
+            mock.patch.object(maharashtra_rera, "_sentinel_check", return_value=True),
+            mock.patch.object(maharashtra_rera, "_get_listing_page", side_effect=listing_side_effect),
+            mock.patch.object(maharashtra_rera, "_get_total_pages", return_value=2),
+            mock.patch.object(maharashtra_rera, "load_checkpoint", return_value=None),
+            mock.patch.object(maharashtra_rera, "save_checkpoint"),
+            mock.patch.object(maharashtra_rera, "reset_checkpoint"),
+            mock.patch.object(maharashtra_rera, "random_delay"),
+            mock.patch.object(maharashtra_rera, "update_crawl_run_progress"),
+            mock.patch.object(maharashtra_rera, "get_project_by_key", return_value=None),
+            mock.patch.object(maharashtra_rera, "upsert_project", side_effect=upsert_side_effect),
+            mock.patch.object(maharashtra_rera, "insert_crawl_error"),
+            mock.patch.object(maharashtra_rera, "get_machine_context", return_value=("host", "127.0.0.1")),
+            mock.patch.object(maharashtra_rera, "ProjectRecord", _FakeRecord),
+            mock.patch.object(
+                maharashtra_rera, "normalize_project_payload",
+                side_effect=lambda payload, config, machine_name, machine_ip: payload,
+            ),
+        ]
+        with ExitStack() as stack:
+            for patcher in patches:
+                stack.enter_context(patcher)
+            counts = maharashtra_rera.run(
+                {"id": "maharashtra_rera", "state": "Maharashtra", "config_id": 1},
+                run_id=123,
+                mode="weekly_deep",
+            )
+
+        self.assertEqual(fetched_urls[0], maharashtra_rera.LISTING_URL)
+        self.assertEqual(fetched_urls[1], expected_next)
+        self.assertEqual(upserted_regs, ["P51700000001", "P51700000002"])
+        self.assertEqual(counts["projects_found"], 2)
+
 
 class MaharashtraBuildingDetailsTests(unittest.TestCase):
     def _parse_building_details(self, html: str) -> list[dict]:
@@ -298,6 +357,21 @@ class MaharashtraDetailStatusTests(unittest.TestCase):
 
 
 class MaharashtraListingFetchTests(unittest.TestCase):
+    def test_next_listing_url_preserves_portal_filter_params(self):
+        soup = BeautifulSoup(
+            """
+            <div class="pagination">
+              <a class="next" href="/projects-search-result?project_state=27&page=2&op=">Next</a>
+            </div>
+            """,
+            "lxml",
+        )
+
+        self.assertEqual(
+            maharashtra_rera._next_listing_url(soup),
+            "https://maharera.maharashtra.gov.in/projects-search-result?project_state=27&page=2&op=",
+        )
+
     def test_listing_fetch_uses_http_before_selenium(self):
         html = """
             <div class="shadow rounded">

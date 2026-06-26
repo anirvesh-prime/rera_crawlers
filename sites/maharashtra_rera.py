@@ -39,6 +39,7 @@ import json as _json
 import re
 import time as _time
 from typing import Optional
+from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 from pydantic import ValidationError
@@ -186,6 +187,15 @@ def _url_for_page(page_no: int) -> str:
     if page_no == 0:
         return LISTING_URL
     return f"{LISTING_URL}?page={page_no + 1}"
+
+
+def _next_listing_url(soup: BeautifulSoup) -> str | None:
+    """Return the portal-provided next listing URL, preserving filter params."""
+    link = soup.select_one("div.pagination a.next[href], a.next[href]")
+    if not link:
+        return None
+    href = (link.get("href") or "").strip()
+    return urljoin(LISTING_URL, href) if href else None
 
 
 def _cell_value(cell: BeautifulSoup) -> str:
@@ -1609,9 +1619,16 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     # The detail scraper now shares the module-level SeleniumSession; each
     # call clears cookies and storage so the CAPTCHA canvas starts clean.
     _shared_browser = None
+    next_listing_url = _next_listing_url(soup0)
+    next_listing_page_no = 1 if next_listing_url else None
     for page_no in range(start_page, end_page):
 
-        url = _url_for_page(page_no)
+        if page_no == 0:
+            url = LISTING_URL
+        elif next_listing_url and next_listing_page_no == page_no:
+            url = next_listing_url
+        else:
+            url = _url_for_page(page_no)
         logger.info(f"Page {page_no + 1}/{total_pages}", step="listing")
 
         if page_no == 0:
@@ -1683,6 +1700,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         counters["projects_found"] += len(cards)
         # Push the running projects_found to crawl_runs for live dashboard view.
         update_crawl_run_progress(run_id, counters)
+        next_listing_url = _next_listing_url(soup) or _url_for_page(page_no + 1)
+        next_listing_page_no = page_no + 1
 
         for raw in cards:
             if item_limit and items_processed >= item_limit:
