@@ -53,6 +53,7 @@ from core.crawler_base import (
     get_target_reg_nos,
     page_adapter,
     random_delay,
+    safe_get as http_safe_get,
 )
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document, update_crawl_run_progress
 from core.document_policy import select_document_for_download
@@ -82,9 +83,14 @@ _MH_DETAIL_SETTLE_TIMEOUT_MS = 2_500
 _MH_DETAIL_QUIET_MS = 350
 _MH_DOC_DOWNLOAD_TIMEOUT_S = 20
 _MH_DETAIL_DELAY_RANGE = (0.15, 0.35)
-_MH_LISTING_CARD_SELECTOR = "div.shadow.rounded"
-_MH_LISTING_CARD_TIMEOUT_MS = 5_000
 _MH_EMPTY_LISTING_RETRIES = 2
+_MH_LISTING_TIMEOUT_S = 65.0
+_MH_LISTING_RETRY_DELAY_S = 0.75
+_MH_LISTING_HEADERS = {
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": LISTING_URL,
+}
 
 # ── MH RERA document API endpoints (discovered via live network inspection) ───
 _MH_DOC_API_BASE = (
@@ -138,10 +144,16 @@ def _quit_driver() -> None:
         _SESSION = None
 
 
-def safe_get(url, *, logger=None, timeout=None, **_ignored):
+def safe_get(url, *, logger=None, timeout=None, retries=3, delay=3.0, **_ignored):
     """Backwards-compatible shim — dispatches through the SeleniumSession."""
     plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
-    return _session().get(url, logger=logger, page_load_timeout=plt)
+    return _session().get(
+        url,
+        logger=logger,
+        page_load_timeout=plt,
+        retries=retries,
+        delay=delay,
+    )
 
 
 def download_response(url, *, logger=None, **_ignored):
@@ -300,33 +312,33 @@ def _get_listing_page(
     retries: int,
 ) -> tuple[BeautifulSoup | None, list[dict]]:
     """
-    Fetch and parse one listing page, waiting for card DOM when eager page-load
-    returns before the listing markup is visible.
+    Fetch and parse one listing page.
+
+    Maharashtra's listing is static HTML on maharera.maharashtra.gov.in, while
+    details are a CAPTCHA-gated Angular app on maharerait.maharashtra.gov.in.
+    Keep listing fetches on plain HTTP so a renderer stuck after sentinel/detail
+    scraping cannot block catalog enumeration.
     """
-    resp = safe_get(url, retries=retries, logger=logger)
-    if not resp:
-        return None, []
-
-    soup = BeautifulSoup(resp.text, "lxml")
-    cards = _parse_cards(soup)
-    if cards:
-        return soup, cards
-
-    # The listing is server-rendered in normal cases, but Chrome's eager load
-    # strategy can occasionally hand back page_source before the card container
-    # is in the DOM. Re-check the live browser DOM before declaring it empty.
-    try:
-        page = page_adapter(_session())
-        page.wait_for_selector(
-            _MH_LISTING_CARD_SELECTOR,
-            state="attached",
-            timeout=_MH_LISTING_CARD_TIMEOUT_MS,
-        )
-        soup = BeautifulSoup(page.content(), "lxml")
+    resp = http_safe_get(
+        url,
+        retries=1,
+        delay=_MH_LISTING_RETRY_DELAY_S,
+        headers=_MH_LISTING_HEADERS,
+        logger=logger,
+        timeout=_MH_LISTING_TIMEOUT_S,
+    )
+    if resp:
+        soup = BeautifulSoup(resp.text, "lxml")
         cards = _parse_cards(soup)
-    except Exception:
-        pass
-    return soup, cards
+        if cards:
+            return soup, cards
+
+        logger.warning(
+            f"HTTP listing returned no cards; {_listing_debug_summary(soup)}",
+            step="listing",
+        )
+        return soup, []
+    return None, []
 
 
 # ── Maharashtra detail API helpers ───────────────────────────────────────────
@@ -1559,6 +1571,14 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     soup0, cards0 = _get_listing_page(LISTING_URL, logger, retries=3)
     if soup0 is None:
         logger.error("Could not fetch first listing page", step="listing")
+        counters["error_count"] += 1
+        insert_crawl_error(
+            run_id,
+            config["id"],
+            "LISTING_FETCH_FAILED",
+            "Could not fetch first listing page",
+            LISTING_URL,
+        )
         return counters
 
     total_pages = _get_total_pages(soup0)

@@ -18,6 +18,7 @@ from unittest import mock
 from bs4 import BeautifulSoup
 
 from core.config import settings
+from core.logger import CrawlerLogger
 from sites import maharashtra_rera
 
 
@@ -62,11 +63,15 @@ class MaharashtraTargetedCrawlTests(unittest.TestCase):
 
         fake_resp = mock.MagicMock()
         fake_resp.text = "<html></html>"
+        fake_soup = BeautifulSoup(fake_resp.text, "lxml")
 
         sentinel = mock.MagicMock(return_value=True)
         patches = [
             mock.patch.object(maharashtra_rera, "_sentinel_check", sentinel),
-            mock.patch.object(maharashtra_rera, "safe_get", return_value=fake_resp),
+            mock.patch.object(
+                maharashtra_rera, "_get_listing_page",
+                return_value=(fake_soup, self._cards()),
+            ),
             mock.patch.object(maharashtra_rera, "_get_total_pages", return_value=1),
             mock.patch.object(maharashtra_rera, "_parse_cards", return_value=self._cards()),
             mock.patch.object(maharashtra_rera, "_url_for_page", side_effect=lambda n: f"url?p={n}"),
@@ -221,6 +226,37 @@ class MaharashtraDetailStatusTests(unittest.TestCase):
         )
 
         self.assertEqual(status, "invalid")
+
+
+class MaharashtraListingFetchTests(unittest.TestCase):
+    def test_listing_fetch_uses_http_before_selenium(self):
+        html = """
+            <div class="shadow rounded">
+              <div class="col-xl-4">
+                <p class="p-0">#P50500000005</p><h4 class="title4">Alpha</h4>
+                <p class="darkBlue">Promoter</p><ul class="listingList"><li>Mumbai</li></ul>
+              </div>
+              <div class="col-xl-4">State Maharashtra</div>
+              <div class="col-xl-4">Pincode 400001</div>
+              <div class="col-xl-4"><a data-qstr="123">Certificate</a></div>
+              <div class="col-xl-4">District Mumbai</div>
+              <div class="col-xl-4">Last Modified 01-01-2026</div>
+              <div class="col-xl-4">N/A</div>
+            </div>
+        """
+        fake_resp = mock.MagicMock(text=html)
+
+        with mock.patch.object(maharashtra_rera, "http_safe_get", return_value=fake_resp) as http_get, \
+             mock.patch.object(maharashtra_rera, "safe_get") as selenium_get:
+            _, cards = maharashtra_rera._get_listing_page(
+                maharashtra_rera.LISTING_URL,
+                CrawlerLogger("maharashtra_rera", 0),
+                retries=1,
+            )
+
+        http_get.assert_called_once()
+        selenium_get.assert_not_called()
+        self.assertEqual([c["project_registration_no"] for c in cards], ["P50500000005"])
 
 
 if __name__ == "__main__":
