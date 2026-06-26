@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     # matches (case-insensitive) and skip the sentinel/health check for the
     # run.  Intended for targeted debugging of a specific project.
     TARGET_REG_NO: str = ""
+    # --skip-documents flag: crawlers that support it still scrape/upsert project
+    # records but skip document download/upload work for the run.
+    SKIP_DOCUMENTS: bool = False
     SCRAPE_DETAILS: bool = True      # set False to skip detail-page fetches
     MAX_PAGES: int | None = None     # None = unlimited
     MAX_PARALLEL_CRAWLERS: int = 8   # hard cap on concurrent worker processes

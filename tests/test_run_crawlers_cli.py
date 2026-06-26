@@ -16,6 +16,8 @@ class RunCrawlersCliTests(unittest.TestCase):
         self.original_delay_scale = settings.CRAWL_DELAY_SCALE
         self.original_target_env = os.environ.get("TARGET_REG_NO")
         self.original_target = settings.TARGET_REG_NO
+        self.original_skip_docs_env = os.environ.get("SKIP_DOCUMENTS")
+        self.original_skip_docs = settings.SKIP_DOCUMENTS
 
     def tearDown(self) -> None:
         if self.original_env is None:
@@ -33,6 +35,11 @@ class RunCrawlersCliTests(unittest.TestCase):
         else:
             os.environ["TARGET_REG_NO"] = self.original_target_env
         settings.TARGET_REG_NO = self.original_target
+        if self.original_skip_docs_env is None:
+            os.environ.pop("SKIP_DOCUMENTS", None)
+        else:
+            os.environ["SKIP_DOCUMENTS"] = self.original_skip_docs_env
+        settings.SKIP_DOCUMENTS = self.original_skip_docs
 
     def test_apply_runtime_overrides_sets_item_limit(self):
         args = argparse.Namespace(item_limit=7, no_item_limit=False, delay_scale=None)
@@ -74,6 +81,15 @@ class RunCrawlersCliTests(unittest.TestCase):
         )
         apply_runtime_overrides(args)
         self.assertEqual(settings.TARGET_REG_NO, self.original_target)
+
+    def test_apply_runtime_overrides_sets_skip_documents(self):
+        args = argparse.Namespace(
+            item_limit=None, no_item_limit=False, delay_scale=None,
+            skip_documents=True,
+        )
+        apply_runtime_overrides(args)
+        self.assertTrue(settings.SKIP_DOCUMENTS)
+        self.assertEqual(os.environ["SKIP_DOCUMENTS"], "true")
 
 
 if __name__ == "__main__":

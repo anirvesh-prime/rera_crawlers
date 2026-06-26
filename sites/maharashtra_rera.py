@@ -1541,6 +1541,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     delay_range   = config.get("rate_limit_delay", (2, 4))
     item_limit    = settings.CRAWL_ITEM_LIMIT or 0   # 0 = unlimited
     scrape_detail = settings.SCRAPE_DETAILS
+    skip_documents = settings.SKIP_DOCUMENTS
     t_run = _time.monotonic()
 
     # ── Targeted run handling ────────────────────────────────────────────────
@@ -1594,7 +1595,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     end_page  = min(total_pages, start_page + max_pages) if max_pages else total_pages
     logger.info(
         f"Total pages: {total_pages} | crawling {start_page}–{end_page - 1} "
-        f"| item_limit={item_limit or 'unlimited'} | scrape_detail={scrape_detail}",
+        f"| item_limit={item_limit or 'unlimited'} | scrape_detail={scrape_detail} "
+        f"| skip_documents={skip_documents}",
         step="listing",
     )
 
@@ -1732,6 +1734,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     auth_token = detail_fields.pop("_auth_token", "")
                     # Keep the API doc metadata separately for S3 upload after upsert
                     api_docs = detail_fields.get("uploaded_documents") or []
+                    if skip_documents:
+                        detail_fields.pop("uploaded_documents", None)
+                        detail_fields.pop("document_urls", None)
 
                     payload: dict = {
                         **raw,
@@ -1765,7 +1770,13 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                         logger.info(f"Updated: {reg_no}", step="upsert")
 
                     # ── Document download + S3 upload ─────────────────────────
-                    if auth_token and api_docs:
+                    if skip_documents and api_docs:
+                        logger.info(
+                            f"Document processing skipped for {reg_no}: "
+                            f"{len(api_docs)} discovered document(s)",
+                            step="documents",
+                        )
+                    elif auth_token and api_docs:
                         logger.info(
                             f"Downloading {len(api_docs)} document(s) for {reg_no}",
                             step="documents",

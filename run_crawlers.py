@@ -12,6 +12,7 @@ Usage:
     python run_crawlers.py --mode weekly_deep   # explicit mode (default: weekly_deep)
     python run_crawlers.py --sequential         # disable parallel execution
     python run_crawlers.py --test               # skip S3 uploads and DB writes (dry run)
+    python run_crawlers.py --skip-documents     # skip document downloads/uploads
     python run_crawlers.py --test-logs          # like --test but still write log tables (visible on dashboard)
     python run_crawlers.py --site karnataka_rera --target-reg-no "PRM/KA/RERA/1251/446/PR/181122/005482"
                                                 # crawl only the matching project (skips sentinel)
@@ -148,6 +149,16 @@ def parse_args() -> argparse.Namespace:
             "--test for a dry-run.  Supported by all state crawlers."
         ),
     )
+    parser.add_argument(
+        "--skip-documents",
+        action="store_true",
+        default=False,
+        help=(
+            "Skip document download/upload work for crawlers that support this "
+            "runtime flag. Project listing/detail extraction and project DB "
+            "upserts still run."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -248,6 +259,10 @@ def apply_runtime_overrides(args: argparse.Namespace) -> int:
         os.environ["TARGET_REG_NO"] = target_reg_no
         settings.TARGET_REG_NO = target_reg_no
 
+    if getattr(args, "skip_documents", False):
+        os.environ["SKIP_DOCUMENTS"] = "true"
+        settings.SKIP_DOCUMENTS = True
+
     if args.no_item_limit:
         os.environ.pop("CRAWL_ITEM_LIMIT", None)
         settings.CRAWL_ITEM_LIMIT = 0
@@ -297,6 +312,7 @@ def main():
         site_count=len(sites),
         parallel=parallel,
         item_limit=item_limit or "unlimited",
+        skip_documents=settings.SKIP_DOCUMENTS,
         host=host,
     )
 
@@ -306,6 +322,7 @@ def main():
     print(f"  Execution : {'parallel' if parallel else 'sequential'}")
     print(f"  Workers   : {len(sites)}")
     print(f"  Item Limit: {item_limit or 'unlimited'}")
+    print(f"  Documents : {'skipped' if settings.SKIP_DOCUMENTS else 'enabled'}")
     print(f"  Host      : {host}")
     print(f"  States    : {', '.join(site_ids)}")
     if settings.TARGET_REG_NO:
