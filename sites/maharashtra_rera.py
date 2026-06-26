@@ -357,7 +357,7 @@ _CAPTCHA_INTERCEPT_SCRIPT = """
 """
 
 
-_MAX_CAPTCHA_ATTEMPTS = 3
+_MAX_CAPTCHA_ATTEMPTS = 10
 
 _MH_UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
