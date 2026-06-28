@@ -1,7 +1,7 @@
 {
-  "key": "3097202163234796431",
-  "project_registration_no": "TG-URL-3178821622688219407",
-  "url": "https://rerait.telangana.gov.in/PrintPreview/PrintPreview?q=FMo%2btianLjna0IzK5uUw6ppb2KXp6lk2aPGlMF7usQpD1xpezxKEZCamfPxI5f0AapR%2b%2boRLLOWIbv6jtkZF9opT2mjUNVMXfk%2ftfiFD8m17Iq06ytGx3nRAEFHRLduCfuwlHWh%2bdZZ594xQyzukoP08mj%2bm6W9lGTqaC2bq5xI%3d",
+  "key": "12508389609219930914",
+  "project_registration_no": "1/18B/06558/2018",
+  "url": "https://rerait.telangana.gov.in/PrintPreview/PrintPreview?q=5GJFl8TLLetdS6DpWECsNmmJuvIeyTPKn3F7ijaP0JFQoO2j2sBRywKbCuc61I6U%2fo7WeEScPmnyP4AQd0p%2f%2bmO1kxPHI2NeN3IALWlxaKeoXGQw3488jjlqrGw3Co6EA7DxKvqGOSAdaysSvguOnhSSW6TfxIyiY4s2CSA9%2bYNeLeN4UpzzuMSQ%2fJ8CkZZK",
   "state": "telangana",
   "domain": "rerait.telangana.gov.in",
   "project_name": "SKV S ANANDA VILAS",
@@ -106,20 +106,8 @@
   ],
   "uploaded_documents": [
     {
-      "type": "Layout Plan 1",
-      "link": "https://rerait.telangana.gov.in/PrintPreview/GetUserDocumentIframe",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
-    },
-    {
-      "type": "Commencement Certificates for each building in each phase",
-      "link": "https://rerait.telangana.gov.in/PrintPreview/GetUserDocumentIframe",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
-    },
-    {
-      "type": "Building Plan 1",
-      "link": "https://rerait.telangana.gov.in/PrintPreview/GetUserDocumentIframe",
+      "type": "Registration Certificate 1",
+      "link": "https://rerait.telangana.gov.in/SearchList/GetShowCertificateFileContent?QueryStringID=UHJvamVjdElEPTQmRGl2aXNpb249MSZVc2VySUQ9MjAyODcmUm9sZUlEPTEmQXBwSUQ9NSZBY3Rpb249U0VBUkNIJkNoYXJhY3RlckQ9NTImRXh0QXBwSUQ9",
       "s3_link": "https://s3.example.com/dry-run",
       "updated": true
     }
@@ -275,8 +263,9 @@
     }
   ],
   "data": {
+    "data_cert": "UHJvamVjdElEPTQmRGl2aXNpb249MSZVc2VySUQ9MjAyODcmUm9sZUlEPTEmQXBwSUQ9NSZBY3Rpb249U0VBUkNIJkNoYXJhY3RlckQ9MjgmRXh0QXBwSUQ9JklzQWJ5ZW5jZT0w",
     "govt_type": "state",
-    "doc_decoded": "ProjectID=&Division=&UserID=&RoleID=&AppID=&Action=SEARCH",
+    "doc_decoded": "ProjectID=4&Division=1&UserID=20287&RoleID=1&AppID=5&Action=SEARCH",
     "is_processed": false,
     "land_area_unit": "Total Area(In sqmts)",
     "construction_area_unit": "Approved Built up Area (In Sqmts)"
@@ -303,15 +292,7 @@
   "document_urls": [
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Layout Plan 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Commencement Certificates for each building in each phase"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Building Plan 1"
+      "type": "Registration Certificate 1"
     }
   ],
   "acknowledgement_no": null,

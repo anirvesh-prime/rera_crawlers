@@ -983,7 +983,7 @@ def _handle_document(
     label = doc.get("label", "document")
     fname = build_document_filename(doc)
     try:
-        resp = download_response(url, logger=logger, timeout=60.0, client=_CLIENT)
+        resp = download_response(url, logger=logger, timeout=60.0)
         if not resp or len(resp.content) < 100:
             return None
         md5    = compute_md5(resp.content)
@@ -1312,24 +1312,30 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
             uploaded_documents: list[dict] = []
             doc_name_counts: dict[str, int] = {}
-            logger.info(f"Processing {len(doc_links)} documents", step="documents")
-            for doc in doc_links:
-                selected = select_document_for_download(
-                    config["state"], doc, doc_name_counts, domain=DOMAIN,
+            if settings.SKIP_DOCUMENTS:
+                logger.info(
+                    f"Skipping {len(doc_links)} documents (--skip-documents)",
+                    step="documents",
                 )
-                if selected:
-                    uploaded = _handle_document(
-                        db_dict["key"], selected, run_id, site_id, logger,
+            else:
+                logger.info(f"Processing {len(doc_links)} documents", step="documents")
+                for doc in doc_links:
+                    selected = select_document_for_download(
+                        config["state"], doc, doc_name_counts, domain=DOMAIN,
                     )
-                    if uploaded:
-                        uploaded_documents.append(uploaded)                     # FIELD: uploaded_documents[] <- document_result_entry from _handle_document
-                        counts["documents_uploaded"] += 1
+                    if selected:
+                        uploaded = _handle_document(
+                            db_dict["key"], selected, run_id, site_id, logger,
+                        )
+                        if uploaded:
+                            uploaded_documents.append(uploaded)                 # FIELD: uploaded_documents[] <- document_result_entry from _handle_document
+                            counts["documents_uploaded"] += 1
+                        else:
+                            # FIELD: uploaded_documents[].link/type <- original doc url + label (upload failed)
+                            uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label", "document")})
                     else:
-                        # FIELD: uploaded_documents[].link/type <- original doc url + label (upload failed)
+                        # FIELD: uploaded_documents[].link/type <- original doc url + label (skipped by policy)
                         uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label", "document")})
-                else:
-                    # FIELD: uploaded_documents[].link/type <- original doc url + label (skipped by policy)
-                    uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label", "document")})
 
             if uploaded_documents:
                 upsert_project({

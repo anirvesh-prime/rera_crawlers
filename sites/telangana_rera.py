@@ -88,7 +88,9 @@ def _session() -> SeleniumSession:
     """Return the active SeleniumSession, lazy-initialising on first use."""
     global _SESSION
     if _SESSION is None:
-        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+        # Telangana's search CAPTCHA is a rendered <img> that must be loaded
+        # before we can screenshot and solve it.
+        _SESSION = SeleniumSession(ignore_certificate_errors=True, block_images=False)
     return _SESSION
 
 
@@ -284,10 +286,12 @@ def _submit_search(page: Any, logger: CrawlerLogger) -> bool:
                 continue
 
             captcha_input = None
-            for sel in ("input[name*='captcha' i]", "input[id*='captcha' i]",
-                        "input[placeholder*='captcha' i]", "#txtCaptcha", "input[type='text']"):
+            for sel in ("#Captcha", "input[name='Captcha']", "#txtCaptcha",
+                        "input[name*='captcha' i]", "input[id*='captcha' i]",
+                        "input[placeholder*='captcha' i]", "input[type='text']"):
                 try:
-                    captcha_input = page.wait_for_selector(sel, timeout=3_000)
+                    page.wait_for_selector(sel, timeout=3_000)
+                    captcha_input = page.query_selector(sel)
                     if captcha_input:
                         break
                 except Exception:

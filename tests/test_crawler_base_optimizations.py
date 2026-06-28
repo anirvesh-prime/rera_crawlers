@@ -281,6 +281,10 @@ class SeleniumResponseJsonTests(unittest.TestCase):
         resp = SeleniumResponse(content=b'{"status": 200}')
         self.assertEqual(resp.json()["status"], 200)
 
+    def test_is_success_matches_httpx_status_semantics(self):
+        self.assertTrue(SeleniumResponse(status_code=204).is_success)
+        self.assertFalse(SeleniumResponse(status_code=404).is_success)
+
 
 class _TimeoutDriver:
     def __init__(self, source: str):
@@ -326,6 +330,20 @@ class SeleniumSessionTimeoutRecoveryTests(unittest.TestCase):
         session._driver = driver
 
         resp = session.get("https://example.test/list", retries=1)
+
+        self.assertIsNone(resp)
+        self.assertIsNone(session._driver)
+
+    def test_get_rejects_chrome_blank_initial_document_after_timeout(self):
+        driver = _TimeoutDriver("<html><head></head><body></body></html>")
+        session = SeleniumSession(page_load_timeout=12.0)
+        session._driver = driver
+
+        resp = session.get(
+            "https://example.test/list",
+            retries=1,
+            return_source_on_timeout=True,
+        )
 
         self.assertIsNone(resp)
         self.assertIsNone(session._driver)

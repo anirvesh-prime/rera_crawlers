@@ -118,6 +118,22 @@ class DelhiTargetedCrawlTests(unittest.TestCase):
         sentinel.assert_called_once()
         self.assertFalse(counts["sentinel_passed"])
 
+    def test_listing_response_rejects_unusable_empty_markup(self):
+        fake_resp = mock.MagicMock()
+        fake_resp.text = "<html><head></head><body></body></html>"
+        fake_session = mock.MagicMock()
+        fake_session.get.return_value = fake_resp
+        logger = mock.MagicMock()
+
+        with mock.patch.object(delhi_rera, "_session", return_value=fake_session):
+            resp = delhi_rera._get_listing_response(
+                f"{delhi_rera.LISTING_URL}?page=0",
+                logger,
+            )
+
+        self.assertIsNone(resp)
+        logger.warning.assert_called()
+
 
 if __name__ == "__main__":
     unittest.main()

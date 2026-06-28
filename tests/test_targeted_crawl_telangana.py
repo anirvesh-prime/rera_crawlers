@@ -39,6 +39,7 @@ class TelanganaTargetedCrawlTests(unittest.TestCase):
         settings.TARGET_REG_NO = self._orig_target
         settings.CRAWL_ITEM_LIMIT = self._orig_limit
         settings.MAX_PAGES = self._orig_max_pages
+        telangana_rera._SESSION = None
 
     def _rows(self) -> list[dict]:
         return [
@@ -131,6 +132,18 @@ class TelanganaTargetedCrawlTests(unittest.TestCase):
             )
         sentinel.assert_called_once()
         self.assertFalse(counts["sentinel_passed"])
+
+    def test_session_allows_captcha_images(self):
+        telangana_rera._SESSION = None
+        fake_session = mock.MagicMock()
+        with mock.patch.object(
+            telangana_rera, "SeleniumSession", return_value=fake_session,
+        ) as selenium_session:
+            self.assertIs(telangana_rera._session(), fake_session)
+        selenium_session.assert_called_once_with(
+            ignore_certificate_errors=True,
+            block_images=False,
+        )
 
 
 if __name__ == "__main__":

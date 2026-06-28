@@ -31,13 +31,18 @@ class WestBengalTargetedCrawlTests(unittest.TestCase):
         self._orig_target = settings.TARGET_REG_NO
         self._orig_limit = settings.CRAWL_ITEM_LIMIT
         self._orig_scrape = settings.SCRAPE_DETAILS
+        self._orig_skip_documents = settings.SKIP_DOCUMENTS
+        self._orig_dry_run_s3 = settings.DRY_RUN_S3
         settings.CRAWL_ITEM_LIMIT = 0
         settings.SCRAPE_DETAILS = False
+        settings.SKIP_DOCUMENTS = False
 
     def tearDown(self) -> None:
         settings.TARGET_REG_NO = self._orig_target
         settings.CRAWL_ITEM_LIMIT = self._orig_limit
         settings.SCRAPE_DETAILS = self._orig_scrape
+        settings.SKIP_DOCUMENTS = self._orig_skip_documents
+        settings.DRY_RUN_S3 = self._orig_dry_run_s3
 
     def _rows(self) -> list[dict]:
         return [
@@ -46,7 +51,7 @@ class WestBengalTargetedCrawlTests(unittest.TestCase):
             {"project_registration_no": "WBRERA/P/SOUTH/2023/003", "project_name": "Gamma"},
         ]
 
-    def _run_with_target(self, target: str):
+    def _run_with_target(self, target: str, detail_payload: dict | None = None):
         settings.TARGET_REG_NO = target
         processed_regs: list[str] = []
 
@@ -71,6 +76,10 @@ class WestBengalTargetedCrawlTests(unittest.TestCase):
             mock.patch.object(west_bengal_rera, "merge_data_sections", return_value={}),
             mock.patch.object(west_bengal_rera, "ProjectRecord", _FakeRecord),
             mock.patch.object(west_bengal_rera, "_quit_driver"),
+            mock.patch.object(
+                west_bengal_rera, "_parse_detail_page",
+                return_value=detail_payload or {},
+            ),
             mock.patch.object(
                 west_bengal_rera, "normalize_project_payload",
                 side_effect=lambda payload, config, machine_name, machine_ip: payload,
@@ -114,6 +123,52 @@ class WestBengalTargetedCrawlTests(unittest.TestCase):
             )
         sentinel.assert_called_once()
         self.assertFalse(counts["sentinel_passed"])
+
+    def test_skip_documents_bypasses_document_selection(self):
+        settings.SCRAPE_DETAILS = True
+        settings.SKIP_DOCUMENTS = True
+        detail_payload = {
+            "_doc_links": [
+                {"url": "https://example.com/plan.pdf", "label": "Sanction Plan 1"},
+            ],
+            "data": {},
+        }
+
+        with mock.patch.object(west_bengal_rera, "select_document_for_download") as select_doc, \
+                mock.patch.object(west_bengal_rera, "_handle_document") as handle_doc:
+            counts, processed_regs, _ = self._run_with_target(
+                "WBRERA/P/SOUTH/2023/002",
+                detail_payload=detail_payload,
+            )
+
+        self.assertEqual(processed_regs, ["WBRERA/P/SOUTH/2023/002"])
+        self.assertEqual(counts["documents_uploaded"], 0)
+        select_doc.assert_not_called()
+        handle_doc.assert_not_called()
+
+    def test_handle_document_uses_selenium_download_response(self):
+        settings.DRY_RUN_S3 = True
+
+        fake_resp = mock.MagicMock()
+        fake_resp.content = b"x" * 200
+
+        logger = mock.MagicMock()
+        doc = {"url": "https://example.com/plan.pdf", "label": "Sanction Plan 1"}
+
+        with mock.patch.object(west_bengal_rera, "download_response",
+                               return_value=fake_resp) as download, \
+                mock.patch.object(west_bengal_rera, "upsert_document") as upsert_document:
+            result = west_bengal_rera._handle_document(
+                "project-key", doc, run_id=1, site_id="wb_rera", logger=logger,
+            )
+
+        self.assertIsNotNone(result)
+        download.assert_called_once_with(
+            "https://example.com/plan.pdf",
+            logger=logger,
+            timeout=60.0,
+        )
+        upsert_document.assert_called_once()
 
 
 if __name__ == "__main__":

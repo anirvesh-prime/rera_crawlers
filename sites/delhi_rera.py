@@ -106,6 +106,12 @@ def _get_listing_response(url: str, logger: CrawlerLogger, params: dict | None =
         )
         if not resp:
             return None
+        if "views-table" not in resp.text and not _REG_NO_RE.search(resp.text or ""):
+            logger.warning(
+                f"Listing fetch returned unusable markup ({len(resp.text or '')} chars)",
+                url=full,
+            )
+            return None
         if resp.status_code >= 400 and "views-table" not in resp.text:
             logger.warning(
                 f"Listing fetch returned HTTP {resp.status_code} without usable table markup",

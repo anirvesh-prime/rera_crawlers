@@ -451,6 +451,11 @@ class SeleniumResponse:
     def __bool__(self) -> bool:
         return bool(self.text or self.content)
 
+    @property
+    def is_success(self) -> bool:
+        """Match httpx.Response for callers that check 2xx status responses."""
+        return 200 <= int(self.status_code) < 300
+
     def json(self) -> Any:
         """Parse the body as JSON (parity with httpx/Playwright ``.json()``).
 
@@ -680,7 +685,10 @@ class SeleniumSession:
                         source = driver.page_source or ""
                     except Exception:
                         source = ""
-                    if source.strip():
+                    # Chrome may expose only its initial empty document after a
+                    # navigation timeout. Treat that as a failed navigation so
+                    # callers do not parse it as a real page.
+                    if source.strip() and source.strip().lower() != "<html><head></head><body></body></html>":
                         if logger:
                             logger.warning(
                                 f"Selenium GET attempt {attempt}/{retries} timed out; using current page source",
