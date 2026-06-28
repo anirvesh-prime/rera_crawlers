@@ -7,6 +7,7 @@ from core.config import settings
 from core.crawler_base import (
     SeleniumPageAdapter,
     SeleniumResponse,
+    SeleniumSession,
     _find_by_text,
     _glob_to_regex,
     _parse_text_selector,
@@ -279,6 +280,55 @@ class SeleniumResponseJsonTests(unittest.TestCase):
         # fetch-backed responses carry the body in .content (bytes), .text="".
         resp = SeleniumResponse(content=b'{"status": 200}')
         self.assertEqual(resp.json()["status"], 200)
+
+
+class _TimeoutDriver:
+    def __init__(self, source: str):
+        self.page_source = source
+        self.page_load_timeouts: list[float] = []
+        self.scripts: list[str] = []
+
+    def set_page_load_timeout(self, timeout):
+        self.page_load_timeouts.append(timeout)
+
+    def get(self, url):
+        from selenium.common.exceptions import TimeoutException
+
+        raise TimeoutException("renderer timed out")
+
+    def execute_script(self, script):
+        self.scripts.append(script)
+
+    def quit(self):
+        pass
+
+
+class SeleniumSessionTimeoutRecoveryTests(unittest.TestCase):
+    def test_get_can_return_current_source_after_timeout_when_enabled(self):
+        driver = _TimeoutDriver("<html><table class='views-table'></table></html>")
+        session = SeleniumSession(page_load_timeout=12.0)
+        session._driver = driver
+
+        resp = session.get(
+            "https://example.test/list",
+            retries=1,
+            return_source_on_timeout=True,
+        )
+
+        self.assertIsNotNone(resp)
+        self.assertIn("views-table", resp.text)
+        self.assertEqual(driver.page_load_timeouts, [12.0])
+        self.assertEqual(driver.scripts, ["window.stop();"])
+
+    def test_get_preserves_default_retry_failure_on_timeout(self):
+        driver = _TimeoutDriver("<html>partial</html>")
+        session = SeleniumSession(page_load_timeout=12.0)
+        session._driver = driver
+
+        resp = session.get("https://example.test/list", retries=1)
+
+        self.assertIsNone(resp)
+        self.assertIsNone(session._driver)
 
 
 if __name__ == "__main__":

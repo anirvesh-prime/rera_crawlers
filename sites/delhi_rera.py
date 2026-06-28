@@ -47,6 +47,7 @@ _SENTINEL_REG = "DLRERA2023P0017"
 # Matches e.g. DLRERA2023P0017 or DLRERA2022A0001
 _REG_NO_RE  = re.compile(r"DLRERA\d{4}[PA]\d{4,5}", re.IGNORECASE)
 _PIN_RE     = re.compile(r"\b(\d{6})\b")
+_HTML_PAGE_LOAD_TIMEOUT = 180.0
 
 
 # ── SeleniumSession wiring ────────────────────────────────────────────────────
@@ -76,7 +77,12 @@ def _quit_driver() -> None:
 def safe_get(url, *, logger=None, timeout=None, **_ignored):
     """Backwards-compatible shim — dispatches through the SeleniumSession."""
     plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
-    return _session().get(url, logger=logger, page_load_timeout=plt)
+    return _session().get(
+        url,
+        logger=logger,
+        page_load_timeout=plt or _HTML_PAGE_LOAD_TIMEOUT,
+        return_source_on_timeout=True,
+    )
 
 
 def download_response(url, *, logger=None, **_ignored):
@@ -92,7 +98,12 @@ def _get_listing_response(url: str, logger: CrawlerLogger, params: dict | None =
         sep = "&" if "?" in url else "?"
         full = f"{url}{sep}{urlencode(params)}"
     try:
-        resp = _session().get(full, logger=logger)
+        resp = _session().get(
+            full,
+            logger=logger,
+            page_load_timeout=_HTML_PAGE_LOAD_TIMEOUT,
+            return_source_on_timeout=True,
+        )
         if not resp:
             return None
         if resp.status_code >= 400 and "views-table" not in resp.text:
@@ -116,7 +127,12 @@ def _delhi_get(url: str, logger: CrawlerLogger | None = None):
     """
     for attempt in range(1, 4):
         try:
-            resp = _session().get(url, logger=logger)
+            resp = _session().get(
+                url,
+                logger=logger,
+                page_load_timeout=_HTML_PAGE_LOAD_TIMEOUT,
+                return_source_on_timeout=True,
+            )
             if resp:
                 return resp
         except Exception as exc:

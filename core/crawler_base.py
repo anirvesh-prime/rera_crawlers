@@ -649,6 +649,7 @@ class SeleniumSession:
         retries: int = 3,
         delay: float = 3.0,
         page_load_timeout: float | None = None,
+        return_source_on_timeout: bool = False,
         logger: CrawlerLogger | None = None,
         **_ignored,
     ) -> SeleniumResponse | None:
@@ -659,7 +660,7 @@ class SeleniumSession:
         for ``safe_get`` call sites.  Use ``urllib.parse.urlencode`` to fold
         ``params`` into the URL before calling if needed.
         """
-        from selenium.common.exceptions import WebDriverException
+        from selenium.common.exceptions import TimeoutException, WebDriverException
         last_exc: Exception | None = None
         timeout = page_load_timeout if page_load_timeout is not None else self.page_load_timeout
         for attempt in range(1, retries + 1):
@@ -668,6 +669,30 @@ class SeleniumSession:
                 driver.set_page_load_timeout(timeout)
                 driver.get(url)
                 return SeleniumResponse(text=driver.page_source or "", url=url)
+            except TimeoutException as exc:
+                last_exc = exc
+                if return_source_on_timeout:
+                    try:
+                        driver.execute_script("window.stop();")
+                    except Exception:
+                        pass
+                    try:
+                        source = driver.page_source or ""
+                    except Exception:
+                        source = ""
+                    if source.strip():
+                        if logger:
+                            logger.warning(
+                                f"Selenium GET attempt {attempt}/{retries} timed out; using current page source",
+                                url=url,
+                            )
+                        return SeleniumResponse(text=source, url=url)
+                if logger:
+                    logger.warning(
+                        f"Selenium GET attempt {attempt}/{retries} failed: {exc.__class__.__name__}",
+                        url=url,
+                    )
+                self.quit()  # reset on hard errors so retry starts clean
             except WebDriverException as exc:
                 last_exc = exc
                 if logger:
