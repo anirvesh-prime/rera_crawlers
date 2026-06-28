@@ -1533,20 +1533,26 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     else:               counts["projects_updated"] += 1
                     logger.info(f"DB result: {action}", step="db_upsert")
 
-                    logger.info(f"Downloading {len(doc_links)} documents", step="documents")
                     uploaded_documents: list[dict] = []
-                    doc_name_counts: dict[str, int] = {}
-                    for doc in doc_links:
-                        selected_doc = select_document_for_download(config["state"], doc, doc_name_counts, domain=DOMAIN)
-                        if selected_doc:
-                            uploaded_doc = _handle_document(key, selected_doc, run_id, site_id, logger)
-                            if uploaded_doc:
-                                uploaded_documents.append(uploaded_doc)
-                                counts["documents_uploaded"] += 1
+                    if settings.SKIP_DOCUMENTS:
+                        logger.info(
+                            f"Skipping {len(doc_links)} document downloads",
+                            step="documents",
+                        )
+                    else:
+                        logger.info(f"Downloading {len(doc_links)} documents", step="documents")
+                        doc_name_counts: dict[str, int] = {}
+                        for doc in doc_links:
+                            selected_doc = select_document_for_download(config["state"], doc, doc_name_counts, domain=DOMAIN)
+                            if selected_doc:
+                                uploaded_doc = _handle_document(key, selected_doc, run_id, site_id, logger)
+                                if uploaded_doc:
+                                    uploaded_documents.append(uploaded_doc)
+                                    counts["documents_uploaded"] += 1
+                                else:
+                                    uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label", "document")})
                             else:
                                 uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label", "document")})
-                        else:
-                            uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label", "document")})
                     if uploaded_documents:
                         upsert_project({
                             "key": db_dict["key"], "url": db_dict["url"],

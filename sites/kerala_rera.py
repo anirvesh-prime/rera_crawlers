@@ -1560,7 +1560,11 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
             logger.error("Sentinel: no data extracted", url=detail_url, step="sentinel")
             return False
 
-        if check_field_coverage(fresh, baseline, threshold=0.80, logger=logger):
+        # Intermediate retries are expected to fail when PrintPreview returns an
+        # empty shell. Keep those attempts out of ERROR logs and only emit the
+        # coverage failure if all retries are exhausted.
+        coverage_logger = logger if _attempt == _SENTINEL_MAX_ATTEMPTS else None
+        if check_field_coverage(fresh, baseline, threshold=0.80, logger=coverage_logger):
             logger.info("Sentinel check passed", reg=sentinel_reg, step="sentinel")
             return True
 

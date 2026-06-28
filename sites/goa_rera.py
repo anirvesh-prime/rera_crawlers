@@ -14,7 +14,6 @@ Strategy:
 """
 from __future__ import annotations
 
-import base64
 import re
 import time
 import datetime
@@ -47,8 +46,20 @@ HOME_URL    = "https://rera.goa.gov.in/reraApp/home"
 SEARCH_URL  = "https://rera.goa.gov.in/reraApp/search"
 DOMAIN      = "rera.goa.gov.in"
 PAGE_SIZE          = 10   # rows per search-result page (approximate)
-_CAPTCHA_MAX_TRIES    = 10  # solver attempts per captcha round (inner loop)
-_MAX_SERVER_REJECTS   = 20  # max server-side rejections before giving up entirely
+_CAPTCHA_MAX_TRIES    = 3   # solver attempts per captcha round (inner loop)
+_MAX_SERVER_REJECTS   = 5   # max server-side rejections before giving up entirely
+_CAPTCHA_READY_TIMEOUT_MS = 8_000
+_CAPTCHA_FETCH_TIMEOUT_MS = 5_000
+_CAPTCHA_SELECTORS = [
+    '#captcha_id',
+    'img[name="imgCaptcha"]',
+    'img[src*="captcha"]',
+    'img[src*="Captcha"]',
+    'img[src*="CAPTCHA"]',
+    'img[id*="captcha" i]',
+    'img[name*="captcha" i]',
+    'img[alt*="captcha" i]',
+]
 
 
 # ── Selenium session (shared driver via core.crawler_base.SeleniumSession) ────
@@ -417,6 +428,107 @@ def _parse_listing_cards(soup: BeautifulSoup) -> list[dict]:
 
 # ── Captcha + listing via Selenium ────────────────────────────────────────────
 
+def _wait_for_captcha_selector(page, logger: CrawlerLogger) -> str | None:
+    """Return the first visible captcha image selector, or None."""
+    ready_script = """
+    (selectors) => {
+        const visible = (el) => {
+            if (!el) return false;
+            const rect = el.getBoundingClientRect();
+            const style = window.getComputedStyle(el);
+            return rect.width > 0 && rect.height > 0 &&
+                style.visibility !== 'hidden' &&
+                style.display !== 'none';
+        };
+        return (selectors || []).some((selector) => {
+            try {
+                return visible(document.querySelector(selector));
+            } catch (_) {
+                return false;
+            }
+        });
+    }
+    """
+    try:
+        page.wait_for_function(
+            ready_script,
+            arg=_CAPTCHA_SELECTORS,
+            timeout=_CAPTCHA_READY_TIMEOUT_MS,
+        )
+    except Exception as exc:
+        logger.warning(f"Captcha image not ready within {_CAPTCHA_READY_TIMEOUT_MS}ms: {exc}")
+        return None
+
+    try:
+        return page.evaluate(
+            """
+            (selectors) => {
+                const visible = (el) => {
+                    if (!el) return false;
+                    const rect = el.getBoundingClientRect();
+                    const style = window.getComputedStyle(el);
+                    return rect.width > 0 && rect.height > 0 &&
+                        style.visibility !== 'hidden' &&
+                        style.display !== 'none';
+                };
+                for (const selector of selectors || []) {
+                    try {
+                        if (visible(document.querySelector(selector))) return selector;
+                    } catch (_) {}
+                }
+                return null;
+            }
+            """,
+            _CAPTCHA_SELECTORS,
+        )
+    except Exception as exc:
+        logger.warning(f"Captcha selector detection failed: {exc}")
+        return None
+
+
+def _captcha_data_url_from_page(page, selector: str, logger: CrawlerLogger) -> str | None:
+    """Fetch the captcha image through the browser session and return a data URL."""
+    try:
+        data_url = page.evaluate(
+            """async (selector, timeoutMs) => {
+                const img = document.querySelector(selector);
+                if (!img) return null;
+                const src = img.currentSrc || img.getAttribute('src');
+                if (!src) return null;
+                const url = new URL(src, document.baseURI).href;
+                const ctrl = new AbortController();
+                const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+                try {
+                    const resp = await fetch(url, {
+                        credentials: 'include',
+                        cache: 'no-store',
+                        signal: ctrl.signal
+                    });
+                    if (!resp.ok) return null;
+                    const blob = await resp.blob();
+                    return await new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = () => resolve(reader.result || null);
+                        reader.onerror = () => resolve(null);
+                        reader.readAsDataURL(blob);
+                    });
+                } catch (_) {
+                    return null;
+                } finally {
+                    clearTimeout(timer);
+                }
+            }""",
+            selector,
+            _CAPTCHA_FETCH_TIMEOUT_MS,
+        )
+    except Exception as exc:
+        logger.warning(f"Captcha fetch failed for {selector!r}: {exc}")
+        return None
+    if isinstance(data_url, str) and data_url.startswith("data:image/"):
+        return data_url
+    return None
+
+
 def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> list[dict]:
     """
     Use Selenium to solve the captcha and submit the Goa RERA search form.
@@ -436,67 +548,16 @@ def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> 
         solved = None
         for captcha_attempt in range(1, _CAPTCHA_MAX_TRIES + 1):
             try:
-                page.goto(HOME_URL, timeout=45000)
-                page.wait_for_load_state("networkidle", timeout=30000)
+                page.goto(HOME_URL, timeout=25_000, wait_until="domcontentloaded")
+                page.wait_for_load_state("domcontentloaded", timeout=10_000)
             except Exception as e:
                 logger.error(f"Failed to load home page: {e}")
                 break
 
-            # Capture captcha image and resize to 90×28 for the solver.
-            # Strategy:
-            #   1. element.screenshot() — captures the rendered element pixels
-            #      directly via Selenium; completely bypasses CORS/canvas-taint
-            #      issues that made the old JS canvas approach return blank PNGs.
-            #   2. Feed the screenshot bytes back as a data: URL and draw it on a
-            #      90×28 canvas (data: URLs are never cross-origin, so no taint).
-            #   3. The resulting PNG stays within the solver's ~1750-byte limit.
-            _CAPTCHA_SELECTORS = [
-                'img[src*="captcha"]',
-                'img[src*="Captcha"]',
-                'img[src*="CAPTCHA"]',
-                'img[id*="captcha" i]',
-                'img[name*="captcha" i]',
-                'img[alt*="captcha" i]',
-            ]
             captcha_data = None
-            for _sel in _CAPTCHA_SELECTORS:
-                try:
-                    captcha_el = page.wait_for_selector(_sel, state="visible", timeout=8000)
-                except Exception:
-                    captcha_el = page.query_selector(_sel)
-                if not captcha_el:
-                    continue
-                try:
-                    png_bytes = captcha_el.screenshot()
-                except Exception as _e:
-                    logger.warning(f"element.screenshot() failed for {_sel!r}: {_e}")
-                    continue
-                if not png_bytes:
-                    continue
-                full_data_url = "data:image/png;base64," + base64.b64encode(png_bytes).decode()
-                # Re-encode at natural dimensions (200×45) via an in-browser canvas.
-                # - data: URLs are never cross-origin → no canvas taint
-                # - Canvas always outputs RGBA PNG which the solver server requires
-                # - We preserve the captcha's native resolution (no downscale) so the
-                #   model receives maximum detail
-                captcha_data = page.evaluate("""(dataUrl) => {
-                    return new Promise((resolve) => {
-                        const img = new Image();
-                        img.onload = () => {
-                            const w = img.naturalWidth  || 200;
-                            const h = img.naturalHeight || 45;
-                            const c = document.createElement('canvas');
-                            c.width = w; c.height = h;
-                            c.getContext('2d').drawImage(img, 0, 0, w, h);
-                            const url = c.toDataURL('image/png');
-                            resolve((url && url !== 'data:,') ? url : null);
-                        };
-                        img.onerror = () => resolve(null);
-                        img.src = dataUrl;
-                    });
-                }""", full_data_url)
-                if captcha_data:
-                    break
+            captcha_selector = _wait_for_captcha_selector(page, logger)
+            if captcha_selector:
+                captcha_data = _captcha_data_url_from_page(page, captcha_selector, logger)
             if not captcha_data or len(captcha_data) < 100:
                 logger.warning(f"Captcha element screenshot failed (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES})")
                 continue
@@ -519,11 +580,26 @@ def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> 
 
         # Set startFrom for pagination and submit form
         try:
-            page.evaluate(f"document.querySelector('[name=startFrom]').value = '{start_from}';")
+            page.evaluate(
+                """(value) => {
+                    const input = document.querySelector('[name=startFrom]');
+                    if (input) input.value = String(value);
+                    return Boolean(input);
+                }""",
+                start_from,
+            )
             page.fill('[name=captcha]', solved)
-            page.evaluate("document.querySelector('[name=btn1]') && document.getElementById('searchForm') ? document.getElementById('searchForm').submit() : document.searchForm.submit()")
-            page.wait_for_load_state("networkidle", timeout=30000)
-            page.wait_for_timeout(1500)  # allow any secondary navigation to settle
+            submitted = page.evaluate(
+                """() => {
+                    const form = document.getElementById('searchForm') || document.searchForm;
+                    if (!form) return false;
+                    form.submit();
+                    return true;
+                }"""
+            )
+            if not submitted:
+                raise RuntimeError("search form not found")
+            page.wait_for_load_state("domcontentloaded", timeout=15_000)
         except Exception as e:
             logger.error(f"Form submission failed: {e}")
             break
@@ -535,7 +611,7 @@ def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> 
                 html_content = page.content()
                 break
             except Exception:
-                page.wait_for_timeout(1000)
+                page.wait_for_timeout(250)
         if not html_content:
             logger.warning(f"Could not get page content at startFrom={start_from}; skipping page")
             break

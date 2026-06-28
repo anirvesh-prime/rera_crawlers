@@ -289,6 +289,27 @@ class MaharashtraBuildingDetailsTests(unittest.TestCase):
             },
         ])
 
+    def test_old_summary_apartment_type_table_preserves_office_type(self):
+        details = self._parse_building_details("""
+            <table>
+              <thead><tr>
+                <th>#</th><th>Building Name</th><th>Apartment Type</th>
+                <th>Carpet Area (in Sqmts)</th><th>Number of Apartment</th>
+              </tr></thead>
+              <tbody>
+                <tr><td>1</td><td>COMMERCIAL WING</td><td>Office</td><td>44.2</td><td>3</td></tr>
+              </tbody>
+            </table>
+        """)
+        self.assertEqual(details, [
+            {
+                "flat_type": "Office",
+                "no_of_units": "3",
+                "carpet_area": "44.2",
+                "block_name": "COMMERCIAL WING",
+            },
+        ])
+
     def test_new_summary_residential_and_non_residential_columns_split_units(self):
         details = self._parse_building_details("""
             <table>

@@ -946,6 +946,15 @@ def _parse_mh_building_tab(soup: BeautifulSoup, out: dict) -> None:
             return None
         return str(int(number)) if number.is_integer() else str(number)
 
+    def _normalized_apartment_type(value: str | None) -> str:
+        apt_type = (value or "Apartment").strip() or "Apartment"
+        apt_type_l = apt_type.lower()
+        if "apartment" in apt_type_l:
+            return apt_type
+        if apt_type_l in {"office", "shop", "showroom", "commercial", "retail", "unit"}:
+            return apt_type
+        return f"{apt_type} Apartment"
+
     def _rows_by_headers(table, headers: list[str]) -> list[dict[str, str]]:
         rows: list[dict[str, str]] = []
         for tr in table.select("tbody tr"):
@@ -970,9 +979,8 @@ def _parse_mh_building_tab(soup: BeautifulSoup, out: dict) -> None:
                 unit_count = _clean_unit_count(row.get("number of apartment"))
                 if not unit_count:
                     continue
-                apt_type = row.get("apartment type") or "Apartment"
                 entry = {
-                    "flat_type": apt_type if "apartment" in apt_type.lower() else f"{apt_type} Apartment",
+                    "flat_type": _normalized_apartment_type(row.get("apartment type")),
                     "no_of_units": unit_count,
                 }
                 if row.get("carpet area (in sqmts)"):

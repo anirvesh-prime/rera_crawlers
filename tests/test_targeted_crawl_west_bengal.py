@@ -61,7 +61,6 @@ class WestBengalTargetedCrawlTests(unittest.TestCase):
                               return_value=self._rows()),
             mock.patch.object(west_bengal_rera, "load_checkpoint", return_value={}),
             mock.patch.object(west_bengal_rera, "reset_checkpoint"),
-            mock.patch.object(west_bengal_rera, "random_delay"),
             mock.patch.object(west_bengal_rera, "update_crawl_run_progress"),
             mock.patch.object(west_bengal_rera, "get_project_by_key", return_value=None),
             mock.patch.object(west_bengal_rera, "upsert_project",

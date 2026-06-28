@@ -26,7 +26,7 @@ SITES: list[dict] = [
         "enabled": True,
         "rate_limit_delay": (2, 4),
         "max_retries": 3,
-        "sentinel_registration_no": "K-RERA/PRJ/ERN/363/2020",
+        "sentinel_registration_no": "K-RERA/PRJ/TSR/167/2022",
         "config_id": 1,
     },
     {

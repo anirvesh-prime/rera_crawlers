@@ -584,6 +584,7 @@ def _parse_viewproject_html(soup: BeautifulSoup) -> dict:  # noqa: C901
     that is hidden behind the 'Updated project details' View link on the main
     ProjectDetail page. It uses <table> sections identified by a header row.
     """
+    compact_fallback = _parse_detail_html(soup)
     out: dict = {}
 
     def _tbl_heading(tbl) -> str:
@@ -859,6 +860,21 @@ def _parse_viewproject_html(soup: BeautifulSoup) -> dict:  # noqa: C901
         if promoter:
             out["promoters_details"] = promoter  # FIELD: promoters_details <- ViewProject "organization" table
 
+    # The popup can also contain compact inline labels for dates/status. Do not
+    # use it wholesale here: on the legacy table layout some generic labels map
+    # poorly (for example "Project Name" can resolve to "Registration No.").
+    for field in (
+        "project_registration_no",
+        "status_of_the_project",
+        "actual_commencement_date",
+        "estimated_finish_date",
+        "actual_finish_date",
+        "approved_on_date",
+    ):
+        val = compact_fallback.get(field)
+        if val not in (None, "", [], {}) and not out.get(field):
+            out[field] = val
+
     return out
 
 
@@ -873,7 +889,14 @@ def _parse_detail_docs(soup: BeautifulSoup) -> list[dict]:
     """
     docs: list[dict] = []
     seen: set[str] = set()
-    root = soup.select_one("app-viewprojectnew #pdfContent") or soup
+    root = (
+        soup.select_one("app-viewprojectnew #pdfContent")
+        or soup.select_one("#pdfContent")
+        or soup.select_one(".page-content")
+        or soup.select_one(".content-wrapper")
+        or soup.select_one("main")
+        or soup
+    )
     for a in root.find_all("a", href=True):
         href = str(a.get("href", "")).strip()
         if not href or href.startswith("#") or href.lower().startswith("javascript"):
@@ -902,14 +925,24 @@ def _parse_detail_docs(soup: BeautifulSoup) -> list[dict]:
                     _clean(td.get_text())
                     for td in parent_tr.find_all(["td", "th"])
                 ]
+                _bad_doc_labels = {"na", "n/a", "none", "-", "--", "0"}
                 row_label = next(
-                    (c for c in cells if c and c.lower() not in _GENERIC_ANCHOR_TEXTS),
+                    (
+                        c for c in cells
+                        if c
+                        and c.lower() not in _GENERIC_ANCHOR_TEXTS
+                        and c.lower() not in _bad_doc_labels
+                    ),
                     "",
                 )
                 if row_label:
                     label = row_label
 
-        if not label:
+        if (
+            not label
+            or label.lower() in _GENERIC_ANCHOR_TEXTS
+            or label.lower() in {"na", "n/a", "none", "-", "--", "0"}
+        ):
             label = "document"
 
         docs.append({"label": label, "url": url})
@@ -980,6 +1013,17 @@ def _parse_detail_html(soup: BeautifulSoup) -> dict:
             continue
         if field.endswith("_date"):
             val = _normalize_date_str(val) or val
+        elif field == "project_registration_no":
+            m = re.search(r"RAJ/P/\d{4}/\d+", val, re.I)
+            if m:
+                val = m.group(0)
+        elif field == "promoter_name":
+            val = re.sub(
+                r"\s+(?:individual|partnership\s+firm|company|society|trust|llp)\b.*$",
+                "",
+                val,
+                flags=re.I,
+            ).strip()
         elif field == "project_type":
             val = _normalize_project_type(val)
         elif field in ("number_of_residential_units", "number_of_commercial_units"):
@@ -1188,6 +1232,9 @@ def _scrape_detail_html_via_browser(
         # a "Project at a Glance" tab/link can route the browser to
         # ViewProjectNew, which no longer has those rich ViewProject links.
         page.wait_for_timeout(2_000)
+        initial_soup = BeautifulSoup(page.content(), "lxml")
+        data = _parse_detail_html(initial_soup)
+        docs = _parse_detail_docs(initial_soup)
         popup_html = _fetch_viewproject_html(page, logger)
 
         # Wait for Angular to render the tab bar before attempting to click tabs.
@@ -1200,8 +1247,18 @@ def _scrape_detail_html_via_browser(
         _try_expand_tabs(page)
         page.wait_for_timeout(2_000)
         soup = BeautifulSoup(page.content(), "lxml")
-        data = _parse_detail_html(soup)
-        docs = _parse_detail_docs(soup)
+        expanded_data = _parse_detail_html(soup)
+        protected_fields = {
+            "project_name",
+            "project_registration_no",
+            "project_type",
+            "promoter_name",
+        }
+        for key, value in expanded_data.items():
+            if key in protected_fields and data.get(key):
+                continue
+            data[key] = value
+        docs.extend(_parse_detail_docs(soup))
 
         # ── Open the full-detail popup and merge richer fields ────────────────
         if popup_html:
@@ -1211,6 +1268,16 @@ def _scrape_detail_html_via_browser(
             data.update(rich)
             # Also collect any doc links from the popup
             docs.extend(_parse_detail_docs(popup_soup))
+
+        deduped_docs: list[dict] = []
+        seen_doc_urls: set[str] = set()
+        for doc in docs:
+            url = doc.get("url")
+            if not url or url in seen_doc_urls:
+                continue
+            seen_doc_urls.add(url)
+            deduped_docs.append(doc)
+        docs = deduped_docs
 
         logger.info(
             f"Detail page scraped: {len(data)} fields, {len(docs)} docs",

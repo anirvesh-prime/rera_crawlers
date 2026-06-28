@@ -28,7 +28,7 @@ from bs4 import BeautifulSoup, Tag
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
-from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, random_delay
+from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos
 from core.db import (
     get_project_by_key,
     insert_crawl_error,
@@ -60,6 +60,9 @@ _REG_RE     = re.compile(r"WBRERA/[A-Z]/[A-Z]+/\d{4}/\d+", re.I)
 _AREA_RE    = re.compile(r"([\d,]+(?:\.\d+)?)\s*(sq\.?\s*m(?:tr)?|sqmt|sqmtr)?", re.I)
 _DATE_RE    = re.compile(r"\d{2}-\d{2}-\d{4}")
 _PLAN_DEV_KW = ("plan of development", "plan of development works")
+_LISTING_READY_TIMEOUT = 15.0
+_LISTING_PAGE_TIMEOUT = 45.0
+_DETAIL_PAGE_TIMEOUT = 45.0
 
 
 # ── SeleniumSession wiring ────────────────────────────────────────────────────
@@ -67,6 +70,7 @@ _PLAN_DEV_KW = ("plan of development", "plan of development works")
 # the Selenium-backed Chrome session accepts those connections natively.
 
 _SESSION: SeleniumSession | None = None
+_LISTING_ROWS_CACHE: list[dict] | None = None
 
 
 def _session() -> SeleniumSession:
@@ -88,6 +92,11 @@ def _quit_driver() -> None:
         _SESSION = None
 
 
+def _reset_listing_cache() -> None:
+    global _LISTING_ROWS_CACHE
+    _LISTING_ROWS_CACHE = None
+
+
 def safe_get(url, *, logger=None, timeout=None, params=None, **_ignored):
     """Backwards-compatible shim — dispatches through the SeleniumSession."""
     plt = float(timeout) if isinstance(timeout, (int, float)) and timeout else None
@@ -105,12 +114,64 @@ def download_response(url, *, logger=None, **_ignored):
 
 
 def _get(url: str, logger: CrawlerLogger, params: dict | None = None):
-    return safe_get(url, logger=logger, timeout=60.0, params=params)
+    return safe_get(url, logger=logger, timeout=_DETAIL_PAGE_TIMEOUT, params=params)
 
 
 # ── Listing page ───────────────────────────────────────────────────────────────
 
-def _fetch_all_listing_rows(logger) -> list[dict]:
+def _wait_for_listing_data(driver, logger) -> list | None:
+    """Poll for a populated WB DataTables instance instead of sleeping."""
+    deadline = time.monotonic() + _LISTING_READY_TIMEOUT
+    last_reason = "not checked"
+    while time.monotonic() < deadline:
+        try:
+            result = driver.execute_script("""
+                const htmlRows = Array.from(document.querySelectorAll(
+                    '#projectDataTable tbody tr'
+                ));
+                if (typeof $ === 'undefined' || typeof $.fn === 'undefined' ||
+                        typeof $.fn.DataTable === 'undefined') {
+                    return {
+                        ready: htmlRows.length > 0,
+                        rows: null,
+                        reason: 'jquery/datatables unavailable'
+                    };
+                }
+                const tables = $.fn.dataTable.tables();
+                if (!tables || !tables.length) {
+                    return {
+                        ready: htmlRows.length > 0,
+                        rows: null,
+                        reason: 'no datatables registered'
+                    };
+                }
+                const table = tables[0];
+                if (!$.fn.DataTable.isDataTable(table)) {
+                    return {
+                        ready: htmlRows.length > 0,
+                        rows: null,
+                        reason: 'datatable not initialized'
+                    };
+                }
+                const dt = $(table).DataTable();
+                const rows = dt.rows().data().toArray();
+                return {
+                    ready: rows.length > 0 || htmlRows.length > 0,
+                    rows,
+                    reason: `datatable rows=${rows.length}, html rows=${htmlRows.length}`
+                };
+            """)
+            last_reason = (result or {}).get("reason") or last_reason
+            if (result or {}).get("ready"):
+                return (result or {}).get("rows")
+        except Exception as exc:
+            last_reason = exc.__class__.__name__
+        time.sleep(0.2)
+    logger.warning(f"Listing detector timed out: {last_reason}", step="listing")
+    return None
+
+
+def _fetch_all_listing_rows(logger, *, force_refresh: bool = False) -> list[dict]:
     """Use Selenium + DataTables JS API to fetch all WB RERA project rows.
 
     The site blocks Python httpx (Connection reset), but Chromium works fine.
@@ -119,29 +180,41 @@ def _fetch_all_listing_rows(logger) -> list[dict]:
 
     Returns one dict per project (same format as ``_parse_listing_rows``).
     """
+    global _LISTING_ROWS_CACHE
+    if _LISTING_ROWS_CACHE is not None and not force_refresh:
+        logger.info(f"Using cached WB RERA listing rows ({len(_LISTING_ROWS_CACHE)})",
+                    step="listing")
+        return list(_LISTING_ROWS_CACHE)
+
     rows: list[dict] = []
     try:
-        resp = _session().get(LISTING_URL, logger=logger)
+        resp = _session().get(
+            LISTING_URL, logger=logger, page_load_timeout=_LISTING_PAGE_TIMEOUT,
+        )
         if not resp:
             logger.error("Selenium listing fetch returned no response")
             return rows
         driver = _session().driver()
-        time.sleep(3)
+
+        # Check for 503 / maintenance page before going further.
+        title = driver.title or ""
+        if "503" in title or "unavailable" in title.lower():
+            logger.warning(
+                f"Listing page returned {title!r} — skipping",
+                step="listing",
+            )
+            return rows
 
         # Extract all rows via DataTables JS API
-        raw_rows = driver.execute_script("""
-            if (typeof $ === 'undefined' || typeof $.fn.DataTable === 'undefined')
-                return null;
-            const tables = $.fn.dataTable.tables();
-            if (!tables || !tables.length) return null;
-            const dt = $(tables[0]).DataTable();
-            return dt.rows().data().toArray();
-        """)
+        raw_rows = _wait_for_listing_data(driver, logger)
 
         if not raw_rows:
             logger.warning("DataTables JS API returned no rows; "
                            "falling back to HTML tbody parsing")
-            return _parse_listing_rows(BeautifulSoup(driver.page_source, "lxml"))
+            rows = _parse_listing_rows(BeautifulSoup(driver.page_source, "lxml"))
+            if rows:
+                _LISTING_ROWS_CACHE = list(rows)
+            return rows
 
         logger.info(f"DataTables JS API returned {len(raw_rows)} rows")
 
@@ -177,6 +250,8 @@ def _fetch_all_listing_rows(logger) -> list[dict]:
                 "procode":                 procode,                         # FIELD: procode <- regex on name link href
             }
             rows.append(row)
+        if rows:
+            _LISTING_ROWS_CACHE = list(rows)
     except Exception as e:
         logger.error(f"Selenium listing fetch failed: {e}")
     return rows
@@ -949,49 +1024,17 @@ def _sentinel_find_procode(
     site unreachable.
     """
     try:
-        resp = _session().get(LISTING_URL, logger=logger)
-        if not resp:
-            logger.warning("Sentinel: listing fetch returned no response", step="sentinel")
-            return None, None
-        driver = _session().driver()
-        time.sleep(3)
-
-        # Check for 503 / maintenance page before going further
-        title = driver.title or ""
-        if "503" in title or "unavailable" in title.lower():
-            logger.warning(
-                f"Sentinel: listing page returned {title!r} — skipping",
-                step="sentinel",
-            )
-            return None, None
-
-        result = driver.execute_script(
-            """
-            const targetReg = arguments[0];
-            if (typeof $ === 'undefined' || typeof $.fn.DataTable === 'undefined')
-                return null;
-            const tables = $.fn.dataTable.tables();
-            if (!tables || !tables.length) return null;
-            const dt = $(tables[0]).DataTable();
-            const allRows = dt.rows().data().toArray();
-            for (const row of allRows) {
-                // row layout: [serial, old_reg_no, name_html, comp_date, reg_no, reg_date]
-                if (Array.isArray(row) && row.length > 4 &&
-                        String(row[4]).trim() === targetReg) {
-                    const nameHtml = row[2] || '';
-                    const m = nameHtml.match(/procode=(\\d+)/i);
-                    const procode = m ? m[1] : null;
-                    const regDate = row.length > 5 ? String(row[5]).trim() : '';
-                    return {procode: procode, reg_date: regDate};
-                }
-            }
-            return null;
-            """,
-            sentinel_reg,
+        rows = _fetch_all_listing_rows(logger)
+        result = next(
+            (
+                row for row in rows
+                if (row.get("project_registration_no") or "").strip() == sentinel_reg
+            ),
+            None,
         )
 
         procode  = (result or {}).get("procode")
-        reg_date = (result or {}).get("reg_date") or None
+        reg_date = (result or {}).get("approved_on_date") or None
 
         if procode:
             logger.info(
@@ -1087,6 +1130,7 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
 def run(config: dict, run_id: int, mode: str) -> dict:
     """Public entry point — ensures the Selenium driver is shut down after the run."""
     try:
+        _reset_listing_cache()
         return _run(config, run_id, mode)
     finally:
         _quit_driver()
@@ -1212,7 +1256,6 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
             doc_links: list[dict] = []
             if row.get("detail_url") and settings.SCRAPE_DETAILS:
-                random_delay(*config.get("rate_limit_delay", (1, 3)))
                 logger.info("Fetching detail page", step="detail_fetch")
                 detail      = _parse_detail_page(row["detail_url"], logger)
                 doc_links   = detail.pop("_doc_links", [])
