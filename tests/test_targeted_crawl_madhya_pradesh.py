@@ -129,6 +129,54 @@ class MadhyaPradeshTargetedCrawlTests(unittest.TestCase):
         sentinel.assert_called_once()
         self.assertFalse(counts["sentinel_passed"])
 
+    def test_parse_listing_html_extracts_project_stubs(self):
+        html = """
+        <table id="example"><tbody>
+          <tr>
+            <td>1.</td><td>Alpha Project</td><td>Alpha Promoter</td>
+            <td>Bhopal&nbsp; - &nbsp;Bhopal</td><td>In Progress</td>
+            <td><a href="view_project_details.php?id=abc">View</a></td>
+          </tr>
+        </tbody></table>
+        """
+
+        stubs = madhya_pradesh_rera._parse_listing_html(html)
+
+        self.assertEqual(stubs, [{
+            "project_name": "Alpha Project",
+            "promoter_name": "Alpha Promoter",
+            "district": "Bhopal",
+            "area": "Bhopal",
+            "status": "In Progress",
+            "detail_url": "https://www.rera.mp.gov.in/view_project_details.php?id=abc",
+        }])
+
+    def test_fetch_listing_falls_back_to_selenium_when_direct_fetch_has_no_rows(self):
+        class _Resp:
+            def __init__(self, text: str):
+                self.text = text
+
+            def __bool__(self) -> bool:
+                return True
+
+        listing_html = """
+        <table id="example"><tbody>
+          <tr>
+            <td>1.</td><td>Beta Project</td><td>Beta Promoter</td>
+            <td>Indore&nbsp; - &nbsp;Other</td><td>Approved</td>
+            <td><a href="https://www.rera.mp.gov.in/view_project_details.php?id=xyz">View</a></td>
+          </tr>
+        </tbody></table>
+        """
+        with mock.patch.object(madhya_pradesh_rera, "safe_get", return_value=_Resp("<html></html>")) as safe_get, \
+                mock.patch.object(madhya_pradesh_rera, "_get", return_value=_Resp(listing_html)) as selenium_get:
+            stubs = madhya_pradesh_rera._fetch_listing(None)
+
+        safe_get.assert_called_once()
+        selenium_get.assert_called_once()
+        self.assertEqual(len(stubs), 1)
+        self.assertEqual(stubs[0]["project_name"], "Beta Project")
+
 
 if __name__ == "__main__":
     unittest.main()

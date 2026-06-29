@@ -1726,7 +1726,12 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 else:               counts["projects_updated"] += 1
                 logger.info(f"DB result: {action}", step="db_upsert")
 
-                if doc_links:
+                if doc_links and settings.SKIP_DOCUMENTS:
+                    logger.info(
+                        f"Skipping {len(doc_links)} documents (--skip-documents)",
+                        step="documents",
+                    )
+                elif doc_links:
                     logger.info(f"Downloading {len(doc_links)} documents", step="documents")
                     uploaded_documents = []
                     doc_name_counts: dict[str, int] = {}

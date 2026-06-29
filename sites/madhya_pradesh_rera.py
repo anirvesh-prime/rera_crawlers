@@ -21,7 +21,7 @@ from typing import Any
 from bs4 import BeautifulSoup, Tag
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
-from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, random_delay
+from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, random_delay, safe_get
 from core.db import get_project_by_key, insert_crawl_error, upsert_document, upsert_project, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -136,34 +136,24 @@ def _row_val(soup: BeautifulSoup, label_text: str) -> str:
 
 # ── Listing ────────────────────────────────────────────────────────────────────
 
-def _fetch_listing(logger: CrawlerLogger | None) -> list[dict]:
-    """
-    Fetch the AJAX listing endpoint with default params.  The server ignores
-    show/pagenum and returns all projects in one HTML fragment.
-    """
-    params = {
-        "show": "20",
-        "pagenum": "1",
-        "search_txt": "",
-        "search_dist": "",
-        "search_tehs": "",
-        "project_type_id": "",
-    }
-    headers = {
-        "Referer": "https://www.rera.mp.gov.in/all-projects/",
-        "X-Requested-With": "XMLHttpRequest",
-    }
-    resp = _get(LISTING_AJAX_URL, logger, params=params, headers=headers)
-    if not resp:
-        return []
-    soup = BeautifulSoup(resp.text, "lxml")
+def _parse_listing_html(html: str, logger: CrawlerLogger | None = None) -> list[dict]:
+    soup = BeautifulSoup(html or "", "lxml")
     table = soup.find("table", id="example")
     if not table:
+        if logger:
+            logger.warning(
+                "Listing response did not contain table#example",
+                response_chars=len(html or ""),
+                has_total_record_marker="Total Records" in (html or ""),
+                step="listing",
+            )
         return []
 
     stubs: list[dict] = []
     tbody = table.find("tbody")
     if not tbody:
+        if logger:
+            logger.warning("Listing table has no tbody", step="listing")
         return []
     for tr in tbody.find_all("tr"):
         tds = tr.find_all("td")
@@ -191,6 +181,44 @@ def _fetch_listing(logger: CrawlerLogger | None) -> list[dict]:
             "detail_url":    detail_url,
         })
     return stubs
+
+
+def _fetch_listing(logger: CrawlerLogger | None) -> list[dict]:
+    """
+    Fetch the AJAX listing endpoint with default params.  The server ignores
+    show/pagenum and returns all projects in one HTML fragment.
+    """
+    params = {
+        "show": "20",
+        "pagenum": "1",
+        "search_txt": "",
+        "search_dist": "",
+        "search_tehs": "",
+        "project_type_id": "",
+    }
+    headers = {
+        "Referer": "https://www.rera.mp.gov.in/all-projects/",
+        "X-Requested-With": "XMLHttpRequest",
+    }
+    resp = safe_get(
+        LISTING_AJAX_URL,
+        logger=logger,
+        params=params,
+        headers=headers,
+        timeout=60,
+        verify=False,
+    )
+    if resp:
+        stubs = _parse_listing_html(resp.text, logger)
+        if stubs:
+            return stubs
+        if logger:
+            logger.warning("Direct listing fetch returned no rows; retrying through Selenium", step="listing")
+
+    resp = _get(LISTING_AJAX_URL, logger, params=params, headers=headers)
+    if not resp:
+        return []
+    return _parse_listing_html(resp.text, logger)
 
 
 # ── Detail page parser ─────────────────────────────────────────────────────────

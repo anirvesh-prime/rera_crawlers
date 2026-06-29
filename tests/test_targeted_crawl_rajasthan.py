@@ -31,6 +31,7 @@ class RajasthanTargetedCrawlTests(unittest.TestCase):
         self._orig_target = settings.TARGET_REG_NO
         self._orig_limit = settings.CRAWL_ITEM_LIMIT
         self._orig_max_pages = settings.MAX_PAGES
+        self._orig_skip_documents = settings.SKIP_DOCUMENTS
         settings.CRAWL_ITEM_LIMIT = 0
         settings.MAX_PAGES = None
 
@@ -38,6 +39,7 @@ class RajasthanTargetedCrawlTests(unittest.TestCase):
         settings.TARGET_REG_NO = self._orig_target
         settings.CRAWL_ITEM_LIMIT = self._orig_limit
         settings.MAX_PAGES = self._orig_max_pages
+        settings.SKIP_DOCUMENTS = self._orig_skip_documents
 
     def _rows(self) -> list[dict]:
         return [
@@ -112,6 +114,67 @@ class RajasthanTargetedCrawlTests(unittest.TestCase):
             )
         sentinel.assert_called_once()
         self.assertFalse(counts["sentinel_passed"])
+
+    def test_skip_documents_bypasses_rajasthan_document_processing(self):
+        settings.TARGET_REG_NO = "RAJ/P/2020/0002"
+        settings.SKIP_DOCUMENTS = True
+        upsert_payloads: list[dict] = []
+
+        def upsert_side_effect(payload: dict) -> str:
+            upsert_payloads.append(dict(payload))
+            return "new"
+
+        select_doc = mock.MagicMock(return_value={"label": "RERA Registration Certificate 1", "url": "https://example.test/cert.pdf"})
+        handle_doc = mock.MagicMock()
+        detail_fields = {
+            "project_registration_no": "RAJ/P/2020/0002",
+            "project_name": "Beta",
+        }
+        doc_links = [
+            {"label": "RERA Registration Certificate", "url": "https://example.test/cert.pdf"}
+        ]
+
+        patches = [
+            mock.patch.object(rajasthan_rera, "_session", return_value=mock.MagicMock()),
+            mock.patch.object(rajasthan_rera, "page_adapter", return_value=mock.MagicMock()),
+            mock.patch.object(rajasthan_rera, "_sentinel_check"),
+            mock.patch.object(rajasthan_rera, "_scrape_project_list", return_value=self._rows()),
+            mock.patch.object(rajasthan_rera, "_navigate_to_project_detail", return_value="https://example.test/detail"),
+            mock.patch.object(rajasthan_rera, "_scrape_detail_html_via_browser", return_value=(detail_fields, doc_links)),
+            mock.patch.object(rajasthan_rera, "load_checkpoint", return_value={}),
+            mock.patch.object(rajasthan_rera, "save_checkpoint"),
+            mock.patch.object(rajasthan_rera, "reset_checkpoint"),
+            mock.patch.object(rajasthan_rera, "random_delay"),
+            mock.patch.object(rajasthan_rera, "update_crawl_run_progress"),
+            mock.patch.object(rajasthan_rera, "get_project_by_key", return_value=None),
+            mock.patch.object(rajasthan_rera, "upsert_project", side_effect=upsert_side_effect),
+            mock.patch.object(rajasthan_rera, "insert_crawl_error"),
+            mock.patch.object(rajasthan_rera, "get_machine_context", return_value=("host", "127.0.0.1")),
+            mock.patch.object(rajasthan_rera, "merge_data_sections", return_value={}),
+            mock.patch.object(rajasthan_rera, "build_document_urls", return_value=[]),
+            mock.patch.object(rajasthan_rera, "ProjectRecord", _FakeRecord),
+            mock.patch.object(
+                rajasthan_rera, "normalize_project_payload",
+                side_effect=lambda payload, config, machine_name, machine_ip: payload,
+            ),
+            mock.patch.object(rajasthan_rera, "select_document_for_download", select_doc),
+            mock.patch.object(rajasthan_rera, "_handle_document", handle_doc),
+        ]
+        with ExitStack() as stack:
+            for patcher in patches:
+                stack.enter_context(patcher)
+            counts = rajasthan_rera.run(
+                {"id": "rajasthan_rera", "state": "Rajasthan", "config_id": 1},
+                run_id=123,
+                mode="weekly_deep",
+            )
+
+        select_doc.assert_not_called()
+        handle_doc.assert_not_called()
+        self.assertEqual(counts["documents_uploaded"], 0)
+        self.assertEqual(len(upsert_payloads), 1)
+        self.assertNotIn("uploaded_documents", upsert_payloads[0])
+        self.assertNotIn("document_urls", upsert_payloads[0])
 
 
 if __name__ == "__main__":
