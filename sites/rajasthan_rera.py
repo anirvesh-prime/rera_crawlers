@@ -376,7 +376,7 @@ def _scrape_project_list(
                     pass
 
                 _before = len(projects)
-                next_btn.click()
+                _click_locator_stably(page, next_btn, timeout=15_000)
                 page.wait_for_load_state("networkidle", timeout=15_000)
                 page.wait_for_timeout(1_000)
                 new_rows = _extract_rj_table_rows(page)
