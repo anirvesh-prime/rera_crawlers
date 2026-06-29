@@ -196,6 +196,14 @@ def _clean(text) -> str:
     return re.sub(r"\s+", " ", str(text)).strip()
 
 
+def _flush_progress_logs(logger: CrawlerLogger) -> None:
+    """Best-effort flush so remote dashboards see long-phase heartbeats."""
+    try:
+        logger._flush_db()
+    except Exception:
+        pass
+
+
 def _first_number(text: str) -> float | None:
     """Return the first numeric token from text such as '2429.23 Sq Mtrs'."""
     m = re.search(r"-?\d+(?:,\d{2,3})*(?:\.\d+)?|-?\d+(?:\.\d+)?", text or "")
@@ -303,6 +311,8 @@ def _scrape_project_list(
 
     try:
         page = page_adapter(_session())
+        logger.info("Starting Rajasthan listing scrape", step="timing")
+        _flush_progress_logs(logger)
         page.goto(LISTING_PAGE_URL, timeout=60_000)
 
         # Wait for Angular DataTable to render
@@ -333,7 +343,13 @@ def _scrape_project_list(
         )
 
         projects.extend(_extract_rj_table_rows(page))
-        logger.info(f"Page 1: {len(projects)} rows so far")
+        logger.info(
+            f"Listing page 1 collected {len(projects)} rows",
+            step="timing",
+            page=1,
+            rows=len(projects),
+        )
+        _flush_progress_logs(logger)
 
         _page_num    = 1
         _stall_guard = 0    # consecutive pages with no new rows
@@ -382,7 +398,15 @@ def _scrape_project_list(
                 new_rows = _extract_rj_table_rows(page)
                 projects.extend(new_rows)
                 _page_num += 1
-                logger.info(f"Page {_page_num}: +{len(new_rows)} rows ({len(projects)} total)")
+                logger.info(
+                    f"Listing page {_page_num} collected +{len(new_rows)} rows "
+                    f"({len(projects)} total)",
+                    step="timing",
+                    page=_page_num,
+                    rows=len(projects),
+                    page_rows=len(new_rows),
+                )
+                _flush_progress_logs(logger)
 
                 # Guard: stop if no new data arrived (disabled button stayed
                 # visible, or click had no effect).
@@ -1548,6 +1572,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         counts["sentinel_passed"] = True
     else:
         t0 = time.monotonic()
+        logger.info("Starting sentinel check", step="timing")
+        _flush_progress_logs(logger)
         if not _sentinel_check(config, run_id, logger):
             logger.error("Sentinel failed — aborting crawl", step="sentinel")
             counts["sentinel_passed"] = False
@@ -1607,6 +1633,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     # Phase 2: scrape each project detail page via Selenium
     if True:
         detail_page = page_adapter(_session())
+        total_projects = len(listed_projects)
 
         for i, proj in enumerate(listed_projects):
             reg_no = proj.get("reg_no") or f"RJ-{i}"
@@ -1627,6 +1654,14 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
             detail_url = ""
             try:
+                logger.info(
+                    f"Project {i + 1}/{total_projects}: starting detail scrape",
+                    step="timing",
+                    project_index=i + 1,
+                    total_projects=total_projects,
+                )
+                _flush_progress_logs(logger)
+
                 # Seed with listing-level fields from the HTML table
                 data: dict = {}
                 for list_f, schema_f in _LIST_API_TO_FIELD.items():
@@ -1640,6 +1675,14 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
                 # Navigate to detail page by clicking View from the listing
                 detail_url = _navigate_to_project_detail(detail_page, reg_no, logger)
+                logger.info(
+                    f"Project {i + 1}/{total_projects}: detail navigation complete",
+                    step="timing",
+                    project_index=i + 1,
+                    total_projects=total_projects,
+                    detail_url=detail_url,
+                )
+                _flush_progress_logs(logger)
 
                 # Scrape rich detail from the rendered detail page
                 detail_fields: dict = {}
@@ -1647,6 +1690,16 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 if detail_url:
                     detail_fields, doc_links = _scrape_detail_html_via_browser(
                         detail_page, reg_no, logger)
+                logger.info(
+                    f"Project {i + 1}/{total_projects}: detail parse complete "
+                    f"({len(detail_fields)} fields, {len(doc_links)} docs)",
+                    step="timing",
+                    project_index=i + 1,
+                    total_projects=total_projects,
+                    field_count=len(detail_fields),
+                    document_count=len(doc_links),
+                )
+                _flush_progress_logs(logger)
                 # Detail page fields override listing fields (more authoritative)
                 data.update(detail_fields)
 
