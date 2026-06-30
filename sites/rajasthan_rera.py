@@ -206,6 +206,14 @@ def _bare_registration_no(reg_no: str) -> str:
     return re.sub(r"\s*\([^)]*\)\s*$", "", cleaned).strip()
 
 
+def _identity_registration_no(reg_no: str) -> str:
+    """Return the Rajasthan registration string used for project-key identity."""
+    cleaned = _clean(reg_no)
+    if re.match(r"^RAJ/[A-Z]+/\d{4}/\d+\s+\(\d{2}/\d{2}/\d{4}\)$", cleaned, flags=re.I):
+        return cleaned.upper()
+    return _bare_registration_no(cleaned)
+
+
 def _flush_progress_logs(logger: CrawlerLogger) -> None:
     """Best-effort flush so remote dashboards see long-phase heartbeats."""
     try:
@@ -560,7 +568,10 @@ def _scrape_project_list(
     enough_rows: int | None = None,
     check_existing: bool = False,
     max_checked_rows: int | None = None,
-    on_progress: Callable[[int, int, int, str | None, str | None, str | None], None] | None = None,
+    on_progress: Callable[
+        [int, int, int, str | None, str | None, str | None, str | None, str | None],
+        None,
+    ] | None = None,
 ) -> tuple[list[dict], int, int]:
     """
     Navigate the Rajasthan RERA Angular SPA listing page and inspect project rows.
@@ -590,29 +601,52 @@ def _scrape_project_list(
             if not reg_no:
                 continue
             row["reg_no"] = reg_no
-            project_key = generate_project_key(reg_no)
+            row["raw_reg_no"] = str(raw_reg_no or "")
+            identity_reg_no = _identity_registration_no(raw_reg_no)
+            row["identity_reg_no"] = identity_reg_no
+            project_key = generate_project_key(identity_reg_no)
+            bare_project_key = (
+                generate_project_key(reg_no)
+                if identity_reg_no != reg_no
+                else None
+            )
             checked_rows += 1
 
             reg_key = reg_no.upper()
             if reg_key in seen_reg_nos:
-                _publish_progress(reg_no, str(raw_reg_no or ""), project_key)
+                _publish_progress(reg_no, str(raw_reg_no or ""), project_key, bare_project_key)
                 continue
             seen_reg_nos.add(reg_key)
 
-            if check_existing and get_project_by_key(project_key):
+            existing_match_key = None
+            if check_existing:
+                if get_project_by_key(project_key):
+                    existing_match_key = project_key
+                elif bare_project_key and get_project_by_key(bare_project_key):
+                    existing_match_key = bare_project_key
+
+            if existing_match_key:
                 skipped_existing += 1
                 skipped_existing_total += 1
-                _publish_progress(reg_no, str(raw_reg_no or ""), project_key)
+                _publish_progress(
+                    reg_no,
+                    str(raw_reg_no or ""),
+                    project_key,
+                    bare_project_key,
+                    existing_match_key,
+                )
                 continue
             projects.append(row)
             accepted += 1
-            _publish_progress(reg_no, str(raw_reg_no or ""), project_key)
+            _publish_progress(reg_no, str(raw_reg_no or ""), project_key, bare_project_key)
         return accepted, skipped_existing
 
     def _publish_progress(
         reg_no: str | None = None,
         raw_reg_no: str | None = None,
         project_key: str | None = None,
+        bare_project_key: str | None = None,
+        existing_match_key: str | None = None,
     ) -> None:
         if not on_progress:
             return
@@ -624,6 +658,8 @@ def _scrape_project_list(
                 reg_no,
                 raw_reg_no,
                 project_key,
+                bare_project_key,
+                existing_match_key,
             )
         except Exception as exc:
             logger.warning(f"Rajasthan listing progress update failed: {exc}", step="listing")
@@ -1962,7 +1998,8 @@ def _process_project_detail(
 ) -> tuple[str, int, str, int]:
     """Detail-stage workflow: navigate, parse, validate/upsert, then documents."""
     reg_no = _bare_registration_no(proj.get("reg_no") or f"RJ-{index}")
-    key = generate_project_key(reg_no)
+    identity_reg_no = proj.get("identity_reg_no") or _identity_registration_no(proj.get("raw_reg_no") or reg_no)
+    key = generate_project_key(identity_reg_no)
     display_index = index + 1
     validation_error_count = 0
 
@@ -2190,6 +2227,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         reg_no: str | None = None,
         raw_reg_no: str | None = None,
         project_key: str | None = None,
+        bare_project_key: str | None = None,
+        existing_match_key: str | None = None,
     ) -> None:
         if not light_check_existing:
             return
@@ -2201,6 +2240,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             "Rajasthan daily_light listing progress: "
             f"reg_no={reg_no or '-'}, "
             f"key={project_key or '-'}, "
+            f"bare_key={bare_project_key or '-'}, "
+            f"existing_match_key={existing_match_key or '-'}, "
             f"raw_reg_no={raw_reg_no or '-'}, "
             f"checked={checked_rows}, existing={skipped_existing_rows}, "
             f"candidates={candidate_rows}",
@@ -2273,7 +2314,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
     for i, proj in enumerate(listed_projects):
         reg_no = _bare_registration_no(proj.get("reg_no") or f"RJ-{i}")
-        key = generate_project_key(reg_no)
+        identity_reg_no = proj.get("identity_reg_no") or _identity_registration_no(proj.get("raw_reg_no") or reg_no)
+        key = generate_project_key(identity_reg_no)
         detail_url = (proj.get("detail_url") or "").strip()
         logger.set_project(key=key, reg_no=reg_no, url=LISTING_PAGE_URL, page=i)
 

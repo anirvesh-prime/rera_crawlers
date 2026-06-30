@@ -206,11 +206,27 @@ class RajasthanTargetedCrawlTests(unittest.TestCase):
         self.assertEqual(counts["projects_new"], 0)
 
     def test_listing_progress_reports_normalized_reg_no(self):
-        progress: list[tuple[int, int, int, str | None, str | None, str | None]] = []
+        progress: list[
+            tuple[
+                int,
+                int,
+                int,
+                str | None,
+                str | None,
+                str | None,
+                str | None,
+                str | None,
+            ]
+        ] = []
         page = mock.MagicMock()
         page.locator.return_value.count.return_value = 0
         logger = mock.MagicMock()
-        raw_rows = [{"reg_no": "RAJ/P/2024/3058\nApproved on 01/01/2024"}]
+        raw_rows = [{"reg_no": "RAJ/P/2024/3058 (01/01/2024)"}]
+        bare_key = rajasthan_rera.generate_project_key("RAJ/P/2024/3058")
+        identity_key = rajasthan_rera.generate_project_key("RAJ/P/2024/3058 (01/01/2024)")
+
+        def existing_by_key(key: str):
+            return {"key": identity_key} if key == identity_key else None
 
         with mock.patch.object(rajasthan_rera, "_session", return_value=mock.MagicMock()), \
              mock.patch.object(rajasthan_rera, "page_adapter", return_value=page), \
@@ -220,13 +236,23 @@ class RajasthanTargetedCrawlTests(unittest.TestCase):
              mock.patch.object(rajasthan_rera, "_wait_for_listing_table", return_value=True), \
              mock.patch.object(rajasthan_rera, "_set_listing_page_size_to_max"), \
              mock.patch.object(rajasthan_rera, "_extract_rj_table_rows", return_value=raw_rows), \
-             mock.patch.object(rajasthan_rera, "get_project_by_key", return_value={"key": "existing"}):
+             mock.patch.object(rajasthan_rera, "get_project_by_key", side_effect=existing_by_key):
             projects, checked, skipped = rajasthan_rera._scrape_project_list(
                 logger,
                 check_existing=True,
-                on_progress=lambda checked_rows, skipped_rows, candidates, reg_no, raw_reg_no, project_key:
+                on_progress=lambda checked_rows, skipped_rows, candidates, reg_no, raw_reg_no,
+                    project_key, bare_project_key, existing_match_key:
                     progress.append(
-                        (checked_rows, skipped_rows, candidates, reg_no, raw_reg_no, project_key)
+                        (
+                            checked_rows,
+                            skipped_rows,
+                            candidates,
+                            reg_no,
+                            raw_reg_no,
+                            project_key,
+                            bare_project_key,
+                            existing_match_key,
+                        )
                     ),
             )
 
@@ -240,8 +266,10 @@ class RajasthanTargetedCrawlTests(unittest.TestCase):
                 1,
                 0,
                 "RAJ/P/2024/3058",
-                "RAJ/P/2024/3058\nApproved on 01/01/2024",
-                rajasthan_rera.generate_project_key("RAJ/P/2024/3058"),
+                "RAJ/P/2024/3058 (01/01/2024)",
+                identity_key,
+                bare_key,
+                identity_key,
             ),
         )
 
@@ -253,6 +281,10 @@ class RajasthanTargetedCrawlTests(unittest.TestCase):
         self.assertEqual(
             rajasthan_rera._bare_registration_no("RAJ/P/2024/3058 (01/01/2024)"),
             "RAJ/P/2024/3058",
+        )
+        self.assertEqual(
+            rajasthan_rera._identity_registration_no("RAJ/P/2024/3058 (01/01/2024)"),
+            "RAJ/P/2024/3058 (01/01/2024)",
         )
 
 
