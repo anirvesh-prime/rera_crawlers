@@ -327,7 +327,9 @@ def _scrape_project_list(
     *,
     max_pages: int | None = None,
     enough_rows: int | None = None,
-) -> list[dict]:
+    check_existing: bool = False,
+    max_checked_rows: int | None = None,
+) -> tuple[list[dict], int]:
     """
     Navigate the Rajasthan RERA Angular SPA listing page and extract all projects.
     Returns list of dicts with keys: reg_no, project_name, promoter_name,
@@ -339,6 +341,25 @@ def _scrape_project_list(
     of paginating through ~100 pages of projects (>500 s wall-clock).
     """
     projects: list[dict] = []
+    checked_rows = 0
+
+    def _accept_rows(page_rows: list[dict]) -> tuple[int, int]:
+        nonlocal checked_rows
+        accepted = 0
+        skipped_existing = 0
+        for row in page_rows:
+            if max_checked_rows is not None and checked_rows >= max_checked_rows:
+                break
+            reg_no = (row.get("reg_no") or "").strip()
+            if not reg_no:
+                continue
+            checked_rows += 1
+            if check_existing and get_project_by_key(generate_project_key(reg_no)):
+                skipped_existing += 1
+                continue
+            projects.append(row)
+            accepted += 1
+        return accepted, skipped_existing
 
     try:
         page = page_adapter(_session())
@@ -354,7 +375,7 @@ def _scrape_project_list(
             )
         except Exception:
             logger.warning("DataTables table not found — listing may be empty")
-            return projects
+            return projects, checked_rows
         page.wait_for_load_state("networkidle", timeout=30_000)
 
         # ── Extract rows then paginate through every page ─────────────────
@@ -373,8 +394,9 @@ def _scrape_project_list(
             "a:has-text('Next'):not(.disabled)"
         )
 
-        projects.extend(_extract_rj_table_rows(page))
-        if not projects:
+        page_rows = _extract_rj_table_rows(page)
+        accepted, skipped_existing = _accept_rows(page_rows)
+        if not page_rows:
             try:
                 diag = page.evaluate("""() => {
                     const table = document.querySelector('table[datatable], table.dataTable, #project-list-table, table');
@@ -395,10 +417,13 @@ def _scrape_project_list(
                     step="listing",
                 )
         logger.info(
-            f"Listing page 1 collected {len(projects)} rows",
+            f"Listing page 1 checked {len(page_rows)} rows; "
+            f"accepted {accepted}, existing {skipped_existing} "
+            f"({len(projects)} candidates)",
             step="timing",
             page=1,
-            rows=len(projects),
+            rows=checked_rows,
+            candidates=len(projects),
         )
         _flush_progress_logs(logger)
 
@@ -408,6 +433,13 @@ def _scrape_project_list(
             if max_pages is not None and _page_num >= max_pages:
                 logger.info(
                     f"max_pages={max_pages} reached — stopping pagination",
+                    step="listing",
+                )
+                break
+            if max_checked_rows is not None and checked_rows >= max_checked_rows:
+                logger.info(
+                    f"max_checked_rows={max_checked_rows} reached "
+                    f"(checked {checked_rows}) — stopping pagination",
                     step="listing",
                 )
                 break
@@ -442,26 +474,28 @@ def _scrape_project_list(
                 except Exception:
                     pass
 
-                _before = len(projects)
+                _before = checked_rows
                 _click_locator_stably(page, next_btn, timeout=15_000)
                 page.wait_for_load_state("networkidle", timeout=15_000)
                 page.wait_for_timeout(1_000)
-                new_rows = _extract_rj_table_rows(page)
-                projects.extend(new_rows)
+                page_rows = _extract_rj_table_rows(page)
+                accepted, skipped_existing = _accept_rows(page_rows)
                 _page_num += 1
                 logger.info(
-                    f"Listing page {_page_num} collected +{len(new_rows)} rows "
-                    f"({len(projects)} total)",
+                    f"Listing page {_page_num} checked {len(page_rows)} rows; "
+                    f"accepted {accepted}, existing {skipped_existing} "
+                    f"({checked_rows} checked, {len(projects)} candidates)",
                     step="timing",
                     page=_page_num,
-                    rows=len(projects),
-                    page_rows=len(new_rows),
+                    rows=checked_rows,
+                    page_rows=len(page_rows),
+                    candidates=len(projects),
                 )
                 _flush_progress_logs(logger)
 
                 # Guard: stop if no new data arrived (disabled button stayed
                 # visible, or click had no effect).
-                if len(projects) == _before:
+                if checked_rows == _before:
                     _stall_guard += 1
                     if _stall_guard >= 2:
                         logger.warning("Pagination stalled (no new rows) — stopping")
@@ -475,8 +509,11 @@ def _scrape_project_list(
     except Exception as exc:
         logger.error(f"Selenium listing scrape failed: {exc}")
 
-    logger.info(f"Rajasthan page inspection: found {len(projects)} projects")
-    return projects
+    logger.info(
+        f"Rajasthan page inspection: checked {checked_rows} rows; "
+        f"{len(projects)} candidates for detail"
+    )
+    return projects, checked_rows
 
 
 # ── HTML label → schema field map for the rendered detail page ────────────────
@@ -1682,11 +1719,17 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     # 500 s wall-clock).  When neither is set we walk the full listing.
     t0 = time.monotonic()
     list_max_pages = settings.MAX_PAGES if settings.MAX_PAGES else None
-    list_enough = item_limit if item_limit else None
-    listed_projects = _scrape_project_list(
-        logger, max_pages=list_max_pages, enough_rows=list_enough,
+    light_check_existing = mode == "daily_light" and not target_regs
+    list_enough = None if light_check_existing else (item_limit if item_limit else None)
+    max_checked_rows = item_limit if (light_check_existing and item_limit) else None
+    listed_projects, checked_listing_rows = _scrape_project_list(
+        logger,
+        max_pages=list_max_pages,
+        enough_rows=list_enough,
+        check_existing=light_check_existing,
+        max_checked_rows=max_checked_rows,
     )
-    if not listed_projects:
+    if checked_listing_rows == 0:
         logger.error("Rajasthan listing returned zero projects — aborting crawl", step="listing")
         insert_crawl_error(
             run_id,
@@ -1696,6 +1739,13 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             url=LISTING_PAGE_URL,
         )
         counts["error_count"] += 1
+        return counts
+    if not listed_projects and light_check_existing:
+        counts["projects_found"] = checked_listing_rows
+        update_crawl_run_progress(run_id, counts)
+        logger.timing("search", time.monotonic() - t0, rows=checked_listing_rows)
+        logger.info("Rajasthan daily_light: all checked registrations already exist in DB")
+        logger.timing("total_run", time.monotonic() - t_run)
         return counts
 
     # ── Targeted filtering ─────────────────────────────────────────────────────
@@ -1715,16 +1765,16 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             f"project(s) matched", step="listing",
         )
 
-    counts["projects_found"] = len(listed_projects)
+    counts["projects_found"] = checked_listing_rows if light_check_existing else len(listed_projects)
     update_crawl_run_progress(run_id, counts)
     total_listing = len(listed_projects)
-    if item_limit:
+    if item_limit and not light_check_existing:
         listed_projects = listed_projects[:item_limit]
         logger.info(
             f"Rajasthan: CRAWL_ITEM_LIMIT={item_limit} — "
             f"{len(listed_projects)} of {total_listing} projects",
         )
-    logger.timing("search", time.monotonic() - t0, rows=total_listing)
+    logger.timing("search", time.monotonic() - t0, rows=counts["projects_found"])
 
     # Document downloads share the module-level SeleniumSession.
     session = None  # signature compatibility for _handle_document(...)
