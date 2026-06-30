@@ -307,6 +307,15 @@ def _extract_rj_table_rows(page) -> list[dict]:
                     row["reg_no"] = match.group(0).strip()
                     break
 
+        detail_link = tr.select_one(
+            "a[href*='ProjectDetail'], a[href*='ViewProjectNew'], "
+            "a[href*='ViewProject'], a[href*='project']"
+        )
+        if detail_link and detail_link.get("href"):
+            detail_url = _resolve_relative_url(detail_link["href"].strip())
+            if detail_url:
+                row["detail_url"] = detail_url
+
         if row.get("reg_no"):
             rows.append(row)
 
@@ -1763,8 +1772,18 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                             val = _normalize_project_type(val)
                         data[schema_f] = val
 
-                # Navigate to detail page by clicking View from the listing
-                detail_url = _navigate_to_project_detail(detail_page, reg_no, logger)
+                # Prefer the listing row's View URL. Falling back to listing search
+                # is much slower and should only happen if the portal stops exposing
+                # a usable row-level detail link.
+                detail_url = (proj.get("detail_url") or "").strip()
+                if detail_url:
+                    detail_page.goto(detail_url, timeout=60_000, wait_until="domcontentloaded")
+                    try:
+                        detail_page.wait_for_load_state("networkidle", timeout=20_000)
+                    except Exception:
+                        pass
+                else:
+                    detail_url = _navigate_to_project_detail(detail_page, reg_no, logger)
                 logger.info(
                     f"Project {i + 1}/{total_projects}: detail navigation complete",
                     step="timing",

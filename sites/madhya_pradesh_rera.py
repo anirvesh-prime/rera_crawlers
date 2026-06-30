@@ -799,12 +799,6 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         counts["error_count"] += 1
         return counts
 
-    # Targeted runs count only matched projects (reg-no is detail-only),
-    # so projects_found is incremented per match in the loop below.
-    if not target_regs:
-        counts["projects_found"] = len(stubs)
-    update_crawl_run_progress(run_id, counts)
-
     # Filter out projects that are known to have no registration number on their
     # detail pages (Rejected projects return an empty col-md-8 for the reg field).
     # Fetching thousands of detail pages only to discard them is expensive and
@@ -822,6 +816,14 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             f"(Rejected/Withdrawal Approved) — {len(active_stubs)} remain"
         )
     stubs = active_stubs
+    if item_limit:
+        stubs = stubs[:item_limit]
+
+    # Targeted runs count only matched projects (reg-no is detail-only),
+    # so projects_found is incremented per match in the loop below.
+    if not target_regs:
+        counts["projects_found"] = len(stubs)
+    update_crawl_run_progress(run_id, counts)
 
     logger.info(f"Found {len(stubs)} active project stubs in listing")
     logger.timing("search", time.monotonic() - t0, rows=len(stubs))
