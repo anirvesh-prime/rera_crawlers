@@ -63,6 +63,24 @@ class CrawlerContainerTests(unittest.TestCase):
             assert_no_duplicate_normal_run(["--mode", "daily_light"], allow_concurrent=True)
             assert_no_duplicate_normal_run(["--tester", "--site", "kerala_rera"])
 
+    def test_start_detached_does_not_duplicate_remove_argument(self):
+        result = unittest.mock.Mock(returncode=0, stdout="abcdef1234567890\n", stderr="")
+        with tempfile.TemporaryDirectory() as tmp, \
+             unittest.mock.patch("scripts.crawler_container._running_normal_crawler_containers", return_value=[]), \
+             unittest.mock.patch("scripts.crawler_container.subprocess.run", return_value=result) as run:
+            info = __import__("scripts.crawler_container", fromlist=["start_detached"]).start_detached(
+                ["--mode", "daily_light", "--site", "odisha_rera"],
+                image="test-image",
+                env_file=Path(tmp) / "missing.env",
+                logs_dir=Path(tmp) / "logs",
+                remove=None,
+            )
+
+        self.assertEqual(info["container_id"], "abcdef1234567890")
+        cmd = run.call_args.args[0]
+        self.assertIn("--detach", cmd)
+        self.assertNotIn("--rm", cmd)
+
     def test_default_container_name_is_stable_shape(self):
         name = default_container_name(["--mode", "weekly_deep", "--site", "goa_rera"])
         self.assertRegex(name, r"^rera-crawler-weekly_deep-goa_rera-\d{8}-\d{6}-\d+$")

@@ -180,7 +180,7 @@ def start_detached(crawler_args: list[str], **kwargs) -> dict[str, str]:
         crawler_args,
         allow_concurrent=bool(kwargs.pop("allow_concurrent", False)),
     )
-    cmd = build_docker_run_command(crawler_args, detach=True, remove=False, **kwargs)
+    cmd = build_docker_run_command(crawler_args, detach=True, **kwargs)
     result = subprocess.run(
         cmd,
         cwd=str(PROJECT_ROOT),
