@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import re
 import time
+from collections.abc import Callable
 from datetime import datetime, timezone, timedelta
 
 from pydantic import ValidationError
@@ -329,7 +330,8 @@ def _scrape_project_list(
     enough_rows: int | None = None,
     check_existing: bool = False,
     max_checked_rows: int | None = None,
-) -> tuple[list[dict], int]:
+    on_progress: Callable[[int, int, int], None] | None = None,
+) -> tuple[list[dict], int, int]:
     """
     Navigate the Rajasthan RERA Angular SPA listing page and inspect project rows.
     Returns candidate dicts with keys: reg_no, project_name, promoter_name,
@@ -343,9 +345,10 @@ def _scrape_project_list(
     """
     projects: list[dict] = []
     checked_rows = 0
+    skipped_existing_total = 0
 
     def _accept_rows(page_rows: list[dict]) -> tuple[int, int]:
-        nonlocal checked_rows
+        nonlocal checked_rows, skipped_existing_total
         accepted = 0
         skipped_existing = 0
         for row in page_rows:
@@ -357,10 +360,19 @@ def _scrape_project_list(
             checked_rows += 1
             if check_existing and get_project_by_key(generate_project_key(reg_no)):
                 skipped_existing += 1
+                skipped_existing_total += 1
                 continue
             projects.append(row)
             accepted += 1
         return accepted, skipped_existing
+
+    def _publish_progress() -> None:
+        if not on_progress:
+            return
+        try:
+            on_progress(checked_rows, skipped_existing_total, len(projects))
+        except Exception as exc:
+            logger.warning(f"Rajasthan listing progress update failed: {exc}", step="listing")
 
     try:
         page = page_adapter(_session())
@@ -376,7 +388,7 @@ def _scrape_project_list(
             )
         except Exception:
             logger.warning("DataTables table not found — listing may be empty")
-            return projects, checked_rows
+            return projects, checked_rows, skipped_existing_total
         page.wait_for_load_state("networkidle", timeout=30_000)
 
         # ── Extract rows then paginate through every page ─────────────────
@@ -426,6 +438,7 @@ def _scrape_project_list(
             rows=checked_rows,
             candidates=len(projects),
         )
+        _publish_progress()
         _flush_progress_logs(logger)
 
         _page_num    = 1
@@ -492,6 +505,7 @@ def _scrape_project_list(
                     page_rows=len(page_rows),
                     candidates=len(projects),
                 )
+                _publish_progress()
                 _flush_progress_logs(logger)
 
                 # Guard: stop if no new data arrived (disabled button stayed
@@ -514,7 +528,7 @@ def _scrape_project_list(
         f"Rajasthan page inspection: checked {checked_rows} rows; "
         f"{len(projects)} candidates for detail"
     )
-    return projects, checked_rows
+    return projects, checked_rows, skipped_existing_total
 
 
 # ── HTML label → schema field map for the rendered detail page ────────────────
@@ -1723,12 +1737,31 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     light_check_existing = mode == "daily_light" and not target_regs
     list_enough = None if light_check_existing else (item_limit if item_limit else None)
     max_checked_rows = item_limit if (light_check_existing and item_limit) else None
-    listed_projects, checked_listing_rows = _scrape_project_list(
+
+    def _update_listing_dashboard(
+        checked_rows: int,
+        skipped_existing_rows: int,
+        candidate_rows: int,
+    ) -> None:
+        if not light_check_existing:
+            return
+        counts["projects_found"] = checked_rows
+        counts["projects_skipped"] = skipped_existing_rows
+        update_crawl_run_progress(run_id, counts)
+        logger.info(
+            "Rajasthan daily_light listing progress: "
+            f"checked={checked_rows}, existing={skipped_existing_rows}, "
+            f"candidates={candidate_rows}",
+            step="listing",
+        )
+
+    listed_projects, checked_listing_rows, skipped_existing_rows = _scrape_project_list(
         logger,
         max_pages=list_max_pages,
         enough_rows=list_enough,
         check_existing=light_check_existing,
         max_checked_rows=max_checked_rows,
+        on_progress=_update_listing_dashboard if light_check_existing else None,
     )
     if checked_listing_rows == 0:
         logger.error("Rajasthan listing returned zero projects — aborting crawl", step="listing")
@@ -1743,6 +1776,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         return counts
     if not listed_projects and light_check_existing:
         counts["projects_found"] = checked_listing_rows
+        counts["projects_skipped"] = skipped_existing_rows
         update_crawl_run_progress(run_id, counts)
         logger.timing("search", time.monotonic() - t0, rows=checked_listing_rows)
         logger.info("Rajasthan daily_light: all checked registrations already exist in DB")
@@ -1767,6 +1801,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         )
 
     counts["projects_found"] = checked_listing_rows if light_check_existing else len(listed_projects)
+    if light_check_existing:
+        counts["projects_skipped"] = skipped_existing_rows
     update_crawl_run_progress(run_id, counts)
     total_listing = len(listed_projects)
     if item_limit and not light_check_existing:
