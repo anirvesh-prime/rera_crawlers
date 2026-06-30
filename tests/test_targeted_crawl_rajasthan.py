@@ -205,6 +205,53 @@ class RajasthanTargetedCrawlTests(unittest.TestCase):
         self.assertEqual(counts["projects_skipped"], 3)
         self.assertEqual(counts["projects_new"], 0)
 
+    def test_listing_progress_reports_normalized_reg_no(self):
+        progress: list[tuple[int, int, int, str | None, str | None]] = []
+        page = mock.MagicMock()
+        page.locator.return_value.count.return_value = 0
+        logger = mock.MagicMock()
+        raw_rows = [{"reg_no": "RAJ/P/2024/3058\nApproved on 01/01/2024"}]
+
+        with mock.patch.object(rajasthan_rera, "_session", return_value=mock.MagicMock()), \
+             mock.patch.object(rajasthan_rera, "page_adapter", return_value=page), \
+             mock.patch.object(rajasthan_rera, "_install_getprojects_tracker"), \
+             mock.patch.object(rajasthan_rera, "_reset_getprojects_tracker"), \
+             mock.patch.object(rajasthan_rera, "_wait_for_getprojects_request", return_value=True), \
+             mock.patch.object(rajasthan_rera, "_wait_for_listing_table", return_value=True), \
+             mock.patch.object(rajasthan_rera, "_set_listing_page_size_to_max"), \
+             mock.patch.object(rajasthan_rera, "_extract_rj_table_rows", return_value=raw_rows), \
+             mock.patch.object(rajasthan_rera, "get_project_by_key", return_value={"key": "existing"}):
+            projects, checked, skipped = rajasthan_rera._scrape_project_list(
+                logger,
+                check_existing=True,
+                on_progress=lambda checked_rows, skipped_rows, candidates, reg_no, raw_reg_no:
+                    progress.append((checked_rows, skipped_rows, candidates, reg_no, raw_reg_no)),
+            )
+
+        self.assertEqual(projects, [])
+        self.assertEqual(checked, 1)
+        self.assertEqual(skipped, 1)
+        self.assertEqual(
+            progress[-1],
+            (
+                1,
+                1,
+                0,
+                "RAJ/P/2024/3058",
+                "RAJ/P/2024/3058\nApproved on 01/01/2024",
+            ),
+        )
+
+    def test_bare_registration_no_removes_rajasthan_listing_suffixes(self):
+        self.assertEqual(
+            rajasthan_rera._bare_registration_no("RAJ/P/2024/3058\nApproved on 01/01/2024"),
+            "RAJ/P/2024/3058",
+        )
+        self.assertEqual(
+            rajasthan_rera._bare_registration_no("RAJ/P/2024/3058 (01/01/2024)"),
+            "RAJ/P/2024/3058",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

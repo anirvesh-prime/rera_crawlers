@@ -199,7 +199,11 @@ def _clean(text) -> str:
 
 def _bare_registration_no(reg_no: str) -> str:
     """Strip Rajasthan listing-only suffixes such as ``(28/04/2026)``."""
-    return re.sub(r"\s*\([^)]*\)\s*$", "", _clean(reg_no)).strip()
+    cleaned = _clean(reg_no)
+    match = re.search(r"\bRAJ/[A-Z]+/\d{4}/\d+\b", cleaned, flags=re.I)
+    if match:
+        return match.group(0).upper()
+    return re.sub(r"\s*\([^)]*\)\s*$", "", cleaned).strip()
 
 
 def _flush_progress_logs(logger: CrawlerLogger) -> None:
@@ -556,7 +560,7 @@ def _scrape_project_list(
     enough_rows: int | None = None,
     check_existing: bool = False,
     max_checked_rows: int | None = None,
-    on_progress: Callable[[int, int, int], None] | None = None,
+    on_progress: Callable[[int, int, int, str | None, str | None], None] | None = None,
 ) -> tuple[list[dict], int, int]:
     """
     Navigate the Rajasthan RERA Angular SPA listing page and inspect project rows.
@@ -581,7 +585,8 @@ def _scrape_project_list(
         for row in page_rows:
             if max_checked_rows is not None and checked_rows >= max_checked_rows:
                 break
-            reg_no = _bare_registration_no(row.get("reg_no") or "")
+            raw_reg_no = row.get("reg_no") or ""
+            reg_no = _bare_registration_no(raw_reg_no)
             if not reg_no:
                 continue
             row["reg_no"] = reg_no
@@ -589,25 +594,25 @@ def _scrape_project_list(
 
             reg_key = reg_no.upper()
             if reg_key in seen_reg_nos:
-                _publish_progress()
+                _publish_progress(reg_no, str(raw_reg_no or ""))
                 continue
             seen_reg_nos.add(reg_key)
 
             if check_existing and get_project_by_key(generate_project_key(reg_no)):
                 skipped_existing += 1
                 skipped_existing_total += 1
-                _publish_progress()
+                _publish_progress(reg_no, str(raw_reg_no or ""))
                 continue
             projects.append(row)
             accepted += 1
-            _publish_progress()
+            _publish_progress(reg_no, str(raw_reg_no or ""))
         return accepted, skipped_existing
 
-    def _publish_progress() -> None:
+    def _publish_progress(reg_no: str | None = None, raw_reg_no: str | None = None) -> None:
         if not on_progress:
             return
         try:
-            on_progress(checked_rows, skipped_existing_total, len(projects))
+            on_progress(checked_rows, skipped_existing_total, len(projects), reg_no, raw_reg_no)
         except Exception as exc:
             logger.warning(f"Rajasthan listing progress update failed: {exc}", step="listing")
 
@@ -2170,6 +2175,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         checked_rows: int,
         skipped_existing_rows: int,
         candidate_rows: int,
+        reg_no: str | None = None,
+        raw_reg_no: str | None = None,
     ) -> None:
         if not light_check_existing:
             return
@@ -2179,6 +2186,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         print(
             "[INFO] [rajasthan_rera] [listing] "
             "Rajasthan daily_light listing progress: "
+            f"reg_no={reg_no or '-'}, "
+            f"raw_reg_no={raw_reg_no or '-'}, "
             f"checked={checked_rows}, existing={skipped_existing_rows}, "
             f"candidates={candidate_rows}",
             flush=True,
