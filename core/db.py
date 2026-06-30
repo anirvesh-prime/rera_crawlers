@@ -543,7 +543,7 @@ def update_crawl_run_progress(run_id: int, counts: dict | None = None) -> None:
         return
     counts = counts or {}
     with _db_lock, get_connection() as conn:
-        conn.execute(
+        row = conn.execute(
             """
             UPDATE crawl_runs SET
                 projects_found = COALESCE(%s, projects_found),
@@ -553,6 +553,18 @@ def update_crawl_run_progress(run_id: int, counts: dict | None = None) -> None:
                 documents_uploaded = COALESCE(%s, documents_uploaded),
                 error_count = COALESCE(%s, error_count)
             WHERE id = %s
+            RETURNING
+                site_id,
+                run_type,
+                status,
+                started_at,
+                sentinel_passed,
+                projects_found,
+                projects_new,
+                projects_updated,
+                projects_skipped,
+                documents_uploaded,
+                error_count
             """,
             (
                 counts.get("projects_found"),
@@ -563,8 +575,31 @@ def update_crawl_run_progress(run_id: int, counts: dict | None = None) -> None:
                 counts.get("error_count"),
                 run_id,
             ),
-        )
+        ).fetchone()
         conn.commit()
+    if not row:
+        return
+    try:
+        from core.dashboard_state import write_site_run_state
+
+        write_site_run_state(
+            site_id=row["site_id"],
+            run_type=row["run_type"],
+            status=row["status"],
+            counts={
+                "projects_found": row["projects_found"],
+                "projects_new": row["projects_new"],
+                "projects_updated": row["projects_updated"],
+                "projects_skipped": row["projects_skipped"],
+                "documents_uploaded": row["documents_uploaded"],
+                "error_count": row["error_count"],
+            },
+            run_id=run_id,
+            started_at=row["started_at"],
+            sentinel_passed=row["sentinel_passed"],
+        )
+    except Exception:
+        log.exception("Failed to mirror crawl progress to dashboard state")
 
 
 # crawl_errors
