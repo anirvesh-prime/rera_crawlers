@@ -40,6 +40,7 @@ from pathlib import Path
 
 from core.config import settings
 from core.crawler_base import close_shared_http_clients
+from core.dashboard_state import write_orchestrator_state, write_site_run_state
 from core.db import insert_crawl_error, insert_crawl_run, update_crawl_run
 from core.logger import CrawlerLogger
 from core.repair_state import create_repair_attempt, update_repair_attempt
@@ -425,6 +426,7 @@ def run_site(site_cfg: dict, mode: str) -> dict:
     run_id  = insert_crawl_run(site_id, mode)
     logger  = CrawlerLogger(site_id, run_id)
     logger.info(f"Starting {mode} crawl", site=site_id, run_id=run_id)
+    started_at = datetime.now(timezone.utc)
 
     counts = {
         "projects_found":   0,
@@ -434,8 +436,20 @@ def run_site(site_cfg: dict, mode: str) -> dict:
         "documents_uploaded": 0,
         "error_count":      0,
     }
+    write_site_run_state(
+        site_id=site_id,
+        run_type=mode,
+        status="running",
+        counts=counts,
+        run_id=run_id,
+        started_at=started_at,
+    )
 
     t0 = time.monotonic()
+    sentinel_passed = None
+    final_status = "failed"
+    failure_reason = None
+    failure_trace = None
     try:
         module = importlib.import_module(site_cfg["crawler_module"])
         result = module.run(site_cfg, run_id, mode)
@@ -473,6 +487,8 @@ def run_site(site_cfg: dict, mode: str) -> dict:
     except Exception as exc:
         counts["error_count"] += 1
         trace = tb_module.format_exc()
+        failure_reason = str(exc)
+        failure_trace = trace
         update_crawl_run(run_id, "failed", counts)
         insert_crawl_error(run_id, site_id, "CRAWLER_EXCEPTION", str(exc),
                            raw_data={"traceback": trace})
@@ -493,7 +509,28 @@ def run_site(site_cfg: dict, mode: str) -> dict:
         logger.close()
 
     elapsed = time.monotonic() - t0
-    return {"site_id": site_id, "run_id": run_id, "elapsed_s": round(elapsed, 1), **counts}
+    write_site_run_state(
+        site_id=site_id,
+        run_type=mode,
+        status=final_status,
+        counts=counts,
+        run_id=run_id,
+        started_at=started_at,
+        finished_at=datetime.now(timezone.utc),
+        elapsed_s=round(elapsed, 1),
+        sentinel_passed=sentinel_passed,
+        error_message=failure_reason,
+        traceback=failure_trace,
+    )
+    return {
+        "site_id": site_id,
+        "run_id": run_id,
+        "status": final_status,
+        "sentinel_passed": sentinel_passed,
+        "started_at": started_at.isoformat(),
+        "elapsed_s": round(elapsed, 1),
+        **counts,
+    }
 
 
 def _fmt_row(result: dict) -> str:
@@ -603,6 +640,13 @@ def main() -> int:
         skip_documents=settings.SKIP_DOCUMENTS,
         host=host,
     )
+    write_orchestrator_state(
+        mode=args.mode,
+        status="running",
+        sites=site_ids,
+        started_at=started,
+        totals={},
+    )
 
     print(f"\n{_SEP}")
     print(f"  RERA Crawler Orchestrator")
@@ -670,6 +714,7 @@ def main() -> int:
                     crashed_result = {
                         "site_id": site_id,
                         "run_id": None,
+                        "status": "failed",
                         "elapsed_s": 0.0,
                         "projects_found": 0,
                         "projects_new": 0,
@@ -680,6 +725,17 @@ def main() -> int:
                         "crash_reason": str(exc),
                     }
                     summary.append(crashed_result)
+                    write_site_run_state(
+                        site_id=site_id,
+                        run_type=args.mode,
+                        status="failed",
+                        counts=crashed_result,
+                        run_id=None,
+                        started_at=started,
+                        finished_at=datetime.now(timezone.utc),
+                        elapsed_s=0.0,
+                        error_message=str(exc),
+                    )
                     print(f"✗ [{site_id}] worker process crashed: {exc}\n")
                     orch_logger.error(
                         f"Site worker crashed: {site_id} — {exc}",
@@ -724,6 +780,14 @@ def main() -> int:
     )
     orch_logger.timing("total_run", time.monotonic() - t_orch_start, site_count=len(sites))
     orch_logger.close()
+    write_orchestrator_state(
+        mode=args.mode,
+        status="completed",
+        sites=site_ids,
+        started_at=started,
+        finished_at=datetime.now(timezone.utc),
+        totals=totals,
+    )
 
     # Write summary JSON to disk only when local logging is enabled.
     if settings.LOG_LOCAL:

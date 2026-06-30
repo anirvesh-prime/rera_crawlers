@@ -4,6 +4,7 @@ import logging
 import os
 import random
 import re
+import shutil
 import ssl
 import threading
 import time
@@ -25,6 +26,13 @@ _HTTP_CLIENTS: dict[tuple[bool | int, ...], httpx.Client] = {}
 # Stripped at key-gen time so the hash matches the legacy system even when
 # the upstream parser or a cached row preserves the raw marker.
 _REG_NO_DISPLAY_MARKER = re.compile(r"\s*\*+\s*$")
+
+
+def _first_existing_path(*candidates: str | None) -> str | None:
+    for candidate in candidates:
+        if candidate and os.path.exists(candidate):
+            return candidate
+    return None
 
 
 def _project_hash_seed() -> bytes:
@@ -530,9 +538,17 @@ class SeleniumSession:
         from selenium import webdriver
         from selenium.webdriver.chrome.options import Options as _ChromeOptions
         from selenium.webdriver.chrome.service import Service as _ChromeService
-        from webdriver_manager.chrome import ChromeDriverManager
 
         opts = _ChromeOptions()
+        chrome_bin = _first_existing_path(
+            os.environ.get("CHROME_BIN"),
+            shutil.which("chromium"),
+            shutil.which("chromium-browser"),
+            shutil.which("google-chrome"),
+            shutil.which("google-chrome-stable"),
+        )
+        if chrome_bin:
+            opts.binary_location = chrome_bin
         if self.headless:
             opts.add_argument("--headless=new")
         opts.add_argument("--no-sandbox")
@@ -574,7 +590,15 @@ class SeleniumSession:
         }
         opts.add_experimental_option("prefs", prefs)
         opts.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
-        service = _ChromeService(ChromeDriverManager().install())
+        chromedriver_bin = _first_existing_path(
+            os.environ.get("CHROMEDRIVER_BIN"),
+            shutil.which("chromedriver"),
+        )
+        if chromedriver_bin:
+            service = _ChromeService(chromedriver_bin)
+        else:
+            from webdriver_manager.chrome import ChromeDriverManager
+            service = _ChromeService(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=opts)
         # Sync urllib3's read timeout for the localhost->chromedriver socket so
         # chromedriver's page_load_timeout trips first (clean abort + quit())
@@ -1343,6 +1367,15 @@ class SeleniumPageAdapter:
 
     def reload(self, timeout: int | None = None, **_kw) -> None:
         self._driver.refresh()
+
+    def go_back(self, *, timeout: int | None = None, **_kw) -> None:
+        prev = self._sess.page_load_timeout
+        if timeout is not None:
+            self._driver.set_page_load_timeout(_ms_to_s(timeout))
+        try:
+            self._driver.back()
+        finally:
+            self._driver.set_page_load_timeout(prev)
 
     @property
     def url(self) -> str:

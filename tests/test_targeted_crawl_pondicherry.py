@@ -71,9 +71,6 @@ class PondicherryTargetedCrawlTests(unittest.TestCase):
             mock.patch.object(pondicherry_rera, "_sentinel_check", sentinel),
             mock.patch.object(pondicherry_rera, "_get_listing", return_value=fake_resp),
             mock.patch.object(pondicherry_rera, "_parse_listing_cards", return_value=self._cards()),
-            mock.patch.object(pondicherry_rera, "load_checkpoint", return_value={}),
-            mock.patch.object(pondicherry_rera, "save_checkpoint"),
-            mock.patch.object(pondicherry_rera, "reset_checkpoint"),
             mock.patch.object(pondicherry_rera, "random_delay"),
             mock.patch.object(pondicherry_rera, "update_crawl_run_progress"),
             mock.patch.object(pondicherry_rera, "get_project_by_key", return_value=None),
@@ -122,6 +119,52 @@ class PondicherryTargetedCrawlTests(unittest.TestCase):
             )
         sentinel.assert_called_once()
         self.assertFalse(counts["sentinel_passed"])
+
+    def test_daily_light_skips_existing_listing_before_detail_fetch(self):
+        settings.TARGET_REG_NO = ""
+        fake_resp = mock.MagicMock()
+        fake_resp.text = "<html></html>"
+        existing_card = {
+            "project_name": "Existing", "project_registration_no": "PY/01/2020/003",
+            "promoter_name": "P3", "promoter_type": "Individual",
+            "project_type": "Residential", "listing_status": "APPROVED",
+            "detail_url": "https://prera.py.gov.in/reraAppOffice/viewProjectDetailPage?projectID=3",
+        }
+
+        patches = [
+            mock.patch.object(pondicherry_rera, "_sentinel_check"),
+            mock.patch.object(pondicherry_rera, "_get_listing", return_value=fake_resp),
+            mock.patch.object(pondicherry_rera, "_parse_listing_cards", return_value=[existing_card]),
+            mock.patch.object(pondicherry_rera, "_parse_detail_page"),
+            mock.patch.object(pondicherry_rera, "random_delay"),
+            mock.patch.object(pondicherry_rera, "update_crawl_run_progress"),
+            mock.patch.object(pondicherry_rera, "get_project_by_key", return_value={"key": "existing"}),
+            mock.patch.object(pondicherry_rera, "upsert_project"),
+            mock.patch.object(pondicherry_rera, "insert_crawl_error"),
+            mock.patch.object(pondicherry_rera, "get_machine_context", return_value=("host", "127.0.0.1")),
+        ]
+        with ExitStack() as stack:
+            entered = [stack.enter_context(patcher) for patcher in patches]
+            sentinel_mock = entered[0]
+            detail_mock = entered[3]
+            delay_mock = entered[4]
+            get_project_mock = entered[6]
+            upsert_mock = entered[7]
+            counts = pondicherry_rera.run(
+                {"id": "pondicherry_rera", "state": "puducherry", "config_id": 1},
+                run_id=123,
+                mode="daily_light",
+            )
+
+        self.assertEqual(counts["projects_found"], 1)
+        self.assertEqual(counts["projects_skipped"], 1)
+        sentinel_mock.assert_not_called()
+        get_project_mock.assert_called_once_with(
+            pondicherry_rera.generate_project_key("PY/01/2020/003")
+        )
+        detail_mock.assert_not_called()
+        delay_mock.assert_not_called()
+        upsert_mock.assert_not_called()
 
 
 if __name__ == "__main__":

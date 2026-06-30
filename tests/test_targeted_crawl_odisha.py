@@ -79,9 +79,6 @@ class OdishaTargetedCrawlTests(unittest.TestCase):
             mock.patch.object(odisha_rera, "_parse_booking_status_cards", return_value=[]),
             mock.patch.object(odisha_rera, "_parse_timeline_table", return_value=[]),
             mock.patch.object(odisha_rera, "_extract_doc_links", return_value=[]),
-            mock.patch.object(odisha_rera, "load_checkpoint", return_value={}),
-            mock.patch.object(odisha_rera, "save_checkpoint"),
-            mock.patch.object(odisha_rera, "reset_checkpoint"),
             mock.patch.object(odisha_rera, "random_delay"),
             mock.patch.object(odisha_rera, "update_crawl_run_progress"),
             mock.patch.object(odisha_rera, "get_project_by_key", return_value=None),
@@ -132,6 +129,50 @@ class OdishaTargetedCrawlTests(unittest.TestCase):
             )
         sentinel.assert_called_once()
         self.assertFalse(counts["sentinel_passed"])
+
+    def test_daily_light_skips_existing_listing_before_detail_navigation(self):
+        settings.TARGET_REG_NO = ""
+        settings.CRAWL_ITEM_LIMIT = 1
+        card = {
+            "project_registration_no": "RERA/01/2020/00001",
+            "project_name": "Alpha",
+        }
+        page = mock.MagicMock()
+        page.url = "https://rera.odisha.gov.in/project-list"
+        page.content.return_value = "<html></html>"
+        open_detail = mock.MagicMock(return_value=True)
+        upsert_project = mock.MagicMock(return_value="new")
+
+        patches = [
+            mock.patch.object(odisha_rera, "_session", return_value=mock.MagicMock()),
+            mock.patch.object(odisha_rera, "page_adapter", return_value=page),
+            mock.patch.object(odisha_rera, "_sentinel_check"),
+            mock.patch.object(odisha_rera, "_wait_for_listing_cards", return_value=True),
+            mock.patch.object(odisha_rera, "_dismiss_modal"),
+            mock.patch.object(odisha_rera, "_scroll_full"),
+            mock.patch.object(odisha_rera, "_parse_page_cards", return_value=[card]),
+            mock.patch.object(odisha_rera, "_open_detail_page", open_detail),
+            mock.patch.object(odisha_rera, "random_delay"),
+            mock.patch.object(odisha_rera, "update_crawl_run_progress"),
+            mock.patch.object(odisha_rera, "get_project_by_key", return_value={"key": "existing"}),
+            mock.patch.object(odisha_rera, "upsert_project", upsert_project),
+            mock.patch.object(odisha_rera, "insert_crawl_error"),
+            mock.patch.object(odisha_rera, "get_machine_context", return_value=("host", "127.0.0.1")),
+        ]
+        with ExitStack() as stack:
+            for patcher in patches:
+                stack.enter_context(patcher)
+            counts = odisha_rera.run(
+                {"id": "odisha_rera", "state": "odisha", "config_id": 1},
+                run_id=456,
+                mode="daily_light",
+            )
+
+        self.assertEqual(counts["projects_found"], 1)
+        self.assertEqual(counts["projects_skipped"], 1)
+        self.assertEqual(counts["projects_new"], 0)
+        open_detail.assert_not_called()
+        upsert_project.assert_not_called()
 
 
 if __name__ == "__main__":

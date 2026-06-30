@@ -23,7 +23,6 @@ from urllib.parse import urlparse, parse_qs
 from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
-from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.crawler_base import (
     SeleniumPageAdapter as Page,
     SeleniumTimeout as PWTimeout,
@@ -81,19 +80,25 @@ def _quit_driver() -> None:
         _SESSION = None
 
 
-# ── Selenium-driven page helpers (was Selenium) ────────────────────────────
+# ── Selenium-driven page helpers ─────────────────────────────────────────────
+
+_LOADER_SELECTOR = (
+    "ngx-ui-loader .ngx-overlay, "
+    "ngx-ui-loader .ngx-foreground-spinner, "
+    "ngx-ui-loader .ngx-loading-text"
+)
+
 
 def _dismiss_modal(page: Page) -> None:
     for selector in (".swal2-confirm", ".swal2-cancel", ".swal2-close"):
         try:
             if page.locator(selector).count():
                 page.locator(selector).first.click(timeout=1500)
-                page.wait_for_timeout(400)
+                page.locator(".swal2-container").wait_for(state="hidden", timeout=1500)
         except Exception:
             pass
     try:
         page.keyboard.press("Escape")
-        page.wait_for_timeout(400)
     except Exception:
         pass
     try:
@@ -102,12 +107,152 @@ def _dismiss_modal(page: Page) -> None:
         pass
 
 
+def _wait_for_spinner_hidden(page: Page, timeout_ms: int = 25_000) -> bool:
+    """Wait for Odisha's ngx-ui-loader overlay to disappear."""
+    try:
+        page.wait_for_function(
+            """(selector) => !Array.from(document.querySelectorAll(selector)).some((el) => {
+                const style = window.getComputedStyle(el);
+                const rect = el.getBoundingClientRect();
+                return style.display !== 'none'
+                    && style.visibility !== 'hidden'
+                    && Number(style.opacity || '1') !== 0
+                    && rect.width > 0
+                    && rect.height > 0;
+            })""",
+            arg=_LOADER_SELECTOR,
+            timeout=timeout_ms,
+        )
+        return True
+    except Exception:
+        return False
+
+
+def _listing_registration_numbers(page: Page) -> list[str]:
+    """Return registration numbers currently rendered on the listing page."""
+    try:
+        regs = page.evaluate(
+            r"""() => Array.from(document.querySelectorAll('span.fw-bold.me-2'))
+                .map((el) => (el.textContent || '').trim())
+                .filter((txt) => /^[A-Z]{2,4}\/\d{2}\/\d{4}\/\d{5}/.test(txt))"""
+        )
+    except Exception:
+        return []
+    return regs if isinstance(regs, list) else []
+
+
+def _listing_signature(page: Page) -> dict[str, str | int]:
+    """Capture a compact listing-page signature for change detection."""
+    regs = _listing_registration_numbers(page)
+    return {
+        "count": len(regs),
+        "first": regs[0] if regs else "",
+        "last": regs[-1] if regs else "",
+    }
+
+
+def _wait_for_listing_signature_changed(
+    page: Page,
+    before: dict[str, str | int],
+    timeout_ms: int = 30_000,
+) -> bool:
+    """Wait until row count or edge registration numbers differ."""
+    try:
+        page.wait_for_function(
+            r"""(prev) => {
+                const regs = Array.from(document.querySelectorAll('span.fw-bold.me-2'))
+                    .map((el) => (el.textContent || '').trim())
+                    .filter((txt) => /^[A-Z]{2,4}\/\d{2}\/\d{4}\/\d{5}/.test(txt));
+                if (!regs.length) return false;
+                return regs.length !== prev.count
+                    || regs[0] !== prev.first
+                    || regs[regs.length - 1] !== prev.last;
+            }""",
+            arg=before,
+            timeout=timeout_ms,
+        )
+        return True
+    except Exception:
+        return False
+
+
+def _wait_for_listing_row(page: Page, reg: str, timeout_ms: int = 8_000) -> bool:
+    """Wait until a specific listing registration number is rendered."""
+    try:
+        page.wait_for_function(
+            """(regNo) => Array.from(document.querySelectorAll('span.fw-bold.me-2'))
+                .some((el) => (el.textContent || '').trim() === regNo)""",
+            arg=reg,
+            timeout=timeout_ms,
+        )
+        return True
+    except Exception:
+        return False
+
+
+def _wait_for_scroll_position(page: Page, fraction: float, timeout_ms: int = 4_000) -> None:
+    """Wait until the page reaches the requested scroll fraction."""
+    try:
+        page.wait_for_function(
+            """(fraction) => {
+                if (fraction <= 0) return window.scrollY <= 1;
+                const doc = document.documentElement;
+                const body = document.body;
+                const height = Math.max(body.scrollHeight, doc.scrollHeight);
+                if (height <= window.innerHeight) return true;
+                const target = height * fraction;
+                return (window.scrollY + window.innerHeight) >= Math.min(target, height);
+            }""",
+            arg=fraction,
+            timeout=timeout_ms,
+        )
+    except Exception:
+        pass
+
+
+def _wait_for_element_count_stable(
+    page: Page,
+    selector: str,
+    *,
+    quiet_ms: int = 800,
+    timeout_ms: int = 8_000,
+) -> bool:
+    """Wait until a selector's element count stops changing."""
+    stable_key = (
+        "__odishaStableCount_"
+        + re.sub(r"\W+", "_", selector)
+        + f"_{time.monotonic_ns()}"
+    )
+    try:
+        page.wait_for_function(
+            r"""(args) => {
+                const count = document.querySelectorAll(args.selector).length;
+                const now = Date.now();
+                const state = window[args.key] || {count, since: now};
+                if (state.count !== count) {
+                    window[args.key] = {count, since: now};
+                    return false;
+                }
+                window[args.key] = state;
+                return now - state.since >= args.quietMs;
+            }""",
+            arg={"selector": selector, "quietMs": quiet_ms, "key": stable_key},
+            timeout=timeout_ms,
+        )
+        return True
+    except Exception:
+        return False
+
+
 def _scroll_full(page: Page) -> None:
-    """Scroll the page fully so Angular lazy-loaded cards / buttons are all rendered."""
+    """Scroll through the page so Angular lazy sections render."""
     for pct in (0.35, 0.70, 1.0):
         page.evaluate(f"window.scrollTo(0, document.body.scrollHeight * {pct})")
-        page.wait_for_timeout(250)
-    page.wait_for_timeout(200)
+        _wait_for_scroll_position(page, pct)
+        _wait_for_spinner_hidden(page, timeout_ms=5_000)
+    _wait_for_element_count_stable(
+        page, _LISTING_CARD_SELECTOR, quiet_ms=500, timeout_ms=4_000,
+    )
 
 
 # Selector for the registration-number span rendered inside every project card.
@@ -130,14 +275,26 @@ def _wait_for_listing_cards(page: Page, timeout_ms: int = 30_000) -> bool:
         return False
 
 
+def _wait_for_listing_ready(page: Page, timeout_ms: int = 30_000) -> bool:
+    """Wait for spinner clearance and at least one hydrated listing row."""
+    _wait_for_spinner_hidden(page, timeout_ms=timeout_ms)
+    if not _wait_for_listing_cards(page, timeout_ms=timeout_ms):
+        return False
+    _wait_for_spinner_hidden(page, timeout_ms=timeout_ms)
+    return True
+
+
 def _wait_for_loaders(page: Page, timeout: int = 25000) -> None:
-    """Scroll down to trigger lazy sections then settle."""
+    """Wait for portal loaders and lazy-rendered detail sections."""
     try:
         page.wait_for_load_state("networkidle", timeout=timeout)
     except Exception:
         pass
+    _wait_for_spinner_hidden(page, timeout_ms=timeout)
     _scroll_full(page)
-    page.wait_for_timeout(800)
+    _wait_for_element_count_stable(
+        page, "label.label-control", quiet_ms=800, timeout_ms=6_000,
+    )
 
 
 def _wait_for_overview_hydrated(page: Page, timeout_ms: int = 30_000) -> bool:
@@ -154,7 +311,10 @@ def _wait_for_overview_hydrated(page: Page, timeout_ms: int = 30_000) -> bool:
         page.wait_for_selector(
             "label.label-control", state="attached", timeout=timeout_ms,
         )
-        page.wait_for_timeout(1200)
+        _wait_for_spinner_hidden(page, timeout_ms=timeout_ms)
+        _wait_for_element_count_stable(
+            page, "label.label-control", quiet_ms=800, timeout_ms=6_000,
+        )
         return True
     except Exception:
         return False
@@ -896,7 +1056,7 @@ def _open_detail_page(page: Page, reg: str, logger: CrawlerLogger) -> bool:
             .first
         )
         btn_loc.scroll_into_view_if_needed(timeout=6000)
-        page.wait_for_timeout(400)  # let Angular re-render around the scroll pos
+        _wait_for_listing_row(page, reg, timeout_ms=3_000)
         btn_loc.click(timeout=5000)
         return True
     except Exception:
@@ -911,7 +1071,7 @@ def _open_detail_page(page: Page, reg: str, logger: CrawlerLogger) -> bool:
         }""",
         reg,
     )
-    page.wait_for_timeout(500)  # allow Angular to render cards around scroll pos
+    _wait_for_listing_row(page, reg, timeout_ms=3_000)
 
     clicked = page.evaluate(
         """(reg) => {
@@ -935,7 +1095,7 @@ def _open_detail_page(page: Page, reg: str, logger: CrawlerLogger) -> bool:
 
     # Strategy 3: fallback — re-scroll full page then retry Selenium locator with force.
     _scroll_full(page)
-    page.wait_for_timeout(300)
+    _wait_for_listing_row(page, reg, timeout_ms=3_000)
     try:
         button = page.locator("span.fw-bold.me-2", has_text=reg).locator(
             "xpath=ancestor::*[contains(@class, 'card')][1]"
@@ -1148,6 +1308,602 @@ def _handle_document(project_key: str, doc: dict, run_id: int,
         return None
 
 
+# ── Listing traversal helpers ────────────────────────────────────────────────
+
+def _initial_counts() -> dict:
+    """Return the run counter shape used by other crawlers and dashboards."""
+    return dict(projects_found=0, projects_new=0, projects_updated=0,
+                projects_skipped=0, documents_uploaded=0, error_count=0)
+
+
+def _open_listing_page(page: Page, logger: CrawlerLogger) -> None:
+    """Navigate to the Odisha project listing and wait for hydrated rows."""
+    page.goto(LISTING_URL, wait_until="domcontentloaded", timeout=20_000)
+    if not _wait_for_listing_ready(page, timeout_ms=30_000):
+        logger.warning("Listing cards did not render within 30s after load",
+                       step="listing")
+    _dismiss_modal(page)
+
+
+def _collect_listing_cards(page: Page, page_num: int, logger: CrawlerLogger) -> list[dict]:
+    """Prepare and parse the currently active listing page."""
+    _wait_for_listing_ready(page, timeout_ms=30_000)
+    logger.info(f"Odisha listing page {page_num}")
+    _dismiss_modal(page)
+    _scroll_full(page)
+    page.evaluate("window.scrollTo(0, 0)")
+    _wait_for_scroll_position(page, 0.0)
+    return _parse_page_cards(page)
+
+
+def _find_pagination_button(page: Page, target_page: int):
+    """Return the visible pagination button for a target page, if present."""
+    all_btns = page.query_selector_all(
+        "li.page-item:not(.disabled):not(.active) button.page-link")
+    return next(
+        (b for b in all_btns
+         if (b.text_content() or "").strip() == str(target_page)),
+        None,
+    )
+
+
+def _wait_for_active_listing_page(page: Page, target_page: int, timeout_ms: int = 10_000) -> bool:
+    """Wait until the pagination control marks the target page active."""
+    try:
+        page.wait_for_function(
+            """(target) => Array.from(document.querySelectorAll('li.page-item.active, .page-item.active'))
+                .some((li) => (li.textContent || '').trim() === String(target))""",
+            arg=target_page,
+            timeout=timeout_ms,
+        )
+        return True
+    except Exception:
+        return False
+
+
+def _click_listing_page(page: Page, target_page: int, logger: CrawlerLogger) -> bool:
+    """Click a listing pagination button and wait for the active page/data change."""
+    before = _listing_signature(page)
+    page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+    _wait_for_scroll_position(page, 1.0)
+    found = _find_pagination_button(page, target_page)
+    if not found:
+        return False
+    found.click()
+    _wait_for_spinner_hidden(page, timeout_ms=30_000)
+    if not _wait_for_active_listing_page(page, target_page, timeout_ms=10_000):
+        _wait_for_listing_signature_changed(page, before, timeout_ms=30_000)
+    if not _wait_for_listing_ready(page, timeout_ms=30_000):
+        logger.warning("Listing rows did not hydrate after pagination click",
+                       page=target_page, step="listing")
+    return True
+
+
+def _advance_to_next_listing_page(page: Page, page_num: int, logger: CrawlerLogger) -> bool:
+    """Move to the next listing page using the portal pagination control."""
+    _dismiss_modal(page)
+    next_page_num = page_num + 1
+    if not _click_listing_page(page, next_page_num, logger):
+        logger.info(f"No page {next_page_num} button — crawl complete")
+        return False
+    return True
+
+
+def _restore_listing_page(page: Page, page_num: int, logger: CrawlerLogger) -> bool:
+    """Ensure the browser is on the expected listing page after detail work."""
+    if "/project-list" in page.url:
+        _wait_for_listing_ready(page, timeout_ms=30_000)
+        return True
+
+    original_url = page.url
+    for _ in range(6):
+        try:
+            page.go_back(timeout=15_000)
+            page.wait_for_url("**/project-list**", timeout=10_000)
+            _wait_for_spinner_hidden(page, timeout_ms=20_000)
+            if _wait_for_listing_ready(page, timeout_ms=30_000):
+                return True
+        except Exception:
+            if page.url == original_url:
+                break
+            original_url = page.url
+
+    logger.warning("History return to listing failed — navigating to listing",
+                   page=page_num, step="listing")
+    try:
+        _open_listing_page(page, logger)
+        current_page = 1
+        while current_page < page_num:
+            if not _click_listing_page(page, current_page + 1, logger):
+                return False
+            current_page += 1
+        return True
+    except Exception as exc:
+        logger.warning(f"Listing recovery failed: {exc}", step="listing")
+        return False
+
+
+def _filter_target_cards(
+    cards: list[dict],
+    target_regs: set[str],
+    found_targets: set[str],
+) -> list[dict]:
+    """Filter listing cards to requested target registrations."""
+    if not target_regs:
+        return cards
+    filtered = [
+        c for c in cards
+        if (c.get("project_registration_no") or "").strip().upper() in target_regs
+    ]
+    found_targets.update(
+        (c.get("project_registration_no") or "").strip().upper()
+        for c in filtered
+    )
+    return filtered
+
+
+# ── Detail traversal helpers ─────────────────────────────────────────────────
+
+def _wait_for_detail_page_ready(page: Page, logger: CrawlerLogger) -> None:
+    """Wait for the detail route and Overview labels to hydrate."""
+    page.wait_for_url("**/project-details/**", timeout=15_000)
+    _wait_for_spinner_hidden(page, timeout_ms=30_000)
+    if not _wait_for_overview_hydrated(page, timeout_ms=30_000):
+        logger.warning("Overview did not hydrate within 30s", step="detail_fetch")
+    _wait_for_label_text(
+        page, "rera regd|project name|estimated project cost", timeout_ms=15_000,
+    )
+
+
+def _wait_for_tab_active(page: Page, label: str, timeout_ms: int = 8_000) -> bool:
+    """Wait until a tab-like element with label is active/selected."""
+    try:
+        page.wait_for_function(
+            """(label) => Array.from(document.querySelectorAll('a, button, [role="tab"], .nav-link'))
+                .some((el) => {
+                    const text = (el.textContent || '').trim();
+                    return text === label
+                        && (el.classList.contains('active')
+                            || el.getAttribute('aria-selected') === 'true');
+                })""",
+            arg=label,
+            timeout=timeout_ms,
+        )
+        return True
+    except Exception:
+        return False
+
+
+def _click_detail_tab(
+    page: Page,
+    label: str,
+    logger: CrawlerLogger,
+    *,
+    label_pattern: str | None = None,
+    stable_selector: str | None = None,
+    timeout_ms: int = 15_000,
+) -> bool:
+    """Click a detail tab and wait for tab-specific content readiness."""
+    try:
+        _dismiss_modal(page)
+        page.click(f"text={label}", timeout=8_000)
+        _wait_for_spinner_hidden(page, timeout_ms=timeout_ms)
+        _wait_for_tab_active(page, label, timeout_ms=8_000)
+        if label_pattern:
+            _wait_for_label_text(page, label_pattern, timeout_ms=timeout_ms)
+        if stable_selector:
+            _wait_for_element_count_stable(
+                page, stable_selector, quiet_ms=800, timeout_ms=timeout_ms,
+            )
+        return True
+    except Exception as exc:
+        logger.warning(f"{label} tab failed: {exc}", step="detail_parse")
+        return False
+
+
+def _scrape_promoter_tab(page: Page, reg: str, logger: CrawlerLogger) -> dict:
+    """Traverse and parse the Promoter Details tab."""
+    if not _click_detail_tab(
+        page, "Promoter Details", logger,
+        label_pattern="company name|registered office|gst no|entity",
+    ):
+        return {}
+    try:
+        return _parse_promoter_tab(BeautifulSoup(page.content(), "lxml"))
+    except Exception as exc:
+        logger.warning(f"Promoter tab parse failed for {reg}: {exc}",
+                       step="detail_parse")
+        return {}
+
+
+def _scrape_status_tabs(page: Page, reg: str, logger: CrawlerLogger) -> dict:
+    """Traverse Booking Status and Project Milestone tabs."""
+    status_update_data: dict = {}
+    if _click_detail_tab(
+        page, "Booking Status", logger,
+        stable_selector="div.green-card, table",
+    ):
+        try:
+            _scroll_full(page)
+            units = _parse_booking_status_cards(BeautifulSoup(page.content(), "lxml"))
+            if units:
+                status_update_data["building_details"] = units
+        except Exception as exc:
+            logger.warning(f"Booking Status tab parse failed for {reg}: {exc}",
+                           step="detail_parse")
+
+    if _click_detail_tab(
+        page, "Project Milestone", logger,
+        stable_selector="table",
+    ):
+        try:
+            _scroll_full(page)
+            milestones = _parse_timeline_table(BeautifulSoup(page.content(), "lxml"))
+            if milestones:
+                status_update_data["proposed_timeline"] = milestones
+        except Exception as exc:
+            logger.warning(f"Project Milestone tab parse failed for {reg}: {exc}",
+                           step="detail_parse")
+    return status_update_data
+
+
+def _scrape_documents_tab(page: Page, reg: str, logger: CrawlerLogger) -> list[dict]:
+    """Traverse and parse the Documents tab after link count stabilizes."""
+    if not _click_detail_tab(
+        page, "Documents", logger,
+        stable_selector="a[href*='reraapps.odisha.gov.in/dms']",
+        timeout_ms=15_000,
+    ):
+        return []
+    try:
+        return _extract_doc_links(BeautifulSoup(page.content(), "lxml"))
+    except Exception as exc:
+        logger.warning(f"Documents tab parse failed for {reg}: {exc}",
+                       step="detail_parse")
+        return []
+
+
+def _finalize_document_links(
+    page: Page,
+    card: dict,
+    doc_links: list[dict],
+    logger: CrawlerLogger,
+) -> list[dict]:
+    """Normalize, add listing cert, and resolve Odisha DMS viewer links."""
+    for doc in doc_links:
+        if doc.get("label", "").strip().lower() == "registration certificate":
+            doc["label"] = "RERA Registration Certificate 1"
+
+    if card.get("cert_url"):
+        cert_doc = {"label": "RERA Registration Certificate 1", "url": card["cert_url"]}
+        if cert_doc["url"] not in {d["url"] for d in doc_links}:
+            doc_links.insert(0, cert_doc)
+
+    resolved: list[dict] = []
+    for doc in doc_links:
+        url = doc.get("url", "")
+        is_viewer = (
+            "reraapps.odisha.gov.in/dms" in url
+            and any(v in url for v in ("viewer.html", "demos-preview.html"))
+        )
+        if is_viewer:
+            direct_url = _resolve_dms_viewer_url(page, url, logger)
+            if direct_url:
+                doc = {**doc, "url": direct_url, "source_url": url}
+        resolved.append(doc)
+    return resolved
+
+
+def _scrape_detail_sections(
+    page: Page,
+    card: dict,
+    mode: str,
+    logger: CrawlerLogger,
+) -> dict | None:
+    """Open a project detail page and parse all enabled sections."""
+    reg = card["project_registration_no"]
+    logger.info("Opening detail page", step="detail_fetch")
+    if not _open_detail_page(page, reg, logger):
+        logger.warning("No View Details button found", step="detail_fetch")
+        return None
+    _wait_for_detail_page_ready(page, logger)
+    detail_url = page.url
+    logger.set_project(reg_no=reg, url=detail_url)
+
+    overview = _parse_overview(BeautifulSoup(page.content(), "lxml"))
+    doc_links = overview.pop("_doc_links", [])
+    skip_doc_work = settings.SKIP_DOCUMENTS or mode == "daily_light"
+    if skip_doc_work:
+        doc_links = []
+
+    promoter = _scrape_promoter_tab(page, reg, logger)
+    status_update_data = _scrape_status_tabs(page, reg, logger)
+
+    if not skip_doc_work:
+        extra_docs = _scrape_documents_tab(page, reg, logger)
+        seen_urls = {d["url"] for d in doc_links}
+        doc_links += [d for d in extra_docs if d["url"] not in seen_urls]
+        doc_links = _finalize_document_links(page, card, doc_links, logger)
+
+    return {
+        "detail_url": detail_url,
+        "overview": overview,
+        "promoter": promoter,
+        "status_update_data": status_update_data,
+        "doc_links": doc_links,
+        "skip_doc_work": skip_doc_work,
+    }
+
+
+# ── Parsing / normalization helpers ──────────────────────────────────────────
+
+def _build_project_payload(
+    *,
+    config: dict,
+    card: dict,
+    key: str,
+    detail_url: str,
+    overview: dict,
+    promoter: dict,
+    status_update_data: dict,
+    doc_links: list[dict],
+    page_num: int,
+    machine_name: str,
+    machine_ip: str,
+) -> dict:
+    """Build the ProjectRecord payload from listing and detail sections."""
+    overview_data = {k: v for k, v in overview.items()
+                     if v is not None and not k.startswith("_") and k != "data"}
+    promoter_data = {k: v for k, v in promoter.items()
+                     if v is not None and not k.startswith("_")}
+    card_data = {k: v for k, v in card.items()
+                 if k not in ("cert_url", "phone") and v is not None}
+
+    _proj_loc_raw = overview_data.get("project_location_raw")
+    _project_location = (
+        _proj_loc_raw.get("raw_address")
+        if isinstance(_proj_loc_raw, dict) else None
+    )
+
+    _regis_cert = card.get("cert_url")
+    if not _regis_cert:
+        for _doc in doc_links:
+            if _doc.get("label", "").lower() == "rera registration certificate 1":
+                _regis_cert = _doc.get("url")
+                break
+
+    data: dict = {
+        "key":              key,  # FIELD: key <- generate_project_key(reg)
+        "state":            config["state"],  # FIELD: state <- config["state"]
+        "project_state":    config["state"],  # FIELD: project_state <- config["state"]
+        "domain":           DOMAIN,  # FIELD: domain <- DOMAIN constant
+        "config_id":        config["config_id"],  # FIELD: config_id <- config["config_id"]
+        "url":              detail_url,  # FIELD: url <- page.url after detail navigation
+        "is_live":          True,  # FIELD: is_live <- literal True
+        "machine_name":     machine_name,  # FIELD: machine_name <- get_machine_context()
+        "crawl_machine_ip": machine_ip,  # FIELD: crawl_machine_ip <- get_machine_context()
+        **card_data,
+        **overview_data,
+        **promoter_data,
+        "data": merge_data_sections(  # FIELD: data <- merged metadata + raw_card + overview.data + promoter._raw
+            {
+                "govt_type":        "state",  # FIELD: data.govt_type <- literal "state"
+                "is_processed":     False,  # FIELD: data.is_processed <- literal False
+                "regis_cert":       _regis_cert,  # FIELD: data.regis_cert <- card.cert_url or RERA Reg Cert doc URL
+                "project_location": _project_location,  # FIELD: data.project_location <- overview project_location_raw.raw_address
+            },
+            {
+                "source_url": detail_url,  # FIELD: data.source_url <- page.url after detail navigation
+                "page_num": page_num,  # FIELD: data.page_num <- current listing page number
+                "raw_card": {k: v for k, v in card.items() if k != "cert_url" and v},  # FIELD: data.raw_card <- listing card dict minus cert_url
+            },
+            overview.get("data"),
+            {"promoter_tab": promoter.get("_raw")} if promoter.get("_raw") else None,  # FIELD: data.promoter_tab <- promoter tab raw labels
+        ),
+    }
+
+    if status_update_data:
+        if "building_details" in status_update_data:
+            data["building_details"] = status_update_data["building_details"]  # FIELD: building_details <- Booking Status tab unit cards
+        if "proposed_timeline" in status_update_data:
+            data["proposed_timeline"] = status_update_data["proposed_timeline"]  # FIELD: proposed_timeline <- Project Milestone tab timeline table
+        data["status_update"] = [status_update_data]  # FIELD: status_update <- [Booking Status + Milestone combined]
+
+    if card.get("phone"):
+        existing_contact = data.get("promoter_contact_details")
+        if isinstance(existing_contact, dict):
+            existing_contact.setdefault("listing_phone", card["phone"])
+        elif existing_contact is None:
+            data["promoter_contact_details"] = {"listing_phone": card["phone"]}  # FIELD: promoter_contact_details <- {listing_phone: card.phone}
+
+    return data
+
+
+def _normalize_project_record(
+    *,
+    data: dict,
+    config: dict,
+    machine_name: str,
+    machine_ip: str,
+    run_id: int,
+    site_id: str,
+    key: str,
+    detail_url: str,
+    counts: dict,
+    logger: CrawlerLogger,
+) -> dict:
+    """Normalize and validate the project payload, preserving raw fallback."""
+    logger.info("Normalizing and validating", step="normalize")
+    try:
+        normalized = normalize_project_payload(
+            data, config, machine_name=machine_name, machine_ip=machine_ip,
+        )
+        record = ProjectRecord(**normalized)
+        return record.to_db_dict()
+    except (ValidationError, ValueError) as exc:
+        logger.warning("Validation failed — using raw fallback",
+                       step="normalize", error=str(exc))
+        insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(exc),
+                           project_key=key, url=detail_url, raw_data=data)
+        counts["error_count"] += 1
+        return normalize_project_payload(
+            {**data, "data": merge_data_sections(
+                data.get("data"), {"validation_fallback": True},
+            )},
+            config, machine_name=machine_name, machine_ip=machine_ip,
+        )
+
+
+# ── Persistence / document helpers ───────────────────────────────────────────
+
+def _persist_project_and_documents(
+    *,
+    db_dict: dict,
+    doc_links: list[dict],
+    skip_doc_work: bool,
+    counts: dict,
+    config: dict,
+    run_id: int,
+    site_id: str,
+    key: str,
+    logger: CrawlerLogger,
+) -> None:
+    """Upsert the project and selected documents without changing DB behavior."""
+    logger.info("Upserting to DB", step="db_upsert")
+    action = upsert_project(db_dict)
+    if action == "new":
+        counts["projects_new"] += 1
+    else:
+        counts["projects_updated"] += 1
+    logger.info(f"DB result: {action}", step="db_upsert")
+
+    uploaded_documents: list[dict] = []
+    if skip_doc_work:
+        logger.info(f"Skipping {len(doc_links)} document downloads",
+                    step="documents")
+    else:
+        logger.info(f"Downloading {len(doc_links)} documents", step="documents")
+        doc_name_counts: dict[str, int] = {}
+        for doc in doc_links:
+            selected_doc = select_document_for_download(
+                config["state"], doc, doc_name_counts, domain=DOMAIN,
+            )
+            if selected_doc:
+                uploaded_doc = _handle_document(key, selected_doc, run_id, site_id, logger)
+                if uploaded_doc:
+                    uploaded_documents.append(uploaded_doc)
+                    counts["documents_uploaded"] += 1
+                else:
+                    uploaded_documents.append({
+                        "link": doc.get("url"),
+                        "type": doc.get("label", "document"),
+                    })
+            else:
+                uploaded_documents.append({
+                    "link": doc.get("url"),
+                    "type": doc.get("label", "document"),
+                })
+    if uploaded_documents:
+        upsert_project({
+            "key": db_dict["key"], "url": db_dict["url"],
+            "state": db_dict["state"], "domain": db_dict["domain"],
+            "project_registration_no": db_dict["project_registration_no"],  # FIELD: project_registration_no <- db_dict (carried for doc-only upsert)
+            "uploaded_documents": uploaded_documents,  # FIELD: uploaded_documents <- list of {type, link, s3_link} from _handle_document
+            "document_urls": build_document_urls(uploaded_documents),  # FIELD: document_urls <- build_document_urls(uploaded_documents)
+        })
+
+
+def _process_listing_card(
+    *,
+    page: Page,
+    card: dict,
+    page_num: int,
+    config: dict,
+    run_id: int,
+    mode: str,
+    counts: dict,
+    done_regs: set[str],
+    machine_name: str,
+    machine_ip: str,
+    logger: CrawlerLogger,
+) -> None:
+    """Process one listing card through detail traversal and persistence."""
+    site_id = config["id"]
+    reg = card["project_registration_no"]
+    key = generate_project_key(reg)
+    detail_url = ""
+
+    if reg in done_regs:
+        counts["projects_skipped"] += 1
+        return
+
+    logger.set_project(key=key, reg_no=reg, page=page_num)
+    try:
+        if mode == "daily_light" and get_project_by_key(key):
+            logger.info("Skipping — already in DB (daily_light)", step="skip")
+            counts["projects_skipped"] += 1
+            return
+
+        detail = _scrape_detail_sections(page, card, mode, logger)
+        if not detail:
+            return
+        detail_url = detail["detail_url"]
+
+        if not _restore_listing_page(page, page_num, logger):
+            logger.warning("Could not return to listing after detail parse",
+                           step="listing")
+
+        data = _build_project_payload(
+            config=config,
+            card=card,
+            key=key,
+            detail_url=detail_url,
+            overview=detail["overview"],
+            promoter=detail["promoter"],
+            status_update_data=detail["status_update_data"],
+            doc_links=detail["doc_links"],
+            page_num=page_num,
+            machine_name=machine_name,
+            machine_ip=machine_ip,
+        )
+        db_dict = _normalize_project_record(
+            data=data,
+            config=config,
+            machine_name=machine_name,
+            machine_ip=machine_ip,
+            run_id=run_id,
+            site_id=site_id,
+            key=key,
+            detail_url=detail_url,
+            counts=counts,
+            logger=logger,
+        )
+        _persist_project_and_documents(
+            db_dict=db_dict,
+            doc_links=detail["doc_links"],
+            skip_doc_work=detail["skip_doc_work"],
+            counts=counts,
+            config=config,
+            run_id=run_id,
+            site_id=site_id,
+            key=key,
+            logger=logger,
+        )
+        done_regs.add(reg)
+        random_delay(*config.get("rate_limit_delay", (1, 2)))
+
+    except Exception as exc:
+        logger.exception("Project processing failed", exc, step="project_loop")
+        insert_crawl_error(run_id, site_id, "PROJECT_ERROR", str(exc),
+                           project_key=key, url=detail_url)
+        counts["error_count"] += 1
+        if "/project-details/" in page.url:
+            _restore_listing_page(page, page_num, logger)
+    finally:
+        logger.clear_project()
+        update_crawl_run_progress(run_id, counts)
+
+
 # ── Main run() ────────────────────────────────────────────────────────────────
 
 def run(config: dict, run_id: int, mode: str) -> dict:
@@ -1159,503 +1915,110 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
 
 def _run(config: dict, run_id: int, mode: str) -> dict:
-    logger       = CrawlerLogger(config["id"], run_id)
-    site_id      = config["id"]
-    counts       = dict(projects_found=0, projects_new=0, projects_updated=0,
-                        projects_skipped=0, documents_uploaded=0, error_count=0)
-    checkpoint   = load_checkpoint(site_id, mode) or {}
-    # Resume from the page AFTER the last completed one — the saved page was
-    # already fully processed, so re-starting there would duplicate work.
-    start_page   = checkpoint.get("last_page", 0) + 1
+    logger = CrawlerLogger(config["id"], run_id)
+    counts = _initial_counts()
     done_regs: set[str] = set()
-    item_limit   = settings.CRAWL_ITEM_LIMIT or 0
+    item_limit = settings.CRAWL_ITEM_LIMIT or 0
     items_processed = 0
-    # When item_limit is hit we stop the listing walk entirely — projects_found
-    # then reflects only the pages actually walked, not the full Odisha catalog.
     processing_done = False
     max_pages: int | None = settings.MAX_PAGES
     machine_name, machine_ip = get_machine_context()
     t_run = time.monotonic()
 
-    # ── Targeted run handling ────────────────────────────────────────────────
-    # --target-reg-no restricts the run to one or more specific projects
-    # (comma-separated, case-insensitive). The reg-no is present on every listing
-    # card, so each page is filtered down to the requested project(s) and the page
-    # walk stops as soon as all targets are found. The sentinel check is skipped
-    # for targeted runs (mirrors karnataka_rera / uttarakhand_rera).
+    # Phase 1: targeted-run and sentinel setup.
     target_regs = get_target_reg_nos()
     found_targets: set[str] = set()
+    page = page_adapter(_session())
 
-    if True:
-        page = page_adapter(_session())
-
-        # ── Sentinel health check ────────────────────────────────────────────
-        if target_regs or mode == "daily_light":
-            logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
-            counts["sentinel_passed"] = True
-        else:
-            t0 = time.monotonic()
-            if not _sentinel_check(config, run_id, logger, page):
-                logger.error("Sentinel failed — aborting crawl", step="sentinel")
-                counts["sentinel_passed"] = False
-                counts["error_count"] += 1
-                return counts
-            counts["sentinel_passed"] = True
-            logger.timing("sentinel", time.monotonic() - t0)
-
+    if target_regs or mode == "daily_light":
+        reason = "targeted run" if target_regs else "daily_light mode"
+        logger.info(f"Sentinel skipped ({reason})", step="sentinel")
+        counts["sentinel_passed"] = True
+    else:
         t0 = time.monotonic()
-        # Odisha is an Angular SPA with background polling that never reaches
-        # networkidle. Wait for domcontentloaded + a short settle, then rely on
-        # _scroll_full below to trigger lazy card rendering. Saves ~30s per
-        # listing-page navigation.
-        page.goto(LISTING_URL, wait_until="domcontentloaded", timeout=20000)
-        # Angular fetches the project list asynchronously; wait up to 30 s for
-        # the first reg-no span to appear before scrolling/parsing. Without
-        # this the parser sees an empty skeleton and returns 0 projects.
-        if not _wait_for_listing_cards(page, timeout_ms=30_000):
-            logger.warning("Listing cards did not render within 30s after load",
-                           step="listing")
-        _dismiss_modal(page)
+        if not _sentinel_check(config, run_id, logger, page):
+            logger.error("Sentinel failed — aborting crawl", step="sentinel")
+            counts["sentinel_passed"] = False
+            counts["error_count"] += 1
+            return counts
+        counts["sentinel_passed"] = True
+        logger.timing("sentinel", time.monotonic() - t0)
 
-        page_num = 1
-        while True:
-            # Always re-wait at loop top: covers initial load, checkpoint
-            # resume, and every paginated next-page click.
-            _wait_for_listing_cards(page, timeout_ms=30_000)
+    # Phase 2: listing traversal.
+    t0 = time.monotonic()
+    _open_listing_page(page, logger)
+    page_num = 1
 
-            # Skip to start_page (resume after checkpoint)
-            if page_num < start_page:
-                try:
-                    all_btns = page.query_selector_all(
-                        "li.page-item:not(.disabled):not(.active) button.page-link")
-                    found = next(
-                        (b for b in all_btns
-                         if (b.text_content() or "").strip() == str(page_num + 1)), None)
-                    if not found:
-                        break
-                    found.click()
-                    page.wait_for_timeout(2500)
-                    page_num += 1
-                    continue
-                except Exception:
-                    break
+    while True:
+        cards = _collect_listing_cards(page, page_num, logger)
+        cards = _filter_target_cards(cards, target_regs, found_targets)
 
-            logger.info(f"Odisha listing page {page_num}")
-            _dismiss_modal(page)
-            # Scroll full page so all Angular lazy-cards are rendered
-            _scroll_full(page)
-            page.evaluate("window.scrollTo(0, 0)")
-            page.wait_for_timeout(400)
-            cards = _parse_page_cards(page)
+        remaining = (item_limit - items_processed) if item_limit else len(cards)
+        if item_limit and remaining <= 0:
+            logger.info(
+                f"Item limit {item_limit} reached — stopping listing walk",
+                step="listing",
+            )
+            break
+        cards_to_consider = cards[:remaining] if item_limit else cards
 
-            # ── Targeted filtering ───────────────────────────────────────────
-            # Keep only the requested registration number(s); the page walk stops
-            # once every target has been found (see end of the page loop).
-            if target_regs:
-                cards = [
-                    c for c in cards
-                    if (c.get("project_registration_no") or "").strip().upper() in target_regs
-                ]
-                found_targets.update(
-                    (c.get("project_registration_no") or "").strip().upper() for c in cards
-                )
+        counts["projects_found"] += len(cards_to_consider)
+        update_crawl_run_progress(run_id, counts)
+        if page_num == 1:
+            logger.timing("search", time.monotonic() - t0, rows=len(cards_to_consider))
 
-            remaining = (item_limit - items_processed) if item_limit else len(cards)
-            if item_limit and remaining <= 0:
-                logger.info(
-                    f"Item limit {item_limit} reached — stopping listing walk",
-                    step="listing",
-                )
-                processing_done = True
+        # Phase 3/4: detail traversal, parsing/normalization, persistence/documents.
+        for card in cards_to_consider:
+            items_processed += 1
+            _process_listing_card(
+                page=page,
+                card=card,
+                page_num=page_num,
+                config=config,
+                run_id=run_id,
+                mode=mode,
+                counts=counts,
+                done_regs=done_regs,
+                machine_name=machine_name,
+                machine_ip=machine_ip,
+                logger=logger,
+            )
+
+        if item_limit and items_processed >= item_limit:
+            logger.info(
+                f"Item limit {item_limit} reached — stopping listing walk",
+                step="listing",
+            )
+            processing_done = True
+
+        if max_pages and page_num >= max_pages:
+            logger.info(f"Reached max_pages={max_pages}, stopping.")
+            break
+
+        if not _restore_listing_page(page, page_num, logger):
+            break
+
+        if processing_done:
+            break
+
+        if target_regs and target_regs <= found_targets:
+            logger.info(
+                "All targeted projects found — stopping listing walk", step="listing",
+            )
+            break
+
+        try:
+            if not _advance_to_next_listing_page(page, page_num, logger):
                 break
-            cards_to_consider = cards[:remaining] if item_limit else cards
+            page_num += 1
+            random_delay(*config.get("rate_limit_delay", (2, 4)))
+        except PWTimeout:
+            logger.info("No more pages")
+            break
+        except Exception as exc:
+            logger.warning(f"Pagination error at page {page_num}: {exc}")
+            break
 
-            counts["projects_found"] += len(cards_to_consider)
-            # Push the running projects_found to crawl_runs for live dashboard view.
-            update_crawl_run_progress(run_id, counts)
-            if page_num == 1:
-                logger.timing("search", time.monotonic() - t0, rows=len(cards_to_consider))
-
-            for card in cards_to_consider:
-                reg  = card["project_registration_no"]
-
-                # Count every card toward the limit BEFORE skip checks so daily_light
-                # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
-                items_processed += 1
-
-                key  = generate_project_key(reg)
-
-                if reg in done_regs:
-                    counts["projects_skipped"] += 1
-                    continue
-
-                logger.set_project(key=key, reg_no=reg, page=page_num)
-
-                if mode == "daily_light" and get_project_by_key(key):
-                    logger.info("Skipping — already in DB (daily_light)", step="skip")
-                    counts["projects_skipped"] += 1
-                    logger.clear_project()
-                    continue
-
-                # Bind before navigation so an early failure (e.g. detail-URL
-                # wait timing out) is logged per-project instead of crashing the
-                # whole crawl with "detail_url referenced before assignment".
-                detail_url = ""
-                try:
-                    # ── Navigate to detail page ───────────────────────────
-                    logger.info("Opening detail page", step="detail_fetch")
-                    if not _open_detail_page(page, reg, logger):
-                        logger.warning("No View Details button found", step="detail_fetch")
-                        # A failed click may have partially navigated; recover to listing.
-                        if "/project-list" not in page.url:
-                            try:
-                                page.go_back()
-                                page.wait_for_load_state("networkidle", timeout=10000)
-                            except Exception:
-                                pass
-                            if "/project-list" not in page.url:
-                                try:
-                                    page.goto(LISTING_URL, wait_until="networkidle", timeout=20000)
-                                    page.wait_for_timeout(2000)
-                                    _dismiss_modal(page)
-                                except Exception:
-                                    pass
-                        continue
-                    page.wait_for_url("**/project-details/**", timeout=15000)
-                    detail_url = page.url
-                    logger.set_project(key=key, reg_no=reg, url=detail_url, page=page_num)
-                    _wait_for_loaders(page)
-
-                    # ── Parse Project Overview tab ────────────────────────
-                    overview  = _parse_overview(BeautifulSoup(page.content(), "lxml"))
-                    doc_links = overview.pop("_doc_links", [])
-                    skip_doc_work = settings.SKIP_DOCUMENTS or mode == "daily_light"
-                    if skip_doc_work:
-                        doc_links = []
-
-                    # ── Parse Promoter Details tab ────────────────────────
-                    promoter: dict = {}
-                    try:
-                        _dismiss_modal(page)  # dismiss any SweetAlert2 modal first
-                        page.click("text=Promoter Details", timeout=8000)
-                        try:
-                            page.wait_for_load_state("networkidle", timeout=6000)
-                        except Exception:
-                            page.wait_for_timeout(1000)
-                        promoter = _parse_promoter_tab(BeautifulSoup(page.content(), "lxml"))
-                    except Exception as e:
-                        logger.warning(f"Promoter tab failed for {reg}: {e}")
-
-                    # ── Parse Booking Status tab (unit/flat inventory) ────
-                    status_update_data: dict = {}
-                    try:
-                        _dismiss_modal(page)
-                        page.click("text=Booking Status", timeout=8000)
-                        try:
-                            page.wait_for_load_state("networkidle", timeout=6000)
-                        except Exception:
-                            page.wait_for_timeout(800)
-                        # Scroll to trigger lazy-rendering of all floor cards
-                        for _pct in (0.4, 0.8, 1.0):
-                            page.evaluate(
-                                f"window.scrollTo(0, document.body.scrollHeight * {_pct})"
-                            )
-                            page.wait_for_timeout(200)
-                        units = _parse_booking_status_cards(
-                            BeautifulSoup(page.content(), "lxml")
-                        )
-                        if units:
-                            status_update_data["building_details"] = units
-                    except Exception as e:
-                        logger.warning(f"Booking Status tab failed for {reg}: {e}")
-
-                    # ── Parse Project Milestone tab (construction timeline) ─
-                    try:
-                        _dismiss_modal(page)
-                        page.click("text=Project Milestone", timeout=8000)
-                        try:
-                            page.wait_for_load_state("networkidle", timeout=6000)
-                        except Exception:
-                            page.wait_for_timeout(800)
-                        # Extra scroll to trigger any lazy-loaded milestone rows
-                        # (Angular may populate date cells after the initial render)
-                        _scroll_full(page)
-                        milestones = _parse_timeline_table(
-                            BeautifulSoup(page.content(), "lxml")
-                        )
-                        if milestones:
-                            status_update_data["proposed_timeline"] = milestones
-                    except Exception as e:
-                        logger.warning(f"Project Milestone tab failed for {reg}: {e}")
-
-                    if not skip_doc_work:
-                        # ── Parse Documents tab ───────────────────────────────
-                        try:
-                            _dismiss_modal(page)
-                            page.click("text=Documents", timeout=8000)
-                            try:
-                                page.wait_for_load_state("networkidle", timeout=8000)
-                            except Exception:
-                                page.wait_for_timeout(1000)
-                            extra_docs = _extract_doc_links(BeautifulSoup(page.content(), "lxml"))
-                            seen_urls = {d["url"] for d in doc_links}
-                            doc_links += [d for d in extra_docs if d["url"] not in seen_urls]
-                        except Exception as e:
-                            logger.warning(f"Documents tab failed for {reg}: {e}")
-
-                        # ── Normalize registration cert label ─────────────────
-                        # The detail page may label the cert "Registration Certificate"
-                        # (from a label-control tag on the overview).  Normalise to the
-                        # canonical schema name so document_urls includes it correctly.
-                        for _doc in doc_links:
-                            if _doc.get("label", "").strip().lower() == "registration certificate":
-                                _doc["label"] = "RERA Registration Certificate 1"
-
-                        # ── Add registration cert from listing card ───────────
-                        if card.get("cert_url"):
-                            cert_doc = {"label": "RERA Registration Certificate 1", "url": card["cert_url"]}
-                            if cert_doc["url"] not in {d["url"] for d in doc_links}:
-                                doc_links.insert(0, cert_doc)
-
-                        # ── Resolve DMS viewer URLs → direct PDF URLs ─────────
-                        # DMS links now point to a PDF.js/HTML viewer page.
-                        # We POST to the decrypt endpoint (within the active
-                        # browser session so cookies are valid) to obtain the
-                        # temporary direct file URL before navigating away.
-                        resolved: list[dict] = []
-                        for doc in doc_links:
-                            url = doc.get("url", "")
-                            is_viewer = (
-                                "reraapps.odisha.gov.in/dms" in url
-                                and any(v in url for v in ("viewer.html", "demos-preview.html"))
-                            )
-                            if is_viewer:
-                                direct_url = _resolve_dms_viewer_url(page, url, logger)
-                                if direct_url:
-                                    doc = {**doc, "url": direct_url, "source_url": url}
-                            resolved.append(doc)
-                        doc_links = resolved
-
-                    # ── Return to listing page via direct navigation ──────
-                    # Angular pushes a history entry per tab click, so go_back()
-                    # lands on a tab route rather than the listing.  A direct goto
-                    # is faster and fully deterministic.
-                    page.goto(LISTING_URL, wait_until="domcontentloaded", timeout=20000)
-                    _scroll_full(page)
-                    page.evaluate("window.scrollTo(0, 0)")
-                    page.wait_for_timeout(200)
-
-                    # ── Build data dict ───────────────────────────────────
-                    overview_data  = {k: v for k, v in overview.items()
-                                      if v is not None and not k.startswith("_") and k != "data"}
-                    promoter_data  = {k: v for k, v in promoter.items()
-                                      if v is not None and not k.startswith("_")}
-                    card_data      = {k: v for k, v in card.items()
-                                      if k not in ("cert_url", "phone") and v is not None}
-
-                    # Derive project_location for the data blob
-                    _proj_loc_raw = overview_data.get("project_location_raw")
-                    _project_location = (
-                        _proj_loc_raw.get("raw_address")
-                        if isinstance(_proj_loc_raw, dict) else None
-                    )
-
-                    # Determine regis_cert URL: prefer direct card cert_url (from
-                    # listing page icon); fall back to the resolved RERA Registration
-                    # Certificate doc link (for dry-run / direct-URL mode).
-                    _regis_cert = card.get("cert_url")
-                    if not _regis_cert:
-                        for _doc in doc_links:
-                            if _doc.get("label", "").lower() == "rera registration certificate 1":
-                                _regis_cert = _doc.get("url")
-                                break
-
-                    data: dict = {
-                        "key":              key,  # FIELD: key <- generate_project_key(reg)
-                        "state":            config["state"],  # FIELD: state <- config["state"]
-                        "project_state":    config["state"],  # FIELD: project_state <- config["state"]
-                        "domain":           DOMAIN,  # FIELD: domain <- DOMAIN constant
-                        "config_id":        config["config_id"],  # FIELD: config_id <- config["config_id"]
-                        "url":              detail_url,  # FIELD: url <- page.url after detail navigation
-                        "is_live":          True,  # FIELD: is_live <- literal True
-                        "machine_name":     machine_name,  # FIELD: machine_name <- get_machine_context()
-                        "crawl_machine_ip": machine_ip,  # FIELD: crawl_machine_ip <- get_machine_context()
-                        **card_data,
-                        **overview_data,
-                        **promoter_data,
-                        "data": merge_data_sections(  # FIELD: data <- merged metadata + raw_card + overview.data + promoter._raw
-                            # PROD-compatible metadata — must be first so raw sections don't overwrite
-                            {
-                                "govt_type":        "state",  # FIELD: data.govt_type <- literal "state"
-                                "is_processed":     False,  # FIELD: data.is_processed <- literal False
-                                "regis_cert":       _regis_cert,  # FIELD: data.regis_cert <- card.cert_url or RERA Reg Cert doc URL
-                                "project_location": _project_location,  # FIELD: data.project_location <- overview project_location_raw.raw_address
-                            },
-                            {
-                                "source_url": detail_url,  # FIELD: data.source_url <- page.url after detail navigation
-                                "page_num": page_num,  # FIELD: data.page_num <- current listing page number
-                                "raw_card": {k: v for k, v in card.items() if k != "cert_url" and v},  # FIELD: data.raw_card <- listing card dict minus cert_url
-                            },
-                            overview.get("data"),
-                            {"promoter_tab": promoter.get("_raw")} if promoter.get("_raw") else None,  # FIELD: data.promoter_tab <- promoter tab raw labels
-                        ),
-                    }
-
-                    # ── Merge Status Update tab data ──────────────────────
-                    # building_details and proposed_timeline from Status Update
-                    # override overview values when present; also stored as
-                    # status_update for downstream change-detection.
-                    if status_update_data:
-                        if "building_details" in status_update_data:
-                            data["building_details"] = status_update_data["building_details"]  # FIELD: building_details <- Booking Status tab unit cards
-                        if "proposed_timeline" in status_update_data:
-                            data["proposed_timeline"] = status_update_data["proposed_timeline"]  # FIELD: proposed_timeline <- Project Milestone tab timeline table
-                        data["status_update"] = [status_update_data]  # FIELD: status_update <- [Booking Status + Milestone combined]
-                    if card.get("phone"):
-                        existing_contact = data.get("promoter_contact_details")
-                        if isinstance(existing_contact, dict):
-                            existing_contact.setdefault("listing_phone", card["phone"])
-                        elif existing_contact is None:
-                            data["promoter_contact_details"] = {"listing_phone": card["phone"]}  # FIELD: promoter_contact_details <- {listing_phone: card.phone}
-
-                    logger.info("Normalizing and validating", step="normalize")
-                    try:
-                        normalized = normalize_project_payload(data, config, machine_name=machine_name, machine_ip=machine_ip)
-                        record  = ProjectRecord(**normalized)
-                        db_dict = record.to_db_dict()
-                    except (ValidationError, ValueError) as e:
-                        logger.warning("Validation failed — using raw fallback", step="normalize", error=str(e))
-                        insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(e),
-                                           project_key=key, url=detail_url, raw_data=data)
-                        counts["error_count"] += 1
-                        db_dict = normalize_project_payload(
-                            {**data, "data": merge_data_sections(data.get("data"), {"validation_fallback": True})},
-                            config, machine_name=machine_name, machine_ip=machine_ip,
-                        )
-
-                    logger.info("Upserting to DB", step="db_upsert")
-                    action = upsert_project(db_dict)
-                    if action == "new": counts["projects_new"] += 1
-                    else:               counts["projects_updated"] += 1
-                    logger.info(f"DB result: {action}", step="db_upsert")
-
-                    uploaded_documents: list[dict] = []
-                    if skip_doc_work:
-                        logger.info(
-                            f"Skipping {len(doc_links)} document downloads",
-                            step="documents",
-                        )
-                    else:
-                        logger.info(f"Downloading {len(doc_links)} documents", step="documents")
-                        doc_name_counts: dict[str, int] = {}
-                        for doc in doc_links:
-                            selected_doc = select_document_for_download(config["state"], doc, doc_name_counts, domain=DOMAIN)
-                            if selected_doc:
-                                uploaded_doc = _handle_document(key, selected_doc, run_id, site_id, logger)
-                                if uploaded_doc:
-                                    uploaded_documents.append(uploaded_doc)
-                                    counts["documents_uploaded"] += 1
-                                else:
-                                    uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label", "document")})
-                            else:
-                                uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label", "document")})
-                    if uploaded_documents:
-                        upsert_project({
-                            "key": db_dict["key"], "url": db_dict["url"],
-                            "state": db_dict["state"], "domain": db_dict["domain"],
-                            "project_registration_no": db_dict["project_registration_no"],  # FIELD: project_registration_no <- db_dict (carried for doc-only upsert)
-                            "uploaded_documents": uploaded_documents,  # FIELD: uploaded_documents <- list of {type, link, s3_link} from _handle_document
-                            "document_urls": build_document_urls(uploaded_documents),  # FIELD: document_urls <- build_document_urls(uploaded_documents)
-                        })
-
-                    done_regs.add(reg)
-                    random_delay(*config.get("rate_limit_delay", (1, 2)))
-
-                except Exception as exc:
-                    logger.exception("Project processing failed", exc, step="project_loop")
-                    insert_crawl_error(run_id, site_id, "PROJECT_ERROR", str(exc),
-                                       project_key=key, url=detail_url)
-                    counts["error_count"] += 1
-                    if "/project-details/" in page.url:
-                        try:
-                            page.goto(LISTING_URL, wait_until="networkidle", timeout=20000)
-                            page.wait_for_timeout(3000)
-                            _dismiss_modal(page)
-                        except Exception:
-                            pass
-                finally:
-                    logger.clear_project()
-                    update_crawl_run_progress(run_id, counts)
-
-            if item_limit and items_processed >= item_limit:
-                logger.info(
-                    f"Item limit {item_limit} reached — stopping listing walk",
-                    step="listing",
-                )
-                processing_done = True
-
-            save_checkpoint(site_id, mode, page_num, None, run_id)
-
-            if max_pages and page_num >= start_page + max_pages - 1:
-                logger.info(f"Reached max_pages={max_pages}, stopping.")
-                break
-
-            # ── Recover to listing if any failed detail-open navigated away ──
-            if "/project-list" not in page.url:
-                logger.warning(f"Not on listing after page {page_num} cards — recovering")
-                try:
-                    page.goto(LISTING_URL, wait_until="networkidle", timeout=20000)
-                    page.wait_for_timeout(2000)
-                    _dismiss_modal(page)
-                except Exception as _nav_err:
-                    logger.warning(f"Listing recovery failed: {_nav_err}")
-                    break
-
-            if processing_done:
-                break
-
-            # Targeted run: stop once every requested project has been processed.
-            if target_regs and target_regs <= found_targets:
-                logger.info(
-                    "All targeted projects found — stopping listing walk", step="listing",
-                )
-                break
-
-            _dismiss_modal(page)
-            try:
-                next_page_num = page_num + 1
-                # Pagination buttons live at the bottom — scroll there before querying.
-                page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-                page.wait_for_timeout(600)
-                all_btns = page.query_selector_all(
-                    "li.page-item:not(.disabled):not(.active) button.page-link")
-                found_next = next(
-                    (b for b in all_btns
-                     if (b.text_content() or "").strip() == str(next_page_num)), None)
-                if not found_next:
-                    logger.info(f"No page {next_page_num} button — crawl complete")
-                    break
-                found_next.click()
-                # See note on initial goto: networkidle never settles on the
-                # Odisha SPA.  domcontentloaded + scroll is enough for the
-                # next page's cards; _scroll_full at the top of the page loop
-                # forces lazy hydration before parsing.
-                page.wait_for_timeout(800)
-                try:
-                    page.wait_for_load_state("domcontentloaded", timeout=10000)
-                except Exception:
-                    pass
-                page_num += 1
-                random_delay(*config.get("rate_limit_delay", (2, 4)))
-            except PWTimeout:
-                logger.info("No more pages")
-                break
-            except Exception as e:
-                logger.warning(f"Pagination error at page {page_num}: {e}")
-                break
-
-    # ── Targeted run summary ─────────────────────────────────────────────────
-    # After walking the listing, report which requested project(s) were matched.
     if target_regs:
         for missing in sorted(target_regs - found_targets):
             logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
@@ -1664,7 +2027,6 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             f"project(s) matched", step="listing",
         )
 
-    reset_checkpoint(site_id, mode)
     logger.info(f"Odisha RERA complete: {counts}")
     logger.timing("total_run", time.monotonic() - t_run)
     return counts

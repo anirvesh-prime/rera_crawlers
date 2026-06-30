@@ -23,7 +23,6 @@ import time
 from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
-from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, random_delay
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document, update_crawl_run_progress
 from core.document_policy import select_document_for_download
@@ -242,6 +241,8 @@ _LOCATION_LABEL_TO_KEY: dict[str, str] = {
     "latitude":       "latitude",
     "longitude":      "longitude",
 }
+
+_LISTING_LOCKED_FIELDS = {"status_of_the_project", "project_type", "promoter_name", "project_name"}
 
 
 def _parse_detail_page(url: str, logger: CrawlerLogger) -> dict:
@@ -517,48 +518,52 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     return True
 
 
-# ── Main run() ────────────────────────────────────────────────────────────────
+# ── Workflow orchestration ───────────────────────────────────────────────────
 
-def run(config: dict, run_id: int, mode: str) -> dict:
-    """Public entry point — ensures the Selenium driver is shut down after the run."""
-    try:
-        return _run(config, run_id, mode)
-    finally:
-        _quit_driver()
+def _initial_counts() -> dict:
+    """Return the standard per-run counters for this crawler."""
+    return dict(projects_found=0, projects_new=0, projects_updated=0,
+                projects_skipped=0, documents_uploaded=0, error_count=0)
 
 
-def _run(config: dict, run_id: int, mode: str) -> dict:
-    logger   = CrawlerLogger(config["id"], run_id)
-    site_id  = config["id"]
-    counts   = dict(projects_found=0, projects_new=0, projects_updated=0,
-                    projects_skipped=0, documents_uploaded=0, error_count=0)
-    checkpoint  = load_checkpoint(site_id, mode) or {}
-    done_regs: set[str] = set(checkpoint.get("done_regs", []))
-    item_limit = settings.CRAWL_ITEM_LIMIT or 0
-    t_run = time.monotonic()
-
-    # ── Targeted run handling ────────────────────────────────────────────────
-    # --target-reg-no restricts the run to one or more specific projects
-    # (comma-separated, case-insensitive). The reg-no is present on every listing
-    # card, so the parsed listing is filtered down to the requested project(s)
-    # and the sentinel check is skipped (mirrors karnataka_rera / uttarakhand_rera).
-    target_regs = get_target_reg_nos()
-
-    # ── Sentinel health check ────────────────────────────────────────────────
+def _run_sentinel_phase(
+    config: dict,
+    run_id: int,
+    mode: str,
+    target_regs: set[str],
+    logger: CrawlerLogger,
+    counts: dict,
+) -> bool:
+    """Run the sentinel gate, or mark it passed for targeted/light runs."""
     if target_regs or mode == "daily_light":
-        logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+        reason = "targeted run via --target-reg-no" if target_regs else "daily_light run"
+        logger.info(f"Sentinel skipped ({reason})", step="sentinel")
         counts["sentinel_passed"] = True
-    else:
-        t0 = time.monotonic()
-        if not _sentinel_check(config, run_id, logger):
-            logger.error("Sentinel failed — aborting crawl", step="sentinel")
-            counts["sentinel_passed"] = False
-            counts["error_count"] += 1
-            return counts
-        counts["sentinel_passed"] = True
-        logger.timing("sentinel", time.monotonic() - t0)
+        return True
 
-    # Fetch listing page
+    t0 = time.monotonic()
+    if not _sentinel_check(config, run_id, logger):
+        logger.error("Sentinel failed — aborting crawl", step="sentinel")
+        counts["sentinel_passed"] = False
+        counts["error_count"] += 1
+        return False
+    counts["sentinel_passed"] = True
+    logger.timing("sentinel", time.monotonic() - t0)
+    return True
+
+
+# ── Listing traversal ────────────────────────────────────────────────────────
+
+def _load_listing_cards(
+    *,
+    mode: str,
+    target_regs: set[str],
+    run_id: int,
+    site_id: str,
+    logger: CrawlerLogger,
+    counts: dict,
+) -> list[dict] | None:
+    """Fetch, parse, filter, and limit the single Pondicherry listing page."""
     t0 = time.monotonic()
     resp = _get_listing(logger, mode=mode)
     if not resp:
@@ -566,16 +571,13 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         insert_crawl_error(run_id, site_id, "listing_load_failed",
                            "Could not fetch listing page", url=LISTING_URL)
         counts["error_count"] += 1
-        return counts
+        return None
 
-    soup  = BeautifulSoup(resp.text, "lxml")
-    cards = _parse_listing_cards(soup)
+    cards = _parse_listing_cards(BeautifulSoup(resp.text, "lxml"))
 
     # Guard against truncated/empty listing responses.  A live Pondicherry
     # listing has ~350+ project cards; zero cards means the server returned an
     # incomplete (or entirely blank) page rather than a real network failure.
-    # Without this guard the crawl silently "succeeds" with 0 projects — which
-    # looks like a clean run in the dashboard but is actually a data loss event.
     if not cards:
         logger.error(
             "Listing page returned 0 project cards — likely truncated or empty response",
@@ -588,186 +590,377 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             url=LISTING_URL,
         )
         counts["error_count"] += 1
-        return counts
+        return None
 
-    # ── Targeted filtering ─────────────────────────────────────────────────────
-    # Restrict the listing to the requested registration number(s).
-    if target_regs:
-        cards = [
-            c for c in cards
-            if (c.get("project_registration_no") or "").strip().upper() in target_regs
-        ]
-        matched_regs = {
-            (c.get("project_registration_no") or "").strip().upper() for c in cards
-        }
-        for missing in sorted(target_regs - matched_regs):
-            logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
-        logger.info(
-            f"Targeted run — {len(matched_regs)} of {len(target_regs)} requested "
-            f"project(s) matched", step="listing",
-        )
+    cards = _filter_listing_cards_for_targets(cards, target_regs, logger)
+    cards = _apply_listing_limits(cards, logger)
 
-    if item_limit:
-        cards = cards[:item_limit]
-        logger.info(f"Pondicherry: CRAWL_ITEM_LIMIT={item_limit} applied — processing {len(cards)} projects")
-    else:
-        # max_pages treats every 50 projects as one "page" (single-page site)
-        max_pages = settings.MAX_PAGES
-        if max_pages:
-            cards = cards[:max_pages * 50]
-            logger.info(f"Pondicherry: limiting to first {len(cards)} projects (max_pages={max_pages})")
     counts["projects_found"] = len(cards)
     update_crawl_run_progress(run_id, counts)
     logger.info(f"Pondicherry: {len(cards)} project cards found")
     logger.timing("search", time.monotonic() - t0, rows=len(cards))
+    return cards
+
+
+def _filter_listing_cards_for_targets(
+    cards: list[dict],
+    target_regs: set[str],
+    logger: CrawlerLogger,
+) -> list[dict]:
+    """Restrict listing cards to requested registration numbers, if configured."""
+    if not target_regs:
+        return cards
+
+    filtered_cards = [
+        c for c in cards
+        if (c.get("project_registration_no") or "").strip().upper() in target_regs
+    ]
+    matched_regs = {
+        (c.get("project_registration_no") or "").strip().upper() for c in filtered_cards
+    }
+    for missing in sorted(target_regs - matched_regs):
+        logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
+    logger.info(
+        f"Targeted run — {len(matched_regs)} of {len(target_regs)} requested "
+        f"project(s) matched", step="listing",
+    )
+    return filtered_cards
+
+
+def _apply_listing_limits(cards: list[dict], logger: CrawlerLogger) -> list[dict]:
+    """Apply CRAWL_ITEM_LIMIT or MAX_PAGES to parsed listing cards."""
+    item_limit = settings.CRAWL_ITEM_LIMIT or 0
+    if item_limit:
+        limited = cards[:item_limit]
+        logger.info(f"Pondicherry: CRAWL_ITEM_LIMIT={item_limit} applied — processing {len(limited)} projects")
+        return limited
+
+    # max_pages treats every 50 projects as one "page" (single-page site).
+    max_pages = settings.MAX_PAGES
+    if max_pages:
+        limited = cards[:max_pages * 50]
+        logger.info(f"Pondicherry: limiting to first {len(limited)} projects (max_pages={max_pages})")
+        return limited
+    return cards
+
+
+# ── Detail traversal ─────────────────────────────────────────────────────────
+
+def _skip_existing_project_in_light_mode(
+    *,
+    mode: str,
+    project_key: str,
+    logger: CrawlerLogger,
+    counts: dict,
+) -> bool:
+    """Return True when daily_light should skip a listing row before detail navigation."""
+    if mode == "daily_light" and get_project_by_key(project_key):
+        logger.info("Skipping — already in DB (daily_light)", step="skip")
+        counts["projects_skipped"] += 1
+        return True
+    return False
+
+
+def _traverse_detail_page(card: dict, config: dict, logger: CrawlerLogger) -> tuple[dict, list[dict]]:
+    """Open and parse the detail page for a listing card, returning data and document links."""
+    detail_url = card.get("detail_url")
+    if not detail_url:
+        return {}, []
+
+    random_delay(*config.get("rate_limit_delay", (1, 3)))
+    logger.info("Fetching detail page", step="detail_fetch")
+    detail = _parse_detail_page(detail_url, logger) or {}
+    doc_links = detail.pop("_doc_links", [])
+    return detail, doc_links
+
+
+# ── Parsing / normalization ──────────────────────────────────────────────────
+
+def _build_listing_project_payload(
+    *,
+    card: dict,
+    config: dict,
+    project_key: str,
+    machine_name: str,
+    machine_ip: str,
+) -> dict:
+    """Build the base project payload from listing-card fields."""
+    reg_no = card["project_registration_no"]
+    data: dict = {
+        "key":                     project_key,  # FIELD: key <- generate_project_key(reg_no)
+        "state":                   config["state"],  # FIELD: state <- config["state"]
+        # project_state is NOT pre-populated: Puducherry doesn't expose
+        # a separate project_state field on its pages, so it should remain
+        # null rather than being defaulted to the config state key.
+        "project_registration_no": reg_no,  # FIELD: project_registration_no <- listing card "Reg No."
+        "project_name":            card["project_name"] or None,  # FIELD: project_name <- listing card <h1>
+        "promoter_name":           card["promoter_name"] or None,  # FIELD: promoter_name <- listing card table td[0]
+        "project_type":            card["project_type"] or None,  # FIELD: project_type <- listing card table td[2]
+        "status_of_the_project":   card["listing_status"] or None,  # FIELD: status_of_the_project <- listing card table td[3]
+        "domain":                  DOMAIN,  # FIELD: domain <- module DOMAIN constant
+        "config_id":               config["config_id"],  # FIELD: config_id <- config["config_id"]
+        "url":                     card["detail_url"] or LISTING_URL,  # FIELD: url <- listing card detail href or LISTING_URL
+        "is_live":                 True,  # FIELD: is_live <- literal True
+        "machine_name":            machine_name,  # FIELD: machine_name <- get_machine_context()
+        "crawl_machine_ip":        machine_ip,  # FIELD: crawl_machine_ip <- get_machine_context()
+    }
+
+    # Promoters details from listing card (promoter type is always available).
+    if card.get("promoter_type") or card.get("promoter_name"):
+        data["promoters_details"] = {k: v for k, v in {
+            "type_of_firm": card.get("promoter_type"),  # FIELD: promoters_details.type_of_firm <- listing card promoter_type
+            "name":         card.get("promoter_name"),  # FIELD: promoters_details.name <- listing card promoter_name
+        }.items() if v}
+    return data
+
+
+def _merge_detail_payload(data: dict, card: dict, detail: dict) -> None:
+    """Merge parsed detail fields into the project payload without changing listing-locked fields."""
+    if card.get("detail_url"):
+        for k, v in detail.items():
+            if v is not None and not k.startswith("_"):
+                # Don't let detail page values overwrite listing-card fields
+                # (e.g. listing shows "APPROVED" while detail page says "Ongoing").
+                if k in _LISTING_LOCKED_FIELDS and data.get(k) is not None:
+                    continue
+                data[k] = v
+
+        # Build data JSONB with schema-allowed keys.
+        location = data.get("project_location_raw")
+        _raw_addr = location.get("raw_address") if isinstance(location, dict) else None
+        data["data"] = merge_data_sections(  # FIELD: data <- merge(listing_card, detail data, extras) JSONB
+            {"listing_card": card},
+            data.get("data"),
+            {
+                "govt_type":     "state",
+                "is_processed":  False,
+                "promoter_type": card.get("promoter_type") or None,
+                "raw_address":   _raw_addr,
+            },
+        )
+    else:
+        # FIELD: data <- listing_card fallback (no detail page) JSONB
+        data["data"] = {"listing_card": card, "govt_type": "state", "is_processed": False}
+
+
+def _normalize_project_for_db(
+    *,
+    data: dict,
+    config: dict,
+    project_key: str,
+    run_id: int,
+    site_id: str,
+    machine_name: str,
+    machine_ip: str,
+    logger: CrawlerLogger,
+    counts: dict,
+) -> dict:
+    """Normalize and validate a project payload, falling back to raw data on validation errors."""
+    logger.info("Normalizing and validating", step="normalize")
+    try:
+        normalized = normalize_project_payload(data, config, machine_name=machine_name, machine_ip=machine_ip)
+        record = ProjectRecord(**normalized)
+        return record.to_db_dict()
+    except (ValidationError, ValueError) as e:
+        logger.warning("Validation failed — using raw fallback", step="normalize", error=str(e))
+        insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(e),
+                           project_key=project_key, url=data.get("url"), raw_data=data)
+        counts["error_count"] += 1
+        return normalize_project_payload(
+            {**data, "data": merge_data_sections(data.get("data"), {"validation_fallback": True})},
+            config, machine_name=machine_name, machine_ip=machine_ip,
+        )
+
+
+# ── Persistence / documents ──────────────────────────────────────────────────
+
+def _upsert_project_record(db_dict: dict, counts: dict, logger: CrawlerLogger) -> None:
+    """Persist the normalized project and update new/updated counters."""
+    logger.info("Upserting to DB", step="db_upsert")
+    action = upsert_project(db_dict)
+    if action == "new":
+        counts["projects_new"] += 1
+    else:
+        counts["projects_updated"] += 1
+    logger.info(f"DB result: {action}", step="db_upsert")
+
+
+def _process_documents(
+    *,
+    doc_links: list[dict],
+    db_dict: dict,
+    config: dict,
+    run_id: int,
+    site_id: str,
+    mode: str,
+    logger: CrawlerLogger,
+    counts: dict,
+) -> list[dict]:
+    """Handle document skip/upload policy and return the stored document entries."""
+    uploaded_documents = []
+    if doc_links and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+        logger.info(
+            f"Skipping {len(doc_links)} documents (light/skip-documents mode)",
+            step="documents",
+        )
+        return [
+            {"link": doc.get("url"), "type": doc.get("label") or doc.get("type", "document")}
+            for doc in doc_links
+        ]
+
+    logger.info(f"Downloading {len(doc_links)} documents", step="documents")
+    doc_name_counts: dict[str, int] = {}
+    for doc in doc_links:
+        selected_doc = select_document_for_download(config["state"], doc, doc_name_counts, domain=DOMAIN)
+        if selected_doc:
+            uploaded_doc = _handle_document(db_dict["key"], selected_doc, run_id, site_id, logger)
+            if uploaded_doc:
+                uploaded_documents.append(uploaded_doc)
+                counts["documents_uploaded"] += 1
+            else:
+                uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label") or doc.get("type", "document")})
+        else:
+            uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label") or doc.get("type", "document")})
+    return uploaded_documents
+
+
+def _upsert_document_links(db_dict: dict, uploaded_documents: list[dict]) -> None:
+    """Persist uploaded document metadata back onto the project record."""
+    if not uploaded_documents:
+        return
+    upsert_project({
+        "key": db_dict["key"], "url": db_dict["url"],  # FIELD: key, url <- db_dict (re-upsert with documents)
+        "state": db_dict["state"], "domain": db_dict["domain"],  # FIELD: state, domain <- db_dict
+        "project_registration_no": db_dict["project_registration_no"],  # FIELD: project_registration_no <- db_dict
+        "uploaded_documents": uploaded_documents,  # FIELD: uploaded_documents <- processed doc results
+        "document_urls": build_document_urls(uploaded_documents),  # FIELD: document_urls <- build_document_urls(uploaded_documents)
+    })
+
+
+def _process_project_card(
+    *,
+    card: dict,
+    project_key: str,
+    config: dict,
+    run_id: int,
+    site_id: str,
+    mode: str,
+    machine_name: str,
+    machine_ip: str,
+    logger: CrawlerLogger,
+    counts: dict,
+) -> None:
+    """Run one listing card through skip, detail, normalization, persistence, and documents."""
+    reg_no = card["project_registration_no"]
+    logger.set_project(key=project_key, reg_no=reg_no, url=card.get("detail_url", LISTING_URL))
+
+    if _skip_existing_project_in_light_mode(
+        mode=mode,
+        project_key=project_key,
+        logger=logger,
+        counts=counts,
+    ):
+        return
+
+    data = _build_listing_project_payload(
+        card=card,
+        config=config,
+        project_key=project_key,
+        machine_name=machine_name,
+        machine_ip=machine_ip,
+    )
+    detail, doc_links = _traverse_detail_page(card, config, logger)
+    _merge_detail_payload(data, card, detail)
+
+    db_dict = _normalize_project_for_db(
+        data=data,
+        config=config,
+        project_key=project_key,
+        run_id=run_id,
+        site_id=site_id,
+        machine_name=machine_name,
+        machine_ip=machine_ip,
+        logger=logger,
+        counts=counts,
+    )
+    _upsert_project_record(db_dict, counts, logger)
+    uploaded_documents = _process_documents(
+        doc_links=doc_links,
+        db_dict=db_dict,
+        config=config,
+        run_id=run_id,
+        site_id=site_id,
+        mode=mode,
+        logger=logger,
+        counts=counts,
+    )
+    _upsert_document_links(db_dict, uploaded_documents)
+
+
+# ── Main run() ────────────────────────────────────────────────────────────────
+
+def run(config: dict, run_id: int, mode: str) -> dict:
+    """Public entry point — ensures the Selenium driver is shut down after the run."""
+    try:
+        return _run(config, run_id, mode)
+    finally:
+        _quit_driver()
+
+
+def _run(config: dict, run_id: int, mode: str) -> dict:
+    """Coordinate Pondicherry crawl phases without persisted resume state."""
+    logger = CrawlerLogger(config["id"], run_id)
+    site_id = config["id"]
+    counts = _initial_counts()
+    t_run = time.monotonic()
+
+    # ── Targeted run handling ───────────────────────────────────────────────
+    target_regs = get_target_reg_nos()
+
+    # ── Sentinel health check ───────────────────────────────────────────────
+    if not _run_sentinel_phase(config, run_id, mode, target_regs, logger, counts):
+        return counts
+
+    # ── Listing traversal ──────────────────────────────────────────────────
+    cards = _load_listing_cards(
+        mode=mode,
+        target_regs=target_regs,
+        run_id=run_id,
+        site_id=site_id,
+        logger=logger,
+        counts=counts,
+    )
+    if cards is None:
+        return counts
 
     machine_name, machine_ip = get_machine_context()
 
-    for i, card in enumerate(cards):
-        reg_no = card["project_registration_no"]
-        if reg_no in done_regs:
-            counts["projects_skipped"] += 1
-            continue
-
+    # ── Detail traversal, normalization, persistence, and documents ────────
+    for card in cards:
+        project_key = None
         try:
-            key  = generate_project_key(reg_no)
-            logger.set_project(key=key, reg_no=reg_no, url=card.get("detail_url", LISTING_URL))
-
-            if mode == "daily_light" and get_project_by_key(key):
-                logger.info("Skipping — already in DB (daily_light)", step="skip")
-                counts["projects_skipped"] += 1
-                logger.clear_project()
-                continue
-
-            data: dict = {
-                "key":                     key,  # FIELD: key <- generate_project_key(reg_no)
-                "state":                   config["state"],  # FIELD: state <- config["state"]
-                # project_state is NOT pre-populated: Puducherry doesn't expose
-                # a separate project_state field on its pages, so it should remain
-                # null rather than being defaulted to the config state key.
-                "project_registration_no": reg_no,  # FIELD: project_registration_no <- listing card "Reg No."
-                "project_name":            card["project_name"] or None,  # FIELD: project_name <- listing card <h1>
-                "promoter_name":           card["promoter_name"] or None,  # FIELD: promoter_name <- listing card table td[0]
-                "project_type":            card["project_type"] or None,  # FIELD: project_type <- listing card table td[2]
-                "status_of_the_project":   card["listing_status"] or None,  # FIELD: status_of_the_project <- listing card table td[3]
-                "domain":                  DOMAIN,  # FIELD: domain <- module DOMAIN constant
-                "config_id":               config["config_id"],  # FIELD: config_id <- config["config_id"]
-                "url":                     card["detail_url"] or LISTING_URL,  # FIELD: url <- listing card detail href or LISTING_URL
-                "is_live":                 True,  # FIELD: is_live <- literal True
-                "machine_name":            machine_name,  # FIELD: machine_name <- get_machine_context()
-                "crawl_machine_ip":        machine_ip,  # FIELD: crawl_machine_ip <- get_machine_context()
-            }
-            # Fields populated from the listing card that must not be overwritten
-            # by the detail page (the listing is the canonical source for these).
-            _LISTING_LOCKED_FIELDS = {"status_of_the_project", "project_type",
-                                      "promoter_name", "project_name"}
-
-            # Promoters details from listing card (promoter type is always available)
-            if card.get("promoter_type") or card.get("promoter_name"):
-                data["promoters_details"] = {k: v for k, v in {
-                    "type_of_firm": card.get("promoter_type"),  # FIELD: promoters_details.type_of_firm <- listing card promoter_type
-                    "name":         card.get("promoter_name"),  # FIELD: promoters_details.name <- listing card promoter_name
-                }.items() if v}
-
-
-
-            doc_links: list[dict] = []
-            if card["detail_url"]:
-                random_delay(*config.get("rate_limit_delay", (1, 3)))
-                logger.info("Fetching detail page", step="detail_fetch")
-                detail = _parse_detail_page(card["detail_url"], logger)
-                doc_links = detail.pop("_doc_links", [])
-                for k, v in detail.items():
-                    if v is not None and not k.startswith("_"):
-                        # Don't let detail page values overwrite listing-card fields
-                        # (e.g. listing shows "APPROVED" while detail page says "Ongoing").
-                        if k in _LISTING_LOCKED_FIELDS and data.get(k) is not None:
-                            continue
-                        data[k] = v
-                # Build data JSONB with schema-allowed keys
-                _raw_addr = (data.get("project_location_raw") or {}).get("raw_address") if isinstance(data.get("project_location_raw"), dict) else None
-                data["data"] = merge_data_sections(  # FIELD: data <- merge(listing_card, detail data, extras) JSONB
-                    {"listing_card": card},
-                    data.get("data"),
-                    {
-                        "govt_type":     "state",
-                        "is_processed":  False,
-                        "promoter_type": card.get("promoter_type") or None,
-                        "raw_address":   _raw_addr,
-                    },
-                )
-            else:
-                # FIELD: data <- listing_card fallback (no detail page) JSONB
-                data["data"] = {"listing_card": card, "govt_type": "state", "is_processed": False}
-
-            logger.info("Normalizing and validating", step="normalize")
-            try:
-                normalized = normalize_project_payload(data, config, machine_name=machine_name, machine_ip=machine_ip)
-                record  = ProjectRecord(**normalized)
-                db_dict = record.to_db_dict()
-            except (ValidationError, ValueError) as e:
-                logger.warning("Validation failed — using raw fallback", step="normalize", error=str(e))
-                insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(e),
-                                   project_key=key, url=data.get("url"), raw_data=data)
-                counts["error_count"] += 1
-                db_dict = normalize_project_payload(
-                    {**data, "data": merge_data_sections(data.get("data"), {"validation_fallback": True})},
-                    config, machine_name=machine_name, machine_ip=machine_ip,
-                )
-
-            logger.info("Upserting to DB", step="db_upsert")
-            action = upsert_project(db_dict)
-            if action == "new": counts["projects_new"] += 1
-            else:               counts["projects_updated"] += 1
-            logger.info(f"DB result: {action}", step="db_upsert")
-
-            uploaded_documents = []
-            if doc_links and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
-                logger.info(
-                    f"Skipping {len(doc_links)} documents (light/skip-documents mode)",
-                    step="documents",
-                )
-                uploaded_documents = [
-                    {"link": doc.get("url"), "type": doc.get("label") or doc.get("type", "document")}
-                    for doc in doc_links
-                ]
-            else:
-                logger.info(f"Downloading {len(doc_links)} documents", step="documents")
-                doc_name_counts: dict[str, int] = {}
-                for doc in doc_links:
-                    selected_doc = select_document_for_download(config["state"], doc, doc_name_counts, domain=DOMAIN)
-                    if selected_doc:
-                        uploaded_doc = _handle_document(db_dict["key"], selected_doc, run_id, site_id, logger)
-                        if uploaded_doc:
-                            uploaded_documents.append(uploaded_doc)
-                            counts["documents_uploaded"] += 1
-                        else:
-                            uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label") or doc.get("type", "document")})
-                    else:
-                        uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label") or doc.get("type", "document")})
-            if uploaded_documents:
-                upsert_project({
-                    "key": db_dict["key"], "url": db_dict["url"],  # FIELD: key, url <- db_dict (re-upsert with documents)
-                    "state": db_dict["state"], "domain": db_dict["domain"],  # FIELD: state, domain <- db_dict
-                    "project_registration_no": db_dict["project_registration_no"],  # FIELD: project_registration_no <- db_dict
-                    "uploaded_documents": uploaded_documents,  # FIELD: uploaded_documents <- processed doc results
-                    "document_urls": build_document_urls(uploaded_documents),  # FIELD: document_urls <- build_document_urls(uploaded_documents)
-                })
-
-            done_regs.add(reg_no)
-            if i % 50 == 0:
-                save_checkpoint(site_id, mode, i, reg_no, run_id)
-
+            project_key = generate_project_key(card["project_registration_no"])
+            _process_project_card(
+                card=card,
+                project_key=project_key,
+                config=config,
+                run_id=run_id,
+                site_id=site_id,
+                mode=mode,
+                machine_name=machine_name,
+                machine_ip=machine_ip,
+                logger=logger,
+                counts=counts,
+            )
         except Exception as exc:
             logger.exception("Project processing failed", exc, step="project_loop")
             insert_crawl_error(run_id, site_id, "PROJECT_ERROR", str(exc),
-                               project_key=key, url=card.get("detail_url"))
+                               project_key=project_key, url=card.get("detail_url"))
             counts["error_count"] += 1
         finally:
             logger.clear_project()
             update_crawl_run_progress(run_id, counts)
 
-    reset_checkpoint(site_id, mode)
     logger.info(f"Pondicherry RERA complete: {counts}")
     logger.timing("total_run", time.monotonic() - t_run)
     return counts

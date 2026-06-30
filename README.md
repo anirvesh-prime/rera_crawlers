@@ -65,6 +65,7 @@ Useful optional settings:
 ```dotenv
 LOG_DIR=logs
 LOG_LOCAL=false
+DASHBOARD_LOCAL_STATE=true
 TEST_MODE=false
 TEST_MODE_LOG_TO_DB=false
 CRAWLER_TESTER=false
@@ -100,6 +101,30 @@ tripura_rera, uttarakhand_rera, uttar_pradesh_rera, wb_rera
 The default production run includes only entries with `enabled: True`. Explicit `--site` selection can run disabled sites for testing.
 
 ## Running crawlers
+
+Production runs should use Docker so Selenium, ChromeDriver, and Chrome all
+live inside one disposable container per crawler invocation:
+
+```bash
+docker build -t rera-crawlers:latest .
+python3 scripts/crawler_container.py --mode weekly_deep
+python3 scripts/crawler_container.py --mode daily_light --site kerala_rera
+```
+
+The wrapper passes all unknown arguments through to `run_crawlers.py`, mounts
+`logs/` into the container, loads `.env`, uses host networking by default, and
+labels running containers with `com.primenumbers.rera.role=crawler`.
+
+Useful Docker commands:
+
+```bash
+docker ps --filter label=com.primenumbers.rera.role=crawler
+docker logs -f <container_id>
+docker stop <container_id>
+docker kill <container_id>
+```
+
+Local development can still run the Python entrypoint directly:
 
 Run all enabled sites:
 
@@ -173,13 +198,13 @@ Dry-run modes:
 rera_projects             normalized project records, keyed by deterministic project key
 rera_project_documents    uploaded document metadata and checksum records
 crawl_runs                one row per site run, with counts and final status
-crawl_logs                structured per-step logs for dashboard diagnostics
+crawl_logs                structured per-step logs for DB-side diagnostics
 crawl_errors              committed crawler errors for crash-safe diagnostics
 crawl_checkpoints         resume checkpoints by site_id and run_type
 crawl_document_events     document download/upload event stream
 ```
 
-The dashboard uses DB rows for historical metrics, latest errors, sentinel results, timings, and counts. It does not trust the DB to decide whether a crawler is currently running.
+The dashboard uses direct probes: Docker labels/logs for live runs and local files under `logs/dashboard/` plus per-site JSONL logs for latest metrics, errors, sentinel results, timings, and counts.
 
 ## Dashboard portal
 
@@ -205,13 +230,13 @@ Sentinel health table
 Failure diagnostics with traceback snippets
 Single-site Test Crawler modal
 Live tester log streaming
-Stop Crawlers modal using process-group signaling
-Process probe for true running/stopped state
+Stop Crawlers modal using Docker stop/kill
+Docker container probe for true running/stopped state
 ```
 
-The portal probes the OS process table for live `run_crawlers.py` orchestrators. If a command has explicit `--site` arguments, those sites are marked running. If there is no explicit site selection, all enabled sites are marked running. A stale `crawl_runs.status = 'running'` row with no matching process is shown as `stopped?`, not as live.
+The portal probes Docker for live containers labeled `com.primenumbers.rera.role=crawler`. If a command has explicit `--site` arguments, those sites are marked running. If there is no explicit site selection, all enabled sites are marked running. A stale local state file with no matching container is shown as `stopped?`, not as live.
 
-The Stop Crawlers modal only targets PIDs returned by the same process probe. It signals the process group so the orchestrator and worker processes stop together. Use graceful stop first; force kill sends `SIGKILL`.
+The Stop Crawlers modal only targets containers returned by the same Docker probe. Use graceful stop first; force kill sends `docker kill`.
 
 ## Dashboard deployment
 
@@ -315,7 +340,7 @@ Run dry-run sample comparisons:
 Useful development checks:
 
 ```bash
-./venv/bin/python -m py_compile dashboard.py run_crawlers.py
+./venv/bin/python -m py_compile dashboard.py run_crawlers.py core/crawler_base.py scripts/crawler_container.py
 bash -n setup_dashboard.sh setup_cron.sh
 ```
 
@@ -329,4 +354,4 @@ Project keys are deterministic. `run_crawlers.py` re-execs itself with `PYTHONHA
 
 Detail fetching may run in threads inside a site crawler. DB access is serialized inside `core/db.py` because psycopg connections are process-local and not safe for concurrent statements.
 
-Avoid running multiple production orchestrators at the same time unless intentionally testing concurrency. The dashboard process probe will show all live orchestrators and can stop them by process group.
+Avoid running multiple production orchestrators at the same time unless intentionally testing concurrency. The dashboard container probe will show all live crawler containers and can stop them.

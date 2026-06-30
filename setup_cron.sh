@@ -19,33 +19,37 @@ WEEKLY_DOW="${WEEKLY_DOW:-0}"       # day of week: 0=Sunday … 6=Saturday
 
 # ── Resolve paths relative to this script ────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PYTHON="$SCRIPT_DIR/venv/bin/python3"
-RUNNER="$SCRIPT_DIR/run_crawlers.py"
+PYTHON="${PYTHON:-$(command -v python3 || true)}"
+RUNNER="$SCRIPT_DIR/scripts/crawler_container.py"
 LOG_DIR="$SCRIPT_DIR/logs"
 
 # ── Validation ────────────────────────────────────────────────────────────────
-if [[ ! -f "$PYTHON" ]]; then
-    echo "ERROR: virtualenv python not found at $PYTHON"
-    echo "       Create it first:  python3 -m venv venv && pip install -r requirements.txt"
+if [[ -z "$PYTHON" || ! -x "$PYTHON" ]]; then
+    echo "ERROR: python3 not found. Install Python 3 for the Docker wrapper."
     exit 1
 fi
 if [[ ! -f "$RUNNER" ]]; then
-    echo "ERROR: run_crawlers.py not found at $RUNNER"
+    echo "ERROR: Docker crawler wrapper not found at $RUNNER"
+    exit 1
+fi
+if ! command -v docker >/dev/null 2>&1; then
+    echo "ERROR: docker CLI not found. Install Docker and build the crawler image first:"
+    echo "       docker build -t rera-crawlers:latest \"$SCRIPT_DIR\""
     exit 1
 fi
 
 mkdir -p "$LOG_DIR"
 
 # ── Build the two cron lines ──────────────────────────────────────────────────
-DAILY_CMD="cd \"$SCRIPT_DIR\" && \"$PYTHON\" run_crawlers.py --mode daily_light >> \"$LOG_DIR/cron_daily.log\" 2>&1"
-WEEKLY_CMD="cd \"$SCRIPT_DIR\" && \"$PYTHON\" run_crawlers.py --mode weekly_deep >> \"$LOG_DIR/cron_weekly.log\" 2>&1"
+DAILY_CMD="cd \"$SCRIPT_DIR\" && \"$PYTHON\" scripts/crawler_container.py --mode daily_light >> \"$LOG_DIR/cron_daily.log\" 2>&1"
+WEEKLY_CMD="cd \"$SCRIPT_DIR\" && \"$PYTHON\" scripts/crawler_container.py --mode weekly_deep >> \"$LOG_DIR/cron_weekly.log\" 2>&1"
 
 DAILY_LINE="${DAILY_MIN} ${DAILY_HOUR} * * *   $DAILY_CMD"
 WEEKLY_LINE="${WEEKLY_MIN} ${WEEKLY_HOUR} * * ${WEEKLY_DOW}   $WEEKLY_CMD"
 
 # Unique marker strings used to detect existing jobs (avoids duplicate installs)
-DAILY_MARKER="run_crawlers.py --mode daily_light"
-WEEKLY_MARKER="run_crawlers.py --mode weekly_deep"
+DAILY_MARKER="crawler_container.py --mode daily_light"
+WEEKLY_MARKER="crawler_container.py --mode weekly_deep"
 
 # ── Remove mode ───────────────────────────────────────────────────────────────
 if [[ "${1:-}" == "--remove" ]]; then

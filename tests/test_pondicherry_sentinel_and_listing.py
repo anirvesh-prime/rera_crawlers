@@ -209,7 +209,6 @@ class RunEmptyListingGuardTests(unittest.TestCase):
 
         patches = [
             mock.patch.object(pondicherry_rera, "_sentinel_check", return_value=True),
-            mock.patch.object(pondicherry_rera, "load_checkpoint", return_value={}),
             mock.patch.object(pondicherry_rera, "_get_listing", return_value=self._make_fake_response()),
             mock.patch.object(pondicherry_rera, "_parse_listing_cards", return_value=[]),
             mock.patch.object(pondicherry_rera, "insert_crawl_error", insert_err),
@@ -237,7 +236,6 @@ class RunEmptyListingGuardTests(unittest.TestCase):
 
         patches = [
             mock.patch.object(pondicherry_rera, "_sentinel_check", return_value=True),
-            mock.patch.object(pondicherry_rera, "load_checkpoint", return_value={}),
             mock.patch.object(pondicherry_rera, "_get_listing", return_value=None),
             mock.patch.object(pondicherry_rera, "insert_crawl_error", insert_err),
             mock.patch.object(pondicherry_rera, "get_machine_context", return_value=("host", "1.2.3.4")),

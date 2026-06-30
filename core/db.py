@@ -643,6 +643,36 @@ def get_project_by_key(key: str) -> dict | None:
         return conn.execute("SELECT * FROM rera_projects WHERE key = %s", (key,)).fetchone()
 
 
+def get_project_by_registration_no(
+    registration_no: str,
+    *,
+    state: str | None = None,
+    domain: str | None = None,
+) -> dict | None:
+    """Return one project row matching a registration number and optional site scope."""
+    reg_no = (registration_no or "").strip()
+    if not reg_no:
+        return None
+
+    clauses = ["lower(project_registration_no) = lower(%s)"]
+    params: list[str] = [reg_no]
+    scope_clauses: list[str] = []
+    if state:
+        scope_clauses.append("(lower(state) = lower(%s) OR lower(project_state) = lower(%s))")
+        params.extend([state, state])
+    if domain:
+        scope_clauses.append("lower(domain) = lower(%s)")
+        params.append(domain)
+    if scope_clauses:
+        clauses.append("(" + " OR ".join(scope_clauses) + ")")
+
+    with _db_lock, get_connection() as conn:
+        return conn.execute(
+            f"SELECT * FROM rera_projects WHERE {' AND '.join(clauses)} LIMIT 1",
+            tuple(params),
+        ).fetchone()
+
+
 def get_document_by_type(project_key: str, document_type: str) -> dict | None:
     with _db_lock, get_connection() as conn:
         return conn.execute(

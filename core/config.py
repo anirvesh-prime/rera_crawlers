@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     # Crawler
     LOG_DIR: str = "logs"
     LOG_LOCAL: bool = False          # set True to also write .jsonl files locally
+    DASHBOARD_LOCAL_STATE: bool = True  # dashboard reads local probes/state instead of DB
     DRY_RUN_S3: bool
     TEST_MODE: bool = False          # --test flag: skip S3 uploads and all DB writes
     # --test-logs flag: in TEST_MODE, still write the *log* tables (crawl_runs,

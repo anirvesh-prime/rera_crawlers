@@ -13,14 +13,13 @@ On your local machine (SSH tunnel):
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shlex
-import signal
 import subprocess
-import sys
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -28,11 +27,10 @@ from flask import Flask, jsonify, render_template_string, request
 
 load_dotenv()
 
-import psycopg
-from psycopg.rows import dict_row as _dict_row
-
 from core.config import settings
+from core.dashboard_state import COUNT_KEYS, orchestrator_state_path
 from core.repair_state import list_repair_attempts, reset_repair_attempt
+from scripts.crawler_container import LABEL_PREFIX, ROLE_LABEL, start_detached
 from sites_config import SITES  # noqa: E402
 
 _SITES = [{"id": s["id"], "name": s["name"], "enabled": bool(s.get("enabled"))} for s in SITES]
@@ -57,262 +55,202 @@ def _clean_msg(msg: str) -> str:
     return _PREFIX_RE.sub("", msg).strip() if msg else msg
 
 
-# ── DB helpers ────────────────────────────────────────────────────────────────
+# ── Direct dashboard probes ───────────────────────────────────────────────────
 
-def _db_conn():
+def _parse_dt(value: object) -> datetime | None:
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if not isinstance(value, str):
+        return None
     try:
-        return psycopg.connect(settings.postgres_dsn, connect_timeout=5, row_factory=_dict_row)
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
     except Exception:
         return None
 
 
-def _fetch_db():
-    conn = _db_conn()
-    if conn is None:
-        return None
+def _read_json(path: Path) -> dict:
     try:
-        with conn:
-            cur = conn.cursor()
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return data if isinstance(data, dict) else {}
 
-            # 1. Latest run per site
-            cur.execute("""
-                SELECT DISTINCT ON (site_id)
-                    id, site_id, run_type, started_at, finished_at, status,
-                    projects_found, projects_new, projects_updated, projects_skipped,
-                    documents_uploaded, error_count, sentinel_passed
-                FROM crawl_runs
-                ORDER BY site_id, started_at DESC
-            """)
-            latest_runs = {r["site_id"]: dict(r) for r in cur.fetchall()}
 
-            if not latest_runs:
-                return {
-                    "latest_runs": {}, "sentinel_data": {},
-                    "errors_by_site": {}, "repair_by_site": list_repair_attempts(),
-                    "orch_info": {}, "source": "database",
-                }
+def _read_latest_runs_from_files() -> dict[str, dict]:
+    latest: dict[str, dict] = {}
+    state_dir = _LOGS_DIR / "dashboard" / "sites"
+    for path in state_dir.glob("*.json"):
+        row = _read_json(path)
+        site_id = row.get("site_id") or path.stem
+        if site_id not in _SITE_IDS:
+            continue
+        for key in COUNT_KEYS:
+            row.setdefault(key, 0)
+        row.setdefault("elapsed_s", None)
+        latest[site_id] = row
+    return latest
 
-            # 2. Use only the latest run per site for all log queries
-            recent_ids = [r["id"] for r in latest_runs.values()]
 
-            # 3. Sentinel log entries for that window.
-            #
-            # A single sentinel check emits several log rows with step='sentinel':
-            #   INFO  "Sentinel coverage: 16/18 fields"  → extra has covered/expected
-            #   INFO  "Sentinel check passed"             → extra has reg only
-            #   ERROR "Sentinel coverage too low …"       → extra has missing_fields/coverage_ratio
-            #
-            # Reading only the most-recent row per site loses the coverage numbers on
-            # passing runs.  Instead, collect ALL sentinel rows for a run and merge:
-            #   passed          = no ERROR row exists for that site
-            #   covered/expected = from whichever row carries those keys (the coverage INFO row)
-            #   missing_fields  = from the ERROR row (if any)
-            #   message         = from the ERROR row, or the final INFO row
-            sentinel_data: dict = {}
-            if recent_ids:
-                cur.execute(
-                    """
-                    SELECT cl.site_id, cl.level, cl.extra, cl.message
-                    FROM crawl_logs cl
-                    WHERE cl.step = 'sentinel' AND cl.run_id = ANY(%s)
-                    ORDER BY cl.logged_at ASC
-                    """,
-                    (recent_ids,),
-                )
-                # Accumulator: one bucket per site, filled in as we scan rows
-                buckets: dict[str, dict] = {}
-                for row in cur.fetchall():
-                    sid = row["site_id"]
-                    extra = row.get("extra") or {}
-                    level = (row.get("level") or "").upper()
-                    msg   = _clean_msg(row.get("message") or "")
+def _entry_matches_run(entry: dict, run: dict) -> bool:
+    run_id = run.get("run_id")
+    if isinstance(run_id, int) and run_id > 0:
+        return entry.get("run_id") == run_id
+    started = _parse_dt(run.get("started_at"))
+    ts = _parse_dt(entry.get("timestamp"))
+    if started and ts:
+        return ts >= started - timedelta(minutes=1)
+    return True
 
-                    if sid not in buckets:
-                        buckets[sid] = {
-                            "has_error": False,
-                            "covered": None, "expected": None,
-                            "missing_fields": [], "coverage_ratio": None,
-                            "message": "",
-                        }
-                    b = buckets[sid]
-                    if level == "ERROR":
-                        b["has_error"] = True
-                        b["message"] = msg  # error message takes priority
-                    elif not b["has_error"]:
-                        b["message"] = msg  # keep last non-error message
-                    # Merge coverage numbers from whichever row has them
-                    if extra.get("covered") is not None:
-                        b["covered"]  = extra["covered"]
-                        b["expected"] = extra.get("expected")
-                    if extra.get("missing_fields"):
-                        b["missing_fields"] = extra["missing_fields"]
-                    if extra.get("coverage_ratio") is not None:
-                        b["coverage_ratio"] = extra["coverage_ratio"]
 
-                for sid, b in buckets.items():
-                    sentinel_data[sid] = {
-                        "passed": not b["has_error"],
-                        "covered": b["covered"],
-                        "expected": b["expected"],
-                        "missing_fields": b["missing_fields"],
-                        "coverage_ratio": b["coverage_ratio"],
-                        "message": b["message"],
-                    }
-            # Backfill sentinel_passed from crawl_runs for sites with no log entry
-            for sid, run in latest_runs.items():
-                if sid not in sentinel_data and run.get("sentinel_passed") is not None:
-                    sentinel_data[sid] = {
-                        "passed": run["sentinel_passed"],
-                        "covered": None, "expected": None,
-                        "missing_fields": [], "coverage_ratio": None, "message": "",
-                    }
+def _log_entries_for_run(site_id: str, run: dict) -> list[dict]:
+    log_dir = _LOGS_DIR / site_id
+    files = sorted(log_dir.glob("*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True)
+    entries: list[dict] = []
+    for path in files[:12]:
+        try:
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except Exception:
+            continue
+        for line in lines:
+            try:
+                entry = json.loads(line)
+            except Exception:
+                continue
+            if isinstance(entry, dict) and _entry_matches_run(entry, run):
+                entries.append(entry)
+    entries.sort(key=lambda e: e.get("timestamp") or "")
+    return entries
 
-            # 4. Latest error per site with step + extra context
-            errors_by_site: dict = {}
-            if recent_ids:
-                cur.execute(
-                    """
-                    SELECT DISTINCT ON (site_id) site_id, message, step, extra, traceback, registration_no
-                    FROM crawl_logs
-                    WHERE level = 'ERROR' AND run_id = ANY(%s)
-                    ORDER BY site_id, logged_at DESC
-                    """,
-                    (recent_ids,),
-                )
-                for row in cur.fetchall():
-                    sid = row["site_id"]
-                    errors_by_site[sid] = {
-                        "message": _clean_msg(row["message"] or ""),
-                        "step": row.get("step") or "",
-                        "extra": row.get("extra") or {},
-                        "traceback": row.get("traceback") or "",
-                        "registration_no": row.get("registration_no") or "",
-                    }
 
-            # 4b. Fallback: for sites whose error_count > 0 but have no crawl_logs
-            #     ERROR row (e.g. process crashed before the buffer could flush),
-            #     pull the detail from crawl_errors — which is committed immediately.
-            need_error = [
-                sid for sid, r in latest_runs.items()
-                if (r.get("error_count") or 0) > 0 and sid not in errors_by_site
-            ]
-            if need_error and recent_ids:
-                cur.execute(
-                    """
-                    SELECT DISTINCT ON (site_id)
-                        site_id, error_message, error_type, raw_data
-                    FROM crawl_errors
-                    WHERE site_id = ANY(%s) AND run_id = ANY(%s)
-                    ORDER BY site_id, occurred_at DESC
-                    """,
-                    (need_error, recent_ids),
-                )
-                for row in cur.fetchall():
-                    sid = row["site_id"]
-                    raw = row.get("raw_data") or {}
-                    errors_by_site[sid] = {
-                        "message": row.get("error_message") or "",
-                        "step": row.get("error_type") or "",
-                        "extra": {},
-                        "traceback": raw.get("traceback") or "",
-                    }
-
-            # 4c. Last-resort fallback: some crawlers bump error_count from
-            #     WARNING-level paths (e.g. missing reg_no, detail fetch
-            #     fallback) without emitting an ERROR row or a crawl_errors
-            #     entry.  Pull the latest WARNING for those sites so the
-            #     dashboard at least shows what was counted.
-            need_warn = [
-                sid for sid, r in latest_runs.items()
-                if (r.get("error_count") or 0) > 0 and sid not in errors_by_site
-            ]
-            if need_warn and recent_ids:
-                cur.execute(
-                    """
-                    SELECT DISTINCT ON (site_id) site_id, message, step, extra, traceback, registration_no
-                    FROM crawl_logs
-                    WHERE level = 'WARNING' AND site_id = ANY(%s) AND run_id = ANY(%s)
-                    ORDER BY site_id, logged_at DESC
-                    """,
-                    (need_warn, recent_ids),
-                )
-                for row in cur.fetchall():
-                    sid = row["site_id"]
-                    errors_by_site[sid] = {
-                        "message": _clean_msg(row["message"] or ""),
-                        "step": row.get("step") or "",
-                        "extra": row.get("extra") or {},
-                        "traceback": row.get("traceback") or "",
-                        "registration_no": row.get("registration_no") or "",
-                    }
-
-            # 5. Compute elapsed_s for each run from started_at / finished_at;
-            #    always set the key so the template never hits UndefinedError.
-            for run in latest_runs.values():
-                run.setdefault("elapsed_s", None)
-                if run["elapsed_s"] is None:
-                    sa = run.get("started_at")
-                    fa = run.get("finished_at")
-                    if sa and fa:
-                        try:
-                            run["elapsed_s"] = (fa - sa).total_seconds()
-                        except Exception:
-                            pass
-
-            # 6. Orchestrator-level summary (aggregate of the window)
-            totals_keys = (
-                "projects_found", "projects_new", "projects_updated",
-                "projects_skipped", "documents_uploaded", "error_count",
-            )
-            totals = {k: sum((r.get(k) or 0) for r in latest_runs.values()) for k in totals_keys}
-            most_recent = max(latest_runs.values(), key=lambda r: r["started_at"])
-            orch_info = {
-                "mode": most_recent.get("run_type", "unknown"),
-                "started": most_recent["started_at"],
-                "totals": totals,
-            }
-
-            # 7. Per-site phase timing from timing logs (step='timing').
-            #    Builds: { site_id: { phase: elapsed_s } }
-            #    Phases emitted by crawlers: 'sentinel', 'search', 'total_run'.
-            #    Later rows for the same phase overwrite earlier ones so we always
-            #    display the most-recent measurement (relevant when a run retried).
-            timing_by_site: dict = {}
-            if recent_ids:
-                cur.execute(
-                    """
-                    SELECT site_id, extra
-                    FROM crawl_logs
-                    WHERE step = 'timing' AND run_id = ANY(%s)
-                    ORDER BY site_id, logged_at ASC
-                    """,
-                    (recent_ids,),
-                )
-                for row in cur.fetchall():
-                    sid = row["site_id"]
-                    extra = row.get("extra") or {}
-                    phase   = extra.get("phase")
-                    elapsed = extra.get("elapsed_s")
-                    if phase and elapsed is not None:
-                        timing_by_site.setdefault(sid, {})[phase] = elapsed
-
-        return {
-            "latest_runs": latest_runs,
-            "sentinel_data": sentinel_data,
-            "errors_by_site": errors_by_site,
-            "repair_by_site": list_repair_attempts(),
-            "orch_info": orch_info,
-            "timing_by_site": timing_by_site,
-            "source": "database",
+def _build_sentinel_data(latest_runs: dict[str, dict], logs_by_site: dict[str, list[dict]]) -> dict:
+    sentinel_data: dict = {}
+    for sid, entries in logs_by_site.items():
+        bucket = {
+            "has_error": False,
+            "covered": None,
+            "expected": None,
+            "missing_fields": [],
+            "coverage_ratio": None,
+            "message": "",
         }
-    except Exception:
-        return None
-    finally:
-        conn.close()
+        seen = False
+        for entry in entries:
+            if entry.get("step") != "sentinel":
+                continue
+            seen = True
+            extra = entry.get("extra") or {}
+            level = (entry.get("level") or "").upper()
+            msg = _clean_msg(entry.get("message") or "")
+            if level == "ERROR":
+                bucket["has_error"] = True
+                bucket["message"] = msg
+            elif not bucket["has_error"]:
+                bucket["message"] = msg
+            if extra.get("covered") is not None:
+                bucket["covered"] = extra["covered"]
+                bucket["expected"] = extra.get("expected")
+            if extra.get("missing_fields"):
+                bucket["missing_fields"] = extra["missing_fields"]
+            if extra.get("coverage_ratio") is not None:
+                bucket["coverage_ratio"] = extra["coverage_ratio"]
+        if seen:
+            sentinel_data[sid] = {
+                "passed": not bucket["has_error"],
+                "covered": bucket["covered"],
+                "expected": bucket["expected"],
+                "missing_fields": bucket["missing_fields"],
+                "coverage_ratio": bucket["coverage_ratio"],
+                "message": bucket["message"],
+            }
+    for sid, run in latest_runs.items():
+        if sid not in sentinel_data and run.get("sentinel_passed") is not None:
+            sentinel_data[sid] = {
+                "passed": run["sentinel_passed"],
+                "covered": None,
+                "expected": None,
+                "missing_fields": [],
+                "coverage_ratio": None,
+                "message": "",
+            }
+    return sentinel_data
+
+
+def _build_errors_by_site(latest_runs: dict[str, dict], logs_by_site: dict[str, list[dict]]) -> dict:
+    errors: dict = {}
+    for sid, run in latest_runs.items():
+        entries = logs_by_site.get(sid, [])
+        chosen = next((e for e in reversed(entries) if (e.get("level") or "").upper() == "ERROR"), None)
+        if chosen is None and (run.get("error_count") or 0) > 0:
+            chosen = next((e for e in reversed(entries) if (e.get("level") or "").upper() == "WARNING"), None)
+        if chosen is not None:
+            errors[sid] = {
+                "message": _clean_msg(chosen.get("message") or ""),
+                "step": chosen.get("step") or "",
+                "extra": chosen.get("extra") or {},
+                "traceback": chosen.get("traceback") or "",
+                "registration_no": chosen.get("registration_no") or "",
+            }
+        elif run.get("error_message"):
+            errors[sid] = {
+                "message": run.get("error_message") or "",
+                "step": "run",
+                "extra": {},
+                "traceback": run.get("traceback") or "",
+                "registration_no": "",
+            }
+    return errors
+
+
+def _build_timing_by_site(logs_by_site: dict[str, list[dict]]) -> dict:
+    timing: dict = {}
+    for sid, entries in logs_by_site.items():
+        for entry in entries:
+            if entry.get("step") != "timing":
+                continue
+            extra = entry.get("extra") or {}
+            phase = extra.get("phase")
+            elapsed = extra.get("elapsed_s")
+            if phase and elapsed is not None:
+                timing.setdefault(sid, {})[phase] = elapsed
+    return timing
+
+
+def _build_orchestrator_info(latest_runs: dict[str, dict]) -> dict:
+    orch = _read_json(orchestrator_state_path())
+    if orch:
+        return orch
+    if not latest_runs:
+        return {}
+    totals = {key: sum((run.get(key) or 0) for run in latest_runs.values()) for key in COUNT_KEYS}
+    most_recent = max(latest_runs.values(), key=lambda r: r.get("started_at") or "")
+    return {
+        "mode": most_recent.get("run_type", "unknown"),
+        "started": most_recent.get("started_at"),
+        "totals": totals,
+    }
+
+
+def _fetch_direct_probe_data() -> dict:
+    latest_runs = _read_latest_runs_from_files()
+    logs_by_site = {
+        site_id: _log_entries_for_run(site_id, run)
+        for site_id, run in latest_runs.items()
+    }
+    return {
+        "latest_runs": latest_runs,
+        "sentinel_data": _build_sentinel_data(latest_runs, logs_by_site),
+        "errors_by_site": _build_errors_by_site(latest_runs, logs_by_site),
+        "repair_by_site": list_repair_attempts(),
+        "orch_info": _build_orchestrator_info(latest_runs),
+        "timing_by_site": _build_timing_by_site(logs_by_site),
+        "source": "direct-probe",
+    }
 
 
 def _get_data() -> dict:
-    return _fetch_db() or {"repair_by_site": list_repair_attempts()}
+    return _fetch_direct_probe_data()
 
 
 # ── Process probe helpers ────────────────────────────────────────────────────
@@ -351,7 +289,7 @@ def _site_ids_from_crawler_cmd(cmd: str) -> list[str]:
 
 
 def _running_sites_from_processes() -> dict[str, list[dict]]:
-    """Map site_id -> live run_crawlers.py processes from the OS process table."""
+    """Map site_id -> live crawler containers."""
     by_site: dict[str, list[dict]] = {}
     for proc in _list_running_crawlers():
         for site_id in _site_ids_from_crawler_cmd(proc.get("cmd") or ""):
@@ -480,7 +418,7 @@ _TEMPLATE = """<!DOCTYPE html>
     <span style="font-size:1.1rem;font-weight:700;">🏗️ RERA Crawlers Dashboard</span>
     <span class="ms-3" style="font-size:.8rem;color:#8b949e;">
       Source: <span class="text-warning">{{ data_source }}</span>
-      &nbsp;·&nbsp; process probe: <span class="text-warning">{{ running_process_count }}</span>
+      &nbsp;·&nbsp; container probe: <span class="text-warning">{{ running_process_count }}</span>
       &nbsp;·&nbsp; auto-refresh 60s
     </span>
     {% if n_sites %}
@@ -576,7 +514,7 @@ _TEMPLATE = """<!DOCTYPE html>
         <div>
           {% set errs = r.error_count or 0 %}
           <span class="badge bg-fail">{{ errs }} error{{ 's' if errs != 1 }}</span>
-          {% if is_proc_running %}<button type="button" class="badge bg-run ms-1 live-terminal-open" data-pid="{{ process_state[sid][0].pid }}">⟳ running</button>{% endif %}
+          {% if is_proc_running %}<button type="button" class="badge bg-run ms-1 live-terminal-open" data-container="{{ process_state[sid][0].container }}">⟳ running</button>{% endif %}
           {% if sid in repair_by_site %}{% set repair = repair_by_site[sid] %}
             <span class="badge bg-warn ms-1" title="{{ repair.reason or '' }}">repair {{ repair.status }}</span>
             <button type="button" class="btn-reset ms-1 repair-reset" data-site="{{ sid }}">Reset repair</button>
@@ -701,11 +639,11 @@ _TEMPLATE = """<!DOCTYPE html>
               {{ site.name }}
             </td>
             <td>
-              {% if is_proc_running %}<button type="button" class="badge bg-run live-terminal-open" data-pid="{{ running_proc.pid }}" title="Open live terminal for PID {{ running_proc.pid }}">⟳ running</button>
+              {% if is_proc_running %}<button type="button" class="badge bg-run live-terminal-open" data-container="{{ running_proc.container }}" title="Open live terminal for container {{ running_proc.container }}">⟳ running</button>
               {% elif is_failed %}<span class="badge bg-fail">✗ failed</span>
               {% elif db_st == 'completed' and has_errors %}<span class="badge bg-warn">⚠ done</span>
               {% elif db_st == 'completed' %}<span class="badge bg-done">✓ done</span>
-              {% elif db_st == 'running' %}<span class="badge bg-none" title="DB row says running, but no crawler process was found">stopped?</span>
+              {% elif db_st == 'running' %}<span class="badge bg-none" title="Local state says running, but no crawler container was found">stopped?</span>
               {% else %}<span class="badge bg-none">{{ db_st }}</span>{% endif %}
             </td>
             <td>
@@ -754,7 +692,7 @@ _TEMPLATE = """<!DOCTYPE html>
                 {% else %}{{ r.started_at.strftime('%m-%d %H:%M') }}{% endif %}
               {% else %}—{% endif %}
               {% if is_proc_running %}
-                <div style="font-size:.58rem;color:#d29922;margin-top:2px;" title="{{ running_proc.cmd }}">pid {{ running_proc.pid }} · {{ running_proc.etime }}</div>
+                <div style="font-size:.58rem;color:#d29922;margin-top:2px;" title="{{ running_proc.cmd }}">{{ running_proc.container }} · {{ running_proc.etime }}</div>
               {% endif %}
             </td>
           </tr>
@@ -844,9 +782,8 @@ _TEMPLATE = """<!DOCTYPE html>
       <div class="modal-body">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <div style="font-size:.8rem;color:#8b949e;">
-            Lists live <code style="color:#d29922;">run_crawlers.py</code> orchestrators
-            (process-group leaders). Killing a row signals the orchestrator and all of its
-            worker processes via <code style="color:#d29922;">killpg</code>.
+            Lists live Docker crawler containers. Stopping a row stops the whole
+            container, including Python workers, ChromeDriver, and Chrome.
           </div>
           <button type="button" class="btn btn-sm btn-outline-secondary" id="killRefresh">⟳ Refresh</button>
         </div>
@@ -961,7 +898,7 @@ _TEMPLATE = """<!DOCTYPE html>
   const liveTerminalLog = document.getElementById("liveTerminalLog");
   const liveTerminalAutoScroll = document.getElementById("liveTerminalAutoScroll");
   const liveTerminalClear = document.getElementById("liveTerminalClear");
-  let livePid = null;
+  let liveContainer = null;
   let liveOffset = 0;
   let livePollTimer = null;
 
@@ -979,9 +916,9 @@ _TEMPLATE = """<!DOCTYPE html>
   }
 
   async function pollLiveTerminal() {
-    if (!livePid) return;
+    if (!liveContainer) return;
     try {
-      const res = await fetch("/api/live-terminal?pid=" + encodeURIComponent(livePid) +
+      const res = await fetch("/api/live-terminal?container=" + encodeURIComponent(liveContainer) +
                               "&offset=" + liveOffset);
       const data = await res.json();
       if (!res.ok) {
@@ -994,7 +931,7 @@ _TEMPLATE = """<!DOCTYPE html>
         appendLiveChunk(data.chunk);
         liveOffset = data.offset;
       }
-      setLiveStatus(data.running ? "Streaming PID " + livePid : "Process finished", data.running ? "#d29922" : "#3fb950");
+      setLiveStatus(data.running ? "Streaming container " + liveContainer : "Container finished", data.running ? "#d29922" : "#3fb950");
       if (!data.running) stopLivePolling();
     } catch (err) {
       setLiveStatus("Live terminal poll failed: " + err, "#f85149");
@@ -1013,10 +950,10 @@ _TEMPLATE = """<!DOCTYPE html>
 
   document.querySelectorAll(".live-terminal-open").forEach(btn => {
     btn.addEventListener("click", () => {
-      livePid = btn.dataset.pid;
+      liveContainer = btn.dataset.container;
       liveOffset = 0;
       liveTerminalLog.textContent = "";
-      liveTerminalTitle.textContent = "PID " + livePid;
+      liveTerminalTitle.textContent = "Container " + liveContainer;
       setLiveStatus("Opening stream...", "#8b949e");
       liveTerminalModal.show();
       pollLiveTerminal();
@@ -1162,7 +1099,7 @@ _TEMPLATE = """<!DOCTYPE html>
       testJobId = data.job_id;
       testIsRunning = true;
       testStopBtn.disabled = false;
-      setTestStatus("Running (PID " + data.pid + ") · " + escapeHtml(data.cmd), "#d29922");
+      setTestStatus("Running (container " + data.container + ") · " + escapeHtml(data.cmd), "#d29922");
       startPolling();
     } catch (err) {
       setTestStatus("Request failed: " + err, "#f85149");
@@ -1221,14 +1158,14 @@ _TEMPLATE = """<!DOCTYPE html>
       runningList.innerHTML = rows.map(r => `
         <div class="running-row">
           <div style="flex:1;min-width:0;">
-            <div class="running-pid">PID ${r.pid} <span style="color:#8b949e;font-weight:400;">· elapsed ${escapeHtml(r.etime)}</span></div>
+            <div class="running-pid">${escapeHtml(r.container)} <span style="color:#8b949e;font-weight:400;">· elapsed ${escapeHtml(r.etime)}</span></div>
             <div class="running-meta">${escapeHtml(r.cmd)}</div>
           </div>
-          <button type="button" class="btn btn-stop btn-sm ms-2" data-pid="${r.pid}">Stop</button>
+          <button type="button" class="btn btn-stop btn-sm ms-2" data-container="${escapeHtml(r.container)}">Stop</button>
         </div>
       `).join("");
-      runningList.querySelectorAll("button[data-pid]").forEach(btn => {
-        btn.addEventListener("click", () => killOne(parseInt(btn.dataset.pid, 10), btn));
+      runningList.querySelectorAll("button[data-container]").forEach(btn => {
+        btn.addEventListener("click", () => killOne(btn.dataset.container, btn));
       });
     } catch (err) {
       runningList.innerHTML = '<div style="color:#f85149;font-size:.8rem;">Failed to load: ' + escapeHtml(err) + '</div>';
@@ -1251,11 +1188,11 @@ _TEMPLATE = """<!DOCTYPE html>
         statusEl.textContent = "Error: " + (data.error || res.statusText);
         return;
       }
-      const killedPids = (data.killed || []).map(k => k.pid).join(", ") || "none";
-      const errParts = (data.errors || []).map(e => `${e.pid}: ${e.error}`);
+      const killedContainers = (data.killed || []).map(k => k.container).join(", ") || "none";
+      const errParts = (data.errors || []).map(e => `${e.container}: ${e.error}`);
       statusEl.style.color = "#3fb950";
       statusEl.innerHTML =
-        "Sent " + (data.signal || "signal") + " to PG of: " + escapeHtml(killedPids) +
+        "Sent " + (data.signal || "signal") + " to container(s): " + escapeHtml(killedContainers) +
         (errParts.length ? "<br><span style=\\"color:#f85149;\\">errors: " + escapeHtml(errParts.join("; ")) + "</span>" : "") +
         (data.message ? "<br><span style=\\"color:#8b949e;\\">" + escapeHtml(data.message) + "</span>" : "");
       setTimeout(loadRunning, 600);
@@ -1265,9 +1202,9 @@ _TEMPLATE = """<!DOCTYPE html>
     }
   }
 
-  function killOne(pid, btn) {
+  function killOne(container, btn) {
     btn.disabled = true; btn.textContent = "…";
-    postKill({pid, force: killForce.checked}, killResult);
+    postKill({container, force: killForce.checked}, killResult);
   }
 
   killAllBtn.addEventListener("click", () => {
@@ -1295,7 +1232,7 @@ _TEMPLATE = """<!DOCTYPE html>
 def index():
     data = _get_data()
     process_state = _running_sites_from_processes()
-    running_process_count = len({p["pid"] for procs in process_state.values() for p in procs})
+    running_process_count = len({p["container"] for procs in process_state.values() for p in procs})
     return render_template_string(
         _TEMPLATE,
         sites=_SITES,
@@ -1331,7 +1268,7 @@ def api_test_start():
     """Launch a single-site verbose crawler test (no DB / S3 writes).
 
     Accepts JSON: { site: <id>, mode: <mode>, item_limit: null|int }.
-    Returns: { job_id, pid, logfile, cmd } on success.
+    Returns: { job_id, container, container_id, cmd } on success.
 
     Only one tester runs at a time.  Starting a new one while another is
     still alive returns 409.
@@ -1358,59 +1295,47 @@ def api_test_start():
 
     with _TESTER_LOCK:
         active = _current_tester_job()
-        if active and active["proc"].poll() is None:
+        if active and _container_is_running(active["container_id"]):
             return jsonify({"error": "Another tester is already running",
-                            "job_id": active["job_id"], "pid": active["proc"].pid}), 409
+                            "job_id": active["job_id"], "container": active["container"]}), 409
 
         cmd: list[str] = [
-            sys.executable, "-u", "run_crawlers.py",
             "--tester", "--site", site_id, "--mode", mode,
         ]
         if item_limit is not None:
             cmd.extend(["--item-limit", str(item_limit)])
 
-        _LOGS_DIR.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        logfile = _LOGS_DIR / f"tester_{site_id}_{ts}.log"
-
-        env = os.environ.copy()
-        env["PYTHONHASHSEED"] = "0"
-        env["PYTHONUNBUFFERED"] = "1"
-        env["CRAWLER_TESTER"] = "true"
+        name = f"rera-crawler-tester-{site_id}-{ts}".replace("_", "-")
 
         try:
-            log_fh = open(logfile, "ab", buffering=0)
-            proc = subprocess.Popen(
+            started = start_detached(
                 cmd,
-                cwd=str(_PROJECT_ROOT),
-                stdout=log_fh,
-                stderr=subprocess.STDOUT,
-                stdin=subprocess.DEVNULL,
-                env=env,
-                start_new_session=True,
-                close_fds=True,
+                name=name,
             )
-            log_fh.close()
         except Exception as exc:
             return jsonify({"error": f"Failed to start: {exc}"}), 500
 
-        job_id = f"tester-{ts}-{proc.pid}"
+        container_id = started["container_id"]
+        container = started["container"]
+        job_id = f"tester-{ts}-{container}"
         _TESTER_JOBS[job_id] = {
-            "job_id":  job_id,
-            "site_id": site_id,
-            "mode":    mode,
-            "cmd":     " ".join(cmd),
-            "logfile": logfile,
-            "proc":    proc,
-            "started": datetime.now(timezone.utc),
+            "job_id":       job_id,
+            "site_id":      site_id,
+            "mode":         mode,
+            "cmd":          " ".join(cmd),
+            "docker_cmd":   started["cmd"],
+            "container_id": container_id,
+            "container":    container,
+            "started":      datetime.now(timezone.utc),
         }
         _CURRENT_TESTER_JOB = job_id
 
     return jsonify({
-        "job_id":  job_id,
-        "pid":     proc.pid,
-        "logfile": str(logfile.relative_to(_PROJECT_ROOT)),
-        "cmd":     " ".join(cmd),
+        "job_id":       job_id,
+        "container":    container,
+        "container_id": container_id,
+        "cmd":          " ".join(cmd),
     })
 
 
@@ -1430,22 +1355,13 @@ def api_test_log():
     except ValueError:
         return jsonify({"error": "offset must be an integer"}), 400
 
-    logfile: Path = job["logfile"]
-    chunk = ""
-    new_offset = offset
     try:
-        if logfile.exists():
-            with logfile.open("rb") as fh:
-                fh.seek(offset)
-                data = fh.read()
-                new_offset = offset + len(data)
-                chunk = data.decode("utf-8", errors="replace")
+        chunk, new_offset = _docker_logs_since_offset(job["container_id"], offset)
     except Exception as exc:
         return jsonify({"error": f"Failed to read log: {exc}"}), 500
 
-    proc: subprocess.Popen = job["proc"]
-    exit_code = proc.poll()
-    running = exit_code is None
+    running = _container_is_running(job["container_id"])
+    exit_code = _container_exit_code(job["container_id"])
 
     return jsonify({
         "chunk":     chunk,
@@ -1457,28 +1373,29 @@ def api_test_log():
 
 @app.route("/api/test/stop", methods=["POST"])
 def api_test_stop():
-    """Terminate a tester process by job_id (or the current tester if omitted)."""
+    """Terminate a tester container by job_id (or the current tester if omitted)."""
     payload = request.get_json(silent=True) or {}
     job_id = payload.get("job_id") or _CURRENT_TESTER_JOB
     job = _TESTER_JOBS.get(job_id) if job_id else None
     if not job:
         return jsonify({"error": "No such tester job"}), 404
 
-    proc: subprocess.Popen = job["proc"]
-    if proc.poll() is not None:
+    if not _container_is_running(job["container_id"]):
         return jsonify({"stopped": False, "message": "Already finished",
-                        "exit_code": proc.returncode})
+                        "exit_code": _container_exit_code(job["container_id"])})
 
     force = bool(payload.get("force"))
-    sig = signal.SIGKILL if force else signal.SIGTERM
     try:
-        pgid = os.getpgid(proc.pid)
-        os.killpg(pgid, sig)
+        _stop_container(job["container_id"], force=force)
     except ProcessLookupError:
-        return jsonify({"stopped": False, "message": "process gone"})
+        return jsonify({"stopped": False, "message": "container gone"})
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
-    return jsonify({"stopped": True, "signal": sig.name, "pid": proc.pid})
+    return jsonify({
+        "stopped": True,
+        "signal": "SIGKILL" if force else "SIGTERM",
+        "container": job["container"],
+    })
 
 
 @app.route("/api/repair/reset", methods=["POST"])
@@ -1490,42 +1407,121 @@ def api_repair_reset():
     return jsonify({"site": site_id, "reset": reset_repair_attempt(site_id)})
 
 
-def _list_running_crawlers() -> list[dict]:
-    """Return one entry per live run_crawlers.py orchestrator (process-group leader).
+def _docker_json(args: list[str]) -> object:
+    out = subprocess.check_output(["docker", *args], stderr=subprocess.DEVNULL, text=True, timeout=10)
+    return json.loads(out) if out.strip() else None
 
-    Excludes worker processes spawned by ProcessPoolExecutor, which share the
-    orchestrator's pgid but have multiprocessing helper cmdlines that do not
-    contain 'run_crawlers.py'.
-    """
+
+def _container_is_running(container_id: str) -> bool:
+    try:
+        state = _docker_json(["inspect", container_id, "--format", "{{json .State}}"])
+    except Exception:
+        return False
+    return bool(isinstance(state, dict) and state.get("Running"))
+
+
+def _container_exit_code(container_id: str) -> int | None:
+    try:
+        state = _docker_json(["inspect", container_id, "--format", "{{json .State}}"])
+    except Exception:
+        return None
+    if not isinstance(state, dict):
+        return None
+    value = state.get("ExitCode")
+    return value if isinstance(value, int) else None
+
+
+def _docker_logs_since_offset(container_id: str, offset: int) -> tuple[str, int]:
+    if offset < 0:
+        offset = 0
+    out = subprocess.check_output(
+        ["docker", "logs", container_id],
+        stderr=subprocess.STDOUT,
+        timeout=10,
+    )
+    if offset > len(out):
+        offset = 0
+    chunk_bytes = out[offset:]
+    return chunk_bytes.decode("utf-8", errors="replace"), len(out)
+
+
+def _stop_container(container_id: str, *, force: bool = False) -> None:
+    cmd = ["docker", "kill", container_id] if force else ["docker", "stop", "--time", "20", container_id]
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30)
+    if result.returncode != 0:
+        msg = (result.stderr or result.stdout or "docker stop failed").strip()
+        if "No such container" in msg:
+            raise ProcessLookupError(msg)
+        raise RuntimeError(msg)
+
+
+def _docker_started_at_to_dt(value: str) -> datetime | None:
+    if not value:
+        return None
+    try:
+        # Docker emits nanoseconds; Python accepts at most microseconds.
+        if "." in value:
+            head, tail = value.split(".", 1)
+            frac, _, zone = tail.partition("Z")
+            value = f"{head}.{frac[:6]}+00:00" if zone == "" else value
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+def _elapsed(started_at: str) -> str:
+    started = _docker_started_at_to_dt(started_at)
+    if started is None:
+        return "unknown"
+    seconds = max(0, int((datetime.now(timezone.utc) - started).total_seconds()))
+    hours, rem = divmod(seconds, 3600)
+    minutes, secs = divmod(rem, 60)
+    if hours:
+        return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+    return f"{minutes:02d}:{secs:02d}"
+
+
+def _list_running_crawlers() -> list[dict]:
+    """Return one entry per live crawler Docker container."""
     try:
         out = subprocess.check_output(
-            ["ps", "-eo", "pid=,pgid=,etime=,args="],
-            stderr=subprocess.DEVNULL, text=True, timeout=5,
+            ["docker", "ps", "--filter", f"label={ROLE_LABEL}=crawler", "--format", "{{.ID}}"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=10,
         )
     except Exception:
         return []
+    ids = [line.strip() for line in out.splitlines() if line.strip()]
+    if not ids:
+        return []
+    try:
+        containers = _docker_json(["inspect", *ids])
+    except Exception:
+        return []
+    if not isinstance(containers, list):
+        return []
     rows: list[dict] = []
-    for line in out.splitlines():
-        if "run_crawlers.py" not in line:
+    for item in containers:
+        if not isinstance(item, dict):
             continue
-        parts = line.strip().split(None, 3)
-        if len(parts) < 4:
+        state = item.get("State") or {}
+        if not state.get("Running"):
             continue
-        try:
-            pid = int(parts[0])
-            pgid = int(parts[1])
-        except ValueError:
-            continue
-        # Only show process-group leaders (the orchestrator itself).
-        if pid != pgid:
-            continue
+        labels = ((item.get("Config") or {}).get("Labels") or {})
+        container_id = str(item.get("Id") or "")
+        short_id = container_id[:12]
+        name = str(item.get("Name") or "").lstrip("/")
+        cmd = labels.get(f"{LABEL_PREFIX}.cmd") or " ".join((item.get("Config") or {}).get("Cmd") or [])
         rows.append({
-            "pid": pid,
-            "pgid": pgid,
-            "etime": parts[2],
-            "cmd": parts[3],
-            "live_log": str((_LOGS_DIR / "live" / f"crawler_{pid}.log").relative_to(_PROJECT_ROOT)),
-            "live_log_exists": (_LOGS_DIR / "live" / f"crawler_{pid}.log").exists(),
+            "container": short_id,
+            "container_id": container_id,
+            "name": name,
+            "etime": _elapsed(str(state.get("StartedAt") or "")),
+            "cmd": cmd,
+            "mode": labels.get(f"{LABEL_PREFIX}.mode", ""),
+            "sites": labels.get(f"{LABEL_PREFIX}.sites", ""),
+            "tester": labels.get(f"{LABEL_PREFIX}.tester", "false") == "true",
         })
     return rows
 
@@ -1537,17 +1533,10 @@ def api_running():
 
 @app.route("/api/live-terminal")
 def api_live_terminal():
-    """Stream captured stdout/stderr for a running crawler process.
-
-    This endpoint reads logs/live/crawler_<pid>.log, created by run_crawlers.py
-    via stdout/stderr teeing. It does not read crawl_logs and does not use DB
-    log rows. Processes started before that capture feature was added will not
-    have a streamable terminal file.
-    """
-    try:
-        pid = int(request.args.get("pid", ""))
-    except (TypeError, ValueError):
-        return jsonify({"error": "pid must be an integer"}), 400
+    """Stream stdout/stderr for a running crawler container."""
+    container = request.args.get("container") or request.args.get("pid") or ""
+    if not container:
+        return jsonify({"error": "container is required"}), 400
     try:
         offset = int(request.args.get("offset", "0"))
     except ValueError:
@@ -1555,90 +1544,58 @@ def api_live_terminal():
     if offset < 0:
         offset = 0
 
-    running = _list_running_crawlers()
-    running_pids = {r["pid"] for r in running}
-    live_path = (_LOGS_DIR / "live" / f"crawler_{pid}.log").resolve()
-    live_root = (_LOGS_DIR / "live").resolve()
     try:
-        live_path.relative_to(live_root)
-    except ValueError:
-        return jsonify({"error": "invalid live log path"}), 400
-
-    if not live_path.exists():
-        return jsonify({
-            "error": "No live terminal capture for this process",
-            "hint": (
-                "This process was likely started before live terminal capture was added. "
-                "Restart the crawler with the current run_crawlers.py and click the running badge again."
-            ),
-            "running": pid in running_pids,
-            "offset": offset,
-        }), 404
-
-    chunk = ""
-    new_offset = offset
-    try:
-        with live_path.open("rb") as fh:
-            fh.seek(offset)
-            data = fh.read()
-            new_offset = offset + len(data)
-            chunk = data.decode("utf-8", errors="replace")
+        chunk, new_offset = _docker_logs_since_offset(container, offset)
     except Exception as exc:
-        return jsonify({"error": f"Failed to read live terminal log: {exc}"}), 500
+        return jsonify({"error": f"Failed to read container logs: {exc}"}), 500
 
     return jsonify({
-        "pid": pid,
+        "container": container,
         "chunk": chunk,
         "offset": new_offset,
-        "running": pid in running_pids,
+        "running": _container_is_running(container),
     })
 
 
 @app.route("/api/kill", methods=["POST"])
 def api_kill():
-    """Send SIGTERM (or SIGKILL with force=true) to a run_crawlers.py orchestrator.
-
-    Accepts JSON: { pid: int } or { all: true }. Optional: { force: true }.
-    Only PIDs returned by /api/running can be targeted, so this endpoint cannot
-    be used to signal arbitrary processes.
-    """
+    """Stop tracked crawler containers."""
     payload = request.get_json(silent=True) or {}
     force = bool(payload.get("force"))
-    sig = signal.SIGKILL if force else signal.SIGTERM
 
     running = _list_running_crawlers()
-    running_pids = {r["pid"] for r in running}
+    running_by_short = {r["container"]: r for r in running}
+    running_by_id = {r["container_id"]: r for r in running}
 
     if payload.get("all"):
-        targets = sorted(running_pids)
+        targets = [r["container_id"] for r in running]
     else:
-        try:
-            pid = int(payload.get("pid"))
-        except (TypeError, ValueError):
-            return jsonify({"error": "pid must be an integer, or pass {\"all\": true}"}), 400
-        if pid not in running_pids:
-            return jsonify({"error": f"pid {pid} is not a tracked crawler orchestrator"}), 400
-        targets = [pid]
+        container = str(payload.get("container") or payload.get("pid") or "")
+        if not container:
+            return jsonify({"error": "container is required, or pass {\"all\": true}"}), 400
+        matched = running_by_id.get(container) or running_by_short.get(container)
+        if not matched:
+            return jsonify({"error": f"container {container} is not a tracked crawler"}), 400
+        targets = [matched["container_id"]]
 
     if not targets:
-        return jsonify({"killed": [], "errors": [], "signal": sig.name,
+        return jsonify({"killed": [], "errors": [], "signal": "SIGKILL" if force else "SIGTERM",
                         "message": "No running crawlers"})
 
     killed: list[dict] = []
     errors: list[dict] = []
-    for pid in targets:
+    for container_id in targets:
         try:
-            pgid = os.getpgid(pid)
-            os.killpg(pgid, sig)
-            killed.append({"pid": pid, "pgid": pgid})
+            _stop_container(container_id, force=force)
+            killed.append({"container": container_id[:12], "container_id": container_id})
         except ProcessLookupError:
-            errors.append({"pid": pid, "error": "not found"})
+            errors.append({"container": container_id[:12], "error": "not found"})
         except PermissionError:
-            errors.append({"pid": pid, "error": "permission denied"})
+            errors.append({"container": container_id[:12], "error": "permission denied"})
         except Exception as exc:
-            errors.append({"pid": pid, "error": str(exc)})
+            errors.append({"container": container_id[:12], "error": str(exc)})
 
-    return jsonify({"killed": killed, "errors": errors, "signal": sig.name})
+    return jsonify({"killed": killed, "errors": errors, "signal": "SIGKILL" if force else "SIGTERM"})
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

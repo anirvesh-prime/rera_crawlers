@@ -4,9 +4,10 @@
 # Handles everything from a blank Debian/Ubuntu server:
 #   1. Installs python3-venv and python3-pip via apt (if missing)
 #   2. Creates the virtualenv and installs all requirements
-#   3. Creates a systemd service so the dashboard starts on boot
-#   4. Opens the dashboard port in ufw (if present)
-#   5. Prints the public URL
+#   3. Verifies Docker CLI access for crawler container control
+#   4. Creates a systemd service so the dashboard starts on boot
+#   5. Opens the dashboard port in ufw (if present)
+#   6. Prints the public URL
 #
 # Usage:
 #   bash setup_dashboard.sh               # port 8080 (default)
@@ -102,6 +103,15 @@ install_requirements() {
     ok "Dependencies installed"
 }
 
+ensure_docker_access() {
+    command -v docker &>/dev/null \
+        || err "docker CLI not found. Install Docker before deploying the dashboard."
+    if ! docker ps >/dev/null 2>&1; then
+        err "Current user cannot run 'docker ps'. Add ${CURRENT_USER} to the docker group, re-login, then re-run setup."
+    fi
+    ok "Docker CLI access verified"
+}
+
 # ── Get public IP ─────────────────────────────────────────────────────────────
 public_ip() {
     curl -s --max-time 4 https://api.ipify.org 2>/dev/null \
@@ -161,9 +171,12 @@ ensure_venv_package "$PY_VER"
 ensure_venv "$PY_BIN"
 install_requirements
 
-# Step 2 — Systemd service
-info "Creating systemd service at $SERVICE_FILE..."
+# Step 2 — Docker access for dashboard controls
 CURRENT_USER="$(whoami)"
+ensure_docker_access
+
+# Step 3 — Systemd service
+info "Creating systemd service at $SERVICE_FILE..."
 
 sudo tee "$SERVICE_FILE" > /dev/null << EOF
 [Unit]

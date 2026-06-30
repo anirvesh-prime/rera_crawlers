@@ -30,7 +30,6 @@ from urllib.parse import parse_qs, urljoin, urlparse
 from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
-from core.checkpoint import reset_checkpoint
 from core.config import settings
 from core.crawler_base import (
     SeleniumSession,
@@ -38,10 +37,10 @@ from core.crawler_base import (
     generate_project_key,
     get_target_reg_nos,
     page_adapter,
-    random_delay,
 )
 from core.db import (
     get_project_by_key,
+    get_project_by_registration_no,
     upsert_project,
     upsert_document,
     insert_crawl_error,
@@ -69,6 +68,8 @@ DOMAIN       = "rera.bihar.gov.in"
 # ASP.NET GridView control ID
 _GRID_ID     = "ContentPlaceHolder1_GV_Building"
 _GRID_TARGET = "ctl00$ContentPlaceHolder1$GV_Building"
+_PROJECT_LINKS_SEL = f"table#{_GRID_ID} tr td:first-child a"
+_LIGHT_MODES = {"daily_light", "light"}
 
 
 # ── SeleniumSession wiring ────────────────────────────────────────────────────
@@ -112,6 +113,228 @@ def download_response(url, *, method="GET", data=None, headers=None,
     return _session().download(url, method=method, data=data, headers=headers, logger=logger)
 
 
+def _is_light_mode(mode: str) -> bool:
+    """Return True for modes that should skip DB-existing rows from listing data."""
+    return mode in _LIGHT_MODES
+
+
+def _listing_identity(raw: dict) -> tuple[str, str] | None:
+    """Build Bihar's stable project identity from fields present on a listing row."""
+    reg_no = (raw.get("project_registration_no") or "").strip()
+    project_name = raw.get("project_name", "") or ""
+    promoter_name = raw.get("promoter_name", "") or ""
+    if not reg_no or not project_name or not promoter_name:
+        return None
+    return reg_no, generate_project_key(project_name + reg_no + promoter_name)
+
+
+def _existing_project_from_listing(raw: dict, config: dict) -> dict | None:
+    """Find an existing DB row using only listing data, checking reg-no first."""
+    reg_no = (raw.get("project_registration_no") or "").strip()
+    if reg_no:
+        existing = get_project_by_registration_no(
+            reg_no,
+            state=config.get("state"),
+            domain=DOMAIN,
+        )
+        if existing:
+            return existing
+
+    identity = _listing_identity(raw)
+    if not identity:
+        return None
+    _, key = identity
+    return get_project_by_key(key)
+
+
+def _listing_row_signature(rows: list[dict]) -> dict:
+    """Return stable row-count and boundary reg-no markers for wait diagnostics."""
+    regs = [
+        (r.get("project_registration_no") or "").strip()
+        for r in rows
+        if (r.get("project_registration_no") or "").strip()
+    ]
+    return {
+        "count": len(rows),
+        "first": regs[0] if regs else "",
+        "last": regs[-1] if regs else "",
+    }
+
+
+def _wait_for_listing_rows(page, logger: CrawlerLogger, *, timeout: int = 15_000) -> None:
+    """Wait until the listing GridView has at least one data row."""
+    try:
+        page.wait_for_function(
+            "() => Array.from(document.querySelectorAll("
+            f"\"table#{_GRID_ID} tr\""
+            ")).some(tr => tr.querySelectorAll(':scope > td').length >= 5)",
+            timeout=timeout,
+        )
+    except SeleniumTimeout:
+        logger.warning("Listing rows did not appear before timeout", step="listing")
+
+
+def _wait_for_listing_signature(
+    page,
+    expected: dict,
+    logger: CrawlerLogger,
+    *,
+    timeout: int = 15_000,
+) -> None:
+    """Wait until the rendered listing matches expected row boundary markers."""
+    if not expected.get("count"):
+        return
+    try:
+        page.wait_for_function(
+            """(expected) => {
+                const rows = Array.from(document.querySelectorAll("table#%s tr"))
+                    .map(tr => Array.from(tr.querySelectorAll(":scope > td"))
+                        .map(td => td.innerText.trim()))
+                    .filter(cells => cells.length >= 5 && cells[1] && !/^\\d+$/.test(cells[1]));
+                if (rows.length !== expected.count) return false;
+                return rows[0][1] === expected.first && rows[rows.length - 1][1] === expected.last;
+            }""" % _GRID_ID,
+            arg=expected,
+            timeout=timeout,
+        )
+    except SeleniumTimeout:
+        logger.warning("Listing rows did not restabilize before timeout", step="listing")
+
+
+def _project_link_indices(link_texts: list[str]) -> list[int]:
+    """Return link positions that correspond to project rows, excluding pager links."""
+    return [
+        i for i, text in enumerate(link_texts)
+        if text
+        and not text.isdigit()
+        and text not in ("...", "Next", "Prev", "Previous", "First", "Last")
+    ]
+
+
+def _select_listing_candidates(
+    rows: list[dict],
+    project_indices: list[int],
+    *,
+    max_items: int | None,
+    items_seen: int,
+    target_regs: set[str] | None,
+    found_targets: set[str] | None,
+) -> tuple[list[dict], list[int]]:
+    """Apply item-limit and targeted-run filters while preserving row/link alignment."""
+    paired = [
+        (row, project_indices[i])
+        for i, row in enumerate(rows)
+        if i < len(project_indices)
+    ]
+    if target_regs:
+        paired = [
+            (row, idx) for row, idx in paired
+            if (row.get("project_registration_no") or "").strip().upper() in target_regs
+        ]
+        if found_targets is not None:
+            found_targets.update(
+                (row.get("project_registration_no") or "").strip().upper()
+                for row, _idx in paired
+            )
+
+    if max_items is not None:
+        remaining = max(0, max_items - items_seen)
+        paired = paired[:remaining]
+
+    return [row for row, _idx in paired], [idx for _row, idx in paired]
+
+
+def _wait_for_active_listing_page(page, next_pg: int, logger: CrawlerLogger) -> None:
+    """Wait until the ASP.NET pager renders the requested page as active."""
+    try:
+        page.wait_for_function(
+            "() => { var s = document.querySelector("
+            f"\"table#{_GRID_ID} tr.pagingDiv span\");"
+            f" return s && s.innerText.trim() === '{next_pg}'; }}",
+            timeout=15_000,
+        )
+    except SeleniumTimeout:
+        logger.warning(
+            f"Selenium: pager did not confirm page {next_pg} — proceeding",
+            step="detail_collect",
+        )
+
+
+def _click_next_listing_page(page, current_listing_pg: int, logger: CrawlerLogger) -> bool:
+    """Click the GridView pager link for the next page and wait for active-page change."""
+    next_pg = current_listing_pg + 1
+    next_href = f"javascript:__doPostBack('{_GRID_TARGET}','Page${next_pg}')"
+    clicked = page.eval_on_selector_all(
+        f'a[href="{next_href}"]',
+        "els => { if (els[0]) { els[0].click(); return true; } return false; }",
+    )
+    if not clicked:
+        logger.info(
+            f"Selenium: no link to page {next_pg} — all pages collected",
+            step="detail_collect",
+        )
+        return False
+    page.wait_for_load_state("domcontentloaded", timeout=15_000)
+    _wait_for_active_listing_page(page, next_pg, logger)
+    return True
+
+
+def _capture_detail_popup_for_row(
+    *,
+    listing_page,
+    ctx,
+    link_index: int,
+    name: str,
+    current_listing_pg: int,
+    row_rank: int,
+    listing_signature: dict,
+    logger: CrawlerLogger,
+) -> tuple[str | None, str | None]:
+    """Click one listing project link and capture its Filanprint popup URL and HTML."""
+    captured_url: str | None = None
+    captured_html: str | None = None
+    try:
+        with ctx.expect_page(timeout=15_000) as popup_info:
+            listing_page.eval_on_selector_all(
+                _PROJECT_LINKS_SEL,
+                f"els => els[{link_index}].click()",
+            )
+        popup = popup_info.value
+        popup.wait_for_load_state("domcontentloaded", timeout=15_000)
+        url = popup.url
+        if "Filanprint.aspx" in url:
+            try:
+                captured_html = popup.content()
+            except Exception as exc:
+                logger.warning(
+                    f"  [pg{current_listing_pg}:{row_rank}] {name!r}:"
+                    f" popup HTML capture failed — {exc}",
+                    step="detail_collect",
+                )
+        popup.close()
+
+        listing_page.wait_for_load_state("domcontentloaded", timeout=15_000)
+        _wait_for_listing_signature(listing_page, listing_signature, logger)
+
+        if "Filanprint.aspx" in url:
+            captured_url = url
+            logger.info(
+                f"  [pg{current_listing_pg}:{row_rank}] {name!r} -> {url}",
+                step="detail_collect",
+            )
+        else:
+            logger.warning(
+                f"  [pg{current_listing_pg}:{row_rank}] {name!r}: unexpected URL {url}",
+                step="detail_collect",
+            )
+    except Exception as exc:
+        logger.warning(
+            f"  [pg{current_listing_pg}:{row_rank}] {name!r}: popup failed — {exc}",
+            step="detail_collect",
+        )
+    return captured_url, captured_html
+
+
 # ── Selenium-driven listing walker (was Selenium) ────────────────────────────
 
 def _collect_listing_pages(
@@ -121,6 +344,7 @@ def _collect_listing_pages(
     capture_detail_urls: bool = True,
     on_progress=None,
     on_candidate=None,
+    should_skip_candidate=None,
     target_regs: set[str] | None = None,
     found_targets: set[str] | None = None,
 ) -> list[dict]:
@@ -152,247 +376,136 @@ def _collect_listing_pages(
             on_candidate(raw: dict, detail_url: str, detail_html: str | None, page: int)
         Enables inline parse+upsert during the listing walk so the dashboard's
         per-project counters climb in real time rather than only after Phase B.
+
+    should_skip_candidate: optional listing-row callback. When it returns True
+        the row is counted as walked but its detail popup is never opened.
     """
-    links_sel = f"table#{_GRID_ID} tr td:first-child a"
     pages: list[dict] = []
     items_seen = 0
+
+    def _emit_candidate(raw: dict, detail_url: str, detail_html: str | None, page: int, rank: int) -> None:
+        if on_candidate is None:
+            return
+        try:
+            on_candidate(raw, detail_url, detail_html, page)
+        except Exception as exc:
+            logger.warning(
+                f"  [pg{page}:{rank}] on_candidate raised: {exc}",
+                step="detail_collect",
+            )
 
     try:
         listing_page = page_adapter(_session())
         ctx = listing_page.context
         listing_page.goto(LISTING_URL, wait_until="domcontentloaded", timeout=30_000)
+        _wait_for_listing_rows(listing_page, logger)
         current_listing_pg = 1
 
         while True:
-                soup = BeautifulSoup(listing_page.content(), "lxml")
-                rows = _parse_page_rows(soup)
-                if not rows:
-                    logger.info(
-                        f"Selenium: listing page {current_listing_pg} has no parsed rows — stopping",
-                        step="detail_collect",
-                    )
-                    break
-
-                # Cap the number of rows for which we capture detail URLs (the
-                # expensive popup-click step), but always keep the full row list
-                # so projects_found counts every project on the page.
-                rows_for_detail = rows
-                if max_items:
-                    remaining = max(0, max_items - items_seen)
-                    rows_for_detail = rows[:remaining]
-
-                # ── Identify project links on this listing page ───────────────
-                link_texts: list[str] = listing_page.eval_on_selector_all(
-                    links_sel, "els => els.map(e => e.innerText.trim())"
+            # Phase: listing traversal
+            soup = BeautifulSoup(listing_page.content(), "lxml")
+            page_rows = _parse_page_rows(soup)
+            if not page_rows:
+                logger.info(
+                    f"Selenium: listing page {current_listing_pg} has no parsed rows — stopping",
+                    step="detail_collect",
                 )
-                project_indices = [
-                    i for i, t in enumerate(link_texts)
-                    if t and not t.isdigit()
-                    and t not in ("...", "Next", "Prev", "Previous", "First", "Last")
-                ]
+                break
 
-                project_indices = project_indices[:len(rows_for_detail)]
+            link_texts: list[str] = listing_page.eval_on_selector_all(
+                _PROJECT_LINKS_SEL, "els => els.map(e => e.innerText.trim())"
+            )
+            project_indices = _project_link_indices(link_texts)
+            rows_for_detail, project_indices = _select_listing_candidates(
+                page_rows,
+                project_indices,
+                max_items=max_items,
+                items_seen=items_seen,
+                target_regs=target_regs,
+                found_targets=found_targets,
+            )
 
-                # ── Targeted filtering ─────────────────────────────────────────
-                # --target-reg-no restricts the walk to specific project(s).
-                # Filter this page's rows (and the positionally-aligned project
-                # links) down to the requested reg-no(s); the walk stops once
-                # every target has been found (see end of the page loop).
-                if target_regs:
-                    keep = [
-                        rank for rank, r in enumerate(rows_for_detail)
-                        if (r.get("project_registration_no") or "").strip().upper()
-                        in target_regs
-                    ]
-                    rows_for_detail = [rows_for_detail[rank] for rank in keep]
-                    project_indices = [
-                        project_indices[rank] for rank in keep
-                        if rank < len(project_indices)
-                    ]
-                    rows = rows_for_detail
-                    if found_targets is not None:
-                        found_targets.update(
-                            (r.get("project_registration_no") or "").strip().upper()
-                            for r in rows_for_detail
-                        )
-
-                if rows_for_detail and not project_indices:
-                    logger.info(
-                        f"Selenium: listing page {current_listing_pg} has no project links — stopping",
-                        step="detail_collect",
-                    )
-                    break
-
-                detail_urls: list[str | None]
-                if capture_detail_urls and rows_for_detail:
-                    logger.info(
-                        f"Selenium: listing page {current_listing_pg},"
-                        f" collecting {len(project_indices)} detail URLs for {len(rows)} rows",
-                        step="detail_collect",
-                    )
-                    if len(project_indices) != len(rows):
-                        logger.warning(
-                            f"Selenium: row/link mismatch on page {current_listing_pg}:"
-                            f" rows={len(rows)} links={len(project_indices)}",
-                            step="detail_collect",
-                        )
-
-                    # ── Click each project; listing page stays alive between clicks ─
-                    detail_urls = []
-                    for rank, idx in enumerate(project_indices):
-                        name = link_texts[idx]
-                        captured_url: str | None = None
-                        captured_html: str | None = None
-                        try:
-                            with ctx.expect_page(timeout=15_000) as popup_info:
-                                listing_page.eval_on_selector_all(
-                                    links_sel, f"els => els[{idx}].click()"
-                                )
-                            popup = popup_info.value
-                            popup.wait_for_load_state("domcontentloaded", timeout=15_000)
-                            url = popup.url
-                            # Capture the popup's rendered HTML before closing so
-                            # downstream inline processing can parse it without a
-                            # second Selenium GET (which would navigate the
-                            # listing tab away).
-                            if "Filanprint.aspx" in url:
-                                try:
-                                    captured_html = popup.content()
-                                except Exception as exc:
-                                    logger.warning(
-                                        f"  [pg{current_listing_pg}:{rank}] {name!r}:"
-                                        f" popup HTML capture failed — {exc}",
-                                        step="detail_collect",
-                                    )
-                            popup.close()
-                            # Postback already reloaded the listing page in-place;
-                            # wait for it to settle before the next click.
-                            listing_page.wait_for_load_state("domcontentloaded", timeout=15_000)
-
-                            if "Filanprint.aspx" in url:
-                                captured_url = url
-                                detail_urls.append(url)
-                                logger.info(
-                                    f"  [pg{current_listing_pg}:{rank}] {name!r} → {url}",
-                                    step="detail_collect",
-                                )
-                            else:
-                                detail_urls.append(None)
-                                logger.warning(
-                                    f"  [pg{current_listing_pg}:{rank}] {name!r}: unexpected URL {url}",
-                                    step="detail_collect",
-                                )
-                        except Exception as e:
-                            detail_urls.append(None)
-                            logger.warning(
-                                f"  [pg{current_listing_pg}:{rank}] {name!r}: popup failed — {e}",
-                                step="detail_collect",
-                            )
-
-                        # Fire the per-candidate callback immediately so parse +
-                        # upsert can run interleaved with the listing walk.
-                        if on_candidate is not None and rank < len(rows_for_detail):
-                            try:
-                                on_candidate(
-                                    rows_for_detail[rank],
-                                    captured_url or "",
-                                    captured_html,
-                                    current_listing_pg,
-                                )
-                            except Exception as exc:
-                                logger.warning(
-                                    f"  [pg{current_listing_pg}:{rank}] on_candidate raised: {exc}",
-                                    step="detail_collect",
-                                )
-
-                    if len(detail_urls) < len(rows):
-                        detail_urls.extend([None] * (len(rows) - len(detail_urls)))
-                else:
-                    logger.info(
-                        f"Selenium: listing page {current_listing_pg}, parsed {len(rows)} rows",
-                        step="detail_collect",
-                    )
-                    detail_urls = [None] * len(rows)
-                    # daily_light / count-only walk: still invoke the candidate
-                    # callback so the orchestrator can run its dedup skip path
-                    # inline (avoids a separate post-listing iteration).
-                    if on_candidate is not None:
-                        for rank, raw in enumerate(rows_for_detail):
-                            try:
-                                on_candidate(raw, "", None, current_listing_pg)
-                            except Exception as exc:
-                                logger.warning(
-                                    f"  [pg{current_listing_pg}:{rank}] on_candidate raised: {exc}",
-                                    step="detail_collect",
-                                )
-
-                pages.append({
-                    "page": current_listing_pg,
-                    "rows": rows,
-                    "detail_urls": detail_urls,
-                })
-                items_seen += len(rows)
-
-                # Stream listing progress so the dashboard's projects_found
-                # climbs page-by-page rather than jumping at the end.
-                if on_progress is not None:
-                    try:
-                        on_progress(items_seen)
-                    except Exception:
-                        pass
-
-                if (max_items and items_seen >= max_items) or (max_pages and current_listing_pg >= max_pages):
-                    break
-
-                # Targeted run: stop once every requested project has been found.
-                if target_regs and found_targets is not None and target_regs <= found_targets:
-                    logger.info(
-                        "All targeted projects found — stopping listing walk",
-                        step="detail_collect",
-                    )
-                    break
-
-                # ── Navigate to the next listing page ─────────────────────────
-                # The pager exposes the next page as an anchor whose href is a
-                # javascript:__doPostBack(...) call.  The same href targets both
-                # the direct numeric link and the "..." overflow link (which
-                # jumps to the first page of the next block), so one selector
-                # covers every case.  A physical Selenium click on the pager row
-                # (anchored to the page bottom) is unreliable — Chrome reports
-                # "element click intercepted" — so trigger the anchor's postback
-                # via a JS click, mirroring the per-project popup-click path.
-                next_pg = current_listing_pg + 1
-                next_href = (
-                    f"javascript:__doPostBack('{_GRID_TARGET}','Page${next_pg}')"
+            if rows_for_detail and not project_indices:
+                logger.info(
+                    f"Selenium: listing page {current_listing_pg} has no project links — stopping",
+                    step="detail_collect",
                 )
-                clicked = listing_page.eval_on_selector_all(
-                    f'a[href="{next_href}"]',
-                    "els => { if (els[0]) { els[0].click(); return true; } return false; }",
+                break
+
+            if len(project_indices) != len(rows_for_detail):
+                logger.warning(
+                    f"Selenium: row/link mismatch on page {current_listing_pg}:"
+                    f" rows={len(rows_for_detail)} links={len(project_indices)}",
+                    step="detail_collect",
                 )
-                if clicked:
-                    listing_page.wait_for_load_state("domcontentloaded", timeout=15_000)
-                    # The postback reloads the GridView in place; confirm the
-                    # pager's active page (rendered as a <span>) advanced before
-                    # parsing so we never read a stale page.
-                    try:
-                        listing_page.wait_for_function(
-                            "() => { var s = document.querySelector("
-                            f"\"table#{_GRID_ID} tr.pagingDiv span\");"
-                            f" return s && s.innerText.trim() === '{next_pg}'; }}",
-                            timeout=15_000,
-                        )
-                    except SeleniumTimeout:
-                        logger.warning(
-                            f"Selenium: pager did not confirm page {next_pg} — proceeding",
-                            step="detail_collect",
-                        )
-                    current_listing_pg = next_pg
-                else:
-                    logger.info(
-                        f"Selenium: no link to page {next_pg} — all pages collected",
-                        step="detail_collect",
+
+            detail_urls: list[str | None] = [None] * len(rows_for_detail)
+            listing_signature = _listing_row_signature(page_rows)
+
+            if capture_detail_urls and rows_for_detail:
+                # Phase: detail traversal
+                logger.info(
+                    f"Selenium: listing page {current_listing_pg},"
+                    f" collecting detail URLs for {len(rows_for_detail)} row(s)",
+                    step="detail_collect",
+                )
+                for rank, raw in enumerate(rows_for_detail):
+                    if should_skip_candidate is not None and should_skip_candidate(raw, current_listing_pg):
+                        continue
+                    if rank >= len(project_indices):
+                        continue
+                    idx = project_indices[rank]
+                    name = link_texts[idx]
+                    captured_url, captured_html = _capture_detail_popup_for_row(
+                        listing_page=listing_page,
+                        ctx=ctx,
+                        link_index=idx,
+                        name=name,
+                        current_listing_pg=current_listing_pg,
+                        row_rank=rank,
+                        listing_signature=listing_signature,
+                        logger=logger,
                     )
-                    break
+                    detail_urls[rank] = captured_url
+                    _emit_candidate(raw, captured_url or "", captured_html, current_listing_pg, rank)
+            else:
+                logger.info(
+                    f"Selenium: listing page {current_listing_pg}, parsed {len(rows_for_detail)} rows",
+                    step="detail_collect",
+                )
+                for rank, raw in enumerate(rows_for_detail):
+                    if should_skip_candidate is not None and should_skip_candidate(raw, current_listing_pg):
+                        continue
+                    _emit_candidate(raw, "", None, current_listing_pg, rank)
+
+            pages.append({
+                "page": current_listing_pg,
+                "rows": rows_for_detail,
+                "detail_urls": detail_urls,
+            })
+            items_seen += len(rows_for_detail)
+
+            if on_progress is not None:
+                try:
+                    on_progress(items_seen)
+                except Exception:
+                    pass
+
+            if (max_items is not None and items_seen >= max_items) or (
+                max_pages and current_listing_pg >= max_pages
+            ):
+                break
+
+            if target_regs and found_targets is not None and target_regs <= found_targets:
+                logger.info(
+                    "All targeted projects found — stopping listing walk",
+                    step="detail_collect",
+                )
+                break
+
+            if not _click_next_listing_page(listing_page, current_listing_pg, logger):
+                break
+            current_listing_pg += 1
 
         listing_page.close()
     except Exception as e:
@@ -1286,7 +1399,109 @@ def _fetch_page(page: int, form_fields: dict, logger: CrawlerLogger) -> Beautifu
     return BeautifulSoup(resp.text, "lxml")
 
 
-# ── Main entry point ──────────────────────────────────────────────────────────
+# ── Parsing / normalization / persistence ────────────────────────────────────
+
+def _parse_or_fetch_detail(
+    *,
+    reg_no: str,
+    detail_url: str,
+    detail_html: str | None,
+    current_page: int,
+    logger: CrawlerLogger,
+) -> tuple[dict, str | None]:
+    """Parse captured detail HTML, or fetch the detail page when only a URL is available."""
+    detail_extra: dict = {}
+    effective_html: str | None = detail_html
+
+    if detail_html and "Invalid Project ID" not in detail_html:
+        detail_extra = _parse_detail_page(detail_html)
+        logger.info(f"Detail parsed (inline) for {reg_no!r}", step="detail")
+    elif detail_html:
+        logger.warning(
+            f"Popup HTML reported 'Invalid Project ID' for {reg_no!r}",
+            step="detail",
+        )
+        effective_html = None
+    elif detail_url:
+        detail_resp = safe_get(detail_url, retries=2, logger=logger, verify=False)
+        if detail_resp and "Invalid Project ID" not in detail_resp.text:
+            effective_html = detail_resp.text
+            detail_extra = _parse_detail_page(effective_html)
+            logger.info(f"Detail parsed for {reg_no!r}", step="detail")
+        elif detail_resp:
+            logger.warning(
+                f"Detail page returned 'Invalid Project ID' for {reg_no!r}",
+                step="detail",
+            )
+            effective_html = None
+        else:
+            logger.warning(f"Detail fetch failed for {reg_no!r}", step="detail")
+            effective_html = None
+    else:
+        logger.warning(
+            f"No detail URL for listing page {current_page} ({reg_no!r})",
+            step="detail",
+        )
+
+    return detail_extra, effective_html
+
+
+def _build_bihar_project_payload(
+    *,
+    raw: dict,
+    detail_extra: dict,
+    key: str,
+    reg_no: str,
+    detail_url: str,
+    config: dict,
+) -> dict:
+    """Merge listing and detail fields into the normalized Bihar project payload."""
+    source_url = detail_url or LISTING_URL
+    merged: dict = {
+        **detail_extra,
+        "key":                     key,  # FIELD: key <- Bihar-specific project_name + reg_no + promoter_name hash
+        "project_name":            raw["project_name"],  # FIELD: project_name <- raw["project_name"] from listing row
+        "project_registration_no": reg_no,  # FIELD: project_registration_no <- reg_no var from listing row
+        "promoter_name":           raw["promoter_name"],  # FIELD: promoter_name <- raw["promoter_name"] from listing row
+        "submitted_date":          raw["submitted_date"],  # FIELD: submitted_date <- raw["submitted_date"] from listing row
+        "project_location_raw": {  # FIELD: project_location_raw <- merge of raw + detail_extra + state
+            **raw.get("project_location_raw", {}),
+            **detail_extra.get("project_location_raw", {}),
+            "state": config.get("state", "bihar").title(),  # FIELD: project_location_raw.state <- config["state"] titled
+        },
+        "project_state": config.get("state", "bihar").title(),  # FIELD: project_state <- config["state"] titled
+        "domain": DOMAIN,  # FIELD: domain <- DOMAIN constant
+        "url":    source_url,  # FIELD: url <- Filanprint detail URL or listing URL fallback
+        "state":  config.get("state", "Bihar"),  # FIELD: state <- config["state"]
+        "is_live": True,  # FIELD: is_live <- literal True
+        "data": merge_data_sections(  # FIELD: data <- merge_data_sections(detail_extra.data, listing_address)
+            detail_extra.get("data"),
+            {
+                "listing_address": raw.get("project_location_raw", {}).get("address", ""),
+                "source_url": source_url,
+            },
+        ),
+    }
+    return {k: v for k, v in merged.items() if v is not None}
+
+
+def _persist_bihar_project(
+    *,
+    payload: dict,
+    config: dict,
+    machine_name: str,
+    machine_ip: str,
+) -> str:
+    """Normalize, validate, and upsert one Bihar project record."""
+    normalized = normalize_project_payload(
+        payload,
+        config,
+        machine_name=machine_name,
+        machine_ip=machine_ip,
+    )
+    record = ProjectRecord(**normalized)
+    return upsert_project(record.to_db_dict())
+
 
 # ── Details phase (per-candidate worker) ──────────────────────────────────────
 
@@ -1317,99 +1532,48 @@ def _process_bihar_inline(
         "projects_skipped": 0, "projects_new": 0, "projects_updated": 0,
         "error_count": 0,
     }
-    reg_no = raw.get("project_registration_no", "").strip()
-    if not reg_no:
+    identity = _listing_identity(raw)
+    if not identity:
         deltas["error_count"] += 1
         return deltas, None
-    # Bihar key recipe matches prod: project_name + reg_no + promoter_name, concatenated
-    # raw (no separator, no case/whitespace changes), then siphash24. Falling back to
-    # reg_no alone here is what created the historical duplicate rows — refuse the row.
-    project_name_raw  = raw.get("project_name", "") or ""
-    promoter_name_raw = raw.get("promoter_name", "") or ""
-    if not project_name_raw or not promoter_name_raw:
-        deltas["error_count"] += 1
-        return deltas, None
-    key = generate_project_key(project_name_raw + reg_no + promoter_name_raw)
+    reg_no, key = identity
     logger.set_project(
         key=key, reg_no=reg_no,
         url=detail_url or LISTING_URL, page=current_page,
     )
     try:
-        if mode == "daily_light" and get_project_by_key(key):
+        # Phase: listing-side DB existence check. This is intentionally before
+        # any fallback detail fetch, so light mode direct callers keep the same
+        # no-detail-for-existing invariant as the Selenium listing walker.
+        if _is_light_mode(mode) and _existing_project_from_listing(raw, config):
             deltas["projects_skipped"] += 1
             return deltas, None
 
-        detail_extra: dict = {}
-        effective_html: str | None = detail_html
-        if detail_html and "Invalid Project ID" not in detail_html:
-            detail_extra = _parse_detail_page(detail_html)
-            logger.info(f"Detail parsed (inline) for {reg_no!r}", step="detail")
-        elif detail_html:
-            logger.warning(
-                f"Popup HTML reported 'Invalid Project ID' for {reg_no!r}",
-                step="detail",
-            )
-            effective_html = None
-        elif detail_url:
-            # Fallback: no pre-captured popup HTML (e.g. compat wrapper /
-            # sentinel re-entry).  Issue a Selenium GET — safe here because
-            # the listing walker is not active.
-            detail_resp = safe_get(detail_url, retries=2, logger=logger, verify=False)
-            if detail_resp and "Invalid Project ID" not in detail_resp.text:
-                effective_html = detail_resp.text
-                detail_extra = _parse_detail_page(effective_html)
-                logger.info(f"Detail parsed for {reg_no!r}", step="detail")
-            elif detail_resp:
-                logger.warning(
-                    f"Detail page returned 'Invalid Project ID' for {reg_no!r}",
-                    step="detail",
-                )
-                effective_html = None
-            else:
-                logger.warning(f"Detail fetch failed for {reg_no!r}", step="detail")
-                effective_html = None
-        else:
-            logger.warning(
-                f"No detail URL for listing page {current_page} ({reg_no!r})",
-                step="detail",
-            )
-
         try:
-            source_url = detail_url or LISTING_URL
-            merged: dict = {
-                **detail_extra,
-                "key":                     key,  # FIELD: key <- Bihar-specific project_name + reg_no + promoter_name hash
-                "project_name":            raw["project_name"],  # FIELD: project_name <- raw["project_name"] from listing row
-                "project_registration_no": reg_no,  # FIELD: project_registration_no <- reg_no var from listing row
-                "promoter_name":           raw["promoter_name"],  # FIELD: promoter_name <- raw["promoter_name"] from listing row
-                "submitted_date":          raw["submitted_date"],  # FIELD: submitted_date <- raw["submitted_date"] from listing row
-                "project_location_raw": {  # FIELD: project_location_raw <- merge of raw + detail_extra + state
-                    **raw.get("project_location_raw", {}),
-                    **detail_extra.get("project_location_raw", {}),
-                    "state": config.get("state", "bihar").title(),  # FIELD: project_location_raw.state <- config["state"] titled
-                },
-                "project_state": config.get("state", "bihar").title(),  # FIELD: project_state <- config["state"] titled
-                "domain": DOMAIN,  # FIELD: domain <- DOMAIN constant
-                "url":    source_url,  # FIELD: url <- Filanprint detail URL or listing URL fallback
-                "state":  config.get("state", "Bihar"),  # FIELD: state <- config["state"]
-                "is_live": True,  # FIELD: is_live <- literal True
-                "data": merge_data_sections(  # FIELD: data <- merge_data_sections(detail_extra.data, listing_address)
-                    detail_extra.get("data"),
-                    {
-                        "listing_address": raw.get("project_location_raw", {}).get("address", ""),
-                        "source_url": source_url,
-                    },
-                ),
-            }
-            merged = {k: v for k, v in merged.items() if v is not None}
-
-            normalized = normalize_project_payload(
-                merged, config,
-                machine_name=machine_name, machine_ip=machine_ip,
+            # Phase: detail parsing and payload normalization.
+            detail_extra, effective_html = _parse_or_fetch_detail(
+                reg_no=reg_no,
+                detail_url=detail_url,
+                detail_html=detail_html,
+                current_page=current_page,
+                logger=logger,
             )
-            record  = ProjectRecord(**normalized)
-            db_dict = record.to_db_dict()
-            status  = upsert_project(db_dict)
+            merged = _build_bihar_project_payload(
+                raw=raw,
+                detail_extra=detail_extra,
+                key=key,
+                reg_no=reg_no,
+                detail_url=detail_url,
+                config=config,
+            )
+
+            # Phase: persistence.
+            status = _persist_bihar_project(
+                payload=merged,
+                config=config,
+                machine_name=machine_name,
+                machine_ip=machine_ip,
+            )
 
             if status == "new":
                 deltas["projects_new"] += 1
@@ -1449,6 +1613,7 @@ def _process_bihar_documents(
     config: dict,
     run_id: int,
     site_id: str,
+    mode: str,
     logger: CrawlerLogger,
 ) -> dict:
     """Deferred phase: build QPR snapshot, download PDFs, upload to S3, update record.
@@ -1469,14 +1634,14 @@ def _process_bihar_documents(
         url=detail_url or LISTING_URL, page=current_page,
     )
     try:
-        if detail_url and detail_html and not (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+        if detail_url and detail_html and not (settings.SKIP_DOCUMENTS or _is_light_mode(mode)):
             try:
                 qpr_docs = _build_qpr_snapshot(detail_url, detail_html, logger)
                 uploaded_docs.extend(qpr_docs)  # FIELD: uploaded_documents[] <- inline QPR snapshot + QPR certificate PDFs (latest quarter)
             except Exception as exc:
                 logger.warning(f"QPR snapshot failed for {reg_no!r}: {exc}", step="documents")
 
-        if uploaded_docs and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+        if uploaded_docs and (settings.SKIP_DOCUMENTS or _is_light_mode(mode)):
             logger.info(
                 f"Skipping {len(uploaded_docs)} documents (light/skip-documents mode)",
                 step="documents",
@@ -1493,7 +1658,7 @@ def _process_bihar_documents(
                         for d in enriched_docs if d.get("s3_link")
                     ]
                     upsert_project({
-                        "key": key,  # FIELD: key <- generate_project_key(reg_no)
+                        "key": key,  # FIELD: key <- Bihar composite project key
                         "uploaded_documents": enriched_docs,  # FIELD: uploaded_documents <- enriched_docs from _process_documents
                         "document_urls": doc_urls,  # FIELD: document_urls <- doc_urls built from enriched s3_link entries
                     })
@@ -1532,7 +1697,7 @@ def _process_bihar_candidate(
     )
     deltas.setdefault("documents_uploaded", 0)
     if pending:
-        doc_deltas = _process_bihar_documents(pending, config, run_id, site_id, logger)
+        doc_deltas = _process_bihar_documents(pending, config, run_id, site_id, mode, logger)
         for k, v in doc_deltas.items():
             deltas[k] = deltas.get(k, 0) + v
     return deltas
@@ -1567,8 +1732,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     found_targets: set[str] = set()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if target_regs or mode == "daily_light":
-        logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+    if target_regs or _is_light_mode(mode):
+        reason = "targeted run via --target-reg-no" if target_regs else f"{mode} mode"
+        logger.info(f"Sentinel skipped ({reason})", step="sentinel")
         counters["sentinel_passed"] = True
     else:
         t0 = time.monotonic()
@@ -1580,20 +1746,16 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         counters["sentinel_passed"] = True
         logger.timing("sentinel", time.monotonic() - t0)
 
-    max_pages    = settings.MAX_PAGES
-    delay_range  = config.get("rate_limit_delay", (2, 4))
+    max_pages = settings.MAX_PAGES
 
-    # ── Step 1: Walk listing pages and process each project inline ──────────
+    # ── Phase 1-3: listing traversal, detail traversal, parsing/persistence ─
     # The popup HTML for each project is captured during the listing walk and
     # handed to _process_bihar_inline via on_candidate, so projects_new /
     # projects_updated climb in real time on the dashboard rather than only
     # after the listing phase completes.  QPR snapshots + S3 document uploads
     # are deferred to Phase B (below) because they would issue Selenium GETs
     # that navigate the listing tab away.
-    #
-    # daily_light only needs project_registration_no for the DB dedup check,
-    # never the detail URL — skip the per-project popup clicks entirely.
-    capture_detail_urls = mode != "daily_light"
+    capture_detail_urls = True
     # Honour item_limit uniformly across modes — projects_found reflects only
     # the rows actually walked rather than the full Bihar catalog.
     listing_max_items = item_limit or None
@@ -1631,6 +1793,35 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             logger.exception("Inline candidate processing failed", exc, step="project_loop")
         update_crawl_run_progress(run_id, counters)
 
+    def _skip_existing_listing_candidate(raw: dict, current_page: int) -> bool:
+        """Skip DB-existing light-mode rows before any detail popup is opened."""
+        if not _is_light_mode(mode):
+            return False
+        try:
+            existing = _existing_project_from_listing(raw, config)
+        except Exception as exc:
+            counters["error_count"] += 1
+            logger.warning(
+                f"Existing-project lookup failed before detail traversal: {exc}",
+                step="listing",
+            )
+            update_crawl_run_progress(run_id, counters)
+            return False
+        if not existing:
+            return False
+
+        identity = _listing_identity(raw)
+        reg_no = (raw.get("project_registration_no") or "").strip()
+        key = identity[1] if identity else existing.get("key")
+        logger.set_project(key=key, reg_no=reg_no, url=LISTING_URL, page=current_page)
+        try:
+            logger.info("Skipping existing project before detail traversal", step="skip")
+            counters["projects_skipped"] += 1
+            update_crawl_run_progress(run_id, counters)
+        finally:
+            logger.clear_project()
+        return True
+
     listing_pages = _collect_listing_pages(
         logger,
         max_items=listing_max_items,
@@ -1638,6 +1829,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         capture_detail_urls=capture_detail_urls,
         on_progress=_on_listing_progress,
         on_candidate=_on_candidate,
+        should_skip_candidate=_skip_existing_listing_candidate,
         target_regs=target_regs,
         found_targets=found_targets,
     )
@@ -1678,7 +1870,6 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     update_crawl_run_progress(run_id, counters)
 
     if not pending_doc_work:
-        reset_checkpoint(config["id"], mode)
         logger.info(f"Bihar RERA complete (no documents to process): {counters}", step="done")
         logger.timing("total_run", time.monotonic() - t_run)
         return counters
@@ -1694,7 +1885,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     tB = time.monotonic()
 
     def _doc_worker(_idx: int, pending: dict) -> dict:
-        return _process_bihar_documents(pending, config, run_id, site_id, logger)
+        return _process_bihar_documents(pending, config, run_id, site_id, mode, logger)
 
     def _on_doc_result(_idx: int, deltas: dict | None, exc: Exception | None) -> None:
         # Fold each completed document task's deltas into the running counters
@@ -1712,7 +1903,6 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     logger.timing("details", time.monotonic() - tB,
                   items=len(pending_doc_work), workers=n_workers)
 
-    reset_checkpoint(config["id"], mode)
     logger.info(f"Bihar RERA complete: {counters}", step="done")
     logger.timing("total_run", time.monotonic() - t_run)
     return counters

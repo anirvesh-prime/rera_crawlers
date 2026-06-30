@@ -48,6 +48,10 @@ class _FakeContext:
         self._n += 1
         yield _PopupInfo(popup)
 
+    @property
+    def popup_count(self) -> int:
+        return self._n
+
 
 class _FakePage:
     def __init__(self, link_texts):
@@ -124,8 +128,6 @@ class BiharTargetedCrawlTests(unittest.TestCase):
             mock.patch.object(bihar_rera, "page_adapter", return_value=_FakePage(link_texts)),
             mock.patch.object(bihar_rera, "_parse_page_rows", return_value=rows),
             mock.patch.object(bihar_rera, "_process_bihar_inline", side_effect=inline_side_effect),
-            mock.patch.object(bihar_rera, "reset_checkpoint"),
-            mock.patch.object(bihar_rera, "random_delay"),
             mock.patch.object(bihar_rera, "update_crawl_run_progress"),
             mock.patch.object(bihar_rera, "insert_crawl_error"),
             mock.patch.object(bihar_rera, "get_machine_context", return_value=("host", "127.0.0.1")),
@@ -164,6 +166,57 @@ class BiharTargetedCrawlTests(unittest.TestCase):
             )
         sentinel.assert_called_once()
         self.assertFalse(counts["sentinel_passed"])
+
+    def test_daily_light_skips_existing_listing_row_before_detail_navigation(self):
+        settings.TARGET_REG_NO = ""
+        rows = self._rows()[:2]
+        fake_page = _FakePage([r["project_name"] for r in rows])
+        processed_regs: list[str] = []
+
+        def existing_by_reg(reg_no, **_kwargs):
+            if reg_no == "BRERA0001":
+                return {"key": "existing-key", "project_registration_no": reg_no}
+            return None
+
+        def inline_side_effect(raw, detail_url, detail_html, current_page,
+                               config, run_id, site_id, mode,
+                               machine_name, machine_ip, logger):
+            processed_regs.append(raw["project_registration_no"])
+            return ({"projects_new": 1, "projects_updated": 0,
+                     "projects_skipped": 0, "error_count": 0}, None)
+
+        sentinel = mock.MagicMock(return_value=True)
+        patches = [
+            mock.patch.object(bihar_rera, "_sentinel_check", sentinel),
+            mock.patch.object(bihar_rera, "_session", return_value=mock.MagicMock()),
+            mock.patch.object(bihar_rera, "page_adapter", return_value=fake_page),
+            mock.patch.object(bihar_rera, "_parse_page_rows", return_value=rows),
+            mock.patch.object(
+                bihar_rera,
+                "get_project_by_registration_no",
+                side_effect=existing_by_reg,
+            ),
+            mock.patch.object(bihar_rera, "get_project_by_key", return_value=None),
+            mock.patch.object(bihar_rera, "_process_bihar_inline", side_effect=inline_side_effect),
+            mock.patch.object(bihar_rera, "update_crawl_run_progress"),
+            mock.patch.object(bihar_rera, "insert_crawl_error"),
+            mock.patch.object(bihar_rera, "get_machine_context", return_value=("host", "127.0.0.1")),
+        ]
+        with ExitStack() as stack:
+            for patcher in patches:
+                stack.enter_context(patcher)
+            counts = bihar_rera.run(
+                {"id": "bihar_rera", "state": "Bihar", "config_id": 1},
+                run_id=123,
+                mode="daily_light",
+            )
+
+        sentinel.assert_not_called()
+        self.assertEqual(fake_page.context.popup_count, 1)
+        self.assertEqual(processed_regs, ["BRERA0002"])
+        self.assertEqual(counts["projects_found"], 2)
+        self.assertEqual(counts["projects_skipped"], 1)
+        self.assertEqual(counts["projects_new"], 1)
 
 
 if __name__ == "__main__":

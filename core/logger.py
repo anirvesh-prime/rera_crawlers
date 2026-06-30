@@ -190,8 +190,9 @@ class CrawlerLogger:
             ch.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
             self._logger.addHandler(ch)
 
-            # Local .jsonl file — opt-in only (LOG_LOCAL=true in env/.env)
-            if settings.LOG_LOCAL:
+            # Local .jsonl file — used by the dashboard's direct file probes
+            # and optionally retained for operator diagnostics.
+            if settings.LOG_LOCAL or settings.DASHBOARD_LOCAL_STATE:
                 ts = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%S")
                 log_path = Path(settings.LOG_DIR) / site_id / f"{ts}.jsonl"
                 self._logger.addHandler(JsonLineHandler(log_path))

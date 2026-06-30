@@ -25,10 +25,8 @@ from pydantic import ValidationError
 
 from bs4 import BeautifulSoup
 
-from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.crawler_base import (
     SeleniumSession,
-    SeleniumTimeout,
     generate_project_key,
     get_target_reg_nos,
     page_adapter,
@@ -171,6 +169,8 @@ BASE_URL         = "https://rera.rajasthan.gov.in"
 STATE_CODE       = "RJ"
 DOMAIN           = "rera.rajasthan.gov.in"
 LISTING_PAGE_URL = f"{BASE_URL}/ProjectList?status=3"
+GETPROJECTS_API_URL = "https://reraapi.rajasthan.gov.in/api/web/Home/GetProjects"
+_GETPROJECTS_API_FRAGMENT = "/api/web/Home/GetProjects"
 
 _UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -195,6 +195,11 @@ def _clean(text) -> str:
     if text is None:
         return ""
     return re.sub(r"\s+", " ", str(text)).strip()
+
+
+def _bare_registration_no(reg_no: str) -> str:
+    """Strip Rajasthan listing-only suffixes such as ``(28/04/2026)``."""
+    return re.sub(r"\s*\([^)]*\)\s*$", "", _clean(reg_no)).strip()
 
 
 def _flush_progress_logs(logger: CrawlerLogger) -> None:
@@ -245,6 +250,8 @@ def _build_doc_url(path: str | None) -> str | None:
         return path
     return _resolve_relative_url(path)
 
+
+# ── Phase A: listing traversal helpers ───────────────────────────────────────
 
 def _extract_rj_table_rows(page) -> list[dict]:
     """
@@ -323,6 +330,225 @@ def _extract_rj_table_rows(page) -> list[dict]:
     return rows
 
 
+# Browser-side network tracker used only to wait for the Angular listing XHR.
+# The crawler does not call reraapi directly.
+_GETPROJECTS_TRACKER_JS = f"""
+    (() => {{
+        if (window.__rjGetProjectsTrackerInstalled) return;
+        window.__rjGetProjectsTrackerInstalled = true;
+        window.__rjGetProjects = {{
+            seen: false,
+            pending: 0,
+            completed: 0,
+            failed: 0,
+            lastUrl: ""
+        }};
+        const isTarget = (url) => String(url || "").includes("{_GETPROJECTS_API_FRAGMENT}");
+        const markStart = (url) => {{
+            if (!isTarget(url)) return false;
+            window.__rjGetProjects.seen = true;
+            window.__rjGetProjects.pending += 1;
+            window.__rjGetProjects.lastUrl = String(url || "");
+            return true;
+        }};
+        const markEnd = (hit, failed) => {{
+            if (!hit) return;
+            window.__rjGetProjects.pending = Math.max(0, window.__rjGetProjects.pending - 1);
+            if (failed) window.__rjGetProjects.failed += 1;
+            else window.__rjGetProjects.completed += 1;
+        }};
+
+        const originalFetch = window.fetch;
+        if (originalFetch) {{
+            window.fetch = function () {{
+                const req = arguments[0];
+                const url = req && req.url ? req.url : req;
+                const hit = markStart(url);
+                return originalFetch.apply(this, arguments).then(
+                    (response) => {{ markEnd(hit, false); return response; }},
+                    (error) => {{ markEnd(hit, true); throw error; }}
+                );
+            }};
+        }}
+
+        const OriginalXHR = window.XMLHttpRequest;
+        if (OriginalXHR) {{
+            window.XMLHttpRequest = function () {{
+                const xhr = new OriginalXHR();
+                let requestUrl = "";
+                let hit = false;
+                const originalOpen = xhr.open;
+                xhr.open = function (method, url) {{
+                    requestUrl = String(url || "");
+                    return originalOpen.apply(xhr, arguments);
+                }};
+                xhr.addEventListener("loadstart", () => {{
+                    hit = markStart(requestUrl);
+                }});
+                xhr.addEventListener("loadend", () => markEnd(hit, false));
+                xhr.addEventListener("error", () => markEnd(hit, true));
+                xhr.addEventListener("abort", () => markEnd(hit, true));
+                return xhr;
+            }};
+        }}
+    }})();
+"""
+
+
+def _install_getprojects_tracker(page) -> None:
+    """Install a browser-side tracker before the listing page starts its XHRs."""
+    driver = getattr(page, "_driver", None)
+    try:
+        driver.execute_cdp_cmd(
+            "Page.addScriptToEvaluateOnNewDocument",
+            {"source": _GETPROJECTS_TRACKER_JS},
+        )
+    except Exception:
+        pass
+
+
+def _reset_getprojects_tracker(page) -> None:
+    try:
+        page.evaluate(f"""() => {{
+            window.__rjGetProjects = {{
+                seen: false,
+                pending: 0,
+                completed: 0,
+                failed: 0,
+                lastUrl: ""
+            }};
+            if (performance && performance.clearResourceTimings) {{
+                performance.clearResourceTimings();
+            }}
+        }}""")
+    except Exception:
+        pass
+
+
+def _wait_for_getprojects_request(
+    page,
+    logger: CrawlerLogger,
+    *,
+    timeout: int = 60_000,
+    warn_on_timeout: bool = True,
+) -> bool:
+    """
+    Wait until the public Angular page finishes its GetProjects request.
+
+    This observes browser network activity/performance entries only; it never
+    issues the Rajasthan API request itself.
+    """
+    try:
+        page.wait_for_function(
+            f"""() => {{
+                const state = window.__rjGetProjects || {{}};
+                const pending = Number(state.pending || 0);
+                const completed = Number(state.completed || 0);
+                const failed = Number(state.failed || 0);
+                const perfDone = (performance.getEntriesByType("resource") || [])
+                    .some((entry) =>
+                        String(entry.name || "").includes("{_GETPROJECTS_API_FRAGMENT}")
+                        && Number(entry.responseEnd || 0) > 0
+                    );
+                return pending === 0 && (completed > 0 || failed > 0 || perfDone);
+            }}""",
+            timeout=timeout,
+        )
+        logger.info("Rajasthan GetProjects request completed", step="listing")
+        return True
+    except Exception as exc:
+        if warn_on_timeout:
+            logger.warning(
+                f"Timed out waiting for GetProjects request completion: {exc}",
+                step="listing",
+                url=GETPROJECTS_API_URL,
+            )
+        return False
+
+
+def _wait_for_listing_table(page, logger: CrawlerLogger, *, timeout: int = 30_000) -> bool:
+    try:
+        page.wait_for_selector(
+            "table[datatable], table.dataTable, #project-list-table, table tbody tr",
+            timeout=timeout,
+        )
+        page.wait_for_load_state("networkidle", timeout=timeout)
+        return True
+    except Exception as exc:
+        logger.warning(f"DataTables table not ready: {exc}", step="listing")
+        return False
+
+
+def _set_listing_page_size_to_max(page, logger: CrawlerLogger) -> int | None:
+    """Use Selenium to select the largest visible listing page-size option."""
+    selector = "select.form-select.d-inline-block.w-auto"
+    try:
+        page.wait_for_selector(selector, timeout=15_000)
+        options = page.evaluate(
+            """(selector) => {
+                const select = document.querySelector(selector);
+                if (!select) return [];
+                return Array.from(select.options)
+                    .map((opt) => ({value: opt.value, text: opt.textContent.trim()}))
+                    .filter((opt) => /^\\d+$/.test(opt.value));
+            }""",
+            selector,
+        )
+        if not options:
+            logger.warning("Rajasthan listing page-size select has no numeric options", step="listing")
+            return None
+
+        max_value = str(max(int(opt["value"]) for opt in options))
+        current_value = page.evaluate(
+            """(selector) => {
+                const select = document.querySelector(selector);
+                return select ? String(select.value || "") : "";
+            }""",
+            selector,
+        )
+        if current_value == max_value:
+            logger.info(f"Rajasthan listing page size already {max_value}", step="listing")
+            return int(max_value)
+
+        _reset_getprojects_tracker(page)
+        select_el = page.locator(selector).first._first_element(timeout_ms=10_000)
+        try:
+            page.evaluate(
+                """(el) => {
+                    el.scrollIntoView({block: "center", inline: "center"});
+                }""",
+                select_el,
+            )
+        except Exception:
+            pass
+
+        try:
+            from selenium.webdriver.support.ui import Select
+            Select(select_el).select_by_value(max_value)
+        except Exception:
+            page.evaluate(
+                """(el, value) => {
+                    el.value = value;
+                    el.dispatchEvent(new Event("input", {bubbles: true}));
+                    el.dispatchEvent(new Event("change", {bubbles: true}));
+                }""",
+                select_el,
+                max_value,
+            )
+
+        logger.info(f"Set Rajasthan listing page size to {max_value}", step="listing")
+        page.wait_for_timeout(1_000)
+        _wait_for_getprojects_request(page, logger, timeout=8_000, warn_on_timeout=False)
+        try:
+            page.wait_for_load_state("networkidle", timeout=15_000)
+        except Exception:
+            pass
+        return int(max_value)
+    except Exception as exc:
+        logger.warning(f"Could not set Rajasthan listing page size to maximum: {exc}", step="listing")
+        return None
+
+
 def _scrape_project_list(
     logger: CrawlerLogger,
     *,
@@ -346,6 +572,7 @@ def _scrape_project_list(
     projects: list[dict] = []
     checked_rows = 0
     skipped_existing_total = 0
+    seen_reg_nos: set[str] = set()
 
     def _accept_rows(page_rows: list[dict]) -> tuple[int, int]:
         nonlocal checked_rows, skipped_existing_total
@@ -354,10 +581,18 @@ def _scrape_project_list(
         for row in page_rows:
             if max_checked_rows is not None and checked_rows >= max_checked_rows:
                 break
-            reg_no = (row.get("reg_no") or "").strip()
+            reg_no = _bare_registration_no(row.get("reg_no") or "")
             if not reg_no:
                 continue
+            row["reg_no"] = reg_no
             checked_rows += 1
+
+            reg_key = reg_no.upper()
+            if reg_key in seen_reg_nos:
+                _publish_progress()
+                continue
+            seen_reg_nos.add(reg_key)
+
             if check_existing and get_project_by_key(generate_project_key(reg_no)):
                 skipped_existing += 1
                 skipped_existing_total += 1
@@ -378,20 +613,21 @@ def _scrape_project_list(
 
     try:
         page = page_adapter(_session())
+        _install_getprojects_tracker(page)
         logger.info("Starting Rajasthan listing scrape", step="timing")
         _flush_progress_logs(logger)
+        _reset_getprojects_tracker(page)
         page.goto(LISTING_PAGE_URL, timeout=60_000)
 
-        # Wait for Angular DataTable to render
-        try:
-            page.wait_for_selector(
-                "table[datatable], table.dataTable, #project-list-table, table tbody tr",
-                timeout=30_000,
-            )
-        except Exception:
-            logger.warning("DataTables table not found — listing may be empty")
+        # Wait for the public Angular page's own GetProjects request before
+        # parsing rows. This only observes browser network activity.
+        if not _wait_for_getprojects_request(page, logger, timeout=60_000):
             return projects, checked_rows, skipped_existing_total
-        page.wait_for_load_state("networkidle", timeout=30_000)
+        if not _wait_for_listing_table(page, logger, timeout=30_000):
+            return projects, checked_rows, skipped_existing_total
+        _set_listing_page_size_to_max(page, logger)
+        if not _wait_for_listing_table(page, logger, timeout=30_000):
+            return projects, checked_rows, skipped_existing_total
 
         # ── Extract rows then paginate through every page ─────────────────
         # Selector covers: DataTables classic, Bootstrap 3/4/5,
@@ -494,6 +730,7 @@ def _scrape_project_list(
                     pass
 
                 _before = checked_rows
+                _seen_before = len(seen_reg_nos)
                 _click_locator_stably(page, next_btn, timeout=15_000)
                 page.wait_for_load_state("networkidle", timeout=15_000)
                 page.wait_for_timeout(1_000)
@@ -516,7 +753,7 @@ def _scrape_project_list(
 
                 # Guard: stop if no new data arrived (disabled button stayed
                 # visible, or click had no effect).
-                if checked_rows == _before:
+                if len(seen_reg_nos) == _seen_before:
                     _stall_guard += 1
                     if _stall_guard >= 2:
                         logger.warning("Pagination stalled (no new rows) — stopping")
@@ -1475,7 +1712,7 @@ def _navigate_to_project_detail(page, reg_no: str, logger: CrawlerLogger) -> str
     # The reg_no extracted from the listing table may carry a date suffix such as
     # " (28/04/2026)".  The site's search input expects only the bare number, e.g.
     # "RAJ/P/2025/4508".  Strip any trailing parenthesised group before searching.
-    search_reg_no = re.sub(r"\s*\([^)]*\)\s*$", "", reg_no).strip()
+    search_reg_no = _bare_registration_no(reg_no)
 
     try:
         page.goto(LISTING_PAGE_URL, timeout=60_000)
@@ -1528,40 +1765,6 @@ def _navigate_to_project_detail(page, reg_no: str, logger: CrawlerLogger) -> str
     except Exception as exc:
         logger.error(f"Navigation to detail failed for {reg_no}: {exc}")
         return ""
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
@@ -1651,6 +1854,8 @@ def _sentinel_check(config: dict, run_id: int, logger: CrawlerLogger) -> bool:
     return True
 
 
+# ── Phase B: detail traversal and persistence helpers ────────────────────────
+
 def _handle_document(project_key: str, doc: dict, run_id: int,
                      site_id: str, logger: CrawlerLogger,
                      client=None) -> dict | None:
@@ -1688,6 +1893,219 @@ def _handle_document(project_key: str, doc: dict, run_id: int,
         return None
 
 
+def _listing_seed_data(proj: dict) -> dict:
+    """Convert one listing table row into normalized base project fields."""
+    data: dict = {}
+    for list_f, schema_f in _LIST_API_TO_FIELD.items():
+        val = str(proj.get(list_f, "") or "").strip()
+        if not val:
+            continue
+        if schema_f == "project_registration_no":
+            val = _bare_registration_no(val)
+        elif schema_f.endswith("_date"):
+            val = _normalize_date_str(val) or val
+        elif schema_f == "project_type":
+            val = _normalize_project_type(val)
+        data[schema_f] = val
+    return data
+
+
+def _open_project_detail_page(detail_page, proj: dict, reg_no: str,
+                              logger: CrawlerLogger) -> str:
+    """
+    Open the detail page for a listing row via Selenium.
+
+    The lister only reads row data/hrefs. Actual detail navigation is isolated
+    here so light crawls can skip existing rows before any detail link is opened.
+    """
+    detail_url = (proj.get("detail_url") or "").strip()
+    if detail_url:
+        detail_page.goto(detail_url, timeout=60_000, wait_until="domcontentloaded")
+        try:
+            detail_page.wait_for_load_state("networkidle", timeout=20_000)
+        except Exception:
+            pass
+        return detail_url
+    return _navigate_to_project_detail(detail_page, reg_no, logger)
+
+
+def _process_project_detail(
+    proj: dict,
+    *,
+    index: int,
+    total_projects: int,
+    detail_page,
+    config: dict,
+    run_id: int,
+    site_id: str,
+    logger: CrawlerLogger,
+    machine_name: str,
+    machine_ip: str,
+    client=None,
+) -> tuple[str, int, str, int]:
+    """Detail-stage workflow: navigate, parse, validate/upsert, then documents."""
+    reg_no = _bare_registration_no(proj.get("reg_no") or f"RJ-{index}")
+    key = generate_project_key(reg_no)
+    display_index = index + 1
+    validation_error_count = 0
+
+    logger.info(
+        f"Project {display_index}/{total_projects}: starting detail scrape",
+        step="timing",
+        project_index=display_index,
+        total_projects=total_projects,
+    )
+    _flush_progress_logs(logger)
+
+    data = _listing_seed_data({**proj, "reg_no": reg_no})
+    detail_url = _open_project_detail_page(detail_page, proj, reg_no, logger)
+    logger.info(
+        f"Project {display_index}/{total_projects}: detail navigation complete",
+        step="timing",
+        project_index=display_index,
+        total_projects=total_projects,
+        detail_url=detail_url,
+    )
+    _flush_progress_logs(logger)
+
+    detail_fields: dict = {}
+    doc_links: list[dict] = []
+    if detail_url:
+        detail_fields, doc_links = _scrape_detail_html_via_browser(
+            detail_page, reg_no, logger)
+    logger.info(
+        f"Project {display_index}/{total_projects}: detail parse complete "
+        f"({len(detail_fields)} fields, {len(doc_links)} docs)",
+        step="timing",
+        project_index=display_index,
+        total_projects=total_projects,
+        field_count=len(detail_fields),
+        document_count=len(doc_links),
+    )
+    _flush_progress_logs(logger)
+
+    # Detail page fields override listing fields because they are more complete.
+    data.update(detail_fields)
+    project_url = detail_url or LISTING_PAGE_URL
+    data.update({
+        "key":              key,                              # FIELD: key <- generate_project_key(reg_no)
+        "state":            config["state"],                  # FIELD: state <- config["state"]
+        "project_state":    "Rajasthan",                      # FIELD: project_state <- literal "Rajasthan"
+        "domain":           DOMAIN,                           # FIELD: domain <- module DOMAIN constant
+        "config_id":        config["config_id"],              # FIELD: config_id <- config["config_id"]
+        "url":              project_url,                      # FIELD: url <- detail_url or LISTING_PAGE_URL
+        "is_live":          True,                             # FIELD: is_live <- literal True
+        "machine_name":     machine_name,                     # FIELD: machine_name <- get_machine_context()
+        "crawl_machine_ip": machine_ip,                       # FIELD: crawl_machine_ip <- get_machine_context()
+    })
+
+    # FIELD: data.govt_type <- literal "state"
+    # FIELD: data.is_processed <- literal False
+    prod_data_fields: dict = {"govt_type": "state", "is_processed": False}
+    if detail_url:
+        prod_data_fields["details_page"]           = detail_url            # FIELD: data.details_page <- detail_url
+        # FIELD: data.land_area_unit <- literal "In sq. meters"
+        prod_data_fields["land_area_unit"]         = "In sq. meters"
+        # FIELD: data.construction_area_unit <- literal "in sq. meters"
+        prod_data_fields["construction_area_unit"] = "in sq. meters"
+
+    _proj_type = data.get("project_type", "")
+    if _proj_type:
+        prod_data_fields["type"] = _proj_type.replace("-", " ").title()  # FIELD: data.type <- data["project_type"] title-cased
+
+    _sub_date = data.get("submitted_date", "")
+    _reg_no_for_temp = data.get("project_registration_no", reg_no)
+    if _sub_date and _reg_no_for_temp:
+        try:
+            _dt = datetime.fromisoformat(_sub_date.replace("+00:00", ""))
+            prod_data_fields["temp"] = (  # FIELD: data.temp <- f"{project_registration_no} ({submitted_date dd/mm/yyyy})"
+                f"{_reg_no_for_temp} ({_dt.strftime('%d/%m/%Y')})"
+            )
+        except (ValueError, TypeError):
+            pass
+
+    _pb_name    = data.get("promoter_name", "")
+    _pb_contact = data.get("promoter_contact_details") or {}
+    _pb_phone   = _pb_contact.get("phone", "")
+    _pb_email   = _pb_contact.get("email", "")
+    _promoter_block = [x for x in [_pb_name, _pb_phone, _pb_email] if x]
+    if _promoter_block:
+        prod_data_fields["promoter_block"] = _promoter_block  # FIELD: data.promoter_block <- [promoter_name, phone, email]
+
+    data["data"] = merge_data_sections(  # FIELD: data <- merge_data_sections(prod_data_fields, {source, detail_url})
+        prod_data_fields,
+        # FIELD: data.source <- literal "selenium_html"
+        # FIELD: data.detail_url <- detail_url
+        {"source": "selenium_html", "detail_url": detail_url},
+    )
+
+    logger.info("Normalizing and validating", step="normalize")
+    try:
+        normalized = normalize_project_payload(
+            data, config, machine_name=machine_name, machine_ip=machine_ip)
+        record  = ProjectRecord(**normalized)
+        db_dict = record.to_db_dict()
+    except (ValidationError, ValueError) as e:
+        logger.warning("Validation failed — raw fallback", error=str(e))
+        insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(e),
+                           project_key=key, url=detail_url, raw_data=data)
+        validation_error_count = 1
+        db_dict = normalize_project_payload(
+            {**data, "data": {"validation_fallback": True,
+                              "raw": data.get("data")}},
+            config, machine_name=machine_name, machine_ip=machine_ip,
+        )
+
+    action = upsert_project(db_dict)
+    logger.info(f"DB result: {action}", step="db_upsert")
+
+    documents_uploaded = 0
+    if doc_links and settings.SKIP_DOCUMENTS:
+        logger.info(
+            f"Skipping {len(doc_links)} documents (--skip-documents)",
+            step="documents",
+        )
+    elif doc_links:
+        logger.info(f"Downloading {len(doc_links)} documents", step="documents")
+        uploaded_documents = []
+        doc_name_counts: dict[str, int] = {}
+        for doc in doc_links:
+            selected_doc = select_document_for_download(
+                config["state"], doc, doc_name_counts, domain=DOMAIN)
+            if selected_doc:
+                uploaded_doc = _handle_document(
+                    key, selected_doc, run_id, site_id, logger, client=client)
+                if uploaded_doc:
+                    uploaded_documents.append(uploaded_doc)
+                    documents_uploaded += 1
+                else:
+                    uploaded_documents.append(
+                        # FIELD: uploaded_documents.link <- doc["url"]
+                        # FIELD: uploaded_documents.type <- doc["label"] (fallback "document")
+                        {"link": doc.get("url"), "type": doc.get("label", "document")})
+            else:
+                uploaded_documents.append(
+                    # FIELD: uploaded_documents.link <- doc["url"]
+                    # FIELD: uploaded_documents.type <- doc["label"] (fallback "document")
+                    {"link": doc.get("url"), "type": doc.get("label", "document")})
+        if uploaded_documents:
+            upsert_project({
+                # FIELD: key <- db_dict["key"]
+                # FIELD: url <- db_dict["url"]
+                "key": db_dict["key"], "url": db_dict["url"],
+                # FIELD: state <- db_dict["state"]
+                # FIELD: domain <- db_dict["domain"]
+                "state": db_dict["state"], "domain": db_dict["domain"],
+                # FIELD: project_registration_no <- db_dict["project_registration_no"]
+                "project_registration_no": db_dict["project_registration_no"],
+                "uploaded_documents": uploaded_documents,  # FIELD: uploaded_documents <- list of handled/fallback doc entries
+                # FIELD: document_urls <- build_document_urls(uploaded_documents)
+                "document_urls": build_document_urls(uploaded_documents),
+            })
+
+    return action, documents_uploaded, detail_url, validation_error_count
+
+
 def run(config: dict, run_id: int, mode: str) -> dict:
     """Public entry point — ensures the Selenium driver is shut down after the run."""
     try:
@@ -1697,13 +2115,21 @@ def run(config: dict, run_id: int, mode: str) -> dict:
 
 
 def _run(config: dict, run_id: int, mode: str) -> dict:
-    """Pure Selenium crawl: listing scrape + per-project detail page scraping."""
+    """
+    Rajasthan crawl workflow.
+
+    1. Optional sentinel health check for full runs.
+    2. Listing traversal only: wait for GetProjects, maximize page size,
+       paginate, and collect candidate rows.
+    3. Detail traversal only for candidates. In daily_light, existing DB rows
+       are skipped before any detail URL is opened.
+    4. Normalize/upsert project data, then process documents if enabled.
+    """
     logger   = CrawlerLogger(config["id"], run_id)
     site_id  = config["id"]
     counts   = dict(projects_found=0, projects_new=0, projects_updated=0,
                     projects_skipped=0, documents_uploaded=0, error_count=0)
     item_limit      = settings.CRAWL_ITEM_LIMIT or 0
-    items_processed = 0
     machine_name, machine_ip = get_machine_context()
     t_run = time.monotonic()
 
@@ -1729,10 +2155,6 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             return counts
         counts["sentinel_passed"] = True
         logger.timing("sentinel", time.monotonic() - t0)
-
-    checkpoint       = load_checkpoint(site_id, mode) or {}
-    resume_after_key = checkpoint.get("last_project_key")
-    resume_pending   = bool(resume_after_key)
 
     # ── Phase A: Lister — inspect visible reg_nos via Selenium listing scrape ─
     # In daily_light, the lister checks the DB while paging and only returns
@@ -1795,10 +2217,10 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     if target_regs:
         listed_projects = [
             p for p in listed_projects
-            if (p.get("reg_no") or "").strip().upper() in target_regs
+            if _bare_registration_no(p.get("reg_no") or "").upper() in target_regs
         ]
         matched_regs = {
-            (p.get("reg_no") or "").strip().upper() for p in listed_projects
+            _bare_registration_no(p.get("reg_no") or "").upper() for p in listed_projects
         }
         for missing in sorted(target_regs - matched_regs):
             logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
@@ -1820,226 +2242,56 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         )
     logger.timing("search", time.monotonic() - t0, rows=counts["projects_found"])
 
+    # ── Phase B: detail traversal — only candidates from the lister get opened ─
     # Document downloads share the module-level SeleniumSession.
     session = None  # signature compatibility for _handle_document(...)
+    detail_page = page_adapter(_session())
+    total_projects = len(listed_projects)
 
-    # Phase 2: scrape each project detail page via Selenium
-    if True:
-        detail_page = page_adapter(_session())
-        total_projects = len(listed_projects)
+    for i, proj in enumerate(listed_projects):
+        reg_no = _bare_registration_no(proj.get("reg_no") or f"RJ-{i}")
+        key = generate_project_key(reg_no)
+        detail_url = (proj.get("detail_url") or "").strip()
+        logger.set_project(key=key, reg_no=reg_no, url=LISTING_PAGE_URL, page=i)
 
-        for i, proj in enumerate(listed_projects):
-            reg_no = proj.get("reg_no") or f"RJ-{i}"
-            key    = generate_project_key(reg_no)
-            if resume_pending:
-                if key == resume_after_key:
-                    resume_pending = False
-                counts["projects_skipped"] += 1
-                continue
+        if mode == "daily_light" and get_project_by_key(key):
+            logger.info("Skipping — already in DB (daily_light)", step="skip")
+            counts["projects_skipped"] += 1
+            logger.clear_project()
+            update_crawl_run_progress(run_id, counts)
+            continue
 
-            logger.set_project(key=key, reg_no=reg_no, url=LISTING_PAGE_URL, page=i)
+        try:
+            action, uploaded_count, detail_url, validation_errors = _process_project_detail(
+                proj,
+                index=i,
+                total_projects=total_projects,
+                detail_page=detail_page,
+                config=config,
+                run_id=run_id,
+                site_id=site_id,
+                logger=logger,
+                machine_name=machine_name,
+                machine_ip=machine_ip,
+                client=session,
+            )
+            if action == "new":
+                counts["projects_new"] += 1
+            else:
+                counts["projects_updated"] += 1
+            counts["documents_uploaded"] += uploaded_count
+            counts["error_count"] += validation_errors
+            random_delay(*config.get("rate_limit_delay", (1, 3)))
+        except Exception as exc:
+            logger.exception("Project processing failed", exc, step="project_loop",
+                             reg_no=reg_no)
+            insert_crawl_error(run_id, site_id, "PROJECT_ERROR", str(exc),
+                               project_key=key, url=detail_url or LISTING_PAGE_URL)
+            counts["error_count"] += 1
+        finally:
+            logger.clear_project()
+            update_crawl_run_progress(run_id, counts)
 
-            if mode == "daily_light" and get_project_by_key(key):
-                logger.info("Skipping — already in DB (daily_light)", step="skip")
-                counts["projects_skipped"] += 1
-                logger.clear_project()
-                continue
-
-            detail_url = ""
-            try:
-                logger.info(
-                    f"Project {i + 1}/{total_projects}: starting detail scrape",
-                    step="timing",
-                    project_index=i + 1,
-                    total_projects=total_projects,
-                )
-                _flush_progress_logs(logger)
-
-                # Seed with listing-level fields from the HTML table
-                data: dict = {}
-                for list_f, schema_f in _LIST_API_TO_FIELD.items():
-                    val = str(proj.get(list_f, "") or "").strip()
-                    if val:
-                        if schema_f.endswith("_date"):
-                            val = _normalize_date_str(val) or val
-                        elif schema_f == "project_type":
-                            val = _normalize_project_type(val)
-                        data[schema_f] = val
-
-                # Prefer the listing row's View URL. Falling back to listing search
-                # is much slower and should only happen if the portal stops exposing
-                # a usable row-level detail link.
-                detail_url = (proj.get("detail_url") or "").strip()
-                if detail_url:
-                    detail_page.goto(detail_url, timeout=60_000, wait_until="domcontentloaded")
-                    try:
-                        detail_page.wait_for_load_state("networkidle", timeout=20_000)
-                    except Exception:
-                        pass
-                else:
-                    detail_url = _navigate_to_project_detail(detail_page, reg_no, logger)
-                logger.info(
-                    f"Project {i + 1}/{total_projects}: detail navigation complete",
-                    step="timing",
-                    project_index=i + 1,
-                    total_projects=total_projects,
-                    detail_url=detail_url,
-                )
-                _flush_progress_logs(logger)
-
-                # Scrape rich detail from the rendered detail page
-                detail_fields: dict = {}
-                doc_links: list[dict] = []
-                if detail_url:
-                    detail_fields, doc_links = _scrape_detail_html_via_browser(
-                        detail_page, reg_no, logger)
-                logger.info(
-                    f"Project {i + 1}/{total_projects}: detail parse complete "
-                    f"({len(detail_fields)} fields, {len(doc_links)} docs)",
-                    step="timing",
-                    project_index=i + 1,
-                    total_projects=total_projects,
-                    field_count=len(detail_fields),
-                    document_count=len(doc_links),
-                )
-                _flush_progress_logs(logger)
-                # Detail page fields override listing fields (more authoritative)
-                data.update(detail_fields)
-
-                project_url = detail_url or LISTING_PAGE_URL
-                data.update({
-                    "key":              key,                              # FIELD: key <- generate_project_key(reg_no)
-                    "state":            config["state"],                  # FIELD: state <- config["state"]
-                    "project_state":    "Rajasthan",                      # FIELD: project_state <- literal "Rajasthan"
-                    "domain":           DOMAIN,                           # FIELD: domain <- module DOMAIN constant
-                    "config_id":        config["config_id"],              # FIELD: config_id <- config["config_id"]
-                    "url":              project_url,                      # FIELD: url <- detail_url or LISTING_PAGE_URL
-                    "is_live":          True,                             # FIELD: is_live <- literal True
-                    "machine_name":     machine_name,                     # FIELD: machine_name <- get_machine_context()
-                    "crawl_machine_ip": machine_ip,                       # FIELD: crawl_machine_ip <- get_machine_context()
-                })
-
-                # FIELD: data.govt_type <- literal "state"
-                # FIELD: data.is_processed <- literal False
-                prod_data_fields: dict = {"govt_type": "state", "is_processed": False}
-                if detail_url:
-                    prod_data_fields["details_page"]           = detail_url            # FIELD: data.details_page <- detail_url
-                    # FIELD: data.land_area_unit <- literal "In sq. meters"
-                    prod_data_fields["land_area_unit"]         = "In sq. meters"
-                    # FIELD: data.construction_area_unit <- literal "in sq. meters"
-                    prod_data_fields["construction_area_unit"] = "in sq. meters"
-
-                _proj_type = data.get("project_type", "")
-                if _proj_type:
-                    prod_data_fields["type"] = _proj_type.replace("-", " ").title()  # FIELD: data.type <- data["project_type"] title-cased
-
-                _sub_date = data.get("submitted_date", "")
-                _reg_no_for_temp = data.get("project_registration_no", reg_no)
-                if _sub_date and _reg_no_for_temp:
-                    try:
-                        _dt = datetime.fromisoformat(_sub_date.replace("+00:00", ""))
-                        prod_data_fields["temp"] = (  # FIELD: data.temp <- f"{project_registration_no} ({submitted_date dd/mm/yyyy})"
-                            f"{_reg_no_for_temp} ({_dt.strftime('%d/%m/%Y')})"
-                        )
-                    except (ValueError, TypeError):
-                        pass
-
-                _pb_name    = data.get("promoter_name", "")
-                _pb_contact = data.get("promoter_contact_details") or {}
-                _pb_phone   = _pb_contact.get("phone", "")
-                _pb_email   = _pb_contact.get("email", "")
-                _promoter_block = [x for x in [_pb_name, _pb_phone, _pb_email] if x]
-                if _promoter_block:
-                    prod_data_fields["promoter_block"] = _promoter_block  # FIELD: data.promoter_block <- [promoter_name, phone, email]
-
-                data["data"] = merge_data_sections(  # FIELD: data <- merge_data_sections(prod_data_fields, {source, detail_url})
-                    prod_data_fields,
-                    # FIELD: data.source <- literal "selenium_html"
-                    # FIELD: data.detail_url <- detail_url
-                    {"source": "selenium_html", "detail_url": detail_url},
-                )
-
-                logger.info("Normalizing and validating", step="normalize")
-                try:
-                    normalized = normalize_project_payload(
-                        data, config, machine_name=machine_name, machine_ip=machine_ip)
-                    record  = ProjectRecord(**normalized)
-                    db_dict = record.to_db_dict()
-                except (ValidationError, ValueError) as e:
-                    logger.warning("Validation failed — raw fallback", error=str(e))
-                    insert_crawl_error(run_id, site_id, "VALIDATION_FAILED", str(e),
-                                       project_key=key, url=detail_url, raw_data=data)
-                    counts["error_count"] += 1
-                    db_dict = normalize_project_payload(
-                        {**data, "data": {"validation_fallback": True,
-                                          "raw": data.get("data")}},
-                        config, machine_name=machine_name, machine_ip=machine_ip,
-                    )
-
-                action = upsert_project(db_dict)
-                items_processed += 1
-                if action == "new": counts["projects_new"] += 1
-                else:               counts["projects_updated"] += 1
-                logger.info(f"DB result: {action}", step="db_upsert")
-
-                if doc_links and settings.SKIP_DOCUMENTS:
-                    logger.info(
-                        f"Skipping {len(doc_links)} documents (--skip-documents)",
-                        step="documents",
-                    )
-                elif doc_links:
-                    logger.info(f"Downloading {len(doc_links)} documents", step="documents")
-                    uploaded_documents = []
-                    doc_name_counts: dict[str, int] = {}
-                    for doc in doc_links:
-                        selected_doc = select_document_for_download(
-                            config["state"], doc, doc_name_counts, domain=DOMAIN)
-                        if selected_doc:
-                            uploaded_doc = _handle_document(
-                                key, selected_doc, run_id, site_id, logger, client=session)
-                            if uploaded_doc:
-                                uploaded_documents.append(uploaded_doc)
-                                counts["documents_uploaded"] += 1
-                            else:
-                                uploaded_documents.append(
-                                    # FIELD: uploaded_documents.link <- doc["url"]
-                                    # FIELD: uploaded_documents.type <- doc["label"] (fallback "document")
-                                    {"link": doc.get("url"), "type": doc.get("label", "document")})
-                        else:
-                            uploaded_documents.append(
-                                # FIELD: uploaded_documents.link <- doc["url"]
-                                # FIELD: uploaded_documents.type <- doc["label"] (fallback "document")
-                                {"link": doc.get("url"), "type": doc.get("label", "document")})
-                    if uploaded_documents:
-                        upsert_project({
-                            # FIELD: key <- db_dict["key"]
-                            # FIELD: url <- db_dict["url"]
-                            "key": db_dict["key"], "url": db_dict["url"],
-                            # FIELD: state <- db_dict["state"]
-                            # FIELD: domain <- db_dict["domain"]
-                            "state": db_dict["state"], "domain": db_dict["domain"],
-                            # FIELD: project_registration_no <- db_dict["project_registration_no"]
-                            "project_registration_no": db_dict["project_registration_no"],
-                            "uploaded_documents": uploaded_documents,  # FIELD: uploaded_documents <- list of handled/fallback doc entries
-                            # FIELD: document_urls <- build_document_urls(uploaded_documents)
-                            "document_urls": build_document_urls(uploaded_documents),
-                        })
-
-                if i % 100 == 0:
-                    save_checkpoint(site_id, mode, i, key, run_id)
-                random_delay(*config.get("rate_limit_delay", (1, 3)))
-
-            except Exception as exc:
-                logger.exception("Project processing failed", exc, step="project_loop",
-                                 reg_no=reg_no)
-                insert_crawl_error(run_id, site_id, "PROJECT_ERROR", str(exc),
-                                   project_key=key, url=detail_url or LISTING_PAGE_URL)
-                counts["error_count"] += 1
-            finally:
-                logger.clear_project()
-                update_crawl_run_progress(run_id, counts)
-
-    reset_checkpoint(site_id, mode)
     logger.info(f"Rajasthan RERA complete: {counts}")
     logger.timing("total_run", time.monotonic() - t_run)
     return counts

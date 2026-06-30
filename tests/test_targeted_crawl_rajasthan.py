@@ -48,6 +48,10 @@ class RajasthanTargetedCrawlTests(unittest.TestCase):
             {"reg_no": "RAJ/P/2020/0003", "project_name": "Gamma"},
         ]
 
+    def _listing_result(self, rows: list[dict] | None = None, skipped: int = 0):
+        rows = self._rows() if rows is None else rows
+        return rows, len(self._rows()), skipped
+
     def _run_with_target(self, target: str):
         settings.TARGET_REG_NO = target
         processed_regs: list[str] = []
@@ -61,11 +65,8 @@ class RajasthanTargetedCrawlTests(unittest.TestCase):
             mock.patch.object(rajasthan_rera, "_session", return_value=mock.MagicMock()),
             mock.patch.object(rajasthan_rera, "page_adapter", return_value=mock.MagicMock()),
             mock.patch.object(rajasthan_rera, "_sentinel_check", sentinel),
-            mock.patch.object(rajasthan_rera, "_scrape_project_list", return_value=self._rows()),
+            mock.patch.object(rajasthan_rera, "_scrape_project_list", return_value=self._listing_result()),
             mock.patch.object(rajasthan_rera, "_navigate_to_project_detail", return_value=""),
-            mock.patch.object(rajasthan_rera, "load_checkpoint", return_value={}),
-            mock.patch.object(rajasthan_rera, "save_checkpoint"),
-            mock.patch.object(rajasthan_rera, "reset_checkpoint"),
             mock.patch.object(rajasthan_rera, "random_delay"),
             mock.patch.object(rajasthan_rera, "update_crawl_run_progress"),
             mock.patch.object(rajasthan_rera, "get_project_by_key", return_value=None),
@@ -138,12 +139,9 @@ class RajasthanTargetedCrawlTests(unittest.TestCase):
             mock.patch.object(rajasthan_rera, "_session", return_value=mock.MagicMock()),
             mock.patch.object(rajasthan_rera, "page_adapter", return_value=mock.MagicMock()),
             mock.patch.object(rajasthan_rera, "_sentinel_check"),
-            mock.patch.object(rajasthan_rera, "_scrape_project_list", return_value=self._rows()),
+            mock.patch.object(rajasthan_rera, "_scrape_project_list", return_value=self._listing_result()),
             mock.patch.object(rajasthan_rera, "_navigate_to_project_detail", return_value="https://example.test/detail"),
             mock.patch.object(rajasthan_rera, "_scrape_detail_html_via_browser", return_value=(detail_fields, doc_links)),
-            mock.patch.object(rajasthan_rera, "load_checkpoint", return_value={}),
-            mock.patch.object(rajasthan_rera, "save_checkpoint"),
-            mock.patch.object(rajasthan_rera, "reset_checkpoint"),
             mock.patch.object(rajasthan_rera, "random_delay"),
             mock.patch.object(rajasthan_rera, "update_crawl_run_progress"),
             mock.patch.object(rajasthan_rera, "get_project_by_key", return_value=None),
@@ -175,6 +173,37 @@ class RajasthanTargetedCrawlTests(unittest.TestCase):
         self.assertEqual(len(upsert_payloads), 1)
         self.assertNotIn("uploaded_documents", upsert_payloads[0])
         self.assertNotIn("document_urls", upsert_payloads[0])
+
+    def test_daily_light_returns_before_detail_when_all_rows_exist(self):
+        settings.TARGET_REG_NO = ""
+        navigate = mock.MagicMock()
+        rows = []
+        patches = [
+            mock.patch.object(rajasthan_rera, "_session", return_value=mock.MagicMock()),
+            mock.patch.object(rajasthan_rera, "page_adapter", return_value=mock.MagicMock()),
+            mock.patch.object(rajasthan_rera, "_sentinel_check"),
+            mock.patch.object(
+                rajasthan_rera,
+                "_scrape_project_list",
+                return_value=self._listing_result(rows=rows, skipped=3),
+            ),
+            mock.patch.object(rajasthan_rera, "_navigate_to_project_detail", navigate),
+            mock.patch.object(rajasthan_rera, "update_crawl_run_progress"),
+            mock.patch.object(rajasthan_rera, "get_machine_context", return_value=("host", "127.0.0.1")),
+        ]
+        with ExitStack() as stack:
+            for patcher in patches:
+                stack.enter_context(patcher)
+            counts = rajasthan_rera.run(
+                {"id": "rajasthan_rera", "state": "Rajasthan", "config_id": 1},
+                run_id=123,
+                mode="daily_light",
+            )
+
+        navigate.assert_not_called()
+        self.assertEqual(counts["projects_found"], 3)
+        self.assertEqual(counts["projects_skipped"], 3)
+        self.assertEqual(counts["projects_new"], 0)
 
 
 if __name__ == "__main__":
