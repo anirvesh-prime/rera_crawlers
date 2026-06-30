@@ -638,6 +638,38 @@ def _parse_viewproject_html(soup: BeautifulSoup) -> dict:  # noqa: C901
                 kv[cells[0]] = cells[1]
         return kv
 
+    def _parse_allottee_building_details() -> list[dict]:
+        text = soup.get_text("\n", strip=True)
+        pattern = re.compile(
+            r"Building\s*:\s*(?P<building>.*?)\s*"
+            r"\(\s*Apartment\s*:\s*(?P<apartment>.*?)\s*,\s*"
+            r"Block\s*:\s*(?P<block>.*?)\s*,\s*"
+            r"Carpet\s+Area\s*:\s*(?P<carpet>[\d.]+)\s*sq\.?\s*meters?\s*\)\s*"
+            r"Number\s+Of\s+Apartments\s*:\s*(?P<total>\d+)\s*,\s*"
+            r"Booked\s*:\s*(?P<booked>\d+)",
+            re.I | re.S,
+        )
+        units: list[dict] = []
+        seen: set[tuple[str, str, str, str, str]] = set()
+        for match in pattern.finditer(text):
+            flat_type = _clean(match.group("apartment"))
+            block = _clean(match.group("block"))
+            carpet = _clean(match.group("carpet"))
+            total = _clean(match.group("total"))
+            booked = _clean(match.group("booked"))
+            key = (flat_type, block, carpet, total, booked)
+            if key in seen:
+                continue
+            seen.add(key)
+            units.append({
+                "flat_type": flat_type,
+                "block_name": block,
+                "carpet_area": carpet,
+                "no_of_units": total,
+                "booking_detail": booked,
+            })
+        return units
+
     # ── Bank details ──────────────────────────────────────────────────────────
     bank_tbl = _find_table("detail of separate bank account")
     if bank_tbl:
@@ -779,35 +811,42 @@ def _parse_viewproject_html(soup: BeautifulSoup) -> dict:  # noqa: C901
         break
 
     # ── Building / apartment details ──────────────────────────────────────────
-    bldg_tbl = _find_table("building details")
-    if bldg_tbl:
-        rows = bldg_tbl.find_all("tr")
-        hdrs: list[str] = []
-        units: list[dict] = []
-        for tr in rows:
-            cells = [_clean(td.get_text()) for td in tr.find_all(["td", "th"])]
-            if not cells or not any(cells):
-                continue
-            if "apartment type" in cells[0].lower() and not hdrs:
-                hdrs = [c.lower() for c in cells]
-                continue
-            if hdrs and len(cells) >= 3:
-                u: dict = {}
-                for i, h in enumerate(hdrs[:len(cells)]):
-                    v = cells[i] if i < len(cells) else ""
-                    if not v or v == "View":
-                        continue
-                    if "apartment type" in h:       u["flat_type"]     = v  # FIELD: building_details.flat_type <- bldg_tbl "apartment type"
-                    elif "block number" in h:       u["block_name"]    = v  # FIELD: building_details.block_name <- bldg_tbl "block number"
-                    elif "carpet area" in h:        u["carpet_area"]   = v  # FIELD: building_details.carpet_area <- bldg_tbl "carpet area"
-                    elif "balcony" in h:            u["balcony_area"]  = v  # FIELD: building_details.balcony_area <- bldg_tbl "balcony"
-                    elif "terrace" in h:            u["open_area"]     = v  # FIELD: building_details.open_area <- bldg_tbl "terrace"
-                    # FIELD: building_details.no_of_units <- bldg_tbl "proposed number"
-                    elif "proposed number" in h:    u["no_of_units"]   = v
-                if u.get("flat_type") and u.get("carpet_area"):
-                    units.append(u)
-        if units:
-            out["building_details"] = units  # FIELD: building_details <- ViewProject "building details" table
+    # Prefer Allottee Details summaries. They contain one stable row per unit
+    # type, while the Building Details table nests allottee/document rows and can
+    # shift columns in the rendered HTML.
+    allottee_units = _parse_allottee_building_details()
+    if allottee_units:
+        out["building_details"] = allottee_units  # FIELD: building_details <- Allottee Details "Building : ..." summaries
+    else:
+        bldg_tbl = _find_table("building details")
+        if bldg_tbl:
+            rows = bldg_tbl.find_all("tr")
+            hdrs: list[str] = []
+            units: list[dict] = []
+            for tr in rows:
+                cells = [_clean(td.get_text()) for td in tr.find_all(["td", "th"])]
+                if not cells or not any(cells):
+                    continue
+                if "apartment type" in cells[0].lower() and not hdrs:
+                    hdrs = [c.lower() for c in cells]
+                    continue
+                if hdrs and len(cells) >= 3:
+                    u: dict = {}
+                    for i, h in enumerate(hdrs[:len(cells)]):
+                        v = cells[i] if i < len(cells) else ""
+                        if not v or v == "View":
+                            continue
+                        if "apartment type" in h:       u["flat_type"]     = v  # FIELD: building_details.flat_type <- bldg_tbl "apartment type"
+                        elif "block number" in h:       u["block_name"]    = v  # FIELD: building_details.block_name <- bldg_tbl "block number"
+                        elif "carpet area" in h:        u["carpet_area"]   = v  # FIELD: building_details.carpet_area <- bldg_tbl "carpet area"
+                        elif "balcony" in h:            u["balcony_area"]  = v  # FIELD: building_details.balcony_area <- bldg_tbl "balcony"
+                        elif "terrace" in h:            u["open_area"]     = v  # FIELD: building_details.open_area <- bldg_tbl "terrace"
+                        # FIELD: building_details.no_of_units <- bldg_tbl "proposed number"
+                        elif "proposed number" in h:    u["no_of_units"]   = v
+                    if u.get("flat_type") and u.get("carpet_area"):
+                        units.append(u)
+            if units:
+                out["building_details"] = units  # FIELD: building_details <- ViewProject "building details" table
 
     # ── Professional information ───────────────────────────────────────────────
     # Tables with e-mail/name/contact-number headers, preceded by a role heading

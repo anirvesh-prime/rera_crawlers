@@ -33,17 +33,213 @@ import socket
 import subprocess
 import time
 import traceback as tb_module
+import shlex
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
 from core.config import settings
 from core.crawler_base import close_shared_http_clients
-from core.db import insert_crawl_run, update_crawl_run, insert_crawl_error
+from core.db import insert_crawl_error, insert_crawl_run, update_crawl_run
 from core.logger import CrawlerLogger
+from core.repair_state import create_repair_attempt, update_repair_attempt
 from sites_config import select_sites
 
 _SEP = "=" * 64
+
+
+def _truncate_text(value: str, limit: int = 24000) -> str:
+    if len(value) <= limit:
+        return value
+    return value[:limit] + f"\n\n[truncated: {len(value) - limit} chars omitted]"
+
+
+def _format_codex_repair_prompt(
+    *,
+    site_cfg: dict,
+    mode: str,
+    run_id: int,
+    status: str,
+    counts: dict,
+    reason: str,
+    traceback: str,
+    tester_output: str,
+) -> str:
+    site_id = site_cfg["id"]
+    module_path = site_cfg.get("crawler_module", "")
+    return f"""You are repairing one crawler in this repository.
+
+Crawler: {site_id}
+Display name: {site_cfg.get("name", site_id)}
+Module: {module_path}
+Mode that failed: {mode}
+Run id: {run_id}
+Final status: {status}
+Failure reason: {reason}
+Counts: {json.dumps(counts, sort_keys=True)}
+
+Hard requirements:
+- Repair only the failing crawler and shared code that is directly necessary for this failure.
+- Do not run broad rewrites or unrelated formatting.
+- Preserve existing crawler output schema and project key behavior.
+- Add or update focused tests when practical.
+- Verify with a targeted tester command before finishing:
+  ./venv/bin/python run_crawlers.py --tester --site {site_id} --mode {mode} --item-limit {settings.CRAWLER_AUTO_REPAIR_TEST_ITEM_LIMIT}
+- If the tester output indicates the portal is temporarily down or blocked rather than code-broken, document that and keep edits minimal.
+- This is the only automatic repair attempt for {site_id}. If you cannot finish confidently, leave a concise explanation in your final response.
+
+Original traceback or failure context:
+```text
+{_truncate_text(traceback or "No traceback captured.", 12000)}
+```
+
+Tester output captured after the failed run:
+```text
+{_truncate_text(tester_output or "No tester output captured.", 24000)}
+```
+"""
+
+
+def _capture_tester_output(site_cfg: dict, mode: str) -> str:
+    cmd = [
+        sys.executable,
+        "-u",
+        "run_crawlers.py",
+        "--tester",
+        "--site",
+        site_cfg["id"],
+        "--mode",
+        mode,
+        "--item-limit",
+        str(settings.CRAWLER_AUTO_REPAIR_TEST_ITEM_LIMIT),
+    ]
+    env = os.environ.copy()
+    env["PYTHONHASHSEED"] = "0"
+    env["PYTHONUNBUFFERED"] = "1"
+    env["CRAWLER_TESTER"] = "true"
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=str(Path(__file__).resolve().parent),
+            env=env,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=settings.CRAWLER_AUTO_REPAIR_TEST_TIMEOUT_S,
+        )
+        return (
+            "$ " + " ".join(cmd) + "\n"
+            f"[exit_code={result.returncode}]\n"
+            + (result.stdout or "")
+        )
+    except subprocess.TimeoutExpired as exc:
+        output = exc.stdout or ""
+        if isinstance(output, bytes):
+            output = output.decode("utf-8", errors="replace")
+        return (
+            "$ " + " ".join(cmd) + "\n"
+            f"[timeout_after={settings.CRAWLER_AUTO_REPAIR_TEST_TIMEOUT_S}s]\n"
+            + output
+        )
+    except Exception as exc:
+        return "$ " + " ".join(cmd) + f"\n[tester_capture_failed] {exc}"
+
+
+def _maybe_auto_repair_crawler(
+    *,
+    site_cfg: dict,
+    mode: str,
+    run_id: int,
+    status: str,
+    counts: dict,
+    reason: str,
+    traceback: str = "",
+    logger: CrawlerLogger | None = None,
+) -> None:
+    if not settings.CRAWLER_AUTO_REPAIR:
+        return
+    if settings.TEST_MODE or settings.CRAWLER_TESTER:
+        return
+
+    site_id = site_cfg["id"]
+    tester_output = _capture_tester_output(site_cfg, mode)
+    prompt = _format_codex_repair_prompt(
+        site_cfg=site_cfg,
+        mode=mode,
+        run_id=run_id,
+        status=status,
+        counts=counts,
+        reason=reason,
+        traceback=traceback,
+        tester_output=tester_output,
+    )
+
+    codex_cmd = [
+        *shlex.split(settings.CRAWLER_AUTO_REPAIR_CODEX_BIN),
+        "exec",
+        "--dangerously-bypass-approvals-and-sandbox",
+        "--skip-git-repo-check",
+        prompt,
+    ]
+    codex_cmd_for_log = " ".join(shlex.quote(part) for part in codex_cmd[:-1]) + " <PROMPT>"
+
+    inserted = create_repair_attempt(
+        site_id=site_id,
+        run_id=run_id,
+        status="running",
+        reason=reason,
+        codex_command=codex_cmd_for_log,
+        prompt=prompt,
+        tester_output=tester_output,
+    )
+    if not inserted:
+        if logger:
+            logger.warning(
+                "Auto repair skipped: crawler already used its one repair attempt; reset on dashboard to allow another",
+                step="auto_repair",
+                site=site_id,
+            )
+        return
+
+    if logger:
+        logger.warning("Auto repair started", step="auto_repair", site=site_id)
+
+    try:
+        result = subprocess.run(
+            codex_cmd,
+            cwd=str(Path(__file__).resolve().parent),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=settings.CRAWLER_AUTO_REPAIR_CODEX_TIMEOUT_S,
+        )
+        output = _truncate_text(result.stdout or "", 64000)
+        final_status = "completed" if result.returncode == 0 else "failed"
+        update_repair_attempt(
+            site_id,
+            final_status,
+            codex_output=output,
+            error_message=None if result.returncode == 0 else f"codex exited {result.returncode}",
+        )
+        if logger:
+            logger.warning(
+                f"Auto repair {final_status}",
+                step="auto_repair",
+                site=site_id,
+                exit_code=result.returncode,
+            )
+    except subprocess.TimeoutExpired as exc:
+        output = exc.stdout or ""
+        if isinstance(output, bytes):
+            output = output.decode("utf-8", errors="replace")
+        update_repair_attempt(
+            site_id,
+            "timeout",
+            codex_output=_truncate_text(output, 64000),
+            error_message=f"codex timed out after {settings.CRAWLER_AUTO_REPAIR_CODEX_TIMEOUT_S}s",
+        )
+    except Exception as exc:
+        update_repair_attempt(site_id, "failed", error_message=str(exc))
 
 
 def _positive_int(value: str) -> int:
@@ -193,6 +389,16 @@ def run_site(site_cfg: dict, mode: str) -> dict:
         sentinel_passed = counts.pop("sentinel_passed", None)
         update_crawl_run(run_id, "completed", counts, sentinel_passed=sentinel_passed, notes=None)
         logger.info("Crawl completed", **counts)
+        if counts.get("error_count", 0) > 0:
+            _maybe_auto_repair_crawler(
+                site_cfg=site_cfg,
+                mode=mode,
+                run_id=run_id,
+                status="completed",
+                counts=counts,
+                reason=f"completed with {counts.get('error_count', 0)} error(s)",
+                logger=logger,
+            )
     except Exception as exc:
         counts["error_count"] += 1
         trace = tb_module.format_exc()
@@ -200,6 +406,16 @@ def run_site(site_cfg: dict, mode: str) -> dict:
         insert_crawl_error(run_id, site_id, "CRAWLER_EXCEPTION", str(exc),
                            raw_data={"traceback": trace})
         logger.error(f"Crawl failed: {exc}")
+        _maybe_auto_repair_crawler(
+            site_cfg=site_cfg,
+            mode=mode,
+            run_id=run_id,
+            status="failed",
+            counts=counts,
+            reason=str(exc),
+            traceback=trace,
+            logger=logger,
+        )
     finally:
         close_shared_http_clients()
         logger.log_run_key_summary(limit=10)

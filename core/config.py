@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     SCRAPE_DETAILS: bool = True      # set False to skip detail-page fetches
     MAX_PAGES: int | None = None     # None = unlimited
     MAX_PARALLEL_CRAWLERS: int = 8   # hard cap on concurrent worker processes
+    CRAWLER_AUTO_REPAIR: bool = False
+    CRAWLER_AUTO_REPAIR_CODEX_BIN: str = "codex"
+    CRAWLER_AUTO_REPAIR_TEST_ITEM_LIMIT: int = 3
+    CRAWLER_AUTO_REPAIR_TEST_TIMEOUT_S: int = 900
+    CRAWLER_AUTO_REPAIR_CODEX_TIMEOUT_S: int = 3600
     HTTP_MAX_CONNECTIONS: int = 100
     HTTP_MAX_KEEPALIVE_CONNECTIONS: int = 20
     DETAIL_WORKERS: int = 6          # threads per crawler for parallel detail fetching

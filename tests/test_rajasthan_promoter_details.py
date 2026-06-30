@@ -10,6 +10,7 @@ from sites.rajasthan_rera import (
     _build_doc_url,
     _parse_detail_docs,
     _parse_detail_html,
+    _parse_viewproject_html,
     _is_real_document,
     _resolve_relative_url,
 )
@@ -162,6 +163,42 @@ class TestCurrentViewProjectNewParser(unittest.TestCase):
         """
 
         self.assertEqual(_parse_detail_docs(BeautifulSoup(html, "lxml")), [])
+
+    def test_allottee_details_populate_building_details(self):
+        html = """
+        <html><body>
+          <h3>Allottee Details</h3>
+          <p>Building : VENTURA (Apartment : unit 01 (1st floor to 10th floor) with servent room , Block : 1, Carpet Area : 205.6 sq. meters) Number Of Apartments: 10, Booked: 5</p>
+          <table>
+            <tr><th>Sr.No.</th><th>Unit/Flat Detail</th><th>Booking Status</th></tr>
+            <tr><td>1.</td><td>201</td><td>Unsold</td></tr>
+          </table>
+          <p>Building : VENTURA (Apartment : unit 02-11th floor with servent room and private terrace, Block : 1, Carpet Area : 203.52 sq. meters) Number Of Apartments: 1, Booked: 0</p>
+          <table>
+            <tr><th>Sr.No.</th><th>Unit/Flat Detail</th><th>Booking Status</th></tr>
+            <tr><td>1.</td><td>1202</td><td>Unsold</td></tr>
+          </table>
+        </body></html>
+        """
+
+        parsed = _parse_viewproject_html(BeautifulSoup(html, "lxml"))
+
+        self.assertEqual(parsed["building_details"], [
+            {
+                "flat_type": "unit 01 (1st floor to 10th floor) with servent room",
+                "block_name": "1",
+                "carpet_area": "205.6",
+                "no_of_units": "10",
+                "booking_detail": "5",
+            },
+            {
+                "flat_type": "unit 02-11th floor with servent room and private terrace",
+                "block_name": "1",
+                "carpet_area": "203.52",
+                "no_of_units": "1",
+                "booking_detail": "0",
+            },
+        ])
 
 
 # NOTE: TestFetchProjectDetail, TestIterWebsiteDocuments,

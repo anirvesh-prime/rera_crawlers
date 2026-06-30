@@ -13,16 +13,38 @@ A production-grade web crawling framework targeting ~25 Indian state RERA (Real 
 
 ---
 
-## 2. Target Sites (known)
+## 2. Target Sites
 
-| State | URL | Rendering Type |
-|-------|-----|---------------|
-| Kerala (public search) | https://reraonline.kerala.gov.in/SearchList/Search | Server-rendered ASP.NET MVC |
-| Kerala (project list) | https://rera.kerala.gov.in/projects | Server-rendered Laravel |
-| Rajasthan | https://rera.rajasthan.gov.in/ProjectList?status=3 | Angular SPA |
-| Odisha | https://rera.odisha.gov.in/projects/project-list | Angular SPA |
-| Pondicherry | https://prera.py.gov.in/reraAppOffice/viewDefaulterProjects | TBD |
-| ~20 more | TBD | TBD |
+`sites_config.py` is the authoritative catalog. It controls production enablement,
+site IDs, state/domain metadata, crawler module, crawler type, sentinel project,
+and `config_id`.
+
+| Site ID | State / Authority | Primary URL | Implementation Type | Enabled |
+|---|---|---|---|---|
+| `andhra_pradesh_rera` | Andhra Pradesh | https://rera.ap.gov.in/RERA/Views/Reports/ApprovedProjects.aspx | ASP.NET GridView listing + static detail HTML | Yes |
+| `assam_rera` | Assam | https://rera.assam.gov.in/admincontrol/registered_projects/1 | CodeIgniter static DataTables listing + Form-A detail pages | Yes |
+| `bihar_rera` | Bihar | https://rera.bihar.gov.in/RegisteredPP.aspx | ASP.NET listing via Selenium postbacks + static popup detail pages | Yes |
+| `chhattisgarh_rera` | Chhattisgarh | https://rera.cgstate.gov.in/Approved_project_List.aspx | ASP.NET static page with embedded map-marker JSON | No |
+| `delhi_rera` | Delhi | https://rera.delhi.gov.in/registered_promoters_list | Drupal table listing; all core project data inline | Yes |
+| `goa_rera` | Goa | https://rera.goa.gov.in/reraApp/home | Selenium listing with CAPTCHA + static detail fetches | Yes |
+| `gujarat_rera` | Gujarat | https://gujrera.gujarat.gov.in/#/home-p/registered-project-listing | Angular SPA; bulk enumeration API + Selenium detail scrape | Yes |
+| `haryana_rera` | Haryana Gurugram + Panchkula | https://haryanarera.gov.in/admincontrol/registered_projects/2 | CodeIgniter static DataTables listings for two authorities | Yes |
+| `himachal_pradesh_rera` | Himachal Pradesh | https://hprera.nic.in/PublicDashboard | AJAX dashboard endpoints returning HTML fragments | Yes |
+| `jharkhand_rera` | Jharkhand | https://jharera.jharkhand.gov.in/Home/OnlineRegisteredProjectsList | Server-rendered MVC listing + static detail pages | Yes |
+| `karnataka_rera` | Karnataka | https://rera.karnataka.gov.in/viewAllProjects | District POST listing + two-step project detail POST | Yes |
+| `kerala_rera` | Kerala | https://rera.kerala.gov.in/explore-projects | Static/API hybrid; project-card listing + project HTML | Yes |
+| `madhya_pradesh_rera` | Madhya Pradesh | https://www.rera.mp.gov.in/all-projects/ | PHP AJAX table; detail pages required for registration number | No |
+| `maharashtra_rera` | Maharashtra | https://maharera.maharashtra.gov.in/projects-search-result | Static listing + CAPTCHA-gated Angular detail SPA | Yes |
+| `odisha_rera` | Odisha | https://rera.odisha.gov.in/projects/project-list | Angular SPA listing and detail tabs | Yes |
+| `pondicherry_rera` | Puducherry | https://prera.py.gov.in/reraAppOffice/viewDefaulterProjects | Selenium/static legacy SSL portal | Yes |
+| `punjab_rera` | Punjab | https://rera.punjab.gov.in/reraindex/publicview/projectinfo | Selenium listing; dummy client-side CAPTCHA | Yes |
+| `rajasthan_rera` | Rajasthan | https://rera.rajasthan.gov.in/ProjectList?status=3 | Pure Selenium Angular listing and details | Yes |
+| `tamil_nadu_rera` | Tamil Nadu | https://rera.tn.gov.in/registered-building/tn | httpx listing year forms + Selenium detail pages | Yes |
+| `telangana_rera` | Telangana | https://rerait.telangana.gov.in/SearchList/Search | ASP.NET search form with CAPTCHA + encrypted preview pages | No |
+| `tripura_rera` | Tripura | https://reraonline.tripura.gov.in/search | Java MVC primary POST listing + supplementary approved listing | Yes |
+| `uttarakhand_rera` | Uttarakhand | https://ukrera.uk.gov.in/viewRegisteredProjects | Java Spring MVC static listing + encrypted redirect details | Yes |
+| `uttar_pradesh_rera` | Uttar Pradesh | https://www.up-rera.in/frm_allprojectdistrictwise.aspx | District-wise ASP.NET listings + Selenium detail postbacks | Yes |
+| `wb_rera` | West Bengal | https://rera.wb.gov.in/district_project.php?dcode=0 | Selenium DataTables extraction + static detail pages | Yes |
 
 ### Site Classification (drives extraction strategy inside the Selenium crawler)
 - **Type 1 — Static/Server-rendered**: Parse the rendered HTML with `BeautifulSoup4`. Fetched via the shared `SeleniumSession` so all sites share one TLS/cookie path.
@@ -101,11 +123,11 @@ rera_crawlers/
 
 ## 5. Database Schema
 
-Using the existing local PostgreSQL instance. The primary projects table schema is as follows:
+Using the configured PostgreSQL instance. The primary projects table schema is as follows:
 
 ```sql
 -- Primary table: one row per unique project
-CREATE TABLE projects (
+CREATE TABLE rera_projects (
     key                                        TEXT NOT NULL PRIMARY KEY,
     project_name                                 TEXT,
     project_type                                 TEXT,
@@ -444,14 +466,15 @@ CREATE TABLE crawl_errors (
     raw_data        JSONB                        -- raw extracted dict before validation failed
 );
 
--- Tracks resume checkpoints per site
+-- Tracks resume checkpoints per site and run type
 CREATE TABLE crawl_checkpoints (
-    site_id             TEXT PRIMARY KEY,
+    site_id             TEXT NOT NULL,
     run_type            TEXT NOT NULL,           -- 'daily_light' | 'weekly_deep'
     last_page           INTEGER,                 -- last successfully processed listing page
     last_project_key    TEXT,                    -- last successfully processed project key
     last_run_id         INTEGER REFERENCES crawl_runs(id),
-    updated_at          TIMESTAMPTZ DEFAULT now()
+    updated_at          TIMESTAMPTZ DEFAULT now(),
+    PRIMARY KEY (site_id, run_type)
 );
 
 -- Tracks every uploaded document with its MD5 checksum for deduplication
@@ -497,7 +520,7 @@ def generate_project_key(registration_number: str) -> str:
 
 - `registration_number`: the official RERA registration number as it appears on the site; whitespace is stripped before hashing
 - The hashed input is the stripped registration number only
-- The `key` column in `projects` table stores this value
+- The `key` column in `rera_projects` stores this value
 - The same key is used as the S3 path prefix: `s3://bucket/{key}/filename.pdf`
 
 ---
@@ -519,7 +542,7 @@ s3://{BUCKET_NAME}/
 - All documents visible on a project's detail page are downloaded and uploaded
 - Document filenames are sanitized (spaces → underscores, special chars stripped)
 - If multiple documents of same type exist, append `_1`, `_2` suffix
-- `document_urls` JSONB column in `projects` table stores list of S3 URLs
+- `document_urls` JSONB column in `rera_projects` stores list of S3 URLs
 - `rera_project_documents` table stores one row per document with MD5 checksum
 
 ### Upload Logic
@@ -541,7 +564,7 @@ s3://{BUCKET_NAME}/
 - Hits listing/search pages only (no detail page visits)
 - For each project found on listing:
   - Compute `key = generate_project_key(reg_no)`
-  - Query `projects` table for this key
+  - Query `rera_projects` for this key
   - **Not found** → add to deep crawl queue immediately
   - **Found, `last_modified` unchanged** → skip
   - **Found, `last_modified` changed** → add to deep crawl queue
@@ -563,7 +586,7 @@ s3://{BUCKET_NAME}/
 ```
 hash_key = generate_project_key(registration_number)
 
-if key NOT IN projects table:
+if key NOT IN rera_projects:
     → full deep crawl (detail page + all documents)
     → insert new row into projects
 
@@ -648,7 +671,7 @@ SITES = [
         "rate_limit_delay": (2, 4),      # (min_seconds, max_seconds) random delay
         "max_retries": 3,
         "sentinel_registration_no": "K-RERA/PRJ/ERN/001/2021",
-        "config_id": 1,                  # maps to config_id in projects table
+        "config_id": 1,                  # maps to config_id in rera_projects
     },
     {
         "id": "rajasthan_rera",
@@ -701,7 +724,7 @@ run()
  │    ├── fetch detail page
  │    ├── extract all fields
  │    ├── validate via Pydantic ProjectRecord model
- │    ├── upsert into projects table
+ │    ├── upsert into rera_projects
  │    └── process_documents()
  └── process_documents()
       ├── find all PDF links on detail page
@@ -932,7 +955,7 @@ run_crawlers.py --mode daily_light/weekly_deep
 3. **Add entry to `sites_config.py`**: Fill all required fields, set `enabled=False` initially
 4. **Create `sites/{site_id}.py`**: Implement `run()` function following the interface
 5. **Test locally**: `python -c "from sites.new_site import run; run(config, 0, 'weekly_deep')"`
-6. **Verify DB row**: Check `projects` table, verify all fields populated correctly
+6. **Verify DB row**: Check `rera_projects`, verify all fields populated correctly
 7. **Verify S3**: Confirm documents uploaded under correct key
 8. **Enable site**: Set `enabled=True` in `sites_config.py`
 
@@ -947,4 +970,288 @@ run_crawlers.py --mode daily_light/weekly_deep
 - Documents are uploaded as-is (raw PDF bytes). No OCR or content extraction happens in the crawler (the `doc_ocr_url` field exists in the schema for a separate downstream process).
 - The `data` JSONB column in `projects` stores the complete raw extracted dict before field mapping, as a safety net.
 - The `old_updates` JSONB array stores snapshots: `[{"updated_at": "...", "fields": {"project_name": "old value"}}]`
-- `is_live` is set to `True` when a project is seen on the listing page, `False` if it disappears (de-registered etc.)
+- `is_live` exists in the schema, but the current crawler flow in this repo does not actively derive it from listing presence. Do not rely on it unless a downstream process populates it.
+
+---
+
+## 22. Per-Crawler Implementation Notes and Niches
+
+This section captures the state-specific implementation details that matter when
+debugging, extending, or deploying each crawler. The short version: every crawler
+has the same `run(config, run_id, mode)` public interface, but the portal
+mechanics differ heavily by state.
+
+### Andhra Pradesh — `andhra_pradesh_rera`
+
+- Portal type: ASP.NET WebForms, server-rendered HTML with jQuery DataTables.
+- Listing source: `ApprovedProjects.aspx`, table id `ContentPlaceHolder1_gvApprovedProject`.
+- Listing niche: all rows are present in the initial HTML; DataTables only decorates client-side.
+- Detail routing: each row carries `onclick="openProject(enc)"`; the encrypted `enc` token builds `Project.aspx?{enc}`.
+- Extracts: promoter, location, financials, building details, professional details, member details, and uploaded documents.
+- Documents: uploaded-document PDF links are downloaded, checksummed, uploaded to S3, and written to `rera_project_documents`.
+- Sentinel: `P03290013808`.
+- Config ID: `11793`.
+
+### Assam — `assam_rera`
+
+- Portal type: static CodeIgniter/PHP HTML.
+- Listing source: `/admincontrol/registered_projects/1`.
+- Listing niche: the full project catalog is embedded in one client-side DataTables table, `#compliant_hearing`.
+- Detail flow: project detail page gives core project metadata and a Form-A link; the Form-A page carries richer land, bank, cost, facility, unit, and uploaded-document data.
+- Extracts: registration number, project/promoter names, location, acknowledgement ID, dates, status, bank, land, costs, units, facilities, and uploaded documents.
+- Documents: certificate/Form-A/uploaded document links are normalized and S3-backed.
+- Sentinel: `RERAA KM 49 OF 2024-2025`.
+- Config ID: `11804`.
+
+### Bihar — `bihar_rera`
+
+- Portal type: ASP.NET GridView listing plus popup detail pages.
+- Listing source: `RegisteredPP.aspx`.
+- Listing niche: pagination is handled through Selenium because direct ViewState POST replay is unreliable across the server cluster.
+- Detail routing: project-name links trigger `__doPostBack(..., PrintIndicator$N)` and open `Filanprint.aspx?id=...` popups; Selenium captures the popup URL, then detail HTML is parsed statically.
+- Extracts: listing project name, registration number, promoter, address, submitted date, plus detail project type/status, dates, land/construction area, description, bank, contact, members, professional info, and building details.
+- QPR niche: `QRCODE.aspx` is available for quarterly progress/report-linked data.
+- Documents: selected links are downloaded/uploaded; detail work can use the shared detail worker pool.
+- Sentinel: `BRERAP05734-1/994/R-766/2019`.
+- Config ID: `5`.
+
+### Chhattisgarh — `chhattisgarh_rera`
+
+- Portal type: ASP.NET WebForms static HTML.
+- Listing source: `/Approved_project_List.aspx`.
+- Listing niche: one large page embeds a JavaScript JSON marker array with about 2,088 projects, including lat/lon, registration number, district, tehsil, `MyID`, and detail URL.
+- Detail routing: `/Promoter_Reg_Only_View_Application_new.aspx?MyID={base64_id}`.
+- Extracts: form fields, dropdowns, textareas, quarterly updates, inventory/building data, professionals, and documents.
+- Timeout niche: uses separate listing/detail/document timeout profiles because listing and document responses are large/slow.
+- Enabled: currently disabled in production defaults.
+- Sentinel: `PCGRERA200618000247`.
+- Config ID: `11805`.
+
+### Delhi — `delhi_rera`
+
+- Portal type: Drupal 7 static listing.
+- Listing source: `/registered_promoters_list`, paginated with `?page=N`.
+- Listing niche: there are no detail pages for core data; the listing row contains promoter contact, project address, registration number, validity/status, certificate link, and QPR-history link.
+- Detail extras: optional director/member and QPR history pages are fetched through configured URL bases.
+- Extracts: promoter name/address/email/phone, project name/location, registration number, valid-until date, construction status, certificate PDF, directors/members, and QPR history.
+- Known unavailable fields: several detail-heavy fields are not published by the portal and are intentionally not fabricated.
+- Sentinel: `DLRERA2023P0017`.
+- Config ID: `10`.
+
+### Goa — `goa_rera`
+
+- Portal type: Selenium listing with CAPTCHA; detail pages can be fetched after listing.
+- Listing source: `/reraApp/search` after submitting the home search form.
+- CAPTCHA niche: uses rendered captcha extraction and solver attempts; if solving fails and `sentinel_project_url` is configured, dry-run/sentinel work can process that detail URL directly.
+- Detail parsing: Bootstrap grid label/value rows and tables for applicant contact, inventory, architects, engineers, documents, and construction-progress panels.
+- Documents: project detail document links are selected, downloaded, checksummed, and uploaded.
+- Sentinel: `PRGO02231914`.
+- Config ID: `11806`.
+
+### Gujarat — `gujarat_rera`
+
+- Portal type: Angular SPA with a usable bulk enumeration endpoint.
+- Listing source: `/dashboard/get-district-wise-projectlist/0/0/all/all/all`.
+- Listing niche: the public search form is difficult to automate, so the crawler warms up the SPA and calls the bulk endpoint from the browser context; this returns every registered project with `projectRegId` and `regNo`.
+- Detail routing: Selenium navigates to `/#/project-preview?id={base64(projectRegId)}` and scrapes rendered Angular HTML.
+- Registration-number niche: the enumeration stub is the source of truth; the detail page is not trusted to re-extract registration number.
+- Document niche: View File buttons trigger `/vdms/getDocMetadata/{uid}`; the crawler triggers those handlers to collect tokens and downloads from VDMS endpoints.
+- Date niche: API `/Date(ms)/` values are interpreted as IST midnight and normalized to the repo's UTC convention.
+- Sentinel: `PR/GJ/SURAT/CHORYASI/Surat Municipal Corporation/RAA16644/250326/311231`.
+- Config ID: `8`.
+
+### Haryana — `haryana_rera`
+
+- Portal type: static CodeIgniter/PHP HTML.
+- Listing sources: Gurugram `/admincontrol/registered_projects/2` and Panchkula `/admincontrol/registered_projects/1`.
+- Listing niche: both authorities are combined into one crawler/config ID; both pages expose full client-side DataTables.
+- Detail routing: `/view_project/project_preview_open/{id}` Form REP-I pages.
+- Extracts: listing stubs plus Form REP-I detail fields, registration certificate, QPR, uploaded docs, location, dates, type/status, bank/land/cost/unit/facility data when available.
+- Dedupe niche: projects are de-duplicated across the two authority listings by registration number.
+- Sentinel: `RERA-PKL-456-2019`.
+- Config ID: `11813`.
+
+### Himachal Pradesh — `himachal_pradesh_rera`
+
+- Portal type: dashboard AJAX endpoints returning HTML fragments.
+- Listing flow: `GetMainContent` obtains hidden filter values; `GetFilteredProjectsPV` returns a large HTML payload containing project cards plus a JavaScript `markers` JSON array.
+- Listing niche: no cookies are required; endpoints accept GET/AJAX requests directly.
+- Detail routing: each card has a `data-qs` token; the token fetches five detail sections: Promoter, Project, Bank, AssociatedProfessionals, and Documents.
+- Extracts: marker/listing data, project/promoter/bank/professional/detail-section fields, and documents.
+- Sentinel: `RERAHPSHP01190048`.
+- Config ID: `11808`.
+
+### Jharkhand — `jharkhand_rera`
+
+- Portal type: server-rendered MVC.
+- Listing source: `/Home/OnlineRegisteredProjectsList`, paginated with `?page=N`.
+- Detail routing: listing rows link to `/Home/ViewProjectProfile/{id}`.
+- Detail niche: some fields are wrapped in comments or inconsistent Bootstrap rows; parser searches both normal labels and comment text.
+- Coordinate niche: portal labels are swapped in observed pages; parser maps "Project Longitude" to latitude and "Project Latitude" to longitude where required.
+- Extracts: project type, dates, promoter/contact/promoters, bank, co-promoters, professionals, building/floor/flat details, land detail, cost, and documents.
+- Document niche: collects Section 1 documents plus development-work document labels from Section 5/provided-facility rows.
+- Sentinel: `JHARERA/PROJECT/146/2022`.
+- Config ID: `14209`.
+
+### Karnataka — `karnataka_rera`
+
+- Portal type: static HTML POST flows.
+- Listing source: `/projectViewDetails`, not `/viewAllProjects`.
+- Listing niche: `/viewAllProjects` embeds a global catalog regardless of POST filters; using it for district traversal mislabels districts. The crawler posts each district to `/projectViewDetails`.
+- Detail routing is two-step: POST `/projectViewDetails` with `appNo=<ack_no>` to get the internal numeric DB ID, then POST `/projectDetails` with `action=<numeric_id>`.
+- Drillability niche: rejected applications have no `showFileApplicationPreview` link and are skipped.
+- Documents: registration certificate at `/certificate?CER_NO=<registration_no>` plus `/download_jc?DOC_ID=<encoded_id>` document links; blank DOC_ID links are skipped.
+- Parallelism: detail fetching can use the shared detail worker pool.
+- Sentinel: `PRM/KA/RERA/1248/469/PR/050723/006033`.
+- Config ID: `9`.
+
+### Kerala — `kerala_rera`
+
+- Portal type: static/API hybrid.
+- Listing source: `/explore-projects`.
+- Listing niche: paginates project cards, normally 20 cards per page.
+- Detail routing: project cards link to `/projects/{id}` detail pages.
+- TLS niche: the portal certificate chain can be incomplete; the Selenium-backed session ignores certificate errors.
+- Documents: signed certificate, QPR link, complete project details link, and uploaded document links are normalized and uploaded.
+- Parallelism: project-card detail work can use `core.details_pool`.
+- Sentinel: `K-RERA/PRJ/TSR/167/2022`.
+- Config ID: `1`.
+
+### Madhya Pradesh — `madhya_pradesh_rera`
+
+- Portal type: PHP static/AJAX site.
+- Listing source: `/project-all-loop.php?show=20&pagenum=1`.
+- Listing niche: one AJAX response returns the full table of about 8,255 projects.
+- Registration-number niche: registration number is not present in listing, so every project must fetch the detail page even in modes that would normally skip known projects early.
+- Detail routing: `/view_project_details.php?id=<base64_id>`.
+- Extracts: project info, location, bank, promoter, consultants, unit inventory, project documents, QPR, and photo gallery.
+- Enabled: currently disabled in production defaults.
+- Sentinel: `P-BPL-24-4939`.
+- Config ID: `12898`.
+
+### Maharashtra — `maharashtra_rera`
+
+- Portal type: static listing plus CAPTCHA-gated Angular detail SPA.
+- Listing source: `/projects-search-result`.
+- Scale niche: roughly 47,000+ projects across about 4,776 pages of 10 cards.
+- Pagination niche: `?page=0` and `?page=1` both return the first page; crawler starts with the clean URL, then uses adjusted page numbers.
+- Detail routing: detail domain is `maharerait.maharashtra.gov.in`; pages are Angular SPA screens gated by canvas CAPTCHA.
+- CAPTCHA niche: uses `core.captcha_solver.solve_captcha_from_page()` against rendered canvas, with canvas-text interception as fallback.
+- Detail-session niche: each project gets its own Selenium session; no token reuse is required.
+- Tuning niche: aggressive page/CAPTCHA/data-label timeout constants avoid long stalls at scale.
+- Sentinel: `PP1190002502346`.
+- Config ID: `7`.
+
+### Odisha — `odisha_rera`
+
+- Portal type: Angular SPA.
+- Listing source: `/projects/project-list`.
+- Listing niche: cards are processed sequentially on each listing page; detail is reached by clicking `View Details`, then returning to the listing.
+- Detail sections: Project Overview, Promoter Details, and Documents tabs.
+- Extracts: registration date, full location, building type, professionals, bank accounts, financial details, promoter company/address/entity/directors/email/GST, and uploaded PDFs.
+- Document niche: DMS PDF handling uses `reraapps.odisha.gov.in/dms` endpoints including `fileDecryptHandlerForPdfPublic`.
+- Sentinel: `RP/11/2026/01471`.
+- Config ID: `3`.
+
+### Puducherry / Pondicherry — `pondicherry_rera`
+
+- Portal type: Selenium/static legacy SSL portal.
+- Listing source: `/reraAppOffice/viewDefaulterProjects`.
+- Listing niche: one slow ~1.3 MB page exposes about 363 project cards; timeouts are intentionally generous.
+- Detail routing: `/reraAppOffice/viewProjectDetailPage?projectID=N`.
+- Extracts: listing card name/address/reg no/promoter/type/status, plus detail promoter, registration date, address, project type/status/description/cost, dates, district/taluk/village, applicant contact, and documents.
+- Document niche: raw Puducherry filenames are normalized through a small canonical label map, e.g. Form B and registration certificate.
+- Sentinel: `PRPY133450`.
+- Config ID: `4`.
+
+### Punjab — `punjab_rera`
+
+- Portal type: Selenium with AJAX/DataTables.
+- Listing source: `/reraindex/publicview/projectinfo`.
+- CAPTCHA niche: the page requires a CAPTCHA input client-side, but the server does not validate the image text; the crawler fills a dummy six-character string.
+- Listing niche: after Search, `#viewProjectPVList` contains all rows in the DOM; pagination is client-side.
+- Detail routing: hidden `hdnProjectID`, `hdnPromoterID`, and `hdnPromoterType` values feed the modal detail request; parser extracts labeled table-cell pairs from the Bootstrap modal.
+- Documents: modal/detail document links are selected and uploaded.
+- Sentinel: `PBRERA-LDH44-PR0597`.
+- Config ID: `6`.
+
+### Rajasthan — `rajasthan_rera`
+
+- Portal type: pure Selenium Angular SPA.
+- Listing source: `/ProjectList?status=3`.
+- Listing niche: all data is obtained by rendering the public site; the crawler does not use private/direct REST APIs.
+- Detail routing: Selenium navigates to each detail page and waits for Angular-rendered HTML before parsing with BeautifulSoup.
+- Date niche: `/Date(ms)/` timestamps are interpreted in IST and normalized to the repo's UTC output convention.
+- Documents: all rendered links pointing to PDFs/downloadable files are collected and passed through document policy.
+- Sentinel: `RAJ/P/2024/3058`.
+- Config ID: `2`.
+
+### Tamil Nadu — `tamil_nadu_rera`
+
+- Portal type: httpx listings plus Selenium JS detail pages.
+- Listing sources: registered-building, normal layout, and regularisation layout CMS/index flows.
+- Listing niche: each master page has a Laravel CSRF `_token` and year selector; the crawler posts `_token + year` back to get the server-rendered table for that year.
+- Row data: registration number, promoter, project name/description, expiry date, promoter UUID, project UUID, lat/lng, and Form-C URL.
+- Detail routing: `public-view1` and `public-view2` are JS-rendered and use Selenium.
+- Documents: Form-C QR-code PDF plus `/public/storage/upload/*.pdf` links.
+- Sentinel: `TNRERA/29/LO/4544/2025`.
+- Config ID: `14374`.
+
+### Telangana — `telangana_rera`
+
+- Portal type: ASP.NET search form with CAPTCHA.
+- Listing source: `/SearchList/Search`.
+- CAPTCHA niche: uses `core.captcha_solver.captcha_to_text`; several CAPTCHA image selectors are supported.
+- Pagination niche: server-rendered result table paginates through ASP.NET `__doPostBack`.
+- Detail routing: listing rows expose encrypted `q` PrintPreview URL parameters and base64 `data_cert` payloads encoding ProjectID/AppID/UserID.
+- Registration-number niche: stable registration number is derived from detail page, falling back to `TG-{AppID}`.
+- Documents: selected certificates/preview documents use character-code constants for certificate and preview downloads.
+- Enabled: currently disabled in production defaults.
+- Sentinel: not configured.
+- Config ID: `11811`.
+
+### Tripura — `tripura_rera`
+
+- Portal type: Java MVC static/server-rendered pages.
+- Primary listing: POST `/search` with `searchTxt=''` and `startFrom=N`, five projects per page.
+- Supplementary listing: GET `/viewApprovedProjects` includes older approved/completed projects not shown by `/search`.
+- Detail routing niche: supplementary cards often lack detail links, so `PRTR{MM}{YY}{NNNN}` maps to `projectID=int(last_4_digits)`.
+- Session niche: uses a persistent client/session so the homepage `JSESSIONID` warm-up cookie is reused.
+- Extracts: listing status/type/location/promoter, detail labels, members/directors, contact fallbacks, images, land/construction area, and documents.
+- Document niche: empty `DOC_ID` links and site-wide static nav documents are skipped.
+- Sentinel: `PRTR03240386`.
+- Config ID: `11807`.
+
+### Uttarakhand — `uttarakhand_rera`
+
+- Portal type: Java Spring MVC / Tiles static listing.
+- Listing source: `/viewRegisteredProjects`.
+- Listing niche: all registered projects are returned on one page; public pagination is disabled even though JS remnants exist.
+- TLS niche: portal requires unsafe legacy SSL renegotiation; shared legacy SSL context support is used.
+- Detail routing: `viewProjectDetailPage?projectID=N` redirects to a session-encrypted URL; redirects are followed with the same client.
+- Data-format niches: email obfuscation (`[at]`, `[dot]`) is decoded; Java `Date.toString()` values and `DD-MM-YYYY` end dates are normalized.
+- Documents/images: `download?DOC_ID=N` links and `reraimage?IMG_ID=N` project images.
+- Sentinel: `UKREP11250000693`.
+- Config ID: `11814`.
+
+### Uttar Pradesh — `uttar_pradesh_rera`
+
+- Portal type: ASP.NET WebForms listing plus Selenium detail postbacks.
+- Listing source: `/frm_allprojectdistrictwise.aspx?districtname={district}` for all 75 districts.
+- Listing niche: each district page contains all rows in initial HTML; client-side DataTables handles display only.
+- Detail routing: `View Detail` buttons use `__doPostBack`; Selenium clicks and captures detail HTML. After the first resolved detail URL for a district, predictable URLs can be fetched directly to reduce Selenium overhead.
+- Resume niche: checkpoints track district/page position and last project; stale checkpoint keys are detected and cleared.
+- Documents: all PDF anchors on detail page are collected, downloaded, and uploaded.
+- Sentinel: `UPRERAPRJ6734` in Gautam Buddha Nagar.
+- Config ID: `11816`.
+
+### West Bengal — `wb_rera`
+
+- Portal type: Selenium listing plus static detail pages.
+- Listing source: `/district_project.php?dcode=0`.
+- Listing niche: Python `httpx` is blocked/reset by the site, so Selenium loads the page and extracts all rows through the DataTables JavaScript API, which holds the complete dataset in memory.
+- Detail routing: `/project_details.php?procode=N`.
+- Detail sections: project status banner, highlights, residential details, facilities, consultants, promoter details, promoter/official tables, promoter documents, sanctioned plan, legal title deed, other documents, and authenticated legal documents.
+- Document niche: links often point to `doc.repository.semtwb.in`; document type is inferred from section and row. Promoter Document row 9 maps to `Plan of Development {n}`, and other project document subtitles become typed names such as `Sanction Plan {n}`.
+- Sentinel: `WBRERA/P/ALI/2023/000353`.
+- Config ID: `11815`.

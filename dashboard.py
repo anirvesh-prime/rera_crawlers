@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import shlex
 import signal
 import subprocess
 import sys
@@ -31,10 +32,12 @@ import psycopg
 from psycopg.rows import dict_row as _dict_row
 
 from core.config import settings
+from core.repair_state import list_repair_attempts, reset_repair_attempt
 from sites_config import SITES  # noqa: E402
 
 _SITES = [{"id": s["id"], "name": s["name"], "enabled": bool(s.get("enabled"))} for s in SITES]
 _SITE_IDS = {s["id"] for s in _SITES}
+_ENABLED_SITE_IDS = {s["id"] for s in _SITES if s["enabled"]}
 _VALID_MODES = {"daily_light", "weekly_deep", "full", "single", "incremental", "listing"}
 
 _PROJECT_ROOT = Path(__file__).resolve().parent
@@ -85,7 +88,8 @@ def _fetch_db():
             if not latest_runs:
                 return {
                     "latest_runs": {}, "sentinel_data": {},
-                    "errors_by_site": {}, "orch_info": {}, "source": "database",
+                    "errors_by_site": {}, "repair_by_site": list_repair_attempts(),
+                    "orch_info": {}, "source": "database",
                 }
 
             # 2. Use only the latest run per site for all log queries
@@ -296,6 +300,7 @@ def _fetch_db():
             "latest_runs": latest_runs,
             "sentinel_data": sentinel_data,
             "errors_by_site": errors_by_site,
+            "repair_by_site": list_repair_attempts(),
             "orch_info": orch_info,
             "timing_by_site": timing_by_site,
             "source": "database",
@@ -307,7 +312,51 @@ def _fetch_db():
 
 
 def _get_data() -> dict:
-    return _fetch_db() or {}
+    return _fetch_db() or {"repair_by_site": list_repair_attempts()}
+
+
+# ── Process probe helpers ────────────────────────────────────────────────────
+
+def _site_ids_from_crawler_cmd(cmd: str) -> list[str]:
+    """Infer affected site ids from a live run_crawlers.py command line."""
+    try:
+        tokens = shlex.split(cmd)
+    except ValueError:
+        tokens = cmd.split()
+
+    selected: list[str] = []
+    i = 0
+    while i < len(tokens):
+        token = tokens[i]
+        value = None
+        if token in {"--site", "--sites"} and i + 1 < len(tokens):
+            value = tokens[i + 1]
+            i += 1
+        elif token.startswith("--site="):
+            value = token.split("=", 1)[1]
+        elif token.startswith("--sites="):
+            value = token.split("=", 1)[1]
+
+        if value:
+            for site_id in value.split(","):
+                site_id = site_id.strip()
+                if site_id in _SITE_IDS and site_id not in selected:
+                    selected.append(site_id)
+        i += 1
+
+    if selected:
+        return selected
+    # No explicit --site means the orchestrator is running all enabled sites.
+    return [site["id"] for site in _SITES if site["id"] in _ENABLED_SITE_IDS]
+
+
+def _running_sites_from_processes() -> dict[str, list[dict]]:
+    """Map site_id -> live run_crawlers.py processes from the OS process table."""
+    by_site: dict[str, list[dict]] = {}
+    for proc in _list_running_crawlers():
+        for site_id in _site_ids_from_crawler_cmd(proc.get("cmd") or ""):
+            by_site.setdefault(site_id, []).append(proc)
+    return by_site
 
 
 # ── HTML template ─────────────────────────────────────────────────────────────
@@ -369,6 +418,9 @@ _TEMPLATE = """<!DOCTYPE html>
     .btn-stop { background:#4a1212; border-color:#6e2424; color:#f85149; font-size:.78rem;
                 font-weight:600; padding:5px 14px; }
     .btn-stop:hover { background:#6e2424; color:#fff; }
+    .btn-reset { background:#21262d; border:1px solid #8b949e; color:#e6edf3; font-size:.68rem;
+                 font-weight:600; padding:3px 8px; border-radius:4px; }
+    .btn-reset:hover { background:#30363d; color:#fff; }
     .running-row { display:flex; justify-content:space-between; align-items:center;
                     background:#0d1117; border:1px solid #30363d; border-radius:6px;
                     padding:8px 12px; margin-bottom:6px; }
@@ -422,7 +474,9 @@ _TEMPLATE = """<!DOCTYPE html>
   <div>
     <span style="font-size:1.1rem;font-weight:700;">🏗️ RERA Crawlers Dashboard</span>
     <span class="ms-3" style="font-size:.8rem;color:#8b949e;">
-      Source: <span class="text-warning">{{ data_source }}</span> &nbsp;·&nbsp; auto-refresh 60s
+      Source: <span class="text-warning">{{ data_source }}</span>
+      &nbsp;·&nbsp; process probe: <span class="text-warning">{{ running_process_count }}</span>
+      &nbsp;·&nbsp; auto-refresh 60s
     </span>
     {% if n_sites %}
     <span class="ms-3">
@@ -501,6 +555,7 @@ _TEMPLATE = """<!DOCTYPE html>
   <div class="card card-danger p-3 mb-3">
     <div class="sec-title mb-3" style="color:#f85149;">🚨 Failures &amp; Diagnostics ({{ sites_with_errors|length }} site{{ 's' if sites_with_errors|length != 1 }})</div>
     {% for site in sites_with_errors %}{% set sid = site.id %}{% set r = latest_runs[sid] %}
+    {% set is_proc_running = sid in process_state %}
     <div class="diag-block">
       <div class="d-flex justify-content-between align-items-start flex-wrap gap-1">
         <div>
@@ -516,8 +571,11 @@ _TEMPLATE = """<!DOCTYPE html>
         <div>
           {% set errs = r.error_count or 0 %}
           <span class="badge bg-fail">{{ errs }} error{{ 's' if errs != 1 }}</span>
-          {% set st = (r.status or '')|lower %}
-          {% if st == 'running' %}<span class="badge bg-run ms-1">⟳ running</span>{% endif %}
+          {% if is_proc_running %}<span class="badge bg-run ms-1">⟳ running</span>{% endif %}
+          {% if sid in repair_by_site %}{% set repair = repair_by_site[sid] %}
+            <span class="badge bg-warn ms-1" title="{{ repair.reason or '' }}">repair {{ repair.status }}</span>
+            <button type="button" class="btn-reset ms-1 repair-reset" data-site="{{ sid }}">Reset repair</button>
+          {% endif %}
         </div>
       </div>
       <div class="diag-meta mt-1">
@@ -627,20 +685,23 @@ _TEMPLATE = """<!DOCTYPE html>
           <tbody>
           {% for site in sites %}{% set sid = site.id %}
           {% if sid in latest_runs %}{% set r = latest_runs[sid] %}
-          {% set st = (r.status or 'unknown')|lower %}
+          {% set db_st = (r.status or 'unknown')|lower %}
+          {% set is_proc_running = sid in process_state %}
+          {% set running_proc = process_state[sid][0] if is_proc_running else none %}
           {% set errs = (r.error_count or 0) %}
-          {% set is_failed = (st == 'failed') %}
+          {% set is_failed = (db_st == 'failed') %}
           {% set has_errors = (errs > 0) %}
-          <tr class="{% if is_failed %}row-fail{% elif has_errors %}row-err{% elif st == 'running' %}row-warn{% endif %}">
+          <tr class="{% if is_failed and not is_proc_running %}row-fail{% elif has_errors %}row-err{% elif is_proc_running %}row-warn{% endif %}">
             <td style="font-size:.8rem;white-space:nowrap;font-weight:{% if has_errors or is_failed %}600{% else %}400{% endif %};">
               {{ site.name }}
             </td>
             <td>
-              {% if is_failed %}<span class="badge bg-fail">✗ failed</span>
-              {% elif st == 'completed' and has_errors %}<span class="badge bg-warn">⚠ done</span>
-              {% elif st == 'completed' %}<span class="badge bg-done">✓ done</span>
-              {% elif st == 'running' %}<span class="badge bg-run">⟳ running</span>
-              {% else %}<span class="badge bg-none">{{ st }}</span>{% endif %}
+              {% if is_proc_running %}<span class="badge bg-run" title="PID {{ running_proc.pid }}">⟳ running</span>
+              {% elif is_failed %}<span class="badge bg-fail">✗ failed</span>
+              {% elif db_st == 'completed' and has_errors %}<span class="badge bg-warn">⚠ done</span>
+              {% elif db_st == 'completed' %}<span class="badge bg-done">✓ done</span>
+              {% elif db_st == 'running' %}<span class="badge bg-none" title="DB row says running, but no crawler process was found">stopped?</span>
+              {% else %}<span class="badge bg-none">{{ db_st }}</span>{% endif %}
             </td>
             <td>
               {% if sid in sentinel_data %}{% set s = sentinel_data[sid] %}
@@ -660,6 +721,10 @@ _TEMPLATE = """<!DOCTYPE html>
             <td style="max-width:220px;">
               {% if has_errors %}
                 <span class="text-danger fw-bold" style="font-size:.8rem;">{{ errs }} error{{ 's' if errs != 1 }}</span>
+                {% if sid in repair_by_site %}{% set repair = repair_by_site[sid] %}
+                  <br><span class="err-step" title="{{ repair.reason or '' }}">repair: {{ repair.status }}</span>
+                  <button type="button" class="btn-reset repair-reset" data-site="{{ sid }}" style="margin-left:4px;">Reset</button>
+                {% endif %}
                 {% if sid in errors_by_site %}{% set e = errors_by_site[sid] %}
                   {% if e.step %}<br><span class="err-step">{{ e.step }}</span>{% if e.registration_no and e.step == 'detail' %}&nbsp;<span class="err-step" style="color:#f0883e;">{{ e.registration_no }}</span>{% endif %}{% endif %}
                   <div class="err-msg">{{ e.message[:120] }}{% if e.message|length > 120 %}…{% endif %}</div>
@@ -683,6 +748,9 @@ _TEMPLATE = """<!DOCTYPE html>
                 {% if r.started_at is string %}{{ r.started_at[:16]|replace('T',' ') }}
                 {% else %}{{ r.started_at.strftime('%m-%d %H:%M') }}{% endif %}
               {% else %}—{% endif %}
+              {% if is_proc_running %}
+                <div style="font-size:.58rem;color:#d29922;margin-top:2px;" title="{{ running_proc.cmd }}">pid {{ running_proc.pid }} · {{ running_proc.etime }}</div>
+              {% endif %}
             </td>
           </tr>
           {% else %}
@@ -831,6 +899,32 @@ _TEMPLATE = """<!DOCTYPE html>
     if (testIsRunning) return;
     window.location.reload();
   }, 60000);
+
+  document.querySelectorAll(".repair-reset").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const site = btn.dataset.site;
+      btn.disabled = true;
+      btn.textContent = "Resetting...";
+      try {
+        const res = await fetch("/api/repair/reset", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({site}),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          btn.textContent = data.error || "Error";
+          btn.style.color = "#f85149";
+          return;
+        }
+        btn.textContent = data.reset ? "Reset" : "No attempt";
+        setTimeout(() => window.location.reload(), 500);
+      } catch (err) {
+        btn.textContent = "Error";
+        btn.style.color = "#f85149";
+      }
+    });
+  });
 
   function setTestStatus(text, color) {
     testStatus.textContent = text;
@@ -1094,14 +1188,19 @@ _TEMPLATE = """<!DOCTYPE html>
 @app.route("/")
 def index():
     data = _get_data()
+    process_state = _running_sites_from_processes()
+    running_process_count = len({p["pid"] for procs in process_state.values() for p in procs})
     return render_template_string(
         _TEMPLATE,
         sites=_SITES,
         latest_runs=data.get("latest_runs", {}),
         sentinel_data=data.get("sentinel_data", {}),
         errors_by_site=data.get("errors_by_site", {}),
+        repair_by_site=data.get("repair_by_site", {}),
         orch_info=data.get("orch_info", {}),
         timing_by_site=data.get("timing_by_site", {}),
+        process_state=process_state,
+        running_process_count=running_process_count,
         data_source=data.get("source", "unknown"),
         now=datetime.now(timezone.utc),
     )
@@ -1274,6 +1373,15 @@ def api_test_stop():
     except Exception as exc:
         return jsonify({"error": str(exc)}), 500
     return jsonify({"stopped": True, "signal": sig.name, "pid": proc.pid})
+
+
+@app.route("/api/repair/reset", methods=["POST"])
+def api_repair_reset():
+    payload = request.get_json(silent=True) or {}
+    site_id = str(payload.get("site", ""))
+    if site_id not in _SITE_IDS:
+        return jsonify({"error": f"Unknown site id: {site_id!r}"}), 400
+    return jsonify({"site": site_id, "reset": reset_repair_attempt(site_id)})
 
 
 def _list_running_crawlers() -> list[dict]:
