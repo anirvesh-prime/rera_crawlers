@@ -206,7 +206,7 @@ class RajasthanTargetedCrawlTests(unittest.TestCase):
         self.assertEqual(counts["projects_new"], 0)
 
     def test_listing_progress_reports_normalized_reg_no(self):
-        progress: list[tuple[int, int, int, str | None, str | None]] = []
+        progress: list[tuple[int, int, int, str | None, str | None, str | None]] = []
         page = mock.MagicMock()
         page.locator.return_value.count.return_value = 0
         logger = mock.MagicMock()
@@ -224,8 +224,10 @@ class RajasthanTargetedCrawlTests(unittest.TestCase):
             projects, checked, skipped = rajasthan_rera._scrape_project_list(
                 logger,
                 check_existing=True,
-                on_progress=lambda checked_rows, skipped_rows, candidates, reg_no, raw_reg_no:
-                    progress.append((checked_rows, skipped_rows, candidates, reg_no, raw_reg_no)),
+                on_progress=lambda checked_rows, skipped_rows, candidates, reg_no, raw_reg_no, project_key:
+                    progress.append(
+                        (checked_rows, skipped_rows, candidates, reg_no, raw_reg_no, project_key)
+                    ),
             )
 
         self.assertEqual(projects, [])
@@ -239,6 +241,7 @@ class RajasthanTargetedCrawlTests(unittest.TestCase):
                 0,
                 "RAJ/P/2024/3058",
                 "RAJ/P/2024/3058\nApproved on 01/01/2024",
+                rajasthan_rera.generate_project_key("RAJ/P/2024/3058"),
             ),
         )
 
