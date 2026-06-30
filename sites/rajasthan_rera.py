@@ -2219,6 +2219,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     light_check_existing = mode == "daily_light" and not target_regs
     list_enough = None if light_check_existing else (item_limit if item_limit else None)
     max_checked_rows = item_limit if (light_check_existing and item_limit) else None
+    last_listing_dashboard_update = 0
 
     def _update_listing_dashboard(
         checked_rows: int,
@@ -2230,11 +2231,19 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         bare_project_key: str | None = None,
         existing_match_key: str | None = None,
     ) -> None:
+        nonlocal last_listing_dashboard_update
         if not light_check_existing:
             return
         counts["projects_found"] = checked_rows
         counts["projects_skipped"] = skipped_existing_rows
-        update_crawl_run_progress(run_id, counts)
+        should_update_dashboard = (
+            checked_rows <= 10
+            or checked_rows - last_listing_dashboard_update >= 25
+            or (max_checked_rows is not None and checked_rows >= max_checked_rows)
+        )
+        if should_update_dashboard:
+            update_crawl_run_progress(run_id, counts)
+            last_listing_dashboard_update = checked_rows
         print(
             "[INFO] [rajasthan_rera] [listing] "
             "Rajasthan daily_light listing progress: "
