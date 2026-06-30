@@ -46,6 +46,59 @@ from core.repair_state import create_repair_attempt, update_repair_attempt
 from sites_config import select_sites
 
 _SEP = "=" * 64
+_LIVE_LOG_FH = None
+
+
+class _TeeStream:
+    def __init__(self, *streams):
+        self._streams = streams
+
+    def write(self, data):
+        for stream in self._streams:
+            stream.write(data)
+            stream.flush()
+        return len(data)
+
+    def flush(self):
+        for stream in self._streams:
+            stream.flush()
+
+    def isatty(self):
+        return any(getattr(stream, "isatty", lambda: False)() for stream in self._streams)
+
+
+def _install_live_terminal_log() -> Path | None:
+    """Mirror stdout/stderr to a file the dashboard can stream live.
+
+    This captures terminal output without using crawl_logs, so the dashboard's
+    live terminal view can follow the process as-is without adding DB log rows.
+    """
+    global _LIVE_LOG_FH
+    if _LIVE_LOG_FH is not None:
+        live_path = os.environ.get("CRAWLER_LIVE_LOG_FILE")
+        return Path(live_path) if live_path else None
+    if os.environ.get("DISABLE_CRAWLER_LIVE_LOG", "").lower() in {"1", "true", "yes"}:
+        return None
+    try:
+        existing_path = os.environ.get("CRAWLER_LIVE_LOG_FILE")
+        if existing_path:
+            path = Path(existing_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+        else:
+            live_dir = Path(settings.LOG_DIR) / "live"
+            live_dir.mkdir(parents=True, exist_ok=True)
+            path = live_dir / f"crawler_{os.getpid()}.log"
+        _LIVE_LOG_FH = path.open("a", buffering=1, encoding="utf-8", errors="replace")
+        _LIVE_LOG_FH.write(
+            f"\n--- live terminal capture pid={os.getpid()} "
+            f"started={datetime.now(timezone.utc).isoformat()} ---\n"
+        )
+        sys.stdout = _TeeStream(sys.stdout, _LIVE_LOG_FH)
+        sys.stderr = _TeeStream(sys.stderr, _LIVE_LOG_FH)
+        os.environ["CRAWLER_LIVE_LOG_FILE"] = str(path)
+        return path
+    except Exception:
+        return None
 
 
 def _truncate_text(value: str, limit: int = 24000) -> str:
@@ -364,6 +417,7 @@ def _worker_init() -> None:
     even on platforms that use 'spawn' rather than 'fork' for new processes.
     """
     os.environ["PYTHONHASHSEED"] = "0"
+    _install_live_terminal_log()
 
 
 def run_site(site_cfg: dict, mode: str) -> dict:
@@ -511,6 +565,7 @@ def apply_runtime_overrides(args: argparse.Namespace) -> int:
 def main() -> int:
     args = parse_args()
     Path(settings.LOG_DIR).mkdir(parents=True, exist_ok=True)
+    live_log_path = _install_live_terminal_log()
     item_limit = apply_runtime_overrides(args)
 
     sites, unknown_sites, disabled_sites = select_sites(args.site)
@@ -558,6 +613,8 @@ def main() -> int:
     print(f"  Documents : {'skipped' if settings.SKIP_DOCUMENTS else 'enabled'}")
     print(f"  Host      : {host}")
     print(f"  States    : {', '.join(site_ids)}")
+    if live_log_path:
+        print(f"  Live Log  : {live_log_path}")
     if settings.TARGET_REG_NO:
         print(f"  Target    : {settings.TARGET_REG_NO}")
     print(f"  Started   : {started.strftime('%Y-%m-%d %H:%M:%S UTC')}")

@@ -456,6 +456,11 @@ _TEMPLATE = """<!DOCTYPE html>
     .test-log .fld-name { color:#79c0ff; }
     .test-log .fld-sep  { color:#6e7681; }
     .test-log .fld-val  { color:#7ee787; }
+    .live-log { background:#020409; color:#e6edf3; border:1px solid #30363d;
+                 border-radius:4px; padding:10px; font-family:Menlo,Consolas,monospace;
+                 font-size:.72rem; line-height:1.35; height:62vh; overflow-y:auto;
+                 white-space:pre-wrap; word-break:break-word; margin:0; }
+    .live-terminal-open { cursor:pointer; border:0; }
   </style>
 </head>
 <body>
@@ -571,7 +576,7 @@ _TEMPLATE = """<!DOCTYPE html>
         <div>
           {% set errs = r.error_count or 0 %}
           <span class="badge bg-fail">{{ errs }} error{{ 's' if errs != 1 }}</span>
-          {% if is_proc_running %}<span class="badge bg-run ms-1">⟳ running</span>{% endif %}
+          {% if is_proc_running %}<button type="button" class="badge bg-run ms-1 live-terminal-open" data-pid="{{ process_state[sid][0].pid }}">⟳ running</button>{% endif %}
           {% if sid in repair_by_site %}{% set repair = repair_by_site[sid] %}
             <span class="badge bg-warn ms-1" title="{{ repair.reason or '' }}">repair {{ repair.status }}</span>
             <button type="button" class="btn-reset ms-1 repair-reset" data-site="{{ sid }}">Reset repair</button>
@@ -696,7 +701,7 @@ _TEMPLATE = """<!DOCTYPE html>
               {{ site.name }}
             </td>
             <td>
-              {% if is_proc_running %}<span class="badge bg-run" title="PID {{ running_proc.pid }}">⟳ running</span>
+              {% if is_proc_running %}<button type="button" class="badge bg-run live-terminal-open" data-pid="{{ running_proc.pid }}" title="Open live terminal for PID {{ running_proc.pid }}">⟳ running</button>
               {% elif is_failed %}<span class="badge bg-fail">✗ failed</span>
               {% elif db_st == 'completed' and has_errors %}<span class="badge bg-warn">⚠ done</span>
               {% elif db_st == 'completed' %}<span class="badge bg-done">✓ done</span>
@@ -867,6 +872,28 @@ _TEMPLATE = """<!DOCTYPE html>
   </div>
 </div>
 
+{# ── Live Terminal modal ───────────────────────────────────────────────── #}
+<div class="modal fade" id="liveTerminalModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Live Terminal <span id="liveTerminalTitle" style="font-size:.7rem;color:#8b949e;font-weight:400;"></span></h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="d-flex justify-content-between align-items-center mb-1" style="font-size:.72rem;color:#8b949e;">
+          <div id="liveTerminalStatus">Idle</div>
+          <div>
+            <label style="margin-right:8px;"><input type="checkbox" id="liveTerminalAutoScroll" checked> auto-scroll</label>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="liveTerminalClear">Clear</button>
+          </div>
+        </div>
+        <pre id="liveTerminalLog" class="live-log"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 (function() {
@@ -924,6 +951,85 @@ _TEMPLATE = """<!DOCTYPE html>
         btn.style.color = "#f85149";
       }
     });
+  });
+
+  // ── Live terminal modal for normal crawler runs ───────────────────────
+  const liveTerminalEl = document.getElementById("liveTerminalModal");
+  const liveTerminalModal = new bootstrap.Modal(liveTerminalEl);
+  const liveTerminalTitle = document.getElementById("liveTerminalTitle");
+  const liveTerminalStatus = document.getElementById("liveTerminalStatus");
+  const liveTerminalLog = document.getElementById("liveTerminalLog");
+  const liveTerminalAutoScroll = document.getElementById("liveTerminalAutoScroll");
+  const liveTerminalClear = document.getElementById("liveTerminalClear");
+  let livePid = null;
+  let liveOffset = 0;
+  let livePollTimer = null;
+
+  function setLiveStatus(text, color) {
+    liveTerminalStatus.textContent = text;
+    liveTerminalStatus.style.color = color || "#8b949e";
+  }
+
+  function appendLiveChunk(chunk) {
+    if (!chunk) return;
+    liveTerminalLog.appendChild(document.createTextNode(chunk));
+    if (liveTerminalAutoScroll.checked) {
+      liveTerminalLog.scrollTop = liveTerminalLog.scrollHeight;
+    }
+  }
+
+  async function pollLiveTerminal() {
+    if (!livePid) return;
+    try {
+      const res = await fetch("/api/live-terminal?pid=" + encodeURIComponent(livePid) +
+                              "&offset=" + liveOffset);
+      const data = await res.json();
+      if (!res.ok) {
+        setLiveStatus(data.error || "Live terminal unavailable", "#f85149");
+        if (data.hint) appendLiveChunk("\\n" + data.hint + "\\n");
+        stopLivePolling();
+        return;
+      }
+      if (data.chunk) {
+        appendLiveChunk(data.chunk);
+        liveOffset = data.offset;
+      }
+      setLiveStatus(data.running ? "Streaming PID " + livePid : "Process finished", data.running ? "#d29922" : "#3fb950");
+      if (!data.running) stopLivePolling();
+    } catch (err) {
+      setLiveStatus("Live terminal poll failed: " + err, "#f85149");
+      stopLivePolling();
+    }
+  }
+
+  function startLivePolling() {
+    if (livePollTimer) clearInterval(livePollTimer);
+    livePollTimer = setInterval(pollLiveTerminal, 800);
+  }
+
+  function stopLivePolling() {
+    if (livePollTimer) { clearInterval(livePollTimer); livePollTimer = null; }
+  }
+
+  document.querySelectorAll(".live-terminal-open").forEach(btn => {
+    btn.addEventListener("click", () => {
+      livePid = btn.dataset.pid;
+      liveOffset = 0;
+      liveTerminalLog.textContent = "";
+      liveTerminalTitle.textContent = "PID " + livePid;
+      setLiveStatus("Opening stream...", "#8b949e");
+      liveTerminalModal.show();
+      pollLiveTerminal();
+      startLivePolling();
+    });
+  });
+
+  liveTerminalClear.addEventListener("click", () => {
+    liveTerminalLog.textContent = "";
+  });
+
+  liveTerminalEl.addEventListener("hidden.bs.modal", () => {
+    stopLivePolling();
   });
 
   function setTestStatus(text, color) {
@@ -1418,6 +1524,8 @@ def _list_running_crawlers() -> list[dict]:
             "pgid": pgid,
             "etime": parts[2],
             "cmd": parts[3],
+            "live_log": str((_LOGS_DIR / "live" / f"crawler_{pid}.log").relative_to(_PROJECT_ROOT)),
+            "live_log_exists": (_LOGS_DIR / "live" / f"crawler_{pid}.log").exists(),
         })
     return rows
 
@@ -1425,6 +1533,65 @@ def _list_running_crawlers() -> list[dict]:
 @app.route("/api/running")
 def api_running():
     return jsonify({"running": _list_running_crawlers()})
+
+
+@app.route("/api/live-terminal")
+def api_live_terminal():
+    """Stream captured stdout/stderr for a running crawler process.
+
+    This endpoint reads logs/live/crawler_<pid>.log, created by run_crawlers.py
+    via stdout/stderr teeing. It does not read crawl_logs and does not use DB
+    log rows. Processes started before that capture feature was added will not
+    have a streamable terminal file.
+    """
+    try:
+        pid = int(request.args.get("pid", ""))
+    except (TypeError, ValueError):
+        return jsonify({"error": "pid must be an integer"}), 400
+    try:
+        offset = int(request.args.get("offset", "0"))
+    except ValueError:
+        return jsonify({"error": "offset must be an integer"}), 400
+    if offset < 0:
+        offset = 0
+
+    running = _list_running_crawlers()
+    running_pids = {r["pid"] for r in running}
+    live_path = (_LOGS_DIR / "live" / f"crawler_{pid}.log").resolve()
+    live_root = (_LOGS_DIR / "live").resolve()
+    try:
+        live_path.relative_to(live_root)
+    except ValueError:
+        return jsonify({"error": "invalid live log path"}), 400
+
+    if not live_path.exists():
+        return jsonify({
+            "error": "No live terminal capture for this process",
+            "hint": (
+                "This process was likely started before live terminal capture was added. "
+                "Restart the crawler with the current run_crawlers.py and click the running badge again."
+            ),
+            "running": pid in running_pids,
+            "offset": offset,
+        }), 404
+
+    chunk = ""
+    new_offset = offset
+    try:
+        with live_path.open("rb") as fh:
+            fh.seek(offset)
+            data = fh.read()
+            new_offset = offset + len(data)
+            chunk = data.decode("utf-8", errors="replace")
+    except Exception as exc:
+        return jsonify({"error": f"Failed to read live terminal log: {exc}"}), 500
+
+    return jsonify({
+        "pid": pid,
+        "chunk": chunk,
+        "offset": new_offset,
+        "running": pid in running_pids,
+    })
 
 
 @app.route("/api/kill", methods=["POST"])

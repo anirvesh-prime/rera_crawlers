@@ -361,9 +361,11 @@ def _scrape_project_list(
             if check_existing and get_project_by_key(generate_project_key(reg_no)):
                 skipped_existing += 1
                 skipped_existing_total += 1
+                _publish_progress()
                 continue
             projects.append(row)
             accepted += 1
+            _publish_progress()
         return accepted, skipped_existing
 
     def _publish_progress() -> None:
@@ -407,8 +409,10 @@ def _scrape_project_list(
             "a:has-text('Next'):not(.disabled)"
         )
 
+        _before = checked_rows
         page_rows = _extract_rj_table_rows(page)
         accepted, skipped_existing = _accept_rows(page_rows)
+        rows_checked_on_page = checked_rows - _before
         if not page_rows:
             try:
                 diag = page.evaluate("""() => {
@@ -430,15 +434,16 @@ def _scrape_project_list(
                     step="listing",
                 )
         logger.info(
-            f"Listing page 1 checked {len(page_rows)} rows; "
+            f"Listing page 1 saw {len(page_rows)} rows; checked {rows_checked_on_page}; "
             f"accepted {accepted}, existing {skipped_existing} "
-            f"({len(projects)} candidates)",
+            f"({checked_rows} checked, {len(projects)} candidates)",
             step="timing",
             page=1,
             rows=checked_rows,
+            page_rows=len(page_rows),
+            checked_on_page=rows_checked_on_page,
             candidates=len(projects),
         )
-        _publish_progress()
         _flush_progress_logs(logger)
 
         _page_num    = 1
@@ -494,18 +499,19 @@ def _scrape_project_list(
                 page.wait_for_timeout(1_000)
                 page_rows = _extract_rj_table_rows(page)
                 accepted, skipped_existing = _accept_rows(page_rows)
+                rows_checked_on_page = checked_rows - _before
                 _page_num += 1
                 logger.info(
-                    f"Listing page {_page_num} checked {len(page_rows)} rows; "
+                    f"Listing page {_page_num} saw {len(page_rows)} rows; checked {rows_checked_on_page}; "
                     f"accepted {accepted}, existing {skipped_existing} "
                     f"({checked_rows} checked, {len(projects)} candidates)",
                     step="timing",
                     page=_page_num,
                     rows=checked_rows,
                     page_rows=len(page_rows),
+                    checked_on_page=rows_checked_on_page,
                     candidates=len(projects),
                 )
-                _publish_progress()
                 _flush_progress_logs(logger)
 
                 # Guard: stop if no new data arrived (disabled button stayed
@@ -1748,11 +1754,12 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         counts["projects_found"] = checked_rows
         counts["projects_skipped"] = skipped_existing_rows
         update_crawl_run_progress(run_id, counts)
-        logger.info(
+        print(
+            "[INFO] [rajasthan_rera] [listing] "
             "Rajasthan daily_light listing progress: "
             f"checked={checked_rows}, existing={skipped_existing_rows}, "
             f"candidates={candidate_rows}",
-            step="listing",
+            flush=True,
         )
 
     listed_projects, checked_listing_rows, skipped_existing_rows = _scrape_project_list(
