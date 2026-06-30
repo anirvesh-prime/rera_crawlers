@@ -2240,7 +2240,6 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             "Rajasthan daily_light listing progress: "
             f"reg_no={reg_no or '-'}, "
             f"key={project_key or '-'}, "
-            f"bare_key={bare_project_key or '-'}, "
             f"existing_match_key={existing_match_key or '-'}, "
             f"raw_reg_no={raw_reg_no or '-'}, "
             f"checked={checked_rows}, existing={skipped_existing_rows}, "
