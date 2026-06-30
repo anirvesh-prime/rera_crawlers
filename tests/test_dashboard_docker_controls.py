@@ -42,6 +42,34 @@ class DashboardDockerControlsTests(unittest.TestCase):
         self.assertEqual(rows[0]["name"], "rera-crawler-daily")
         self.assertEqual(rows[0]["cmd"], "--mode daily_light --site kerala_rera")
         self.assertEqual(rows[0]["sites"], "kerala_rera")
+        self.assertEqual(rows[0]["started_at"], "2026-07-01T00:00:00.000000000Z")
+
+    def test_all_sites_container_maps_only_sites_with_running_state(self):
+        proc = {
+            "container": "abcdef123456",
+            "container_id": "abcdef1234567890",
+            "cmd": "--mode daily_light",
+            "sites": "",
+            "started_at": "2026-07-01T00:00:00.000000000Z",
+        }
+        latest_runs = {
+            "kerala_rera": {"status": "completed"},
+            "rajasthan_rera": {
+                "status": "running",
+                "started_at": "2026-07-01T00:00:10+00:00",
+            },
+            "bihar_rera": {
+                "status": "running",
+                "started_at": "2026-06-30T23:00:00+00:00",
+            },
+        }
+
+        with mock.patch("dashboard._list_running_crawlers", return_value=[proc]):
+            state = dashboard._running_sites_from_processes(latest_runs)
+
+        self.assertNotIn("kerala_rera", state)
+        self.assertIn("rajasthan_rera", state)
+        self.assertNotIn("bihar_rera", state)
 
     def test_docker_logs_since_offset_slices_bytes(self):
         with mock.patch("dashboard.subprocess.check_output", return_value=b"hello world"):

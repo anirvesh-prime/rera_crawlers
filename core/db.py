@@ -579,6 +579,8 @@ def update_crawl_run_progress(run_id: int, counts: dict | None = None) -> None:
         conn.commit()
     if not row:
         return
+    if str(row["status"]).lower() != "running":
+        return
     try:
         from core.dashboard_state import write_site_run_state
 

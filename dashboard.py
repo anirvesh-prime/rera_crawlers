@@ -288,11 +288,31 @@ def _site_ids_from_crawler_cmd(cmd: str) -> list[str]:
     return [site["id"] for site in _SITES if site["id"] in _ENABLED_SITE_IDS]
 
 
-def _running_sites_from_processes() -> dict[str, list[dict]]:
+def _running_sites_from_processes(latest_runs: dict[str, dict] | None = None) -> dict[str, list[dict]]:
     """Map site_id -> live crawler containers."""
     by_site: dict[str, list[dict]] = {}
+    running_sites: dict[str, datetime | None] = {}
+    if latest_runs is not None:
+        running_sites = {
+            site_id: _parse_dt(row.get("started_at"))
+            for site_id, row in latest_runs.items()
+            if str(row.get("status") or "").lower() == "running"
+        }
     for proc in _list_running_crawlers():
-        for site_id in _site_ids_from_crawler_cmd(proc.get("cmd") or ""):
+        site_ids = _site_ids_from_crawler_cmd(proc.get("cmd") or "")
+        if latest_runs is not None:
+            proc_started = _parse_dt(proc.get("started_at"))
+            site_ids = [
+                site_id
+                for site_id in site_ids
+                if site_id in running_sites
+                and (
+                    proc_started is None
+                    or running_sites[site_id] is None
+                    or running_sites[site_id] >= proc_started - timedelta(minutes=2)
+                )
+            ]
+        for site_id in site_ids:
             by_site.setdefault(site_id, []).append(proc)
     return by_site
 
@@ -1231,12 +1251,13 @@ _TEMPLATE = """<!DOCTYPE html>
 @app.route("/")
 def index():
     data = _get_data()
-    process_state = _running_sites_from_processes()
+    latest_runs = data.get("latest_runs", {})
+    process_state = _running_sites_from_processes(latest_runs)
     running_process_count = len({p["container"] for procs in process_state.values() for p in procs})
     return render_template_string(
         _TEMPLATE,
         sites=_SITES,
-        latest_runs=data.get("latest_runs", {}),
+        latest_runs=latest_runs,
         sentinel_data=data.get("sentinel_data", {}),
         errors_by_site=data.get("errors_by_site", {}),
         repair_by_site=data.get("repair_by_site", {}),
@@ -1513,11 +1534,13 @@ def _list_running_crawlers() -> list[dict]:
         short_id = container_id[:12]
         name = str(item.get("Name") or "").lstrip("/")
         cmd = labels.get(f"{LABEL_PREFIX}.cmd") or " ".join((item.get("Config") or {}).get("Cmd") or [])
+        started_at = str(state.get("StartedAt") or "")
         rows.append({
             "container": short_id,
             "container_id": container_id,
             "name": name,
-            "etime": _elapsed(str(state.get("StartedAt") or "")),
+            "etime": _elapsed(started_at),
+            "started_at": started_at,
             "cmd": cmd,
             "mode": labels.get(f"{LABEL_PREFIX}.mode", ""),
             "sites": labels.get(f"{LABEL_PREFIX}.sites", ""),
