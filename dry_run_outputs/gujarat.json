@@ -11,7 +11,7 @@
   "project_city": "Surat",
   "project_state": "Gujarat",
   "project_description": "ONLY 280 RESIDENTIAL UNIT",
-  "crawl_machine_ip": "10.20.81.103",
+  "crawl_machine_ip": "127.0.0.1",
   "machine_name": "Anirveshs-MacBook-Air.local",
   "project_location_raw": {
     "taluk": "Choryasi",

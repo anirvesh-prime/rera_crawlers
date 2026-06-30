@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from core.crawl_policy import is_deep_crawl
 from core.db import get_checkpoint, set_checkpoint, clear_checkpoint
 
 
 def load_checkpoint(site_id: str, run_type: str) -> dict | None:
     """Returns checkpoint dict with last_page and last_project_key, or None."""
+    if is_deep_crawl(run_type):
+        return None
     return get_checkpoint(site_id, run_type)
 
 

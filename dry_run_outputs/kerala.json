@@ -237,12 +237,12 @@
     {
       "link": "https://rera.kerala.gov.in/signed-certificate/1191",
       "type": "Rera Registration Certificate",
-      "s3_link": "https://s3.example.com/dry-run"
+      "s3_link": "https://docs.primetenders.com/6087120247077897222/registration_certificate_1_0e48dd0ddd98.pdf"
     }
   ],
   "document_urls": [
     {
-      "link": "https://s3.example.com/dry-run",
+      "link": "https://docs.primetenders.com/6087120247077897222/registration_certificate_1_0e48dd0ddd98.pdf",
       "type": "Rera Registration Certificate"
     }
   ],

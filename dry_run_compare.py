@@ -903,6 +903,7 @@ def run_site(site_cfg: dict, limit: int = 1, start_page: int = 0,
 
     settings.CRAWL_ITEM_LIMIT = limit
     settings.DRY_RUN_S3       = True
+    settings.SKIP_DOCUMENTS   = True
 
     for p in all_patches:
         p.start()

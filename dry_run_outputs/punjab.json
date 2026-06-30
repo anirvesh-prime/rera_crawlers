@@ -18,7 +18,7 @@
   },
   "promoter_contact_details": {
     "email": "Gardenhomes2017[at]gmail.com",
-    "mobile no": "9814040225"
+    "phone": "9814040225"
   },
   "bank_details": [
     {
@@ -49,37 +49,37 @@
   ],
   "uploaded_documents": [
     {
-      "type": "Approved Layout Plan",
+      "type": "Approved Layout Plan 1",
       "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126Approved_Layout_Planf581c422-fbff-4ebd-b21a-b43667f6dd61.pdf",
       "s3_link": "https://s3.example.com/dry-run",
       "updated": true
     },
     {
-      "type": "Approved Project Site OR Location Map",
+      "type": "Approved Project Site 1",
       "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126Approved_Project_Site_OR_Location_Map6f470442-f4f4-4109-b59e-9052b420a92d.pdf",
       "s3_link": "https://s3.example.com/dry-run",
       "updated": true
     },
     {
-      "type": "Sanctioned Building Plan",
+      "type": "Sanctioned Building Plan 1",
       "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20191126Sanctioned_Building_Plana4a17275-6b04-42ab-a541-7525028b977c.pdf",
       "s3_link": "https://s3.example.com/dry-run",
       "updated": true
     },
     {
-      "type": "Architects Certificate (Form 1)",
+      "type": "ARCHITECT Certificate 1",
       "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20200108Architects_Certificate_(Form_1)845c2387-1a11-44c0-95c3-a3b7b8387aa0.pdf",
       "s3_link": "https://s3.example.com/dry-run",
       "updated": true
     },
     {
-      "type": "Engineers Certificate (Form 2)",
+      "type": "Engineer Certificate 1",
       "link": "https://rera.punjab.gov.in/rera/readwriteProjectDoc/11075/20200108Engineers_Certificate_(Form_2)c1b17a04-a033-4ad0-a2e4-854672745061.pdf",
       "s3_link": "https://s3.example.com/dry-run",
       "updated": true
     },
     {
-      "type": "Advertisement and Brochure/ Prospectus",
+      "type": "Advertisement and Brochure 1",
       "link": "https://rera.punjab.gov.in/rera/readwriteProjectPhoto/11075/20191126AdvProspectusca67b7aa-b33d-497c-a446-15a492af5c3e.pdf",
       "s3_link": "https://s3.example.com/dry-run",
       "updated": true
@@ -426,27 +426,27 @@
   "document_urls": [
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Approved Layout Plan"
+      "type": "Approved Layout Plan 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Approved Project Site OR Location Map"
+      "type": "Approved Project Site 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Sanctioned Building Plan"
+      "type": "Sanctioned Building Plan 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Architects Certificate (Form 1)"
+      "type": "ARCHITECT Certificate 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Engineers Certificate (Form 2)"
+      "type": "Engineer Certificate 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Advertisement and Brochure/ Prospectus"
+      "type": "Advertisement and Brochure 1"
     }
   ],
   "acknowledgement_no": null,

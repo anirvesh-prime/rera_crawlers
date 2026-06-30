@@ -52,6 +52,7 @@ from bs4 import BeautifulSoup, Tag
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
+from core.crawl_policy import count_project_upsert
 from core.crawler_base import SeleniumSession, generate_project_key, random_delay
 from core.db import (
     get_project_by_key,
@@ -60,7 +61,7 @@ from core.db import (
     upsert_document,
     update_crawl_run_progress,
 )
-from core.details_pool import get_detail_workers, process_details
+from core.details_pool import get_detail_workers
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
 from core.models import ProjectRecord
@@ -1902,14 +1903,12 @@ def _process_candidate(
             record  = ProjectRecord(**normalized)
             db_dict = record.to_db_dict()
             status  = upsert_project(db_dict)
+            count_project_upsert(deltas, status, mode)
             if status == "new":
-                deltas["projects_new"] += 1
                 logger.info(f"New: {ack_no}", step="upsert")
-            elif status == "updated":
-                deltas["projects_updated"] += 1
+            elif status == "updated" or mode in ("weekly_deep", "full"):
                 logger.info(f"Updated: {ack_no}", step="upsert")
             else:
-                deltas["projects_skipped"] += 1
                 logger.info(f"Skipped: {ack_no}", step="upsert")
 
             if uploaded_docs and (mode != "daily_light" or status == "new"):
@@ -2032,7 +2031,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         def _on_detail_result(_idx: int, deltas: dict | None, exc: Exception | None) -> None:
             # Fold each completed candidate's deltas into the running counters and
             # push them to crawl_runs so the dashboard updates per project, not just
-            # once at the end.  Runs serially in this thread (see process_details).
+            # once at the end. Runs serially because Karnataka uses one shared driver.
             if exc is not None:
                 counters["error_count"] += 1
                 logger.exception("Worker raised", exc, step="project_loop")
@@ -2041,8 +2040,12 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     counters[k] = counters.get(k, 0) + v
             update_crawl_run_progress(run_id, counters)
 
-        process_details(candidates, _worker, n_workers=n_workers,
-                        on_result=_on_detail_result)
+        for idx, candidate in enumerate(candidates):
+            try:
+                deltas = _worker(idx, candidate)
+                _on_detail_result(idx, deltas, None)
+            except Exception as exc:
+                _on_detail_result(idx, None, exc)
         logger.timing("details", time.monotonic() - tB,
                       items=len(candidates), workers=n_workers)
 
@@ -2050,4 +2053,3 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     logger.info(f"Karnataka RERA crawl complete: {counters}", step="done")
     logger.timing("total_run", time.monotonic() - t_run)
     return counters
-

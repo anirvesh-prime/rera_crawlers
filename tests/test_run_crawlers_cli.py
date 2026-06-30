@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import os
+import sys
 import unittest
+from unittest.mock import patch
 
 from core.config import settings
-from run_crawlers import apply_runtime_overrides
+from run_crawlers import apply_runtime_overrides, main
 
 
 class RunCrawlersCliTests(unittest.TestCase):
@@ -18,6 +22,12 @@ class RunCrawlersCliTests(unittest.TestCase):
         self.original_target = settings.TARGET_REG_NO
         self.original_skip_docs_env = os.environ.get("SKIP_DOCUMENTS")
         self.original_skip_docs = settings.SKIP_DOCUMENTS
+        self.original_test_mode_env = os.environ.get("TEST_MODE")
+        self.original_test_mode = settings.TEST_MODE
+        self.original_dry_run_s3_env = os.environ.get("DRY_RUN_S3")
+        self.original_dry_run_s3 = settings.DRY_RUN_S3
+        self.original_crawler_tester_env = os.environ.get("CRAWLER_TESTER")
+        self.original_crawler_tester = settings.CRAWLER_TESTER
 
     def tearDown(self) -> None:
         if self.original_env is None:
@@ -40,6 +50,21 @@ class RunCrawlersCliTests(unittest.TestCase):
         else:
             os.environ["SKIP_DOCUMENTS"] = self.original_skip_docs_env
         settings.SKIP_DOCUMENTS = self.original_skip_docs
+        if self.original_test_mode_env is None:
+            os.environ.pop("TEST_MODE", None)
+        else:
+            os.environ["TEST_MODE"] = self.original_test_mode_env
+        settings.TEST_MODE = self.original_test_mode
+        if self.original_dry_run_s3_env is None:
+            os.environ.pop("DRY_RUN_S3", None)
+        else:
+            os.environ["DRY_RUN_S3"] = self.original_dry_run_s3_env
+        settings.DRY_RUN_S3 = self.original_dry_run_s3
+        if self.original_crawler_tester_env is None:
+            os.environ.pop("CRAWLER_TESTER", None)
+        else:
+            os.environ["CRAWLER_TESTER"] = self.original_crawler_tester_env
+        settings.CRAWLER_TESTER = self.original_crawler_tester
 
     def test_apply_runtime_overrides_sets_item_limit(self):
         args = argparse.Namespace(item_limit=7, no_item_limit=False, delay_scale=None)
@@ -90,6 +115,24 @@ class RunCrawlersCliTests(unittest.TestCase):
         apply_runtime_overrides(args)
         self.assertTrue(settings.SKIP_DOCUMENTS)
         self.assertEqual(os.environ["SKIP_DOCUMENTS"], "true")
+
+    def test_tester_requires_exactly_one_site_returns_error(self):
+        selected_sites = [{"id": "kerala_rera"}, {"id": "rajasthan_rera"}]
+        argv = [
+            "run_crawlers.py",
+            "--mode",
+            "daily_light",
+            "--skip-documents",
+            "--tester",
+        ]
+        with patch.object(sys, "argv", argv), patch(
+            "run_crawlers.select_sites",
+            return_value=(selected_sites, [], []),
+        ), contextlib.redirect_stdout(io.StringIO()) as output:
+            exit_code = main()
+
+        self.assertEqual(exit_code, 2)
+        self.assertIn("--tester requires exactly one --site", output.getvalue())
 
 
 if __name__ == "__main__":

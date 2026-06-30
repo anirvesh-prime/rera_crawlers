@@ -26,6 +26,28 @@
   "project_cost_detail": {
     "total_project_cost": "10000000"
   },
+  "uploaded_documents": [
+    {
+      "type": "Form B 1",
+      "link": "https://prera.py.gov.in/reraAppOffice/getdocument?DOC_ID=12329",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://prera.py.gov.in/reraAppOffice/getdocument?DOC_ID=12329",
+      "type": "document"
+    },
+    {
+      "type": "Registration Certificate 1",
+      "link": "https://prera.py.gov.in/reraAppOffice/getdocument?DOC_ID=12383",
+      "s3_link": "https://s3.example.com/dry-run",
+      "updated": true
+    },
+    {
+      "link": "https://prera.py.gov.in/reraAppOffice/getdocument?DOC_ID=12383",
+      "type": "document"
+    }
+  ],
   "professional_information": [
     {
       "role": "Architects",
@@ -43,7 +65,6 @@
     "raw_address": "TS NO A/3/41/2, METTACUR YANAM, YANAM, Puducherry"
   },
   "promoters_details": {
-    "type_of_firm": "Individual",
     "name": "KANCHARLA SRI RAMA KRISHNAYYA"
   },
   "land_area_details": {
@@ -59,17 +80,16 @@
   "checked_updates": false,
   "rera_housing_found": false,
   "is_live": true,
-  "uploaded_documents": [
+  "document_urls": [
     {
-      "link": "https://prera.py.gov.in/reraAppOffice/getdocument?DOC_ID=12329",
-      "type": "Declaration (Form B)"
+      "link": "https://s3.example.com/dry-run",
+      "type": "Form B 1"
     },
     {
-      "link": "https://prera.py.gov.in/reraAppOffice/getdocument?DOC_ID=12383",
-      "type": "Project Registration Certificate"
+      "link": "https://s3.example.com/dry-run",
+      "type": "Registration Certificate 1"
     }
   ],
-  "document_urls": null,
   "acknowledgement_no": null,
   "project_pin_code": null,
   "project_city": null,

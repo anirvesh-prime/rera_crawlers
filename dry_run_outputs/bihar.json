@@ -1,7 +1,7 @@
 {
-  "key": "13045837206340842058",
+  "key": "2176179351295726697",
   "project_registration_no": "BRERAP05734-1/994/R-766/2019",
-  "url": "https://rera.bihar.gov.in",
+  "url": "https://rera.bihar.gov.in/Filanprint.aspx?id=RERAP01282025205138-1",
   "state": "bihar",
   "domain": "rera.bihar.gov.in",
   "project_name": "The Residency-City Centre Patna",
@@ -57,12 +57,7 @@
   "uploaded_documents": [
     {
       "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1EncumbranceCertificate.pdf",
-      "type": "Chartered Accountant 1",
-      "label": "Chartered Accountant 1",
-      "source_label": "A certificate from a Chartered accountant declaring that no advance booking amount has been taken from the customers against the current project duly signed by the promoter and countersigned by CA",
-      "matched_category": "Chartered Accountant",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "A certificate from a Chartered accountant declaring that no advance booking amount has been taken from the customers against the current project duly signed by the promoter and countersigned by CA"
     },
     {
       "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1SharePart.pdf",
@@ -76,8 +71,6 @@
       "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1BrochureofCurrentProject.pdf",
       "type": "Brochure 1",
       "label": "Brochure 1",
-      "source_label": "Brochure of Current Project",
-      "matched_category": "Brochure",
       "s3_link": "https://s3.example.com/dry-run",
       "updated": true
     },
@@ -105,8 +98,6 @@
       "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1AreaDevelopmentPlan.pdf",
       "type": "Development Plan 1",
       "label": "Development Plan 1",
-      "source_label": "Permit Letter of MAP.",
-      "matched_category": "Development Plan",
       "s3_link": "https://s3.example.com/dry-run",
       "updated": true
     },
@@ -114,8 +105,6 @@
       "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1ApprovedLayoutPlan.pdf",
       "type": "Layout Plan 1",
       "label": "Layout Plan 1",
-      "source_label": "Proforma of agreement for sale with all schedules",
-      "matched_category": "Layout Plan",
       "s3_link": "https://s3.example.com/dry-run",
       "updated": true
     },
@@ -131,8 +120,6 @@
       "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1SanctionedbuildingPlan.pdf",
       "type": "building Plan 1",
       "label": "building Plan 1",
-      "source_label": "Sanctioned building plan",
-      "matched_category": "building Plan",
       "s3_link": "https://s3.example.com/dry-run",
       "updated": true
     },
@@ -140,8 +127,6 @@
       "link": "https://rera.bihar.gov.in/All_Document/RERAP01282025205138RERAP01282025205138-1SanctionedLayoutPlan.pdf",
       "type": "Layout Plan 2",
       "label": "Layout Plan 2",
-      "source_label": "Sanctioned Layout Plan",
-      "matched_category": "Layout Plan",
       "s3_link": "https://s3.example.com/dry-run",
       "updated": true
     },
@@ -153,8 +138,6 @@
       "link": "https://rera.bihar.gov.in/Registration_Certificate/RERAP01282025205138.pdf",
       "type": "Registration Certificate 1",
       "label": "Registration Certificate 1",
-      "source_label": "Registration Certificate",
-      "matched_category": "Registration Certificate",
       "s3_link": "https://s3.example.com/dry-run",
       "updated": true
     },
@@ -163,28 +146,19 @@
       "type": "Quarterly Progress Report 1",
       "dated_on": "2026-04-17",
       "label": "Quarterly Progress Report 1",
-      "source_label": "Quarterly Progress Report",
-      "matched_category": "Quarterly Progress Report",
       "s3_link": "https://s3.example.com/dry-run",
       "updated": true
     },
     {
       "link": "https://rera.bihar.gov.in/QPRimages/fuCA_170426120026.pdf",
-      "type": "Chartered Accountant 2",
-      "dated_on": "2026-04-17",
-      "label": "Chartered Accountant 2",
-      "source_label": "Chartered Accountant Certificate",
-      "matched_category": "Chartered Accountant",
-      "s3_link": "https://s3.example.com/dry-run",
-      "updated": true
+      "type": "Chartered Accountant Certificate",
+      "dated_on": "2026-04-17"
     },
     {
       "link": "https://rera.bihar.gov.in/QPRimages/fuarchitect_170426120955.pdf",
       "type": "ARCHITECT Certificate 1",
       "dated_on": "2026-04-17",
       "label": "ARCHITECT Certificate 1",
-      "source_label": "Architect Certificate",
-      "matched_category": "ARCHITECT",
       "s3_link": "https://s3.example.com/dry-run",
       "updated": true
     },
@@ -193,8 +167,6 @@
       "type": "Engineer Certificate 1",
       "dated_on": "2026-04-17",
       "label": "Engineer Certificate 1",
-      "source_label": "Engineer Certificate",
-      "matched_category": "Engineer",
       "s3_link": "https://s3.example.com/dry-run",
       "updated": true
     }
@@ -269,10 +241,6 @@
   "document_urls": [
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Chartered Accountant 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
       "type": "Brochure 1"
     },
     {
@@ -298,10 +266,6 @@
     {
       "link": "https://s3.example.com/dry-run",
       "type": "Quarterly Progress Report 1"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
-      "type": "Chartered Accountant 2"
     },
     {
       "link": "https://s3.example.com/dry-run",

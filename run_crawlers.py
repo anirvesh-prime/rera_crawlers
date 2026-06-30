@@ -491,7 +491,7 @@ def apply_runtime_overrides(args: argparse.Namespace) -> int:
     return settings.CRAWL_ITEM_LIMIT
 
 
-def main():
+def main() -> int:
     args = parse_args()
     Path(settings.LOG_DIR).mkdir(parents=True, exist_ok=True)
     item_limit = apply_runtime_overrides(args)
@@ -499,14 +499,14 @@ def main():
     sites, unknown_sites, disabled_sites = select_sites(args.site)
     if unknown_sites:
         print(f"[ERROR] Unknown site id(s): {', '.join(unknown_sites)}")
-        return
+        return 2
     if not sites:
         print("[ERROR] No sites selected to run.")
-        return
+        return 2
 
     if getattr(args, "tester", False) and len(sites) != 1:
         print("[ERROR] --tester requires exactly one --site")
-        return
+        return 2
 
     parallel = not args.sequential and not getattr(args, "tester", False) and len(sites) > 1
 
@@ -663,7 +663,8 @@ def main():
         print(f"  Summary: {summary_path}")
 
     print(f"{_SEP}\n")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

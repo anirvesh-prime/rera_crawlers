@@ -11,7 +11,7 @@
   "project_pin_code": "441204",
   "project_city": "Nagpur",
   "project_state": "MAHARASHTRA",
-  "crawl_machine_ip": "10.20.81.103",
+  "crawl_machine_ip": "127.0.0.1",
   "machine_name": "Anirveshs-MacBook-Air.local",
   "project_location_raw": {
     "street_name": "UMRER ROAD",
@@ -41,92 +41,6 @@
     "IFSC": "ICIC0007398",
     "address": "ICICI Bank Ltd., NMC House 3285, Kirti Nagar, Narsala Road, Nagpur, Narsala.440034, Maharashtra"
   },
-  "uploaded_documents": [
-    {
-      "type": "Withdrawal Update Form 1",
-      "filename": "FORM 1 Architect Cert.pdf"
-    },
-    {
-      "type": "Withdrawal Update Form 2",
-      "filename": "FORM 2.pdf"
-    },
-    {
-      "type": "Withdrawal Update Form 3",
-      "filename": "FORM 3.pdf"
-    },
-    {
-      "type": "UMARGAON 102-5 FINAL CERTIFICATE.pdf",
-      "filename": "UMARGAON 102-5 FINAL CERTIFICATE.pdf"
-    },
-    {
-      "type": "NA_ORDER.pdf",
-      "filename": "NA_ORDER.pdf"
-    },
-    {
-      "type": "ANNEXURE A COMMENCE DECLARATION.pdf",
-      "filename": "ANNEXURE A COMMENCE DECLARATION.pdf"
-    },
-    {
-      "type": "MAP.pdf",
-      "filename": "MAP.pdf"
-    },
-    {
-      "type": "FORM 1 Architect Cert.pdf",
-      "filename": "FORM 1 Architect Cert.pdf"
-    },
-    {
-      "type": "FORM 2 ENGG.pdf",
-      "filename": "FORM 2 ENGG.pdf"
-    },
-    {
-      "type": "SATBARA.pdf",
-      "filename": "SATBARA.pdf"
-    },
-    {
-      "type": "DISCLOSURE_INTEREST_PARTNERS.pdf",
-      "filename": "DISCLOSURE_INTEREST_PARTNERS.pdf"
-    },
-    {
-      "type": "Partnershipdeed_11zon.pdf",
-      "filename": "Partnershipdeed_11zon.pdf"
-    },
-    {
-      "type": "NMRDA_EMAIL_VERIFICATION.pdf",
-      "filename": "NMRDA_EMAIL_VERIFICATION.pdf"
-    },
-    {
-      "type": "VISIONPAN.pdf",
-      "filename": "VISIONPAN.pdf"
-    },
-    {
-      "type": "CERSAI_For_Asset_Based.pdf",
-      "filename": "CERSAI_For_Asset_Based.pdf"
-    },
-    {
-      "type": "CERSAI_For_Debtor_Based.pdf",
-      "filename": "CERSAI_For_Debtor_Based.pdf"
-    },
-    {
-      "type": "Undertaking about Cersai Report .pdf",
-      "filename": "Undertaking about Cersai Report .pdf"
-    },
-    {
-      "type": "Clarification_letter_11zon.pdf",
-      "filename": "Clarification_letter_11zon.pdf"
-    },
-    {
-      "type": "Declaration Form B",
-      "filename": "LEGAL_REPORT.pdf"
-    },
-    {
-      "type": "Declaration Form B",
-      "filename": "Sale deed_11zon.pdf"
-    },
-    {
-      "type": "Declaration Form B",
-      "filename": "Affidavit Form B.pdf"
-    }
-  ],
   "co_promoter_details": [
     {
       "name": "GIRISH YADAORAO SAKHARKAR",
@@ -190,6 +104,7 @@
   "number_of_commercial_units": null,
   "building_details": null,
   "complaints_litigation_details": null,
+  "uploaded_documents": null,
   "authorised_signatory_details": null,
   "project_description": null,
   "provided_faciltiy": null,

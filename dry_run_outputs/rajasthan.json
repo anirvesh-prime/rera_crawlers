@@ -7,49 +7,146 @@
   "project_name": "VENTURA",
   "project_type": "group-housing",
   "promoter_name": "J S BUILDCOM",
-  "status_of_the_project": "COMPLETED",
   "project_city": "Jaipur",
   "project_state": "Rajasthan",
-  "crawl_machine_ip": "10.20.81.103",
+  "project_description": "we will not sale servent room independently. these all servant rooms including extra one will be sold to the allottees of the approved flats only and not be be sold independently to any other person or will be kept as the facility of the the apartment.",
+  "crawl_machine_ip": "127.0.0.1",
   "machine_name": "Anirveshs-MacBook-Air.local",
   "project_location_raw": {
-    "raw_address": "Khasra No./ Plot No.PLOT NO O-35 A , Village- JAIPUR , 6-D ENGINEERS COLONY , Jaipur - 302021 (Rajasthan)",
-    "pin_code": "302021",
-    "village": "JAIPUR",
-    "house_no_building_name": "PLOT NO O-35 A",
-    "taluk": "Sanganer",
+    "state": "Rajasthan",
     "district": "Jaipur",
-    "state": "Rajasthan"
+    "taluk": "Sanganer",
+    "village": "JAIPUR",
+    "house_no_building_name": "PLOT NO O-35A",
+    "locality": "6-D ENGINEERS COLONY",
+    "pin_code": "302021",
+    "raw_address": "Jaipur, Sanganer, JAIPUR, PLOT NO O-35A, GRAM MANYAWAS, 6-D ENGINEERS COLONY, SANGANER, 302021"
   },
-  "promoter_address_raw": {
-    "raw_address": "SHOP NO A-181 , KARDHANI SHOPPING CENTRE KALWAR ROAD , Sanganer , Jaipur (Rajasthan) - 302012"
-  },
-  "promoter_contact_details": {
-    "phone": "9460005613"
+  "bank_details": {
+    "bank_name": "AU SMALL FINANCE BANK LIMITED",
+    "branch": "KALWAR ROAD",
+    "IFSC": "AUBL0002444",
+    "account_no": "2402244456025797",
+    "account_name": "J S BUILDCOM VENTURA RERA ACCOUNT",
+    "address": "KRISHNA ENCLAVE 11 GOKULPURA KALWAR ROAD JAIPUR 302012"
   },
   "project_cost_detail": {
-    "estimated_project_cost": "300000000"
+    "cost_of_land": "0",
+    "estimated_construction_cost": "0"
   },
-  "members_details": [
+  "building_details": [
     {
-      "name": "JAMANA DEVI"
+      "flat_type": "unit 01 (1st floor to 10th floor) with servent room",
+      "block_name": "1",
+      "carpet_area": "205.6",
+      "no_of_units": "10",
+      "booking_detail": "5"
     },
     {
-      "name": "SHWETA DALMIA"
+      "flat_type": "unit 02 (1st floor to 10th floor) with servent room",
+      "block_name": "1",
+      "carpet_area": "203.52",
+      "no_of_units": "10",
+      "booking_detail": "1"
+    },
+    {
+      "flat_type": "unit 03 (1st to 11th floor) with servent room",
+      "block_name": "1",
+      "carpet_area": "203.52",
+      "no_of_units": "11",
+      "booking_detail": "3"
+    },
+    {
+      "flat_type": "unit 04 (1st to 11th floor) with servent room",
+      "block_name": "1",
+      "carpet_area": "205.6",
+      "no_of_units": "11",
+      "booking_detail": "6"
+    },
+    {
+      "flat_type": "unit 01-11th floor with servent room and private terrace",
+      "block_name": "1",
+      "carpet_area": "205.6",
+      "no_of_units": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "unit 02-11th floor with servent room and private terrace",
+      "block_name": "1",
+      "carpet_area": "203.52",
+      "no_of_units": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "Ground floor unit 03 with servent room",
+      "block_name": "1",
+      "carpet_area": "203.52",
+      "no_of_units": "1",
+      "booking_detail": "0"
+    },
+    {
+      "flat_type": "Ground floor unit 04 with servent room",
+      "block_name": "1",
+      "carpet_area": "205.6",
+      "no_of_units": "1",
+      "booking_detail": "0"
+    }
+  ],
+  "professional_information": [
+    {
+      "name": "Mr.Shrawan Kumawat",
+      "email": "spaceedgejpr@gmail.com",
+      "address": "spaceedgejpr@gmail.com",
+      "phone": "9314510603",
+      "role": "Total"
+    },
+    {
+      "name": "Amit Choudhary",
+      "email": "cpstandco@gmail.com",
+      "address": "cpstandco@gmail.com",
+      "phone": "9079049437",
+      "role": "COA Registration No."
+    },
+    {
+      "name": "LOKESH WADHWA",
+      "email": "frameconsultantsjaipur@gmail.com",
+      "address": "frameconsultantsjaipur@gmail.com",
+      "phone": "9024160011",
+      "role": "Registration No."
+    },
+    {
+      "name": "LOKESH WADHWA",
+      "email": "frameconsultantsjaipur@gmail.com",
+      "address": "frameconsultantsjaipur@gmail.com",
+      "phone": "9024160011",
+      "role": "Contact Number"
+    }
+  ],
+  "members_details": [
+    {
+      "name": "JAMANA DEVI",
+      "position": "PARTNER"
+    },
+    {
+      "name": "SHWETA DALMIA",
+      "position": "PARTNER"
     }
   ],
   "data": {
     "is_processed": false,
     "land_area_unit": "In sq. meters",
     "construction_area_unit": "in sq. meters",
-    "type": "Group Housing"
+    "type": "Group Housing",
+    "temp": "RAJ/P/2024/3058 (19/03/2024)"
   },
   "promoters_details": {
-    "type_of_firm": "Partnership Firm",
-    "name": "J S BUILDCOM"
+    "name": "J S BUILDCOM",
+    "type_of_firm": "Partnership"
   },
+  "submitted_date": "2024-03-19 00:00:00+00:00",
   "actual_commencement_date": "2024-01-01 00:00:00+00:00",
   "estimated_finish_date": "2026-12-31 00:00:00+00:00",
+  "number_of_residential_units": 46,
   "config_id": 2,
   "land_area": 2429.23,
   "construction_area": 16681.0,
@@ -59,27 +156,24 @@
   "checked_updates": false,
   "rera_housing_found": false,
   "is_live": true,
+  "status_of_the_project": null,
   "acknowledgement_no": null,
   "project_pin_code": null,
-  "submitted_date": null,
+  "promoter_address_raw": null,
+  "promoter_contact_details": null,
   "last_modified": null,
   "estimated_commencement_date": null,
   "actual_finish_date": null,
   "approved_on_date": null,
   "past_experience_of_promoter": null,
-  "bank_details": null,
   "total_floor_area_under_commercial_or_other_uses": null,
   "total_floor_area_under_residential": null,
-  "number_of_residential_units": null,
   "number_of_commercial_units": null,
-  "building_details": null,
   "complaints_litigation_details": null,
   "uploaded_documents": null,
   "authorised_signatory_details": null,
   "co_promoter_details": null,
-  "project_description": null,
   "provided_faciltiy": null,
-  "professional_information": null,
   "development_agreement_detail": null,
   "construction_progress": null,
   "land_detail": null,
