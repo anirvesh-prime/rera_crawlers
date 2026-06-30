@@ -65,6 +65,7 @@ _UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
+_HP_REG_NO_RE = re.compile(r"^RERAHP[A-Z]{3}\d{8}$", re.I)
 
 
 # ── SeleniumSession wiring ────────────────────────────────────────────────────
@@ -279,7 +280,7 @@ def _fetch_listing(
     for a in target.find_all("a", attrs={"data-qs": True, "title": "View Application"}):
         reg_no = _clean(a.get_text())
         qs_val = a.get("data-qs", "").strip()
-        if reg_no and qs_val:
+        if reg_no and qs_val and _HP_REG_NO_RE.match(reg_no):
             qs_map[reg_no] = qs_val
 
     logger.info(
@@ -974,7 +975,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         target_regs = get_target_reg_nos()
 
         # ── Sentinel health check (uses already-fetched listing) ─────────────
-        if target_regs:
+        if target_regs or mode == "daily_light":
             logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
             counts["sentinel_passed"] = True
         else:
@@ -1014,11 +1015,11 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 f"Targeted run — {len(matched_regs)} of {len(target_regs)} requested "
                 f"project(s) matched", step="listing",
             )
-        counts["projects_found"] = len(all_reg_nos)
-        update_crawl_run_progress(run_id, counts)
         if item_limit:
             all_reg_nos = all_reg_nos[:item_limit]
             logger.info(f"HP RERA: CRAWL_ITEM_LIMIT={item_limit} — {len(all_reg_nos)} projects")
+        counts["projects_found"] = len(all_reg_nos)
+        update_crawl_run_progress(run_id, counts)
 
         # ── Phase 2: Process each project ────────────────────────────────────
         for i, reg_no in enumerate(all_reg_nos):

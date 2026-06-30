@@ -111,8 +111,16 @@ def _get(url: str, logger: CrawlerLogger):
     return _session().get(url, logger=logger, page_load_timeout=_DEFAULT_PAGE_LOAD_TIMEOUT)
 
 
-def _get_listing(logger: CrawlerLogger):
+def _get_listing(logger: CrawlerLogger, *, mode: str | None = None):
     """Fetch the Pondicherry listing page with an extended page-load timeout and more retries."""
+    if mode == "daily_light":
+        return _session().get(
+            LISTING_URL,
+            logger=logger,
+            page_load_timeout=45.0,
+            retries=2,
+            delay=2.0,
+        )
     return _session().get(
         LISTING_URL,
         logger=logger,
@@ -537,7 +545,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     target_regs = get_target_reg_nos()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         counts["sentinel_passed"] = True
     else:
@@ -552,7 +560,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
     # Fetch listing page
     t0 = time.monotonic()
-    resp = _get_listing(logger)
+    resp = _get_listing(logger, mode=mode)
     if not resp:
         logger.error("Failed to load Pondicherry listing page")
         insert_crawl_error(run_id, site_id, "listing_load_failed",
@@ -599,10 +607,6 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             f"project(s) matched", step="listing",
         )
 
-    # projects_found must reflect the total Pondicherry listing (all projects in
-    # the state) regardless of CRAWL_ITEM_LIMIT — slice the work list afterwards.
-    counts["projects_found"] = len(cards)
-    update_crawl_run_progress(run_id, counts)
     if item_limit:
         cards = cards[:item_limit]
         logger.info(f"Pondicherry: CRAWL_ITEM_LIMIT={item_limit} applied — processing {len(cards)} projects")
@@ -612,6 +616,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         if max_pages:
             cards = cards[:max_pages * 50]
             logger.info(f"Pondicherry: limiting to first {len(cards)} projects (max_pages={max_pages})")
+    counts["projects_found"] = len(cards)
+    update_crawl_run_progress(run_id, counts)
     logger.info(f"Pondicherry: {len(cards)} project cards found")
     logger.timing("search", time.monotonic() - t0, rows=len(cards))
 
@@ -715,20 +721,30 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             else:               counts["projects_updated"] += 1
             logger.info(f"DB result: {action}", step="db_upsert")
 
-            logger.info(f"Downloading {len(doc_links)} documents", step="documents")
             uploaded_documents = []
-            doc_name_counts: dict[str, int] = {}
-            for doc in doc_links:
-                selected_doc = select_document_for_download(config["state"], doc, doc_name_counts, domain=DOMAIN)
-                if selected_doc:
-                    uploaded_doc = _handle_document(db_dict["key"], selected_doc, run_id, site_id, logger)
-                    if uploaded_doc:
-                        uploaded_documents.append(uploaded_doc)
-                        counts["documents_uploaded"] += 1
+            if doc_links and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+                logger.info(
+                    f"Skipping {len(doc_links)} documents (light/skip-documents mode)",
+                    step="documents",
+                )
+                uploaded_documents = [
+                    {"link": doc.get("url"), "type": doc.get("label") or doc.get("type", "document")}
+                    for doc in doc_links
+                ]
+            else:
+                logger.info(f"Downloading {len(doc_links)} documents", step="documents")
+                doc_name_counts: dict[str, int] = {}
+                for doc in doc_links:
+                    selected_doc = select_document_for_download(config["state"], doc, doc_name_counts, domain=DOMAIN)
+                    if selected_doc:
+                        uploaded_doc = _handle_document(db_dict["key"], selected_doc, run_id, site_id, logger)
+                        if uploaded_doc:
+                            uploaded_documents.append(uploaded_doc)
+                            counts["documents_uploaded"] += 1
+                        else:
+                            uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label") or doc.get("type", "document")})
                     else:
                         uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label") or doc.get("type", "document")})
-                else:
-                    uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label") or doc.get("type", "document")})
             if uploaded_documents:
                 upsert_project({
                     "key": db_dict["key"], "url": db_dict["url"],  # FIELD: key, url <- db_dict (re-upsert with documents)

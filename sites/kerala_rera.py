@@ -15,13 +15,19 @@ import time
 import tempfile
 from datetime import timezone
 from typing import Any
-from urllib.parse import parse_qs, urljoin, urlparse
+from urllib.parse import parse_qs, urlencode, urljoin, urlparse
 
 from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, random_delay
+from core.crawler_base import (
+    SeleniumSession,
+    generate_project_key,
+    get_target_reg_nos,
+    page_adapter,
+    random_delay,
+)
 from core.db import (
     get_project_by_key,
     upsert_project,
@@ -119,7 +125,40 @@ _PLAYWRIGHT_DOWNLOAD_START_TIMEOUT_MS = 120_000
 # ── Listing pagination via explore-projects ───────────────────────────────────
 
 def _get_explore_page(page_num: int, logger: CrawlerLogger) -> BeautifulSoup | None:
-    resp = _get(EXPLORE_URL, logger, params={"page": page_num})
+    url = f"{EXPLORE_URL}?{urlencode({'page': page_num})}"
+    try:
+        page = page_adapter(_session())
+        page.goto(url, timeout=45_000, wait_until="domcontentloaded")
+        try:
+            page.wait_for_load_state("networkidle", timeout=20_000)
+        except Exception:
+            pass
+        try:
+            page.wait_for_function(
+                "() => document.querySelectorAll('a[href^=\"/projects/\"]').length > 0",
+                timeout=20_000,
+            )
+        except Exception:
+            html = page.content()
+            soup = BeautifulSoup(html, "lxml")
+            link_sample = [a.get("href") for a in soup.find_all("a", href=True)[:10]]
+            logger.warning(
+                "Explore page rendered without project links",
+                step="listing",
+                url=url,
+                title=soup.title.get_text(strip=True) if soup.title else None,
+                links=link_sample,
+                text=soup.get_text(" ", strip=True)[:500],
+            )
+            return soup
+        return BeautifulSoup(page.content(), "lxml")
+    except Exception as exc:
+        logger.warning(
+            f"Rendered explore fetch failed, falling back to Selenium GET: {exc}",
+            step="listing",
+            url=url,
+        )
+    resp = _get(url, logger)
     if not resp:
         return None
     return BeautifulSoup(resp.text, "lxml")
@@ -1748,6 +1787,24 @@ def _process_card(
         logger.info(f"DB result: {action}", step="db_upsert")
 
         queued_docs = _document_queue(doc_links, preview_docs)
+        if queued_docs and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+            logger.info(
+                f"Skipping {len(queued_docs)} documents (light/skip-documents mode)",
+                step="documents",
+            )
+            uploaded_documents = build_kerala_legacy_uploaded_documents(preview_docs, doc_links, [])
+            if uploaded_documents:
+                upsert_project({
+                    "key": db_dict["key"],  # FIELD: key <- db_dict["key"]
+                    "url": db_dict["url"],  # FIELD: url <- db_dict["url"]
+                    "state": db_dict["state"],  # FIELD: state <- db_dict["state"]
+                    "domain": db_dict["domain"],  # FIELD: domain <- db_dict["domain"]
+                    "project_registration_no": db_dict["project_registration_no"],  # FIELD: project_registration_no <- db_dict["project_registration_no"]
+                    "uploaded_documents": uploaded_documents,  # FIELD: uploaded_documents <- preview/listing document metadata only
+                    "document_urls": build_document_urls(uploaded_documents),  # FIELD: document_urls <- build_document_urls(uploaded_documents)
+                })
+            return deltas
+
         logger.info(f"Downloading {len(queued_docs)} documents", step="documents")
         uploaded_doc_results: list[dict] = []
         doc_name_counts: dict[str, int] = {}
@@ -1814,7 +1871,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     target_regs = get_target_reg_nos()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         counts["sentinel_passed"] = True
     else:

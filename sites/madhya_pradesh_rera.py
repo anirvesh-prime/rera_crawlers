@@ -769,7 +769,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     matched_regs: set[str] = set()
 
     # ── Sentinel check ─────────────────────────────────────────────────────────
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         counts["sentinel_passed"] = True
     else:
@@ -968,22 +968,29 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
             # ── Document uploads ─────────────────────────────────────────────
             uploaded_documents: list[dict] = []
-            doc_name_counts: dict[str, int] = {}
-            for doc in doc_links:
-                doc_for_policy = {"url": doc.get("link", ""), "label": doc.get("type", "")}
-                selected = select_document_for_download(
-                    config["state"], doc_for_policy, doc_name_counts, domain=DOMAIN,
+            if doc_links and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+                logger.info(
+                    f"Skipping {len(doc_links)} documents (light/skip-documents mode)",
+                    step="documents",
                 )
-                if selected:
-                    enriched_doc = {**doc, "type": selected.get("type", doc["type"])}
-                    uploaded = _handle_document(db_dict["key"], enriched_doc, run_id, site_id, logger)
-                    if uploaded:
-                        uploaded_documents.append(uploaded)
-                        counts["documents_uploaded"] += 1
+                uploaded_documents = list(doc_links)
+            else:
+                doc_name_counts: dict[str, int] = {}
+                for doc in doc_links:
+                    doc_for_policy = {"url": doc.get("link", ""), "label": doc.get("type", "")}
+                    selected = select_document_for_download(
+                        config["state"], doc_for_policy, doc_name_counts, domain=DOMAIN,
+                    )
+                    if selected:
+                        enriched_doc = {**doc, "type": selected.get("type", doc["type"])}
+                        uploaded = _handle_document(db_dict["key"], enriched_doc, run_id, site_id, logger)
+                        if uploaded:
+                            uploaded_documents.append(uploaded)
+                            counts["documents_uploaded"] += 1
+                        else:
+                            uploaded_documents.append(doc)
                     else:
                         uploaded_documents.append(doc)
-                else:
-                    uploaded_documents.append(doc)
 
             if uploaded_documents:
                 upsert_project({

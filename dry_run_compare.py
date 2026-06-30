@@ -465,18 +465,13 @@ def _listing_patches_tamil_nadu(module, sample_url: str, reg_no: str, sample: di
         # cell) is used as the estimated commencement date.  Mirror this from the sample.
         "estimated_commencement_date": sample.get("estimated_commencement_date") or "",
     }
-    # run() iterates over 2 hardcoded master listing URLs (building + layout).
-    # _fetch_sentinel_listing_row also calls _parse_year_listing on the building URL
-    # during the sentinel phase, so we can't use a simple call counter.
-    # Instead: always return [stub] for the building URL (covering both the sentinel
-    # lookup and the main building-listing pass) and [] for the layout URL.
-    # This produces exactly 1 project, regardless of how many times each URL is called.
     _building_url = f"{module.BASE_URL}/registered-building/tn"
-    def _fake_parse_year_listing(url, logger):
-        return [stub] if url == _building_url else []
+
+    def _fake_iter_listing_rows(logger):
+        yield (_building_url, "dry-run", [stub])
 
     return [
-        patch.object(module, "_parse_year_listing", side_effect=_fake_parse_year_listing),
+        patch.object(module, "_iter_listing_rows", side_effect=_fake_iter_listing_rows),
     ]
 
 
@@ -740,17 +735,18 @@ def _listing_patches_karnataka(module, sample_url: str, reg_no: str, sample: dic
     """Inject the Karnataka sample project by patching _extract_listing_rows.
 
     Karnataka has no per-project URLs — all detail fetches use a POST with an
-    acknowledgement number.  The ACK number for the sample is stored in the
-    sample JSON (acknowledgement_no field).  We:
+    registration number.  The ACK number for the sample is stored in the
+    sample JSON separately from project_registration_no. We:
       1. Restrict DISTRICTS to just 'Bengaluru Urban' (district of the sample).
-      2. Patch _extract_listing_rows to return a single row with the sample's ACK.
+      2. Patch _extract_listing_rows to return a single row with both values.
     """
     ack_no = sample.get("acknowledgement_no", "ACK/KA/RERA/1248/469/PR/110223/006823")
+    project_reg_no = sample.get("project_registration_no") or reg_no
     loc = sample.get("project_location_raw") or {}
     district = loc.get("district", "Bengaluru Urban")
     stub = {
         "acknowledgement_no":      ack_no,
-        "project_registration_no": ack_no,
+        "project_registration_no": project_reg_no,
         "project_name":            sample.get("project_name", ""),
         "promoter_name":           sample.get("promoter_name", ""),
         "promoter_registration_no": None,
@@ -905,14 +901,16 @@ def run_site(site_cfg: dict, limit: int = 1, start_page: int = 0,
     settings.DRY_RUN_S3       = True
     settings.SKIP_DOCUMENTS   = True
 
-    for p in all_patches:
-        p.start()
+    started_patches = []
     try:
+        for p in all_patches:
+            p.start()
+            started_patches.append(p)
         module.run(site_cfg, FAKE_RUN_ID, "weekly_deep")
     except Exception as e:
         print(f"  [RUN ERROR] {e}")
     finally:
-        for p in all_patches:
+        for p in started_patches:
             try:
                 p.stop()
             except Exception:

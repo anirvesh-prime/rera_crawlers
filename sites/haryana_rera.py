@@ -1161,7 +1161,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     target_regs = get_target_reg_nos()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         counts["sentinel_passed"] = True
     else:
@@ -1210,10 +1210,13 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             f"project(s) matched", step="listing",
         )
 
+    total_stubs = len(all_stubs)
+    if item_limit and not target_regs:
+        all_stubs = all_stubs[:item_limit]
     counts["projects_found"] = len(all_stubs)
     update_crawl_run_progress(run_id, counts)
-    logger.info("Total unique projects found", count=len(all_stubs))
-    logger.timing("search", time.monotonic() - t0, rows=len(all_stubs))
+    logger.info("Total unique projects found", count=len(all_stubs), total_count=total_stubs)
+    logger.timing("search", time.monotonic() - t0, rows=len(all_stubs), total_rows=total_stubs)
 
     if not all_stubs:
         logger.error("No projects found — aborting")
@@ -1306,7 +1309,12 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 doc_name_counts: dict[str, int] = {}
                 persisted_docs: list[dict] = []
 
-                if all_docs:
+                if all_docs and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+                    logger.info(
+                        f"Skipping {len(all_docs)} documents (light/skip-documents mode)",
+                        step="documents",
+                    )
+                elif all_docs:
                     for doc in all_docs:
                         selected = select_document_for_download(
                             config["state"], doc, doc_name_counts, domain=DOMAIN,

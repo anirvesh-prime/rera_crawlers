@@ -1058,22 +1058,32 @@ def _process_row(
         else:               counts["projects_updated"] += 1
         logger.info(f"DB result: {action}", step="db_upsert")
 
-        logger.info(f"Downloading {len(doc_links)} documents", step="documents")
         uploaded_documents: list[dict] = []
-        doc_name_counts: dict[str, int] = {}
-        for doc in doc_links:
-            selected = select_document_for_download(
-                config["state"], doc, doc_name_counts, domain=DOMAIN,
+        if doc_links and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+            logger.info(
+                f"Skipping {len(doc_links)} documents (light/skip-documents mode)",
+                step="documents",
             )
-            if selected:
-                uploaded = _handle_document(db_dict["key"], selected, run_id, site_id, logger, client)
-                if uploaded:
-                    uploaded_documents.append(uploaded)
-                    counts["documents_uploaded"] += 1
+            uploaded_documents = [
+                {"link": doc.get("url"), "type": doc.get("label", "document")}
+                for doc in doc_links
+            ]
+        else:
+            logger.info(f"Downloading {len(doc_links)} documents", step="documents")
+            doc_name_counts: dict[str, int] = {}
+            for doc in doc_links:
+                selected = select_document_for_download(
+                    config["state"], doc, doc_name_counts, domain=DOMAIN,
+                )
+                if selected:
+                    uploaded = _handle_document(db_dict["key"], selected, run_id, site_id, logger, client)
+                    if uploaded:
+                        uploaded_documents.append(uploaded)
+                        counts["documents_uploaded"] += 1
+                    else:
+                        uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label", "document")})
                 else:
                     uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label", "document")})
-            else:
-                uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label", "document")})
 
         if uploaded_documents:
             upsert_project({
@@ -1152,7 +1162,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             logger.warning(f"Session warm-up failed (non-fatal): {exc}", step="session")
 
         # ── Sentinel health check ────────────────────────────────────────────
-        if target_regs:
+        if target_regs or mode == "daily_light":
             logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
             counts["sentinel_passed"] = True
         else:
@@ -1208,23 +1218,25 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     (r.get("project_registration_no") or "").strip().upper() for r in rows
                 )
 
-            logger.info(f"Search page {search_page + 1}: {len(rows)} rows (total={total_records})")
-            # projects_found should reflect the entire Tripura listing — the
-            # primary search API exposes total_records on the first page, so
-            # pin projects_found to that value once and ignore per-page deltas
-            # (the per-page accumulator would only equal the total after every
-            # page is walked, which item_limit may interrupt).
-            if target_regs:
-                counts["projects_found"] += len(rows)
-            elif total_records and counts["projects_found"] < total_records:
-                counts["projects_found"] = total_records
+            remaining = (item_limit - items_processed) if item_limit else len(rows)
+            if item_limit and remaining <= 0:
+                logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached")
+                reset_checkpoint(site_id, mode)
+                return counts
+            rows_to_consider = rows[:remaining] if item_limit else rows
+
+            logger.info(
+                f"Search page {search_page + 1}: {len(rows_to_consider)} rows "
+                f"(total={total_records})"
+            )
+            counts["projects_found"] += len(rows_to_consider)
             # Push the running projects_found to crawl_runs for live dashboard view.
             update_crawl_run_progress(run_id, counts)
             if not first_page_logged:
-                logger.timing("search", time.monotonic() - t0, rows=len(rows))
+                logger.timing("search", time.monotonic() - t0, rows=len(rows_to_consider))
                 first_page_logged = True
 
-            for row in rows:
+            for row in rows_to_consider:
                 items_processed = _process_row(
                     row, config, run_id, site_id, client, logger,
                     machine_name, machine_ip, counts, done_regs,

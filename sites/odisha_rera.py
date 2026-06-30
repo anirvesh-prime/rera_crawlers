@@ -1190,7 +1190,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         page = page_adapter(_session())
 
         # ── Sentinel health check ────────────────────────────────────────────
-        if target_regs:
+        if target_regs or mode == "daily_light":
             logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
             counts["sentinel_passed"] = True
         else:
@@ -1260,22 +1260,24 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     (c.get("project_registration_no") or "").strip().upper() for c in cards
                 )
 
-            counts["projects_found"] += len(cards)
+            remaining = (item_limit - items_processed) if item_limit else len(cards)
+            if item_limit and remaining <= 0:
+                logger.info(
+                    f"Item limit {item_limit} reached — stopping listing walk",
+                    step="listing",
+                )
+                processing_done = True
+                break
+            cards_to_consider = cards[:remaining] if item_limit else cards
+
+            counts["projects_found"] += len(cards_to_consider)
             # Push the running projects_found to crawl_runs for live dashboard view.
             update_crawl_run_progress(run_id, counts)
             if page_num == 1:
-                logger.timing("search", time.monotonic() - t0, rows=len(cards))
+                logger.timing("search", time.monotonic() - t0, rows=len(cards_to_consider))
 
-            for card in cards:
+            for card in cards_to_consider:
                 reg  = card["project_registration_no"]
-
-                if item_limit and items_processed >= item_limit:
-                    logger.info(
-                        f"Item limit {item_limit} reached — stopping listing walk",
-                        step="listing",
-                    )
-                    processing_done = True
-                    break
 
                 # Count every card toward the limit BEFORE skip checks so daily_light
                 # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
@@ -1327,6 +1329,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     # ── Parse Project Overview tab ────────────────────────
                     overview  = _parse_overview(BeautifulSoup(page.content(), "lxml"))
                     doc_links = overview.pop("_doc_links", [])
+                    skip_doc_work = settings.SKIP_DOCUMENTS or mode == "daily_light"
+                    if skip_doc_work:
+                        doc_links = []
 
                     # ── Parse Promoter Details tab ────────────────────────
                     promoter: dict = {}
@@ -1383,52 +1388,53 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     except Exception as e:
                         logger.warning(f"Project Milestone tab failed for {reg}: {e}")
 
-                    # ── Parse Documents tab ───────────────────────────────
-                    try:
-                        _dismiss_modal(page)
-                        page.click("text=Documents", timeout=8000)
+                    if not skip_doc_work:
+                        # ── Parse Documents tab ───────────────────────────────
                         try:
-                            page.wait_for_load_state("networkidle", timeout=8000)
-                        except Exception:
-                            page.wait_for_timeout(1000)
-                        extra_docs = _extract_doc_links(BeautifulSoup(page.content(), "lxml"))
-                        seen_urls = {d["url"] for d in doc_links}
-                        doc_links += [d for d in extra_docs if d["url"] not in seen_urls]
-                    except Exception as e:
-                        logger.warning(f"Documents tab failed for {reg}: {e}")
+                            _dismiss_modal(page)
+                            page.click("text=Documents", timeout=8000)
+                            try:
+                                page.wait_for_load_state("networkidle", timeout=8000)
+                            except Exception:
+                                page.wait_for_timeout(1000)
+                            extra_docs = _extract_doc_links(BeautifulSoup(page.content(), "lxml"))
+                            seen_urls = {d["url"] for d in doc_links}
+                            doc_links += [d for d in extra_docs if d["url"] not in seen_urls]
+                        except Exception as e:
+                            logger.warning(f"Documents tab failed for {reg}: {e}")
 
-                    # ── Normalize registration cert label ─────────────────
-                    # The detail page may label the cert "Registration Certificate"
-                    # (from a label-control tag on the overview).  Normalise to the
-                    # canonical schema name so document_urls includes it correctly.
-                    for _doc in doc_links:
-                        if _doc.get("label", "").strip().lower() == "registration certificate":
-                            _doc["label"] = "RERA Registration Certificate 1"
+                        # ── Normalize registration cert label ─────────────────
+                        # The detail page may label the cert "Registration Certificate"
+                        # (from a label-control tag on the overview).  Normalise to the
+                        # canonical schema name so document_urls includes it correctly.
+                        for _doc in doc_links:
+                            if _doc.get("label", "").strip().lower() == "registration certificate":
+                                _doc["label"] = "RERA Registration Certificate 1"
 
-                    # ── Add registration cert from listing card ───────────
-                    if card.get("cert_url"):
-                        cert_doc = {"label": "RERA Registration Certificate 1", "url": card["cert_url"]}
-                        if cert_doc["url"] not in {d["url"] for d in doc_links}:
-                            doc_links.insert(0, cert_doc)
+                        # ── Add registration cert from listing card ───────────
+                        if card.get("cert_url"):
+                            cert_doc = {"label": "RERA Registration Certificate 1", "url": card["cert_url"]}
+                            if cert_doc["url"] not in {d["url"] for d in doc_links}:
+                                doc_links.insert(0, cert_doc)
 
-                    # ── Resolve DMS viewer URLs → direct PDF URLs ─────────
-                    # DMS links now point to a PDF.js/HTML viewer page.
-                    # We POST to the decrypt endpoint (within the active
-                    # browser session so cookies are valid) to obtain the
-                    # temporary direct file URL before navigating away.
-                    resolved: list[dict] = []
-                    for doc in doc_links:
-                        url = doc.get("url", "")
-                        is_viewer = (
-                            "reraapps.odisha.gov.in/dms" in url
-                            and any(v in url for v in ("viewer.html", "demos-preview.html"))
-                        )
-                        if is_viewer:
-                            direct_url = _resolve_dms_viewer_url(page, url, logger)
-                            if direct_url:
-                                doc = {**doc, "url": direct_url, "source_url": url}
-                        resolved.append(doc)
-                    doc_links = resolved
+                        # ── Resolve DMS viewer URLs → direct PDF URLs ─────────
+                        # DMS links now point to a PDF.js/HTML viewer page.
+                        # We POST to the decrypt endpoint (within the active
+                        # browser session so cookies are valid) to obtain the
+                        # temporary direct file URL before navigating away.
+                        resolved: list[dict] = []
+                        for doc in doc_links:
+                            url = doc.get("url", "")
+                            is_viewer = (
+                                "reraapps.odisha.gov.in/dms" in url
+                                and any(v in url for v in ("viewer.html", "demos-preview.html"))
+                            )
+                            if is_viewer:
+                                direct_url = _resolve_dms_viewer_url(page, url, logger)
+                                if direct_url:
+                                    doc = {**doc, "url": direct_url, "source_url": url}
+                            resolved.append(doc)
+                        doc_links = resolved
 
                     # ── Return to listing page via direct navigation ──────
                     # Angular pushes a history entry per tab click, so go_back()
@@ -1534,7 +1540,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     logger.info(f"DB result: {action}", step="db_upsert")
 
                     uploaded_documents: list[dict] = []
-                    if settings.SKIP_DOCUMENTS:
+                    if skip_doc_work:
                         logger.info(
                             f"Skipping {len(doc_links)} document downloads",
                             step="documents",
@@ -1580,6 +1586,13 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 finally:
                     logger.clear_project()
                     update_crawl_run_progress(run_id, counts)
+
+            if item_limit and items_processed >= item_limit:
+                logger.info(
+                    f"Item limit {item_limit} reached — stopping listing walk",
+                    step="listing",
+                )
+                processing_done = True
 
             save_checkpoint(site_id, mode, page_num, None, run_id)
 

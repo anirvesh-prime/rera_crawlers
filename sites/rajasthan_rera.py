@@ -276,14 +276,36 @@ def _extract_rj_table_rows(page) -> list[dict]:
         elif "status" in h:
             col_map["status"] = i
 
+    reg_re = re.compile(r"\bRAJ/[A-Z]+/\d{4}/\d+(?:\s*\([^)]*\))?", re.I)
+    fallback_cols = {
+        "district": 1,
+        "project_name": 2,
+        "project_type": 3,
+        "promoter_name": 4,
+        "application_no": 5,
+        "reg_no": 6,
+        "approved_on": 7,
+        "status": 8,
+    }
+
     for tr in table.select("tbody tr"):
         cells = tr.select("td")
         if not cells:
             continue
+        if len(cells) == 1 and re.search(r"no\s+data|loading|processing", cells[0].get_text(" ", strip=True), re.I):
+            continue
         row: dict = {}
-        for field, idx in col_map.items():
+        active_col_map = col_map or fallback_cols
+        for field, idx in active_col_map.items():
             if idx < len(cells):
                 row[field] = cells[idx].get_text(strip=True)
+
+        if not row.get("reg_no"):
+            for cell in cells:
+                match = reg_re.search(cell.get_text(" ", strip=True))
+                if match:
+                    row["reg_no"] = match.group(0).strip()
+                    break
 
         if row.get("reg_no"):
             rows.append(row)
@@ -343,6 +365,26 @@ def _scrape_project_list(
         )
 
         projects.extend(_extract_rj_table_rows(page))
+        if not projects:
+            try:
+                diag = page.evaluate("""() => {
+                    const table = document.querySelector('table[datatable], table.dataTable, #project-list-table, table');
+                    const headers = table ? Array.from(table.querySelectorAll('thead th')).map(th => th.innerText.trim()) : [];
+                    const bodyRows = table ? Array.from(table.querySelectorAll('tbody tr')).slice(0, 3).map(tr => tr.innerText.trim()) : [];
+                    const allTables = document.querySelectorAll('table').length;
+                    const bodyText = document.body ? document.body.innerText.slice(0, 1000) : '';
+                    return {url: location.href, title: document.title, allTables, headers, bodyRows, bodyText};
+                }""")
+                logger.error(
+                    "Rajasthan listing rendered zero project rows",
+                    step="listing",
+                    diagnostic=diag,
+                )
+            except Exception as exc:
+                logger.error(
+                    f"Rajasthan listing rendered zero project rows and diagnostics failed: {exc}",
+                    step="listing",
+                )
         logger.info(
             f"Listing page 1 collected {len(projects)} rows",
             step="timing",
@@ -1606,7 +1648,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     target_regs = get_target_reg_nos()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         counts["sentinel_passed"] = True
     else:
@@ -1636,6 +1678,15 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         logger, max_pages=list_max_pages, enough_rows=list_enough,
     )
     if not listed_projects:
+        logger.error("Rajasthan listing returned zero projects — aborting crawl", step="listing")
+        insert_crawl_error(
+            run_id,
+            site_id,
+            "LISTING_EMPTY",
+            "Rajasthan listing returned zero projects",
+            url=LISTING_PAGE_URL,
+        )
+        counts["error_count"] += 1
         return counts
 
     # ── Targeted filtering ─────────────────────────────────────────────────────

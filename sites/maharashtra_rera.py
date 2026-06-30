@@ -1559,7 +1559,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     delay_range   = config.get("rate_limit_delay", (2, 4))
     item_limit    = settings.CRAWL_ITEM_LIMIT or 0   # 0 = unlimited
     scrape_detail = settings.SCRAPE_DETAILS
-    skip_documents = settings.SKIP_DOCUMENTS
+    skip_documents = settings.SKIP_DOCUMENTS or mode == "daily_light"
     t_run = _time.monotonic()
 
     # ── Targeted run handling ────────────────────────────────────────────────
@@ -1572,7 +1572,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     found_targets: set[str] = set()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         counters["sentinel_passed"] = True
     else:
@@ -1704,21 +1704,24 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 random_delay(*delay_range)
                 continue
 
-        # Every parsed card is a real reg-no enumerated from the listing.
-        counters["projects_found"] += len(cards)
+        remaining = (item_limit - items_processed) if item_limit else len(cards)
+        if item_limit and remaining <= 0:
+            logger.info(
+                f"Item limit {item_limit} reached — stopping listing walk",
+                step="listing",
+            )
+            processing_done = True
+            break
+        cards_to_consider = cards[:remaining] if item_limit else cards
+
+        # Every considered card is a real reg-no enumerated from the listing.
+        counters["projects_found"] += len(cards_to_consider)
         # Push the running projects_found to crawl_runs for live dashboard view.
         update_crawl_run_progress(run_id, counters)
         next_listing_url = _next_listing_url(soup) or _url_for_page(page_no + 1)
         next_listing_page_no = page_no + 1
 
-        for raw in cards:
-            if item_limit and items_processed >= item_limit:
-                logger.info(
-                    f"Item limit {item_limit} reached — stopping listing walk",
-                    step="listing",
-                )
-                processing_done = True
-                break
+        for raw in cards_to_consider:
             # Count every card toward the limit BEFORE skip checks so daily_light
             # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
             items_processed += 1
@@ -1865,6 +1868,13 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             finally:
                 logger.clear_project()
                 update_crawl_run_progress(run_id, counters)
+
+        if item_limit and items_processed >= item_limit:
+            logger.info(
+                f"Item limit {item_limit} reached — stopping listing walk",
+                step="listing",
+            )
+            processing_done = True
 
         save_checkpoint(config["id"], mode, page_no, None, run_id)
         if processing_done:

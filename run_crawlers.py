@@ -387,16 +387,33 @@ def run_site(site_cfg: dict, mode: str) -> dict:
         result = module.run(site_cfg, run_id, mode)
         counts.update(result)
         sentinel_passed = counts.pop("sentinel_passed", None)
-        update_crawl_run(run_id, "completed", counts, sentinel_passed=sentinel_passed, notes=None)
-        logger.info("Crawl completed", **counts)
+        zero_listing = (
+            counts.get("projects_found", 0) == 0
+            and sentinel_passed is not False
+            and not settings.TARGET_REG_NO
+        )
+        inferred_empty_listing = zero_listing and counts.get("error_count", 0) == 0
+        if inferred_empty_listing:
+            counts["error_count"] = counts.get("error_count", 0) + 1
+            insert_crawl_error(
+                run_id,
+                site_id,
+                "LISTING_EMPTY",
+                "Crawler returned zero listing rows",
+                raw_data={"mode": mode, "counts": counts},
+            )
+            logger.error("Crawler returned zero listing rows", step="listing")
+        final_status = "failed" if zero_listing or sentinel_passed is False else "completed"
+        update_crawl_run(run_id, final_status, counts, sentinel_passed=sentinel_passed, notes=None)
+        logger.info(f"Crawl {final_status}", **counts)
         if counts.get("error_count", 0) > 0:
             _maybe_auto_repair_crawler(
                 site_cfg=site_cfg,
                 mode=mode,
                 run_id=run_id,
-                status="completed",
+                status=final_status,
                 counts=counts,
-                reason=f"completed with {counts.get('error_count', 0)} error(s)",
+                reason=f"{final_status} with {counts.get('error_count', 0)} error(s)",
                 logger=logger,
             )
     except Exception as exc:

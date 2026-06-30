@@ -1338,7 +1338,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     target_regs = get_target_reg_nos()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         counts["sentinel_passed"] = True
     else:
@@ -1385,6 +1385,10 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             f"project(s) matched", step="listing",
         )
 
+    if item_limit:
+        rows = rows[:item_limit]
+        logger.info("Item limit applied", limit=item_limit, rows=len(rows))
+
     counts["projects_found"] = len(rows)
     update_crawl_run_progress(run_id, counts)
     logger.timing("search", time.monotonic() - t0, rows=len(rows))
@@ -1398,10 +1402,6 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
     # ── Per-project loop ──────────────────────────────────────────────────────
     for i, row in enumerate(rows):
-        if item_limit and i >= item_limit:
-            logger.info("Item limit reached", limit=item_limit)
-            break
-
         reg_no      = row.get("project_registration_no") or ""
         detail_url  = row.get("detail_url")
         project_key = generate_project_key(reg_no) if reg_no else ""
@@ -1513,17 +1513,23 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 doc_name_counts: dict[str, int] = {}
                 uploaded_results: list[dict] = []
 
-                for doc in all_docs:
-                    selected = select_document_for_download(
-                        config["state"], doc, doc_name_counts, domain=DOMAIN
+                if all_docs and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+                    logger.info(
+                        f"Skipping {len(all_docs)} documents (light/skip-documents mode)",
+                        step="documents",
                     )
-                    if selected:
-                        result = _handle_document(project_key, selected, run_id, site_id, logger,
-                                                  form_fields=form_fields,
-                                                  client=project_client)
-                        if result:
-                            uploaded_results.append(result)
-                            counts["documents_uploaded"] += 1
+                else:
+                    for doc in all_docs:
+                        selected = select_document_for_download(
+                            config["state"], doc, doc_name_counts, domain=DOMAIN
+                        )
+                        if selected:
+                            result = _handle_document(project_key, selected, run_id, site_id, logger,
+                                                      form_fields=form_fields,
+                                                      client=project_client)
+                            if result:
+                                uploaded_results.append(result)
+                                counts["documents_uploaded"] += 1
 
                 if uploaded_results:
                     upsert_project({

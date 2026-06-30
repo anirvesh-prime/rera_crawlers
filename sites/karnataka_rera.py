@@ -427,7 +427,7 @@ def _submit_search_form(
                 # Wait for the actual results table — ``#approvedTable`` is
                 # unique to /projectViewDetails (the form page has zero
                 # ``<table>`` elements), so this doubles as a navigation gate.
-                WebDriverWait(driver, 90).until(
+                WebDriverWait(driver, 25).until(
                     EC.presence_of_element_located((By.ID, "approvedTable"))
                 )
                 # DataTables never runs (page JS off) so every row is in the
@@ -1784,11 +1784,16 @@ def _collect_candidates(
             district=district, step="listing",
         )
         if listing_rows:
-            total_found += len(listing_rows)
+            remaining = (cap - len(candidates)) if cap is not None else len(listing_rows)
+            if cap is not None and remaining <= 0:
+                save_checkpoint(site_id, mode, district_idx, None, run_id)
+                return candidates, total_found, last_district_idx
+            rows_to_consider = listing_rows[:remaining] if cap is not None else listing_rows
+            total_found += len(rows_to_consider)
             if not first_district_logged:
-                logger.timing("search", time.monotonic() - t0, rows=len(listing_rows))
+                logger.timing("search", time.monotonic() - t0, rows=len(rows_to_consider))
                 first_district_logged = True
-            for row in listing_rows:
+            for row in rows_to_consider:
                 candidates.append((district_idx, 0, row))
                 if cap is not None and len(candidates) >= cap:
                     save_checkpoint(site_id, mode, district_idx, None, run_id)
@@ -1911,7 +1916,12 @@ def _process_candidate(
             else:
                 logger.info(f"Skipped: {ack_no}", step="upsert")
 
-            if uploaded_docs and (mode != "daily_light" or status == "new"):
+            if uploaded_docs and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+                logger.info(
+                    f"Skipping {len(uploaded_docs)} documents (light/skip-documents mode)",
+                    step="documents",
+                )
+            elif uploaded_docs:
                 enriched, doc_count = _process_documents(
                     project_key, uploaded_docs, run_id, site_id, logger, state)
                 deltas["documents_uploaded"] += doc_count
@@ -1975,7 +1985,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     # ── Sentinel health check ────────────────────────────────────────────────
     # Skipped for targeted runs (--target-reg-no): the caller is exercising a
     # single project and a sentinel failure would abort before we get there.
-    if (settings.TARGET_REG_NO or "").strip():
+    if (settings.TARGET_REG_NO or "").strip() or mode == "daily_light":
         logger.info(
             "Sentinel skipped (targeted run via --target-reg-no)",
             step="sentinel",

@@ -857,7 +857,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     found_targets: set[str] = set()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         counters["sentinel_passed"] = True
     else:
@@ -914,17 +914,20 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 (r.get("project_registration_no") or "").strip().upper() for r in rows
             )
 
-        counters["projects_found"] += len(rows)
+        remaining = (item_limit - items_processed) if item_limit else len(rows)
+        if item_limit and remaining <= 0:
+            logger.info(f"Item limit {item_limit} reached — stopping listing walk",
+                        step="listing")
+            done_processing = True
+            break
+        rows_to_consider = rows[:remaining] if item_limit else rows
+
+        counters["projects_found"] += len(rows_to_consider)
         # Push the running projects_found to crawl_runs for live dashboard view.
         update_crawl_run_progress(run_id, counters)
-        logger.info(f"Page {current_page}: {len(rows)} projects", step="listing")
+        logger.info(f"Page {current_page}: {len(rows_to_consider)} projects", step="listing")
 
-        for raw in rows:
-            if item_limit and items_processed >= item_limit:
-                logger.info(f"Item limit {item_limit} reached — stopping listing walk",
-                            step="listing")
-                done_processing = True
-                break
+        for raw in rows_to_consider:
             # Count every row toward the limit BEFORE skip checks so daily_light
             # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
             items_processed += 1
@@ -1003,7 +1006,12 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
                     # ── Process documents ─────────────────────────────────────
                     uploaded_docs = detail_extra.get("uploaded_documents") or []
-                    if uploaded_docs:
+                    if uploaded_docs and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+                        logger.info(
+                            f"Skipping {len(uploaded_docs)} documents (light/skip-documents mode)",
+                            step="documents",
+                        )
+                    elif uploaded_docs:
                         enriched_docs, doc_count = _process_documents(
                             key, uploaded_docs, run_id, config["id"], logger,
                         )
@@ -1033,6 +1041,11 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 update_crawl_run_progress(run_id, counters)
 
             random_delay(*delay_range)
+
+        if item_limit and items_processed >= item_limit:
+            logger.info(f"Item limit {item_limit} reached — stopping listing walk",
+                        step="listing")
+            done_processing = True
 
         # ── Advance pagination ────────────────────────────────────────────
         if done_processing:

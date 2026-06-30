@@ -55,117 +55,91 @@
       "total_area": "2252"
     },
     {
-      "flat_type": "Plots 9 X 12",
-      "total_area": "1188"
-    },
-    {
       "flat_type": "ODD",
       "total_area": "642"
+    },
+    {
+      "flat_type": "Plots 9 X 12",
+      "total_area": "1188"
     }
   ],
   "uploaded_documents": [
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=cLI41Dwwv4RFEMZp%2BLb96A%3D%3D",
-      "type": "Engineers Certificate.pdf",
-      "label": "Engineers Certificate.pdf",
-      "source_label": "Engineers Certificate.pdf",
-      "matched_category": "Engineer",
+      "type": "Engineer Certificate 1",
+      "label": "Engineer Certificate 1",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=xepYOVJjK%2Fo0QuXAQRimVg%3D%3D",
-      "type": "Engineer Certificate 1",
-      "label": "Engineer Certificate 1",
-      "source_label": "Project Engineer",
-      "matched_category": "Engineer",
+      "type": "Engineer Certificate 2",
+      "label": "Engineer Certificate 2",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=83oKDaBcUzb2ox%2BuvxSXAw%3D%3D",
-      "type": "Architect Certificate.pdf",
-      "label": "Architect Certificate.pdf",
-      "source_label": "Architect Certificate.pdf",
-      "matched_category": "ARCHITECT",
+      "type": "ARCHITECT Certificate 1",
+      "label": "ARCHITECT Certificate 1",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=WHq5YjS5zi89XUSbs6zhZA%3D%3D",
-      "type": "Commencement Certificate",
-      "label": "Commencement Certificate",
-      "source_label": "Commencement Certificate",
-      "matched_category": "Commencement Certificate",
+      "type": "Commencement Certificate 1",
+      "label": "Commencement Certificate 1",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=U9%2Ba82i%2Fjqgf75jVpaycTQ%3D%3D",
       "type": "Layout Plan 1",
       "label": "Layout Plan 1",
-      "source_label": "Approved Layout Plan",
-      "matched_category": "Layout Plan",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=AFPRWVS2AY%2FEdrB5qYtAmw%3D%3D",
-      "type": "Approved Building/Plotting Plan",
-      "label": "Approved Building/Plotting Plan",
-      "source_label": "Approved Building/Plotting Plan",
-      "matched_category": "Approved Building",
+      "type": "Approved Building 1",
+      "label": "Approved Building 1",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=uXY0mLl9cegEf5BX%2FXFNmg%3D%3D",
       "type": "Layout Plan 2",
       "label": "Layout Plan 2",
-      "source_label": "Existing Layout Plan",
-      "matched_category": "Layout Plan",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=lRVEtOJQPESY5PIwdBzhiA%3D%3D",
       "type": "Section Plan 1",
       "label": "Section Plan 1",
-      "source_label": "Existing Section Plan and Specification",
-      "matched_category": "Section Plan",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=eT3GP1Hun4zP6jFqqOzrVQ%3D%3D",
-      "type": "Project Specifications",
-      "label": "Project Specifications",
-      "source_label": "Project Specifications",
-      "matched_category": "Project Specification",
+      "type": "Project Specification 1",
+      "label": "Project Specification 1",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=phBAU2S1qFpAWaY2yss8zg%3D%3D",
-      "type": "Engineers License",
-      "label": "Engineers License",
-      "source_label": "Engineers License",
-      "matched_category": "Engineer",
+      "type": "Engineer Certificate 3",
+      "label": "Engineer Certificate 3",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=OAG1cw%2B01CuKkI%2Fp7WMhxg%3D%3D",
-      "type": "ARCHITECT Certificate 1",
-      "label": "ARCHITECT Certificate 1",
-      "source_label": "Form 5 Architect CC.pdf",
-      "matched_category": "ARCHITECT",
+      "type": "ARCHITECT Certificate 2",
+      "label": "ARCHITECT Certificate 2",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/download_jc?DOC_ID=g4RCdPjqYNdTjK18%2FvxnpA%3D%3D",
-      "type": "Engineer Certificate 2",
-      "label": "Engineer Certificate 2",
-      "source_label": "Form 6 Engineer.pdf",
-      "matched_category": "Engineer",
+      "type": "Engineer Certificate 4",
+      "label": "Engineer Certificate 4",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
       "link": "https://rera.karnataka.gov.in/certificate?CER_NO=PRM/KA/RERA/1248/469/PR/050723/006033",
       "type": "Rera Registration Certificate 1",
       "label": "Rera Registration Certificate 1",
-      "source_label": "Rera Registration Certificate 1",
-      "matched_category": "Rera Registration Certificate",
       "s3_link": "https://s3.example.com/dry-run"
     },
     {
@@ -618,19 +592,19 @@
   "document_urls": [
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Engineers Certificate.pdf"
-    },
-    {
-      "link": "https://s3.example.com/dry-run",
       "type": "Engineer Certificate 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Architect Certificate.pdf"
+      "type": "Engineer Certificate 2"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Commencement Certificate"
+      "type": "ARCHITECT Certificate 1"
+    },
+    {
+      "link": "https://s3.example.com/dry-run",
+      "type": "Commencement Certificate 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
@@ -638,7 +612,7 @@
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Approved Building/Plotting Plan"
+      "type": "Approved Building 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
@@ -650,19 +624,19 @@
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Project Specifications"
+      "type": "Project Specification 1"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Engineers License"
+      "type": "Engineer Certificate 3"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "ARCHITECT Certificate 1"
+      "type": "ARCHITECT Certificate 2"
     },
     {
       "link": "https://s3.example.com/dry-run",
-      "type": "Engineer Certificate 2"
+      "type": "Engineer Certificate 4"
     },
     {
       "link": "https://s3.example.com/dry-run",

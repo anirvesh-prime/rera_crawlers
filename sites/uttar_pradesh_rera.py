@@ -1030,7 +1030,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     target_regs = get_target_reg_nos()
 
     # ── Sentinel check ─────────────────────────────────────────────────────────
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         counts["sentinel_passed"] = True
     else:
@@ -1068,6 +1068,12 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
         if not (resume_after_district >= 0 and idx < resume_after_district)
         and not (idx == resume_after_district and not resume_pending)
     ]
+    if item_limit and mode == "daily_light" and not target_regs:
+        pending_districts = pending_districts[:10]
+        logger.info(
+            f"Daily-light item limit active; pre-fetching first {len(pending_districts)} districts",
+            step="listing",
+        )
 
     # Fetch all pending district listings in parallel to overlap HTTP I/O
     logger.info(
@@ -1111,17 +1117,22 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
     for district_idx, district in pending_districts:
         stubs = district_stubs.get(district_idx, [])
-        counts["projects_found"] += len(stubs)
+        remaining = (item_limit - items_processed) if item_limit else len(stubs)
+        if item_limit and remaining <= 0:
+            logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached", step="listing")
+            break
+        stubs_to_consider = stubs[:remaining] if item_limit else stubs
+        counts["projects_found"] += len(stubs_to_consider)
         update_crawl_run_progress(run_id, counts)
-        logger.info(f"Processing district: {district} ({district_idx + 1}/{len(_UP_DISTRICTS)})")
+        logger.info(
+            f"Processing district: {district} ({district_idx + 1}/{len(_UP_DISTRICTS)}) "
+            f"rows={len(stubs_to_consider)}"
+        )
         if not first_district_logged:
-            logger.timing("search", time.monotonic() - t0, rows=len(stubs))
+            logger.timing("search", time.monotonic() - t0, rows=len(stubs_to_consider))
             first_district_logged = True
 
-        for stub in stubs:
-            if item_limit and items_processed >= item_limit:
-                logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached", step="listing")
-                break
+        for stub in stubs_to_consider:
             # Count every row toward the limit BEFORE skip checks so daily_light
             # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
             items_processed += 1
@@ -1154,15 +1165,24 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             )
 
             if not detail_html:
-                logger.warning(f"No detail HTML for {reg_no}", url=detail_url)
-                counts["error_count"] += 1
-                insert_crawl_error(run_id, site_id, "EXTRACTION_FAILED",
-                                   f"No detail HTML returned for {reg_no}",
-                                   project_key=project_key,
-                                   url=detail_url)
-                save_checkpoint(site_id, mode, district_idx, project_key, run_id)
-                random_delay(delay_min, delay_max)
-                continue
+                full_detail_html, full_detail_url = _fetch_full_detail_html(reg_no, logger)
+                if full_detail_html:
+                    detail_html = full_detail_html
+                    detail_url = full_detail_url
+                    logger.info(
+                        f"Using direct full-detail page fallback for {reg_no}",
+                        step="detail",
+                    )
+                else:
+                    logger.warning(f"No detail HTML for {reg_no}", url=detail_url)
+                    counts["error_count"] += 1
+                    insert_crawl_error(run_id, site_id, "EXTRACTION_FAILED",
+                                       f"No detail HTML returned for {reg_no}",
+                                       project_key=project_key,
+                                       url=detail_url)
+                    save_checkpoint(site_id, mode, district_idx, project_key, run_id)
+                    random_delay(delay_min, delay_max)
+                    continue
 
             # ── Parse detail ───────────────────────────────────────────────────
             try:
@@ -1266,8 +1286,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
             # ── Documents ─────────────────────────────────────────────────────
             try:
-                soup = BeautifulSoup(detail_html, "lxml")
-                docs = _extract_documents(soup, detail_url)
+                docs = [] if (settings.SKIP_DOCUMENTS or mode == "daily_light") else _extract_documents(
+                    BeautifulSoup(detail_html, "lxml"), detail_url
+                )
                 uploaded_docs: list[dict] = []
                 doc_name_counts: dict[str, int] = {}
                 for doc in docs:

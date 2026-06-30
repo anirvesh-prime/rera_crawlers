@@ -1308,7 +1308,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
     # ── Step 0: Sentinel check (spec Section 10) ─────────────────────────────
     logger.info("Starting Assam RERA crawl", mode=mode, listing_url=LISTING_URL)
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         counts["sentinel_passed"] = True
     else:
@@ -1341,10 +1341,13 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             f"project(s) matched", step="listing",
         )
 
-    logger.info("Listing parsed", total=len(all_stubs))
+    total_stubs = len(all_stubs)
+    if item_limit and not target_regs:
+        all_stubs = all_stubs[:item_limit]
+    logger.info("Listing parsed", total=len(all_stubs), total_available=total_stubs)
     counts["projects_found"] = len(all_stubs)
     update_crawl_run_progress(run_id, counts)
-    logger.timing("search", time.monotonic() - t0, rows=len(all_stubs))
+    logger.timing("search", time.monotonic() - t0, rows=len(all_stubs), total_rows=total_stubs)
 
     if not all_stubs:
         logger.error("No projects found — aborting")
@@ -1454,25 +1457,38 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 doc_name_counts: dict[str, int] = {}
                 persisted_docs: list[dict] = []
 
-                for doc in all_docs:
-                    selected = select_document_for_download(
-                        config["state"], doc, doc_name_counts, domain=DOMAIN,
+                if all_docs and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+                    logger.info(
+                        f"Skipping {len(all_docs)} documents (light/skip-documents mode)",
+                        step="documents",
                     )
-                    if not selected:
-                        persisted_docs.append({
-                            "link": doc.get("url") or doc.get("link"),  # FIELD: uploaded_documents[].link <- doc.url or doc.link (not selected for download)
-                            "type": doc.get("label") or doc.get("type") or "document",  # FIELD: uploaded_documents[].type <- doc.label or doc.type or "document"
-                        })
-                        continue
-                    result = _handle_document(project_key, selected, run_id, site_id, logger)
-                    if result:
-                        counts["documents_uploaded"] += 1
-                        persisted_docs.append(result)
-                    else:
-                        persisted_docs.append({
-                            "link": selected.get("url") or selected.get("link"),  # FIELD: uploaded_documents[].link <- selected.url or selected.link (download failed)
-                            "type": selected.get("label") or selected.get("type") or "document",  # FIELD: uploaded_documents[].type <- selected.label or selected.type or "document"
-                        })
+                    persisted_docs = [
+                        {
+                            "link": doc.get("url") or doc.get("link"),
+                            "type": doc.get("label") or doc.get("type") or "document",
+                        }
+                        for doc in all_docs
+                    ]
+                else:
+                    for doc in all_docs:
+                        selected = select_document_for_download(
+                            config["state"], doc, doc_name_counts, domain=DOMAIN,
+                        )
+                        if not selected:
+                            persisted_docs.append({
+                                "link": doc.get("url") or doc.get("link"),  # FIELD: uploaded_documents[].link <- doc.url or doc.link (not selected for download)
+                                "type": doc.get("label") or doc.get("type") or "document",  # FIELD: uploaded_documents[].type <- doc.label or doc.type or "document"
+                            })
+                            continue
+                        result = _handle_document(project_key, selected, run_id, site_id, logger)
+                        if result:
+                            counts["documents_uploaded"] += 1
+                            persisted_docs.append(result)
+                        else:
+                            persisted_docs.append({
+                                "link": selected.get("url") or selected.get("link"),  # FIELD: uploaded_documents[].link <- selected.url or selected.link (download failed)
+                                "type": selected.get("label") or selected.get("type") or "document",  # FIELD: uploaded_documents[].type <- selected.label or selected.type or "document"
+                            })
 
                 if persisted_docs:
                     upsert_project({

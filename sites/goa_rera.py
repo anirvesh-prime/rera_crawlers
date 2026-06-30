@@ -529,7 +529,13 @@ def _captcha_data_url_from_page(page, selector: str, logger: CrawlerLogger) -> s
     return None
 
 
-def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> list[dict]:
+def _fetch_project_listing(
+    config: dict,
+    run_id: int,
+    logger: CrawlerLogger,
+    *,
+    item_limit: int = 0,
+) -> list[dict]:
     """
     Use Selenium to solve the captcha and submit the Goa RERA search form.
     Returns a list of project card dicts.
@@ -538,6 +544,7 @@ def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> 
     from core.captcha_solver import captcha_to_text
 
     all_cards: list[dict] = []
+    seen_reg_nos: set[str] = set()
     start_from = 0
     _server_rejections = 0  # count server-side captcha rejections to avoid infinite loop
 
@@ -628,12 +635,23 @@ def _fetch_project_listing(config: dict, run_id: int, logger: CrawlerLogger) -> 
         if not cards:
             logger.info(f"No cards at startFrom={start_from} — listing complete")
             break
-        all_cards.extend(cards)
-        logger.info(f"Fetched {len(cards)} cards at startFrom={start_from}")
+        new_cards = []
+        for card in cards:
+            reg_no = (card.get("project_registration_no") or "").strip().upper()
+            if not reg_no or reg_no in seen_reg_nos:
+                continue
+            seen_reg_nos.add(reg_no)
+            new_cards.append(card)
+        all_cards.extend(new_cards)
+        logger.info(
+            f"Fetched {len(cards)} cards ({len(new_cards)} new) at startFrom={start_from}"
+        )
+        if item_limit and len(all_cards) >= item_limit:
+            break
 
         # Check for more pages
         next_links = soup.find_all("a", string=re.compile(r"Next|>>", re.I))
-        if not next_links:
+        if not next_links and not (item_limit and len(all_cards) < item_limit and new_cards):
             break
         start_from += PAGE_SIZE
 
@@ -764,7 +782,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     target_regs = get_target_reg_nos()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         counts["sentinel_passed"] = True
     else:
@@ -779,7 +797,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
     # ── Get project listing ───────────────────────────────────────────────────
     t0 = time.monotonic()
-    cards = _fetch_project_listing(config, run_id, logger)
+    cards = _fetch_project_listing(config, run_id, logger, item_limit=item_limit)
 
     if not cards:
         logger.error("No project listing obtained")
@@ -806,11 +824,10 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             f"project(s) matched", step="listing",
         )
 
-    # projects_found must reflect the total Goa listing — slice afterwards.
-    counts["projects_found"] = len(cards)
-    update_crawl_run_progress(run_id, counts)
     if item_limit:
         cards = cards[:item_limit]
+    counts["projects_found"] = len(cards)
+    update_crawl_run_progress(run_id, counts)
     logger.info(f"Goa RERA: {len(cards)} projects to process")
     logger.timing("search", time.monotonic() - t0, rows=len(cards))
 
@@ -910,18 +927,28 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
             # Documents
             uploaded_documents = []
-            doc_name_counts: dict[str, int] = {}
-            for doc in doc_links:
-                selected = select_document_for_download(config["state"], doc, doc_name_counts, domain=DOMAIN)
-                if selected:
-                    uploaded = _handle_document(db_dict["key"], selected, run_id, site_id, logger)
-                    if uploaded:
-                        uploaded_documents.append(uploaded)
-                        counts["documents_uploaded"] += 1
+            if doc_links and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+                logger.info(
+                    f"Skipping {len(doc_links)} documents (light/skip-documents mode)",
+                    step="documents",
+                )
+                uploaded_documents = [
+                    {"link": doc.get("url"), "type": doc.get("label") or doc.get("type", "document")}
+                    for doc in doc_links
+                ]
+            else:
+                doc_name_counts: dict[str, int] = {}
+                for doc in doc_links:
+                    selected = select_document_for_download(config["state"], doc, doc_name_counts, domain=DOMAIN)
+                    if selected:
+                        uploaded = _handle_document(db_dict["key"], selected, run_id, site_id, logger)
+                        if uploaded:
+                            uploaded_documents.append(uploaded)
+                            counts["documents_uploaded"] += 1
+                        else:
+                            uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label") or doc.get("type", "document")})
                     else:
                         uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label") or doc.get("type", "document")})
-                else:
-                    uploaded_documents.append({"link": doc.get("url"), "type": doc.get("label") or doc.get("type", "document")})
 
             if uploaded_documents:
                 upsert_project({

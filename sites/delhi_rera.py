@@ -1349,7 +1349,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     found_targets: set[str] = set()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         counters["sentinel_passed"] = True
     else:
@@ -1587,7 +1587,12 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
                     # ── Documents ──────────────────────────────────────────────
                     docs = row.get("uploaded_documents") or []
-                    if docs:
+                    if docs and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+                        logger.info(
+                            f"Skipping {len(docs)} documents (light/skip-documents mode)",
+                            step="documents",
+                        )
+                    elif docs:
                         enriched, doc_count = _process_documents(
                             key, docs, run_id, config["id"], logger,
                         )

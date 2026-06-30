@@ -1275,7 +1275,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     target_regs = get_target_reg_nos()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         counts["sentinel_passed"] = True
     else:
@@ -1330,8 +1330,11 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
                 f"project(s) matched", step="listing",
             )
 
+        total_stubs = len(all_stubs)
+        if item_limit and not target_regs:
+            all_stubs = all_stubs[:item_limit]
         logger.info(f"Total projects to process: {len(all_stubs)}")
-        logger.timing("search", time.monotonic() - t0, rows=len(all_stubs))
+        logger.timing("search", time.monotonic() - t0, rows=len(all_stubs), total_rows=total_stubs)
         counts["projects_found"] = len(all_stubs)
         update_crawl_run_progress(run_id, counts)
 
@@ -1526,7 +1529,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
                 # Extract document links by clicking each View File button on the
                 # rendered page (Angular click handlers fire /vdms/getDocMetadata/{uid})
-                doc_links = _fetch_document_tokens(page)
+                doc_links = [] if (settings.SKIP_DOCUMENTS or mode == "daily_light") else _fetch_document_tokens(page)
                 if doc_links:
                     logger.info(f"Processing {len(doc_links)} documents", step="documents")
                     uploaded_docs: list[dict] = []

@@ -1631,7 +1631,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     found_targets: set[str] = set()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         counts["sentinel_passed"] = True
     else:
@@ -1710,12 +1710,12 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             if not reg_no:
                 continue
 
-            counts["projects_found"] += 1
             # When item_limit is hit we stop the listing walk entirely —
             # projects_found then reflects only the rows actually walked, not
             # the full Tamil Nadu catalog.
             if item_limit and items_processed >= item_limit:
                 break
+            counts["projects_found"] += 1
             # Count every row toward the limit BEFORE skip checks so daily_light
             # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
             items_processed += 1
@@ -1806,7 +1806,19 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
                 doc_name_counts: dict[str, int] = {}
                 enriched_docs: list[dict] = []
-                if raw_docs:
+                if raw_docs and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+                    logger.info(
+                        f"Skipping {len(raw_docs)} documents (light/skip-documents mode)",
+                        step="documents",
+                    )
+                    enriched_docs = [
+                        {
+                            "link": doc.get("url") or doc.get("link"),
+                            "type": doc.get("label") or doc.get("type") or "document",
+                        }
+                        for doc in raw_docs
+                    ]
+                elif raw_docs:
                     for doc in raw_docs:
                         selected = select_document_for_download(
                             config["state"], doc, doc_name_counts, domain=DOMAIN,

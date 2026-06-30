@@ -1469,14 +1469,19 @@ def _process_bihar_documents(
         url=detail_url or LISTING_URL, page=current_page,
     )
     try:
-        if detail_url and detail_html:
+        if detail_url and detail_html and not (settings.SKIP_DOCUMENTS or mode == "daily_light"):
             try:
                 qpr_docs = _build_qpr_snapshot(detail_url, detail_html, logger)
                 uploaded_docs.extend(qpr_docs)  # FIELD: uploaded_documents[] <- inline QPR snapshot + QPR certificate PDFs (latest quarter)
             except Exception as exc:
                 logger.warning(f"QPR snapshot failed for {reg_no!r}: {exc}", step="documents")
 
-        if uploaded_docs:
+        if uploaded_docs and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+            logger.info(
+                f"Skipping {len(uploaded_docs)} documents (light/skip-documents mode)",
+                step="documents",
+            )
+        elif uploaded_docs:
             try:
                 enriched_docs, doc_count = _process_documents(
                     key, uploaded_docs, run_id, site_id, logger,
@@ -1562,7 +1567,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     found_targets: set[str] = set()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         counters["sentinel_passed"] = True
     else:

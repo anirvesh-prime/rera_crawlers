@@ -1463,7 +1463,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     found_targets: set[str] = set()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         counts["sentinel_passed"] = True
     else:
@@ -1744,15 +1744,21 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     # ── Documents ─────────────────────────────────────────────
                     doc_name_counts: dict[str, int] = {}
                     uploaded_results: list[dict] = []
-                    for doc in raw_docs:
-                        selected = select_document_for_download(
-                            STATE, doc, doc_name_counts, domain=DOMAIN)
-                        if selected:
-                            result = _handle_document(
-                                db_dict["key"], selected, run_id, site_id, logger)
-                            if result:
-                                uploaded_results.append(result)
-                                counts["documents_uploaded"] += 1
+                    if raw_docs and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+                        logger.info(
+                            f"Skipping {len(raw_docs)} documents (light/skip-documents mode)",
+                            step="documents",
+                        )
+                    else:
+                        for doc in raw_docs:
+                            selected = select_document_for_download(
+                                STATE, doc, doc_name_counts, domain=DOMAIN)
+                            if selected:
+                                result = _handle_document(
+                                    db_dict["key"], selected, run_id, site_id, logger)
+                                if result:
+                                    uploaded_results.append(result)
+                                    counts["documents_uploaded"] += 1
 
                     if uploaded_results:
                         upsert_project({

@@ -970,7 +970,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     }
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info(
             "Sentinel skipped (targeted run via --target-reg-no)",
             step="sentinel",
@@ -1054,11 +1054,11 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             f"project(s) matched", step="listing",
         )
 
-    # projects_found must reflect the total Uttarakhand listing — slice afterwards.
-    counts["projects_found"] = len(cards)
-    update_crawl_run_progress(run_id, counts)
     if item_limit:
         cards = cards[:item_limit]
+        logger.info(f"CRAWL_ITEM_LIMIT={item_limit} applied to listing rows")
+    counts["projects_found"] = len(cards)
+    update_crawl_run_progress(run_id, counts)
     logger.info(f"Uttarakhand RERA: {len(cards)} projects to process")
     logger.timing("search", time.monotonic() - t0, rows=len(cards))
 
@@ -1191,25 +1191,38 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
                 # ── Documents ─────────────────────────────────────────────────
                 uploaded_documents: list[dict] = []
-                doc_name_counts: dict[str, int] = {}
-                for doc in doc_links:
-                    selected = select_document_for_download(
-                        config["state"], doc, doc_name_counts, domain=DOMAIN
+                if doc_links and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+                    logger.info(
+                        f"Skipping {len(doc_links)} documents (light/skip-documents mode)",
+                        step="documents",
                     )
-                    if selected:
-                        uploaded = _handle_document(
-                            db_dict["key"], selected, run_id, site_id, logger, client
+                    uploaded_documents = [
+                        {
+                            "link": doc.get("url"),
+                            "type": doc.get("label") or "document",
+                        }
+                        for doc in doc_links
+                    ]
+                else:
+                    doc_name_counts: dict[str, int] = {}
+                    for doc in doc_links:
+                        selected = select_document_for_download(
+                            config["state"], doc, doc_name_counts, domain=DOMAIN
                         )
-                        if uploaded:
-                            uploaded_documents.append(uploaded)
-                            counts["documents_uploaded"] += 1
+                        if selected:
+                            uploaded = _handle_document(
+                                db_dict["key"], selected, run_id, site_id, logger, client
+                            )
+                            if uploaded:
+                                uploaded_documents.append(uploaded)
+                                counts["documents_uploaded"] += 1
+                            else:
+                                uploaded_documents.append({
+                                    "link": doc.get("url"),  # FIELD: uploaded_documents[].link <- doc url (upload failed)
+                                    "type": doc.get("label") or "document",  # FIELD: uploaded_documents[].type <- doc label
+                                })
                         else:
                             uploaded_documents.append({
-                                "link": doc.get("url"),  # FIELD: uploaded_documents[].link <- doc url (upload failed)
-                                "type": doc.get("label") or "document",  # FIELD: uploaded_documents[].type <- doc label
-                            })
-                    else:
-                        uploaded_documents.append({
                             "link": doc.get("url"),  # FIELD: uploaded_documents[].link <- doc url (not selected for download)
                             "type": doc.get("label") or "document",  # FIELD: uploaded_documents[].type <- doc label
                         })

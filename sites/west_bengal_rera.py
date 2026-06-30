@@ -1164,7 +1164,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     target_regs = get_target_reg_nos()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         counts["sentinel_passed"] = True
     else:
@@ -1204,6 +1204,10 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             f"project(s) matched", step="listing",
         )
 
+    if item_limit:
+        rows = rows[:item_limit]
+        logger.info(f"CRAWL_ITEM_LIMIT={item_limit} applied to listing rows")
+
     counts["projects_found"] = len(rows)
     update_crawl_run_progress(run_id, counts)
     logger.info(f"Listing page: {len(rows)} projects found")
@@ -1211,9 +1215,6 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     items_processed = 0
 
     for row in rows:
-        if item_limit and items_processed >= item_limit:
-            logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached, stopping")
-            return counts
         # Count every row toward the limit BEFORE skip checks so daily_light
         # (which skips every already-DB project) still honors CRAWL_ITEM_LIMIT.
         items_processed += 1
@@ -1312,9 +1313,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
             uploaded_documents: list[dict] = []
             doc_name_counts: dict[str, int] = {}
-            if settings.SKIP_DOCUMENTS:
+            if settings.SKIP_DOCUMENTS or mode == "daily_light":
                 logger.info(
-                    f"Skipping {len(doc_links)} documents (--skip-documents)",
+                    f"Skipping {len(doc_links)} documents (light/skip-documents mode)",
                     step="documents",
                 )
             else:

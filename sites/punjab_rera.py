@@ -1124,7 +1124,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     target_regs = get_target_reg_nos()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if target_regs:
+    if target_regs or mode == "daily_light":
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         sentinel_ok = True
         counters["sentinel_passed"] = True
@@ -1148,6 +1148,12 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     with _ClientAdapter(_session()) as session:
         t0 = time.monotonic()
         rows = None if target_regs else _load_listing_cache(logger)
+        if rows is not None and item_limit and len(rows) < item_limit:
+            logger.warning(
+                f"Listing cache has only {len(rows)} rows but item_limit={item_limit}; re-fetching",
+                step="listing",
+            )
+            rows = None
         if rows is None:
             rows = _search_projects(session, logger, target_regs=target_regs)
             logger.timing("search", time.monotonic() - t0, rows=len(rows))
@@ -1190,15 +1196,14 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 f"project(s) matched", step="listing",
             )
 
-        # projects_found must reflect the total Punjab listing — slice afterwards.
-        counters["projects_found"] = len(rows)
-        update_crawl_run_progress(run_id, counters)
         if item_limit:
             rows = rows[:item_limit]
             logger.info(
                 f"Punjab: CRAWL_ITEM_LIMIT={item_limit} applied — processing {len(rows)} projects",
                 step="listing",
             )
+        counters["projects_found"] = len(rows)
+        update_crawl_run_progress(run_id, counters)
 
         for idx, row in enumerate(rows):
             reg_no = row["project_registration_no"]
@@ -1273,7 +1278,12 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
                     # ── Document download + S3 upload ─────────────────────────
                     raw_docs: list[dict] = payload.get("uploaded_documents") or []
-                    if raw_docs:
+                    if raw_docs and (settings.SKIP_DOCUMENTS or mode == "daily_light"):
+                        logger.info(
+                            f"Skipping {len(raw_docs)} documents (light/skip-documents mode)",
+                            step="documents",
+                        )
+                    elif raw_docs:
                         # Phase 1 (sequential): resolve names; build selected / skipped lists.
                         # select_document_for_download mutates doc_name_counts for dedup, so
                         # this must stay sequential to guarantee stable filenames.
