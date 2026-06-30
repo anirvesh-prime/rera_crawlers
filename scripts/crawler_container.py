@@ -65,6 +65,42 @@ def is_tester(crawler_args: list[str]) -> bool:
     return "--tester" in crawler_args
 
 
+def _running_normal_crawler_containers() -> list[str]:
+    try:
+        result = subprocess.run(
+            [
+                "docker", "ps",
+                "--filter", f"label={ROLE_LABEL}=crawler",
+                "--filter", f"label={LABEL_PREFIX}.tester=false",
+                "--format", "{{.ID}} {{.Names}}",
+            ],
+            cwd=str(PROJECT_ROOT),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=10,
+        )
+    except Exception:
+        return []
+    if result.returncode != 0:
+        return []
+    return [line.strip() for line in (result.stdout or "").splitlines() if line.strip()]
+
+
+def assert_no_duplicate_normal_run(crawler_args: list[str], *, allow_concurrent: bool = False) -> None:
+    if allow_concurrent or is_tester(crawler_args):
+        return
+    running = _running_normal_crawler_containers()
+    if not running:
+        return
+    raise RuntimeError(
+        "A normal crawler container is already running. Stop it first with "
+        "`docker stop $(docker ps -q --filter label=com.primenumbers.rera.role=crawler "
+        "--filter label=com.primenumbers.rera.tester=false)` or pass --allow-concurrent.\n"
+        "Running containers:\n" + "\n".join(running)
+    )
+
+
 def default_container_name(crawler_args: list[str], *, prefix: str = "rera-crawler") -> str:
     mode = _slug(infer_mode(crawler_args), limit=32)
     sites = infer_sites(crawler_args)
@@ -117,6 +153,10 @@ def build_docker_run_command(
         "-e", "PYTHONHASHSEED=0",
         "-e", "PYTHONUNBUFFERED=1",
         "-e", "RERA_IN_DOCKER=true",
+        "-e", "CHROME_BIN=/usr/bin/chromium",
+        "-e", "CHROMEDRIVER_BIN=/usr/bin/chromedriver",
+        "--pids-limit", "512",
+        "--tmpfs", "/tmp:rw,nosuid,nodev,size=1g",
         "-v", f"{logs_dir.resolve()}:/app/logs",
     ])
     for key, value in labels.items():
@@ -127,11 +167,19 @@ def build_docker_run_command(
 
 
 def run_container(crawler_args: list[str], **kwargs) -> subprocess.CompletedProcess[str]:
+    assert_no_duplicate_normal_run(
+        crawler_args,
+        allow_concurrent=bool(kwargs.pop("allow_concurrent", False)),
+    )
     cmd = build_docker_run_command(crawler_args, **kwargs)
     return subprocess.run(cmd, cwd=str(PROJECT_ROOT), text=True)
 
 
 def start_detached(crawler_args: list[str], **kwargs) -> dict[str, str]:
+    assert_no_duplicate_normal_run(
+        crawler_args,
+        allow_concurrent=bool(kwargs.pop("allow_concurrent", False)),
+    )
     cmd = build_docker_run_command(crawler_args, detach=True, remove=False, **kwargs)
     result = subprocess.run(
         cmd,
@@ -161,6 +209,11 @@ def parse_args(argv: list[str] | None = None) -> tuple[argparse.Namespace, list[
     parser.add_argument("--keep", action="store_true", help="Do not pass --rm")
     parser.add_argument("--network", default=os.environ.get("RERA_DOCKER_NETWORK", "host"))
     parser.add_argument("--shm-size", default="1g")
+    parser.add_argument(
+        "--allow-concurrent",
+        action="store_true",
+        help="Allow starting another normal crawler while one is already running",
+    )
     return parser.parse_known_args(argv)
 
 
@@ -175,6 +228,7 @@ def main(argv: list[str] | None = None) -> int:
             network=args.network,
             remove=remove,
             shm_size=args.shm_size,
+            allow_concurrent=args.allow_concurrent,
         )
         print(info["container_id"])
         return 0
@@ -185,6 +239,7 @@ def main(argv: list[str] | None = None) -> int:
         network=args.network,
         remove=remove,
         shm_size=args.shm_size,
+        allow_concurrent=args.allow_concurrent,
     )
     return result.returncode
 
