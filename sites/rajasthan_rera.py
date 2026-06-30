@@ -331,14 +331,15 @@ def _scrape_project_list(
     max_checked_rows: int | None = None,
 ) -> tuple[list[dict], int]:
     """
-    Navigate the Rajasthan RERA Angular SPA listing page and extract all projects.
-    Returns list of dicts with keys: reg_no, project_name, promoter_name,
+    Navigate the Rajasthan RERA Angular SPA listing page and inspect project rows.
+    Returns candidate dicts with keys: reg_no, project_name, promoter_name,
     project_type, district, application_no, approved_on, status.
 
     When ``max_pages`` is set the walker stops after N listing pages.  When
-    ``enough_rows`` is set it stops once that many rows have been collected.
-    Both gates exist so test runs honour CRAWL_ITEM_LIMIT / MAX_PAGES instead
-    of paginating through ~100 pages of projects (>500 s wall-clock).
+    ``enough_rows`` is set it stops once that many candidates have been found.
+    In daily_light, ``check_existing`` makes this a DB-backed lister: each
+    row's reg_no is checked immediately and only DB-missing rows continue to
+    detail parsing.
     """
     projects: list[dict] = []
     checked_rows = 0
@@ -1695,7 +1696,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
     # ── Sentinel health check ────────────────────────────────────────────────
     if target_regs or mode == "daily_light":
-        logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
+        logger.info("Sentinel skipped (targeted run or daily_light)", step="sentinel")
         counts["sentinel_passed"] = True
     else:
         t0 = time.monotonic()
@@ -1713,10 +1714,10 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     resume_after_key = checkpoint.get("last_project_key")
     resume_pending   = bool(resume_after_key)
 
-    # ── Phase A: Lister — collect project list via Selenium listing scrape ─
-    # Honour MAX_PAGES / CRAWL_ITEM_LIMIT during the walk itself so test runs
-    # don't paginate through every page of the state listing (~100 pages,
-    # 500 s wall-clock).  When neither is set we walk the full listing.
+    # ── Phase A: Lister — inspect visible reg_nos via Selenium listing scrape ─
+    # In daily_light, the lister checks the DB while paging and only returns
+    # rows whose reg_no is absent. Without an item limit, it must still inspect
+    # every listing page to discover unseen reg_nos.
     t0 = time.monotonic()
     list_max_pages = settings.MAX_PAGES if settings.MAX_PAGES else None
     light_check_existing = mode == "daily_light" and not target_regs
