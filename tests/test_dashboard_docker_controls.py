@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
 import dashboard
+from core.logger import _prune_local_jsonl_logs
 
 
 class DashboardDockerControlsTests(unittest.TestCase):
@@ -93,12 +95,10 @@ class DashboardDockerControlsTests(unittest.TestCase):
 
         self.assertEqual(run.call_args.args[0], ["docker", "kill", "abcdef123456"])
 
-    def test_fetch_direct_probe_data_reads_local_state_and_logs(self):
+    def test_fetch_direct_probe_data_reads_db_state_and_local_logs(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            state_dir = root / "dashboard" / "sites"
-            state_dir.mkdir(parents=True)
-            (state_dir / "kerala_rera.json").write_text(json.dumps({
+            db_row = {
                 "site_id": "kerala_rera",
                 "run_id": 42,
                 "run_type": "daily_light",
@@ -113,7 +113,7 @@ class DashboardDockerControlsTests(unittest.TestCase):
                 "error_count": 0,
                 "sentinel_passed": True,
                 "elapsed_s": 60.0,
-            }), encoding="utf-8")
+            }
             log_dir = root / "kerala_rera"
             log_dir.mkdir()
             (log_dir / "2026-07-01_000000.jsonl").write_text(
@@ -141,14 +141,68 @@ class DashboardDockerControlsTests(unittest.TestCase):
             with mock.patch.object(dashboard, "_LOGS_DIR", root), mock.patch(
                 "dashboard.orchestrator_state_path",
                 return_value=root / "dashboard" / "orchestrator.json",
-            ):
+            ), mock.patch("dashboard._read_latest_runs_from_db", return_value={"kerala_rera": db_row}):
                 data = dashboard._fetch_direct_probe_data()
 
-        self.assertEqual(data["source"], "direct-probe")
+        self.assertEqual(data["source"], "db+logs")
         self.assertEqual(data["latest_runs"]["kerala_rera"]["projects_found"], 1)
         self.assertTrue(data["sentinel_data"]["kerala_rera"]["passed"])
         self.assertEqual(data["sentinel_data"]["kerala_rera"]["covered"], 4)
         self.assertEqual(data["timing_by_site"]["kerala_rera"]["search"], 3.0)
+
+    def test_fetch_direct_probe_data_prefers_db_row_over_malformed_local_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            state_dir = root / "dashboard" / "sites"
+            state_dir.mkdir(parents=True)
+            (state_dir / "rajasthan_rera.json").write_text(json.dumps({
+                "site_id": "rajasthan_rera",
+                "projects_found": 0,
+            }), encoding="utf-8")
+
+            db_row = {
+                "run_id": 99,
+                "site_id": "rajasthan_rera",
+                "run_type": "daily_light",
+                "status": "running",
+                "started_at": "2026-07-01T00:00:00+00:00",
+                "finished_at": None,
+                "projects_found": 1,
+                "projects_new": 0,
+                "projects_updated": 0,
+                "projects_skipped": 1,
+                "documents_uploaded": 0,
+                "error_count": 0,
+                "sentinel_passed": True,
+            }
+
+            with mock.patch.object(dashboard, "_LOGS_DIR", root), mock.patch(
+                "dashboard.orchestrator_state_path",
+                return_value=root / "dashboard" / "orchestrator.json",
+            ), mock.patch("dashboard._read_latest_runs_from_db", return_value={"rajasthan_rera": db_row}):
+                data = dashboard._fetch_direct_probe_data()
+
+        row = data["latest_runs"]["rajasthan_rera"]
+        self.assertEqual(row["status"], "running")
+        self.assertEqual(row["run_id"], 99)
+        self.assertEqual(row["projects_found"], 1)
+
+    def test_prune_local_jsonl_logs_keeps_newest_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for idx in range(7):
+                path = root / f"run_{idx}.jsonl"
+                path.write_text("{}\n", encoding="utf-8")
+                os.utime(path, (idx, idx))
+
+            _prune_local_jsonl_logs(root, keep=5)
+
+            remaining = sorted(path.name for path in root.glob("*.jsonl"))
+
+        self.assertEqual(
+            remaining,
+            ["run_2.jsonl", "run_3.jsonl", "run_4.jsonl", "run_5.jsonl", "run_6.jsonl"],
+        )
 
 
 if __name__ == "__main__":

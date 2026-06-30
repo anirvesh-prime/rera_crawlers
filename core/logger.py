@@ -13,6 +13,7 @@ from core.config import settings
 
 _FLUSH_SIZE = 25  # flush to DB after this many buffered entries
 _DOCUMENT_EVENT_FLUSH_SIZE = 50  # flush document-event buffer after this many entries
+_LOCAL_LOG_RETENTION = 5
 
 # Steps whose INFO-level messages are surfaced on the console.
 #   db_upsert / upsert  — successful DB writes (core crawl output)
@@ -142,6 +143,7 @@ class JsonLineHandler(logging.Handler):
     def __init__(self, log_path: Path):
         super().__init__()
         log_path.parent.mkdir(parents=True, exist_ok=True)
+        _prune_local_jsonl_logs(log_path.parent, keep=_LOCAL_LOG_RETENTION - 1)
         self._file = open(log_path, "a", encoding="utf-8")
 
     def emit(self, record: logging.LogRecord) -> None:
@@ -163,6 +165,27 @@ class JsonLineHandler(logging.Handler):
     def close(self):
         self._file.close()
         super().close()
+
+
+def _prune_local_jsonl_logs(log_dir: Path, *, keep: int) -> None:
+    """Keep at most ``keep`` existing JSONL logs before opening a new one."""
+    if keep < 0:
+        keep = 0
+    try:
+        files = sorted(
+            (path for path in log_dir.glob("*.jsonl") if path.is_file()),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
+    except Exception:
+        return
+    for path in files[keep:]:
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+        except Exception:
+            log.debug("Could not prune local log file %s", path, exc_info=True)
 
 
 class CrawlerLogger:

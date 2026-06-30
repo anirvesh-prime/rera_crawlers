@@ -48,6 +48,7 @@ from sites_config import select_sites
 
 _SEP = "=" * 64
 _LIVE_LOG_FH = None
+_LIVE_LOG_RETENTION = 5
 
 
 class _TeeStream:
@@ -88,6 +89,7 @@ def _install_live_terminal_log() -> Path | None:
         else:
             live_dir = Path(settings.LOG_DIR) / "live"
             live_dir.mkdir(parents=True, exist_ok=True)
+            _prune_live_logs(live_dir, keep=_LIVE_LOG_RETENTION - 1)
             path = live_dir / f"crawler_{os.getpid()}.log"
         _LIVE_LOG_FH = path.open("a", buffering=1, encoding="utf-8", errors="replace")
         _LIVE_LOG_FH.write(
@@ -100,6 +102,26 @@ def _install_live_terminal_log() -> Path | None:
         return path
     except Exception:
         return None
+
+
+def _prune_live_logs(log_dir: Path, *, keep: int) -> None:
+    if keep < 0:
+        keep = 0
+    try:
+        files = sorted(
+            (path for path in log_dir.glob("*.log") if path.is_file()),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
+    except Exception:
+        return
+    for path in files[keep:]:
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+        except Exception:
+            pass
 
 
 def _truncate_text(value: str, limit: int = 24000) -> str:

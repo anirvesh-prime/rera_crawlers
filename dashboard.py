@@ -93,6 +93,46 @@ def _read_latest_runs_from_files() -> dict[str, dict]:
     return latest
 
 
+def _read_latest_runs_from_db() -> dict[str, dict]:
+    try:
+        from core.db import get_connection
+
+        conn = get_connection()
+        rows = conn.execute(
+            """
+            SELECT DISTINCT ON (site_id)
+                id AS run_id,
+                site_id,
+                run_type,
+                status,
+                started_at,
+                finished_at,
+                projects_found,
+                projects_new,
+                projects_updated,
+                projects_skipped,
+                documents_uploaded,
+                error_count,
+                sentinel_passed
+            FROM crawl_runs
+            ORDER BY site_id, started_at DESC NULLS LAST, id DESC
+            """
+        ).fetchall()
+    except Exception:
+        return {}
+    latest: dict[str, dict] = {}
+    for row in rows:
+        site_id = row.get("site_id")
+        if site_id not in _SITE_IDS:
+            continue
+        data = dict(row)
+        for key in COUNT_KEYS:
+            data.setdefault(key, 0)
+        data.setdefault("elapsed_s", None)
+        latest[site_id] = data
+    return latest
+
+
 def _entry_matches_run(entry: dict, run: dict) -> bool:
     run_id = run.get("run_id")
     if isinstance(run_id, int) and run_id > 0:
@@ -108,7 +148,7 @@ def _log_entries_for_run(site_id: str, run: dict) -> list[dict]:
     log_dir = _LOGS_DIR / site_id
     files = sorted(log_dir.glob("*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True)
     entries: list[dict] = []
-    for path in files[:12]:
+    for path in files[:5]:
         try:
             lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
         except Exception:
@@ -233,7 +273,7 @@ def _build_orchestrator_info(latest_runs: dict[str, dict]) -> dict:
 
 
 def _fetch_direct_probe_data() -> dict:
-    latest_runs = _read_latest_runs_from_files()
+    latest_runs = _read_latest_runs_from_db()
     logs_by_site = {
         site_id: _log_entries_for_run(site_id, run)
         for site_id, run in latest_runs.items()
@@ -245,7 +285,7 @@ def _fetch_direct_probe_data() -> dict:
         "repair_by_site": list_repair_attempts(),
         "orch_info": _build_orchestrator_info(latest_runs),
         "timing_by_site": _build_timing_by_site(logs_by_site),
-        "source": "direct-probe",
+        "source": "db+logs",
     }
 
 
