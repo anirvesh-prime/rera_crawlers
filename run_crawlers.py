@@ -700,7 +700,7 @@ def main() -> int:
     if parallel:
         # Cap concurrent processes: spawning one OS process per site with no
         # ceiling can exhaust file descriptors, RAM, and DB connections when
-        # many states are selected.  MAX_PARALLEL_CRAWLERS (default 8) limits
+        # many states are selected.  MAX_PARALLEL_CRAWLERS (default 1) limits
         # the pool; ProcessPoolExecutor queues the remainder automatically.
         max_workers = min(len(sites), settings.MAX_PARALLEL_CRAWLERS)
         print(f"→ Launching {len(sites)} crawlers in parallel (max {max_workers} at a time)...\n")
