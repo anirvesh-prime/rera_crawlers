@@ -23,7 +23,13 @@ import time
 from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
-from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, random_delay
+from core.crawler_base import (
+    SeleniumSession,
+    generate_project_key,
+    get_target_reg_nos,
+    log_daily_light_listing_progress,
+    random_delay,
+)
 from core.db import get_project_by_key, upsert_project, insert_crawl_error, upsert_document, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -649,15 +655,54 @@ def _apply_listing_limits(cards: list[dict], logger: CrawlerLogger) -> list[dict
 def _skip_existing_project_in_light_mode(
     *,
     mode: str,
+    site_id: str,
+    reg_no: str,
     project_key: str,
     logger: CrawlerLogger,
     counts: dict,
+    listing_progress: dict[str, int] | None = None,
 ) -> bool:
     """Return True when daily_light should skip a listing row before detail navigation."""
-    if mode == "daily_light" and get_project_by_key(project_key):
-        logger.info("Skipping — already in DB (daily_light)", step="skip")
-        counts["projects_skipped"] += 1
-        return True
+    if mode == "daily_light":
+        if listing_progress is not None:
+            listing_progress["checked"] = listing_progress.get("checked", 0) + 1
+        existing = get_project_by_key(project_key)
+        if existing:
+            if listing_progress is not None:
+                listing_progress["existing"] = listing_progress.get("existing", 0) + 1
+            logger.info("Skipping — already in DB (daily_light)", step="skip")
+            counts["projects_skipped"] += 1
+            log_daily_light_listing_progress(
+                site_id,
+                "Pondicherry",
+                checked_rows=(listing_progress or {}).get("checked", 1),
+                existing_rows=(listing_progress or {}).get("existing", 1),
+                candidate_rows=(listing_progress or {}).get("candidates", 0),
+                reg_no=reg_no,
+                project_key=project_key,
+                existing_match_key=project_key,
+                raw_reg_no=reg_no,
+            )
+            return True
+        if listing_progress is not None:
+            listing_progress["candidates"] = listing_progress.get("candidates", 0) + 1
+        log_daily_light_listing_progress(
+            site_id,
+            "Pondicherry",
+            checked_rows=(listing_progress or {}).get("checked", 1),
+            existing_rows=(listing_progress or {}).get("existing", 0),
+            candidate_rows=(listing_progress or {}).get("candidates", 1),
+            reg_no=reg_no,
+            project_key=project_key,
+            raw_reg_no=reg_no,
+        )
+        if settings.LIGHT_SKIP_NEW_ADDITIONS and not (settings.TARGET_REG_NO or "").strip():
+            logger.info(
+                "Skipping new candidate before detail fetch (--skip-new)",
+                step="skip",
+            )
+            counts["projects_skipped"] += 1
+            return True
     return False
 
 
@@ -849,6 +894,7 @@ def _process_project_card(
     machine_ip: str,
     logger: CrawlerLogger,
     counts: dict,
+    listing_progress: dict[str, int] | None = None,
 ) -> None:
     """Run one listing card through skip, detail, normalization, persistence, and documents."""
     reg_no = card["project_registration_no"]
@@ -856,9 +902,12 @@ def _process_project_card(
 
     if _skip_existing_project_in_light_mode(
         mode=mode,
+        site_id=site_id,
+        reg_no=reg_no,
         project_key=project_key,
         logger=logger,
         counts=counts,
+        listing_progress=listing_progress,
     ):
         return
 
@@ -934,6 +983,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         return counts
 
     machine_name, machine_ip = get_machine_context()
+    listing_progress = {"checked": 0, "existing": 0, "candidates": 0}
 
     # ── Detail traversal, normalization, persistence, and documents ────────
     for card in cards:
@@ -951,6 +1001,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 machine_ip=machine_ip,
                 logger=logger,
                 counts=counts,
+                listing_progress=listing_progress,
             )
         except Exception as exc:
             logger.exception("Project processing failed", exc, step="project_loop")

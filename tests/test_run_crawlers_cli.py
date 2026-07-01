@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from core.config import settings
-from run_crawlers import apply_runtime_overrides, main
+from run_crawlers import apply_runtime_overrides, main, parse_args
 
 
 class RunCrawlersCliTests(unittest.TestCase):
@@ -22,6 +22,8 @@ class RunCrawlersCliTests(unittest.TestCase):
         self.original_target = settings.TARGET_REG_NO
         self.original_skip_docs_env = os.environ.get("SKIP_DOCUMENTS")
         self.original_skip_docs = settings.SKIP_DOCUMENTS
+        self.original_skip_light_new_env = os.environ.get("LIGHT_SKIP_NEW_ADDITIONS")
+        self.original_skip_light_new = settings.LIGHT_SKIP_NEW_ADDITIONS
         self.original_test_mode_env = os.environ.get("TEST_MODE")
         self.original_test_mode = settings.TEST_MODE
         self.original_dry_run_s3_env = os.environ.get("DRY_RUN_S3")
@@ -50,6 +52,11 @@ class RunCrawlersCliTests(unittest.TestCase):
         else:
             os.environ["SKIP_DOCUMENTS"] = self.original_skip_docs_env
         settings.SKIP_DOCUMENTS = self.original_skip_docs
+        if self.original_skip_light_new_env is None:
+            os.environ.pop("LIGHT_SKIP_NEW_ADDITIONS", None)
+        else:
+            os.environ["LIGHT_SKIP_NEW_ADDITIONS"] = self.original_skip_light_new_env
+        settings.LIGHT_SKIP_NEW_ADDITIONS = self.original_skip_light_new
         if self.original_test_mode_env is None:
             os.environ.pop("TEST_MODE", None)
         else:
@@ -115,6 +122,25 @@ class RunCrawlersCliTests(unittest.TestCase):
         apply_runtime_overrides(args)
         self.assertTrue(settings.SKIP_DOCUMENTS)
         self.assertEqual(os.environ["SKIP_DOCUMENTS"], "true")
+
+    def test_parse_args_accepts_short_skip_new_flag(self):
+        with patch("sys.argv", ["run_crawlers.py", "--skip-new"]):
+            args = parse_args()
+        self.assertTrue(args.skip_light_new_additions)
+
+    def test_parse_args_accepts_legacy_skip_light_new_additions_flag(self):
+        with patch("sys.argv", ["run_crawlers.py", "--skip-light-new-additions"]):
+            args = parse_args()
+        self.assertTrue(args.skip_light_new_additions)
+
+    def test_apply_runtime_overrides_sets_skip_light_new_additions(self):
+        args = argparse.Namespace(
+            item_limit=None, no_item_limit=False, delay_scale=None,
+            skip_light_new_additions=True,
+        )
+        apply_runtime_overrides(args)
+        self.assertTrue(settings.LIGHT_SKIP_NEW_ADDITIONS)
+        self.assertEqual(os.environ["LIGHT_SKIP_NEW_ADDITIONS"], "true")
 
     def test_tester_requires_exactly_one_site_returns_error(self):
         selected_sites = [{"id": "kerala_rera"}, {"id": "rajasthan_rera"}]

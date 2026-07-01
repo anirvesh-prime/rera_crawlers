@@ -29,6 +29,7 @@ from core.crawler_base import (
     SeleniumSession,
     generate_project_key,
     get_target_reg_nos,
+    log_daily_light_listing_progress,
     page_adapter,
     random_delay,
 )
@@ -2248,16 +2249,16 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         if should_update_dashboard:
             update_crawl_run_progress(run_id, counts)
             last_listing_dashboard_update = checked_rows
-        print(
-            "[INFO] [rajasthan_rera] [listing] "
-            "Rajasthan daily_light listing progress: "
-            f"reg_no={reg_no or '-'}, "
-            f"key={project_key or '-'}, "
-            f"existing_match_key={existing_match_key or '-'}, "
-            f"raw_reg_no={raw_reg_no or '-'}, "
-            f"checked={checked_rows}, existing={skipped_existing_rows}, "
-            f"candidates={candidate_rows}",
-            flush=True,
+        log_daily_light_listing_progress(
+            "rajasthan_rera",
+            "Rajasthan",
+            checked_rows=checked_rows,
+            existing_rows=skipped_existing_rows,
+            candidate_rows=candidate_rows,
+            reg_no=reg_no,
+            project_key=project_key,
+            existing_match_key=existing_match_key,
+            raw_reg_no=raw_reg_no,
         )
 
     listed_projects, checked_listing_rows, skipped_existing_rows = _scrape_project_list(
@@ -2331,12 +2332,22 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         detail_url = (proj.get("detail_url") or "").strip()
         logger.set_project(key=key, reg_no=reg_no, url=LISTING_PAGE_URL, page=i)
 
-        if mode == "daily_light" and get_project_by_key(key):
-            logger.info("Skipping — already in DB (daily_light)", step="skip")
-            counts["projects_skipped"] += 1
-            logger.clear_project()
-            update_crawl_run_progress(run_id, counts)
-            continue
+        if mode == "daily_light":
+            if get_project_by_key(key):
+                logger.info("Skipping — already in DB (daily_light)", step="skip")
+                counts["projects_skipped"] += 1
+                logger.clear_project()
+                update_crawl_run_progress(run_id, counts)
+                continue
+            if settings.LIGHT_SKIP_NEW_ADDITIONS and not target_regs:
+                logger.info(
+                    "Skipping new candidate before detail fetch (--skip-new)",
+                    step="skip",
+                )
+                counts["projects_skipped"] += 1
+                logger.clear_project()
+                update_crawl_run_progress(run_id, counts)
+                continue
 
         try:
             action, uploaded_count, detail_url, validation_errors = _process_project_detail(

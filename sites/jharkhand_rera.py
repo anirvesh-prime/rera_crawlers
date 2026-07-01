@@ -22,7 +22,13 @@ from pydantic import ValidationError
 
 from core.checkpoint import reset_checkpoint
 from core.config import settings
-from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, random_delay
+from core.crawler_base import (
+    SeleniumSession,
+    generate_project_key,
+    get_target_reg_nos,
+    log_daily_light_listing_progress,
+    random_delay,
+)
 from core.db import get_project_by_key, upsert_project, upsert_document, insert_crawl_error, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -845,6 +851,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     counters = dict(projects_found=0, projects_new=0, projects_updated=0,
                     projects_skipped=0, documents_uploaded=0, error_count=0)
     machine_name, machine_ip = get_machine_context()
+    checked_listing_rows = 0
+    existing_listing_rows = 0
+    candidate_listing_rows = 0
     t_run = time.monotonic()
 
     # ── Targeted run handling ──────────────────────────────────────────────────
@@ -941,9 +950,42 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             detail_url = raw.get("detail_url", "") or LISTING_URL
 
             # ── daily_light: skip projects already in the DB ──────────────────
-            if mode == "daily_light" and get_project_by_key(key):
-                counters["projects_skipped"] += 1
-                continue
+            if mode == "daily_light":
+                checked_listing_rows += 1
+                existing = get_project_by_key(key)
+                if existing:
+                    existing_listing_rows += 1
+                    counters["projects_skipped"] += 1
+                    log_daily_light_listing_progress(
+                        config["id"],
+                        "Jharkhand",
+                        checked_rows=checked_listing_rows,
+                        existing_rows=existing_listing_rows,
+                        candidate_rows=candidate_listing_rows,
+                        reg_no=reg_no,
+                        project_key=key,
+                        existing_match_key=key,
+                        raw_reg_no=reg_no,
+                    )
+                    continue
+                candidate_listing_rows += 1
+                log_daily_light_listing_progress(
+                    config["id"],
+                    "Jharkhand",
+                    checked_rows=checked_listing_rows,
+                    existing_rows=existing_listing_rows,
+                    candidate_rows=candidate_listing_rows,
+                    reg_no=reg_no,
+                    project_key=key,
+                    raw_reg_no=reg_no,
+                )
+                if settings.LIGHT_SKIP_NEW_ADDITIONS and not target_regs:
+                    counters["projects_skipped"] += 1
+                    logger.info(
+                        "Skipping new candidate before detail fetch (--skip-new)",
+                        step="skip",
+                    )
+                    continue
 
             logger.set_project(key=key, reg_no=reg_no, url=detail_url, page=current_page)
             try:

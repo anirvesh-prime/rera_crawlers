@@ -36,6 +36,7 @@ from core.crawler_base import (
     SeleniumTimeout,
     generate_project_key,
     get_target_reg_nos,
+    log_daily_light_listing_progress,
     page_adapter,
     random_delay,
 )
@@ -1297,6 +1298,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     )
 
     items_processed = 0
+    checked_listing_rows = 0
+    existing_listing_rows = 0
+    candidate_listing_rows = 0
 
     if True:
         page = page_adapter(_session())
@@ -1372,11 +1376,45 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             # daily_light skip happens BEFORE page.goto: the reg_no is already
             # known from the bulk stub, so there is no need to load the SPA
             # detail page just to discover it.
-            if mode == "daily_light" and get_project_by_key(key):
-                logger.info("Skipping — already in DB (daily_light)", step="skip")
-                counts["projects_skipped"] += 1
-                logger.clear_project()
-                continue
+            if mode == "daily_light":
+                checked_listing_rows += 1
+                existing = get_project_by_key(key)
+                if existing:
+                    existing_listing_rows += 1
+                    logger.info("Skipping — already in DB (daily_light)", step="skip")
+                    counts["projects_skipped"] += 1
+                    log_daily_light_listing_progress(
+                        site_id,
+                        "Gujarat",
+                        checked_rows=checked_listing_rows,
+                        existing_rows=existing_listing_rows,
+                        candidate_rows=candidate_listing_rows,
+                        reg_no=reg_no,
+                        project_key=key,
+                        existing_match_key=key,
+                        raw_reg_no=reg_no,
+                    )
+                    logger.clear_project()
+                    continue
+                candidate_listing_rows += 1
+                log_daily_light_listing_progress(
+                    site_id,
+                    "Gujarat",
+                    checked_rows=checked_listing_rows,
+                    existing_rows=existing_listing_rows,
+                    candidate_rows=candidate_listing_rows,
+                    reg_no=reg_no,
+                    project_key=key,
+                    raw_reg_no=reg_no,
+                )
+                if settings.LIGHT_SKIP_NEW_ADDITIONS and not target_regs:
+                    counts["projects_skipped"] += 1
+                    logger.info(
+                        "Skipping new candidate before detail fetch (--skip-new)",
+                        step="skip",
+                    )
+                    logger.clear_project()
+                    continue
 
             logger.info(f"Scraping detail page for project ID {proj_id}", url=detail_url)
 

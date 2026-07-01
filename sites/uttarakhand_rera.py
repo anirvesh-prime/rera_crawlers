@@ -36,6 +36,7 @@ from core.crawler_base import (
     SeleniumSession,
     generate_project_key,
     get_random_ua,
+    log_daily_light_listing_progress,
     random_delay,
 )
 from core.db import get_project_by_key, insert_crawl_error, upsert_document, upsert_project, update_crawl_run_progress
@@ -1061,6 +1062,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     update_crawl_run_progress(run_id, counts)
     logger.info(f"Uttarakhand RERA: {len(cards)} projects to process")
     logger.timing("search", time.monotonic() - t0, rows=len(cards))
+    checked_listing_rows = 0
+    existing_listing_rows = 0
+    candidate_listing_rows = 0
 
     # ── Process each project ─────────────────────────────────────────────────
     with _make_client() as client:
@@ -1088,10 +1092,44 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     url=card.get("detail_url") or LISTING_URL,
                 )
 
-                if mode == "daily_light" and get_project_by_key(key):
-                    counts["projects_skipped"] += 1
-                    logger.clear_project()
-                    continue
+                if mode == "daily_light":
+                    checked_listing_rows += 1
+                    existing = get_project_by_key(key)
+                    if existing:
+                        existing_listing_rows += 1
+                        counts["projects_skipped"] += 1
+                        log_daily_light_listing_progress(
+                            site_id,
+                            "Uttarakhand",
+                            checked_rows=checked_listing_rows,
+                            existing_rows=existing_listing_rows,
+                            candidate_rows=candidate_listing_rows,
+                            reg_no=reg_no,
+                            project_key=key,
+                            existing_match_key=key,
+                            raw_reg_no=reg_no,
+                        )
+                        logger.clear_project()
+                        continue
+                    candidate_listing_rows += 1
+                    log_daily_light_listing_progress(
+                        site_id,
+                        "Uttarakhand",
+                        checked_rows=checked_listing_rows,
+                        existing_rows=existing_listing_rows,
+                        candidate_rows=candidate_listing_rows,
+                        reg_no=reg_no,
+                        project_key=key,
+                        raw_reg_no=reg_no,
+                    )
+                    if settings.LIGHT_SKIP_NEW_ADDITIONS and not target_regs:
+                        counts["projects_skipped"] += 1
+                        logger.info(
+                            "Skipping new candidate before detail fetch (--skip-new)",
+                            step="skip",
+                        )
+                        logger.clear_project()
+                        continue
 
                 # ── Merge listing data into base record ──────────────────────
                 data: dict = {

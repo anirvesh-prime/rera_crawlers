@@ -53,6 +53,41 @@ def generate_project_key(registration_number: str) -> str:
     return str(int_hash & _UINT64_MASK)
 
 
+def log_daily_light_listing_progress(
+    site_id: str,
+    state_label: str,
+    *,
+    checked_rows: int,
+    existing_rows: int,
+    candidate_rows: int,
+    reg_no: str | None = None,
+    project_key: str | None = None,
+    existing_match_key: str | None = None,
+    raw_reg_no: str | None = None,
+) -> None:
+    """Emit the per-row daily_light listing/existence-check log line."""
+    print(
+        f"[INFO] [{site_id}] [listing] "
+        f"{state_label} daily_light listing progress: "
+        f"reg_no={reg_no or '-'}, "
+        f"key={project_key or '-'}, "
+        f"existing_match_key={existing_match_key or '-'}, "
+        f"raw_reg_no={raw_reg_no or reg_no or '-'}, "
+        f"checked={checked_rows}, existing={existing_rows}, "
+        f"candidates={candidate_rows}",
+        flush=True,
+    )
+
+
+def should_skip_light_new_addition(mode: str) -> bool:
+    """Return True when daily_light should stop before fetching new candidates."""
+    return (
+        mode == "daily_light"
+        and settings.LIGHT_SKIP_NEW_ADDITIONS
+        and not (settings.TARGET_REG_NO or "").strip()
+    )
+
+
 def get_target_reg_nos() -> set[str]:
     """Return the set of targeted registration numbers from ``settings.TARGET_REG_NO``.
 

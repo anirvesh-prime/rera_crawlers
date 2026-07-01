@@ -25,6 +25,7 @@ from core.crawler_base import (
     SeleniumSession,
     generate_project_key,
     get_target_reg_nos,
+    log_daily_light_listing_progress,
     page_adapter,
     random_delay,
 )
@@ -1717,12 +1718,49 @@ def _process_card(
     }
     cert_no = card["cert_no_from_card"]
     key = generate_project_key(cert_no)
+    listing_progress = config.get("_listing_progress") if isinstance(config, dict) else None
     logger.set_project(key=key, reg_no=cert_no, url=card["detail_url"], page=page_num)
     try:
-        if mode == "daily_light" and get_project_by_key(key):
-            logger.info("Skipping — already in DB (daily_light)", step="skip")
-            deltas["projects_skipped"] += 1
-            return deltas
+        if mode == "daily_light":
+            if listing_progress is not None:
+                listing_progress["checked"] = listing_progress.get("checked", 0) + 1
+            existing = get_project_by_key(key)
+            if existing:
+                if listing_progress is not None:
+                    listing_progress["existing"] = listing_progress.get("existing", 0) + 1
+                logger.info("Skipping — already in DB (daily_light)", step="skip")
+                deltas["projects_skipped"] += 1
+                log_daily_light_listing_progress(
+                    site_id,
+                    "Kerala",
+                    checked_rows=(listing_progress or {}).get("checked", 1),
+                    existing_rows=(listing_progress or {}).get("existing", 1),
+                    candidate_rows=(listing_progress or {}).get("candidates", 0),
+                    reg_no=cert_no,
+                    project_key=key,
+                    existing_match_key=key,
+                    raw_reg_no=cert_no,
+                )
+                return deltas
+            if listing_progress is not None:
+                listing_progress["candidates"] = listing_progress.get("candidates", 0) + 1
+            log_daily_light_listing_progress(
+                site_id,
+                "Kerala",
+                checked_rows=(listing_progress or {}).get("checked", 1),
+                existing_rows=(listing_progress or {}).get("existing", 0),
+                candidate_rows=(listing_progress or {}).get("candidates", 1),
+                reg_no=cert_no,
+                project_key=key,
+                raw_reg_no=cert_no,
+            )
+            if settings.LIGHT_SKIP_NEW_ADDITIONS and not (settings.TARGET_REG_NO or "").strip():
+                logger.info(
+                    "Skipping new candidate before detail fetch (--skip-new)",
+                    step="skip",
+                )
+                deltas["projects_skipped"] += 1
+                return deltas
 
         logger.info("Fetching detail page", step="detail_fetch")
         detail_data = _scrape_detail_page(card["detail_url"], logger)
@@ -1960,6 +1998,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         return counts
 
     machine_name, machine_ip = get_machine_context()
+    listing_progress = {"checked": 0, "existing": 0, "candidates": 0}
+    worker_config = {**config, "_listing_progress": listing_progress}
     n_workers = get_detail_workers()
     logger.info(
         f"Phase B: parallel detail fetch ({len(to_process)} cards, {n_workers} workers)",
@@ -1970,7 +2010,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     def _worker(idx: int, item: tuple[int, dict]) -> dict:
         page_num, card = item
         return _process_card(
-            page_num, card, config, run_id, site_id, mode,
+            page_num, card, worker_config, run_id, site_id, mode,
             machine_name, machine_ip, logger,
         )
 

@@ -53,7 +53,12 @@ from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
 from core.crawl_policy import count_project_upsert
-from core.crawler_base import SeleniumSession, generate_project_key, random_delay
+from core.crawler_base import (
+    SeleniumSession,
+    generate_project_key,
+    log_daily_light_listing_progress,
+    random_delay,
+)
 from core.db import (
     get_project_by_key,
     upsert_project,
@@ -1817,6 +1822,7 @@ def _process_candidate(
     machine_ip: str,
     state: str,
     logger: CrawlerLogger,
+    listing_progress: dict[str, int] | None = None,
 ) -> dict:
     """Per-candidate worker — runs in the detail thread pool.
 
@@ -1835,14 +1841,51 @@ def _process_candidate(
         project_key = generate_project_key(listing_reg_no)
         logger.set_project(key=project_key, reg_no=listing_reg_no,
                            url=PROJECT_URL, page=page_number)
-        if mode == "daily_light" and get_project_by_key(project_key):
-            deltas["projects_skipped"] += 1
-            logger.info(
-                f"Skipping — already in DB (daily_light): {listing_reg_no}",
-                step="skip",
+        if mode == "daily_light":
+            if listing_progress is not None:
+                listing_progress["checked"] = listing_progress.get("checked", 0) + 1
+            existing = get_project_by_key(project_key)
+            if existing:
+                if listing_progress is not None:
+                    listing_progress["existing"] = listing_progress.get("existing", 0) + 1
+                deltas["projects_skipped"] += 1
+                logger.info(
+                    f"Skipping — already in DB (daily_light): {listing_reg_no}",
+                    step="skip",
+                )
+                log_daily_light_listing_progress(
+                    site_id,
+                    "Karnataka",
+                    checked_rows=(listing_progress or {}).get("checked", 1),
+                    existing_rows=(listing_progress or {}).get("existing", 1),
+                    candidate_rows=(listing_progress or {}).get("candidates", 0),
+                    reg_no=listing_reg_no,
+                    project_key=project_key,
+                    existing_match_key=project_key,
+                    raw_reg_no=listing_reg_no,
+                )
+                logger.clear_project()
+                return deltas
+            if listing_progress is not None:
+                listing_progress["candidates"] = listing_progress.get("candidates", 0) + 1
+            log_daily_light_listing_progress(
+                site_id,
+                "Karnataka",
+                checked_rows=(listing_progress or {}).get("checked", 1),
+                existing_rows=(listing_progress or {}).get("existing", 0),
+                candidate_rows=(listing_progress or {}).get("candidates", 1),
+                reg_no=listing_reg_no,
+                project_key=project_key,
+                raw_reg_no=listing_reg_no,
             )
-            logger.clear_project()
-            return deltas
+            if settings.LIGHT_SKIP_NEW_ADDITIONS and not (settings.TARGET_REG_NO or "").strip():
+                deltas["projects_skipped"] += 1
+                logger.info(
+                    "Skipping new candidate before detail fetch (--skip-new)",
+                    step="skip",
+                )
+                logger.clear_project()
+                return deltas
     else:
         logger.set_project(reg_no=ack_no, url=PROJECT_URL, page=page_number)
     try:
@@ -1863,13 +1906,50 @@ def _process_candidate(
                 project_key = generate_project_key(reg_no)
                 logger.set_project(key=project_key, reg_no=reg_no,
                                    url=PROJECT_URL, page=page_number)
-                if mode == "daily_light" and get_project_by_key(project_key):
-                    deltas["projects_skipped"] += 1
-                    logger.info(
-                        f"Skipping — already in DB (daily_light): {reg_no}",
-                        step="skip",
+                if mode == "daily_light":
+                    if listing_progress is not None:
+                        listing_progress["checked"] = listing_progress.get("checked", 0) + 1
+                    existing = get_project_by_key(project_key)
+                    if existing:
+                        if listing_progress is not None:
+                            listing_progress["existing"] = listing_progress.get("existing", 0) + 1
+                        deltas["projects_skipped"] += 1
+                        logger.info(
+                            f"Skipping — already in DB (daily_light): {reg_no}",
+                            step="skip",
+                        )
+                        log_daily_light_listing_progress(
+                            site_id,
+                            "Karnataka",
+                            checked_rows=(listing_progress or {}).get("checked", 1),
+                            existing_rows=(listing_progress or {}).get("existing", 1),
+                            candidate_rows=(listing_progress or {}).get("candidates", 0),
+                            reg_no=reg_no,
+                            project_key=project_key,
+                            existing_match_key=project_key,
+                            raw_reg_no=reg_no,
+                        )
+                        return deltas
+                    if listing_progress is not None:
+                        listing_progress["candidates"] = listing_progress.get("candidates", 0) + 1
+                    log_daily_light_listing_progress(
+                        site_id,
+                        "Karnataka",
+                        checked_rows=(listing_progress or {}).get("checked", 1),
+                        existing_rows=(listing_progress or {}).get("existing", 0),
+                        candidate_rows=(listing_progress or {}).get("candidates", 1),
+                        reg_no=reg_no,
+                        project_key=project_key,
+                        raw_reg_no=reg_no,
                     )
-                    return deltas
+                    if settings.LIGHT_SKIP_NEW_ADDITIONS and not (settings.TARGET_REG_NO or "").strip():
+                        deltas["projects_skipped"] += 1
+                        logger.info(
+                            "Skipping new candidate after detail-derived registration check "
+                            "(--skip-new)",
+                            step="skip",
+                        )
+                        return deltas
             uploaded_docs = _extract_documents(detail_html, reg_no)
             qpr_doc = _build_qpr_snapshot(detail_html, ack_no, reg_no, logger)
             if qpr_doc is not None:
@@ -2031,11 +2111,13 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         )
         tB = time.monotonic()
 
+        listing_progress = {"checked": 0, "existing": 0, "candidates": 0}
+
         def _worker(_idx: int, item: tuple[int, int, dict]) -> dict:
             d_idx, p_num, row = item
             return _process_candidate(
                 d_idx, p_num, row, config, run_id, site_id, mode,
-                machine_name, machine_ip, state, logger,
+                machine_name, machine_ip, state, logger, listing_progress,
             )
 
         def _on_detail_result(_idx: int, deltas: dict | None, exc: Exception | None) -> None:

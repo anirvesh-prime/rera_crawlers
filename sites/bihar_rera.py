@@ -36,6 +36,7 @@ from core.crawler_base import (
     SeleniumTimeout,
     generate_project_key,
     get_target_reg_nos,
+    log_daily_light_listing_progress,
     page_adapter,
 )
 from core.db import (
@@ -1768,6 +1769,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     )
 
     pending_doc_work: list[dict] = []
+    listing_progress = {"checked": 0, "existing": 0, "candidates": 0}
 
     def _on_listing_progress(found_so_far: int) -> None:
         # Push the running projects_found to crawl_runs for live dashboard view.
@@ -1797,6 +1799,10 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         """Skip DB-existing light-mode rows before any detail popup is opened."""
         if not _is_light_mode(mode):
             return False
+        identity = _listing_identity(raw)
+        reg_no = (raw.get("project_registration_no") or "").strip()
+        key = identity[1] if identity else None
+        listing_progress["checked"] += 1
         try:
             existing = _existing_project_from_listing(raw, config)
         except Exception as exc:
@@ -1808,15 +1814,36 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             update_crawl_run_progress(run_id, counters)
             return False
         if not existing:
+            listing_progress["candidates"] += 1
+            log_daily_light_listing_progress(
+                site_id,
+                "Bihar",
+                checked_rows=listing_progress["checked"],
+                existing_rows=listing_progress["existing"],
+                candidate_rows=listing_progress["candidates"],
+                reg_no=reg_no,
+                project_key=key,
+                raw_reg_no=reg_no,
+            )
             return False
 
-        identity = _listing_identity(raw)
-        reg_no = (raw.get("project_registration_no") or "").strip()
-        key = identity[1] if identity else existing.get("key")
+        listing_progress["existing"] += 1
+        key = key or existing.get("key")
         logger.set_project(key=key, reg_no=reg_no, url=LISTING_URL, page=current_page)
         try:
             logger.info("Skipping existing project before detail traversal", step="skip")
             counters["projects_skipped"] += 1
+            log_daily_light_listing_progress(
+                site_id,
+                "Bihar",
+                checked_rows=listing_progress["checked"],
+                existing_rows=listing_progress["existing"],
+                candidate_rows=listing_progress["candidates"],
+                reg_no=reg_no,
+                project_key=key,
+                existing_match_key=key,
+                raw_reg_no=reg_no,
+            )
             update_crawl_run_progress(run_id, counters)
         finally:
             logger.clear_project()

@@ -52,6 +52,7 @@ from core.crawler_base import (
     SeleniumTimeout,
     generate_project_key,
     get_target_reg_nos,
+    log_daily_light_listing_progress,
     page_adapter,
     random_delay,
     safe_get as http_safe_get,
@@ -1619,6 +1620,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     )
 
     items_processed = 0
+    checked_listing_rows = 0
+    existing_listing_rows = 0
+    candidate_listing_rows = 0
     # When item_limit is hit we stop the page walk entirely — projects_found
     # then reflects only the pages actually walked, not the full state catalog.
     processing_done = False
@@ -1737,9 +1741,42 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             project_url = detail_url or url
 
             # ── daily_light: skip projects already in the DB ──────────────────
-            if mode == "daily_light" and get_project_by_key(key):
-                counters["projects_skipped"] += 1
-                continue
+            if mode == "daily_light":
+                checked_listing_rows += 1
+                existing = get_project_by_key(key)
+                if existing:
+                    existing_listing_rows += 1
+                    counters["projects_skipped"] += 1
+                    log_daily_light_listing_progress(
+                        config["id"],
+                        "Maharashtra",
+                        checked_rows=checked_listing_rows,
+                        existing_rows=existing_listing_rows,
+                        candidate_rows=candidate_listing_rows,
+                        reg_no=reg_no,
+                        project_key=key,
+                        existing_match_key=key,
+                        raw_reg_no=reg_no,
+                    )
+                    continue
+                candidate_listing_rows += 1
+                log_daily_light_listing_progress(
+                    config["id"],
+                    "Maharashtra",
+                    checked_rows=checked_listing_rows,
+                    existing_rows=existing_listing_rows,
+                    candidate_rows=candidate_listing_rows,
+                    reg_no=reg_no,
+                    project_key=key,
+                    raw_reg_no=reg_no,
+                )
+                if settings.LIGHT_SKIP_NEW_ADDITIONS and not target_regs:
+                    counters["projects_skipped"] += 1
+                    logger.info(
+                        "Skipping new candidate before detail fetch (--skip-new)",
+                        step="skip",
+                    )
+                    continue
 
             logger.set_project(key=key, reg_no=reg_no, url=project_url, page=page_no)
             try:

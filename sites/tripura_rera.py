@@ -35,7 +35,14 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
-from core.crawler_base import SeleniumSession, generate_project_key, get_random_ua, get_target_reg_nos, random_delay
+from core.crawler_base import (
+    SeleniumSession,
+    generate_project_key,
+    get_random_ua,
+    get_target_reg_nos,
+    log_daily_light_listing_progress,
+    random_delay,
+)
 from core.db import get_project_by_key, insert_crawl_error, upsert_document, upsert_project, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -958,14 +965,52 @@ def _process_row(
         return items_processed
 
     key = generate_project_key(reg_no)
+    listing_progress = config.get("_listing_progress") if isinstance(config, dict) else None
     logger.set_project(key=key, reg_no=reg_no, url=row.get("detail_url", SEARCH_URL))
 
     try:
-        if config.get("mode") == "daily_light" and get_project_by_key(key):
-            counts["projects_skipped"] += 1
-            logger.info("Skipping — already in DB (daily_light)")
-            done_regs.add(reg_no)
-            return items_processed
+        if config.get("mode") == "daily_light":
+            if listing_progress is not None:
+                listing_progress["checked"] = listing_progress.get("checked", 0) + 1
+            existing = get_project_by_key(key)
+            if existing:
+                if listing_progress is not None:
+                    listing_progress["existing"] = listing_progress.get("existing", 0) + 1
+                counts["projects_skipped"] += 1
+                logger.info("Skipping — already in DB (daily_light)")
+                done_regs.add(reg_no)
+                log_daily_light_listing_progress(
+                    site_id,
+                    "Tripura",
+                    checked_rows=(listing_progress or {}).get("checked", 1),
+                    existing_rows=(listing_progress or {}).get("existing", 1),
+                    candidate_rows=(listing_progress or {}).get("candidates", 0),
+                    reg_no=reg_no,
+                    project_key=key,
+                    existing_match_key=key,
+                    raw_reg_no=reg_no,
+                )
+                return items_processed
+            if listing_progress is not None:
+                listing_progress["candidates"] = listing_progress.get("candidates", 0) + 1
+            log_daily_light_listing_progress(
+                site_id,
+                "Tripura",
+                checked_rows=(listing_progress or {}).get("checked", 1),
+                existing_rows=(listing_progress or {}).get("existing", 0),
+                candidate_rows=(listing_progress or {}).get("candidates", 1),
+                reg_no=reg_no,
+                project_key=key,
+                raw_reg_no=reg_no,
+            )
+            if settings.LIGHT_SKIP_NEW_ADDITIONS and not (settings.TARGET_REG_NO or "").strip():
+                counts["projects_skipped"] += 1
+                logger.info(
+                    "Skipping new candidate before detail fetch (--skip-new)",
+                    step="skip",
+                )
+                done_regs.add(reg_no)
+                return items_processed
 
         data: dict = {
             "key":                     key,  # FIELD: key <- generate_project_key(reg_no)
@@ -1141,9 +1186,10 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     max_pages     = settings.MAX_PAGES or 0
     items_processed = 0
     machine_name, machine_ip = get_machine_context()
+    listing_progress = {"checked": 0, "existing": 0, "candidates": 0}
     t_run = time.monotonic()
     # Pass mode through config so _process_row can check daily_light
-    config = {**config, "mode": mode}
+    config = {**config, "mode": mode, "_listing_progress": listing_progress}
 
     # ── Targeted run handling ──────────────────────────────────────────────────
     # --target-reg-no restricts the run to one or more specific projects

@@ -48,6 +48,11 @@ class Settings(BaseSettings):
     # --skip-documents flag: crawlers that support it still scrape/upsert project
     # records but skip document download/upload work for the run.
     SKIP_DOCUMENTS: bool = False
+    # --skip-new flag: in daily_light, skip rows that are not
+    # already in DB after the listing-level existence check. This lets a light
+    # run exercise listing/dedup behavior without opening detail pages for new
+    # or portal-stale projects.
+    LIGHT_SKIP_NEW_ADDITIONS: bool = False
     SCRAPE_DETAILS: bool = True      # set False to skip detail-page fetches
     MAX_PAGES: int | None = None     # None = unlimited
     MAX_PARALLEL_CRAWLERS: int = 2   # hard cap on concurrent worker processes

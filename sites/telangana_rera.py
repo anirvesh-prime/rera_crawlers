@@ -30,6 +30,7 @@ from core.crawler_base import (
     SeleniumTimeout,
     generate_project_key,
     get_target_reg_nos,
+    log_daily_light_listing_progress,
     page_adapter,
     random_delay,
 )
@@ -1449,6 +1450,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
     item_limit    = settings.CRAWL_ITEM_LIMIT or 0
     items_done    = 0
+    checked_listing_rows = 0
+    existing_listing_rows = 0
+    candidate_listing_rows = 0
     delay_min, delay_max = config.get("rate_limit_delay", (2, 4))
     machine_name, machine_ip = get_machine_context()
     t_run = time.monotonic()
@@ -1574,11 +1578,43 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     ])
                     listing_key = generate_project_key(listing_key_input)
                     logger.set_project(key=listing_key, url=pp_url, page=current_page)
-                    if mode == "daily_light" and get_project_by_key(listing_key):
-                        logger.info("Skipping — already in DB (daily_light)", step="skip")
-                        counts["projects_skipped"] += 1
-                        logger.clear_project()
-                        continue
+                    if mode == "daily_light":
+                        checked_listing_rows += 1
+                        existing = get_project_by_key(listing_key)
+                        if existing:
+                            existing_listing_rows += 1
+                            logger.info("Skipping — already in DB (daily_light)", step="skip")
+                            counts["projects_skipped"] += 1
+                            log_daily_light_listing_progress(
+                                site_id,
+                                "Telangana",
+                                checked_rows=checked_listing_rows,
+                                existing_rows=existing_listing_rows,
+                                candidate_rows=candidate_listing_rows,
+                                project_key=listing_key,
+                                existing_match_key=listing_key,
+                                raw_reg_no=row.get("project_name") or listing_project_name,
+                            )
+                            logger.clear_project()
+                            continue
+                        candidate_listing_rows += 1
+                        log_daily_light_listing_progress(
+                            site_id,
+                            "Telangana",
+                            checked_rows=checked_listing_rows,
+                            existing_rows=existing_listing_rows,
+                            candidate_rows=candidate_listing_rows,
+                            project_key=listing_key,
+                            raw_reg_no=row.get("project_name") or listing_project_name,
+                        )
+                        if settings.LIGHT_SKIP_NEW_ADDITIONS and not target_regs:
+                            logger.info(
+                                "Skipping new candidate before detail fetch (--skip-new)",
+                                step="skip",
+                            )
+                            counts["projects_skipped"] += 1
+                            logger.clear_project()
+                            continue
 
                 try:
                     # ── Navigate to PrintPreview ──────────────────────────────
@@ -1692,11 +1728,50 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                         key = listing_key
                     logger.set_project(key=key, reg_no=reg_no or "", url=pp_url, page=current_page)
 
-                    if mode == "daily_light" and get_project_by_key(key):
-                        logger.info("Skipping — already in DB (daily_light)", step="skip")
-                        counts["projects_skipped"] += 1
-                        logger.clear_project()
-                        continue
+                    if mode == "daily_light":
+                        if not listing_key:
+                            checked_listing_rows += 1
+                        existing = get_project_by_key(key)
+                        if existing:
+                            if not listing_key:
+                                existing_listing_rows += 1
+                            logger.info("Skipping — already in DB (daily_light)", step="skip")
+                            counts["projects_skipped"] += 1
+                            if not listing_key:
+                                log_daily_light_listing_progress(
+                                    site_id,
+                                    "Telangana",
+                                    checked_rows=checked_listing_rows,
+                                    existing_rows=existing_listing_rows,
+                                    candidate_rows=candidate_listing_rows,
+                                    reg_no=reg_no,
+                                    project_key=key,
+                                    existing_match_key=key,
+                                    raw_reg_no=reg_no or row.get("project_name"),
+                                )
+                            logger.clear_project()
+                            continue
+                        if not listing_key:
+                            candidate_listing_rows += 1
+                            log_daily_light_listing_progress(
+                                site_id,
+                                "Telangana",
+                                checked_rows=checked_listing_rows,
+                                existing_rows=existing_listing_rows,
+                                candidate_rows=candidate_listing_rows,
+                                reg_no=reg_no,
+                                project_key=key,
+                                raw_reg_no=reg_no or row.get("project_name"),
+                            )
+                        if settings.LIGHT_SKIP_NEW_ADDITIONS and not target_regs:
+                            logger.info(
+                                "Skipping new candidate after detail-derived key check "
+                                "(--skip-new)",
+                                step="skip",
+                            )
+                            counts["projects_skipped"] += 1
+                            logger.clear_project()
+                            continue
 
                     # ── Core metadata ─────────────────────────────────────────
                     detail_data["key"]              = key  # FIELD: key <- generate_project_key(project|promoter|state|doc_decoded)

@@ -29,7 +29,13 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, random_delay
+from core.crawler_base import (
+    SeleniumSession,
+    generate_project_key,
+    get_target_reg_nos,
+    log_daily_light_listing_progress,
+    random_delay,
+)
 from core.db import (
     get_project_by_key,
     upsert_project,
@@ -1399,6 +1405,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         return counts
 
     delay_min, delay_max = config.get("rate_limit_delay", (1, 3))
+    checked_listing_rows = 0
+    existing_listing_rows = 0
+    candidate_listing_rows = 0
 
     # ── Per-project loop ──────────────────────────────────────────────────────
     for i, row in enumerate(rows):
@@ -1416,10 +1425,44 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
             continue
 
         # daily_light: skip if already in DB
-        if mode == "daily_light" and get_project_by_key(project_key):
-            counts["projects_skipped"] += 1
-            done_keys.add(project_key)
-            continue
+        if mode == "daily_light":
+            checked_listing_rows += 1
+            existing = get_project_by_key(project_key)
+            if existing:
+                existing_listing_rows += 1
+                counts["projects_skipped"] += 1
+                done_keys.add(project_key)
+                log_daily_light_listing_progress(
+                    site_id,
+                    "Andhra Pradesh",
+                    checked_rows=checked_listing_rows,
+                    existing_rows=existing_listing_rows,
+                    candidate_rows=candidate_listing_rows,
+                    reg_no=reg_no,
+                    project_key=project_key,
+                    existing_match_key=project_key,
+                    raw_reg_no=reg_no,
+                )
+                continue
+            candidate_listing_rows += 1
+            log_daily_light_listing_progress(
+                site_id,
+                "Andhra Pradesh",
+                checked_rows=checked_listing_rows,
+                existing_rows=existing_listing_rows,
+                candidate_rows=candidate_listing_rows,
+                reg_no=reg_no,
+                project_key=project_key,
+                raw_reg_no=reg_no,
+            )
+            if settings.LIGHT_SKIP_NEW_ADDITIONS and not target_regs:
+                counts["projects_skipped"] += 1
+                done_keys.add(project_key)
+                logger.info(
+                    "Skipping new candidate before detail fetch (--skip-new)",
+                    step="skip",
+                )
+                continue
 
         if not detail_url:
             logger.warning("No detail URL for project", reg_no=reg_no)

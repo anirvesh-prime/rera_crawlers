@@ -30,6 +30,7 @@ from core.crawler_base import (
     download_response,
     generate_project_key,
     get_target_reg_nos,
+    log_daily_light_listing_progress,
     page_adapter,
     random_delay,
 )
@@ -1826,6 +1827,7 @@ def _process_listing_card(
     machine_name: str,
     machine_ip: str,
     logger: CrawlerLogger,
+    listing_progress: dict[str, int] | None = None,
 ) -> None:
     """Process one listing card through detail traversal and persistence."""
     site_id = config["id"]
@@ -1839,10 +1841,46 @@ def _process_listing_card(
 
     logger.set_project(key=key, reg_no=reg, page=page_num)
     try:
-        if mode == "daily_light" and get_project_by_key(key):
-            logger.info("Skipping — already in DB (daily_light)", step="skip")
-            counts["projects_skipped"] += 1
-            return
+        if mode == "daily_light":
+            if listing_progress is not None:
+                listing_progress["checked"] = listing_progress.get("checked", 0) + 1
+            existing = get_project_by_key(key)
+            if existing:
+                if listing_progress is not None:
+                    listing_progress["existing"] = listing_progress.get("existing", 0) + 1
+                logger.info("Skipping — already in DB (daily_light)", step="skip")
+                counts["projects_skipped"] += 1
+                log_daily_light_listing_progress(
+                    site_id,
+                    "Odisha",
+                    checked_rows=(listing_progress or {}).get("checked", 1),
+                    existing_rows=(listing_progress or {}).get("existing", 1),
+                    candidate_rows=(listing_progress or {}).get("candidates", 0),
+                    reg_no=reg,
+                    project_key=key,
+                    existing_match_key=key,
+                    raw_reg_no=reg,
+                )
+                return
+            if listing_progress is not None:
+                listing_progress["candidates"] = listing_progress.get("candidates", 0) + 1
+            log_daily_light_listing_progress(
+                site_id,
+                "Odisha",
+                checked_rows=(listing_progress or {}).get("checked", 1),
+                existing_rows=(listing_progress or {}).get("existing", 0),
+                candidate_rows=(listing_progress or {}).get("candidates", 1),
+                reg_no=reg,
+                project_key=key,
+                raw_reg_no=reg,
+            )
+            if settings.LIGHT_SKIP_NEW_ADDITIONS and not (settings.TARGET_REG_NO or "").strip():
+                logger.info(
+                    "Skipping new candidate before detail fetch (--skip-new)",
+                    step="skip",
+                )
+                counts["projects_skipped"] += 1
+                return
 
         detail = _scrape_detail_sections(page, card, mode, logger)
         if not detail:
@@ -1923,6 +1961,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     processing_done = False
     max_pages: int | None = settings.MAX_PAGES
     machine_name, machine_ip = get_machine_context()
+    listing_progress = {"checked": 0, "existing": 0, "candidates": 0}
     t_run = time.monotonic()
 
     # Phase 1: targeted-run and sentinel setup.
@@ -1982,6 +2021,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 machine_name=machine_name,
                 machine_ip=machine_ip,
                 logger=logger,
+                listing_progress=listing_progress,
             )
 
         if item_limit and items_processed >= item_limit:

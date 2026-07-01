@@ -29,7 +29,14 @@ from bs4 import BeautifulSoup
 from pydantic import ValidationError
 
 from core.checkpoint import load_checkpoint, save_checkpoint, reset_checkpoint
-from core.crawler_base import SeleniumSession, generate_project_key, get_random_ua, get_target_reg_nos, random_delay
+from core.crawler_base import (
+    SeleniumSession,
+    generate_project_key,
+    get_random_ua,
+    get_target_reg_nos,
+    log_daily_light_listing_progress,
+    random_delay,
+)
 from core.db import (
     get_project_by_key,
     upsert_project,
@@ -1674,6 +1681,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
     t0 = time.monotonic()
     first_listing_logged = False
+    checked_listing_rows = 0
+    existing_listing_rows = 0
+    candidate_listing_rows = 0
     for year_index, (year_url, year_label, rows) in enumerate(_iter_listing_rows(logger)):
         if year_index < last_page:
             continue
@@ -1728,9 +1738,42 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 continue
 
             # ── daily_light: skip projects already in the DB ──────────────────
-            if mode == "daily_light" and get_project_by_key(project_key):
-                counts["projects_skipped"] += 1
-                continue
+            if mode == "daily_light":
+                checked_listing_rows += 1
+                existing = get_project_by_key(project_key)
+                if existing:
+                    existing_listing_rows += 1
+                    counts["projects_skipped"] += 1
+                    log_daily_light_listing_progress(
+                        site_id,
+                        "Tamil Nadu",
+                        checked_rows=checked_listing_rows,
+                        existing_rows=existing_listing_rows,
+                        candidate_rows=candidate_listing_rows,
+                        reg_no=reg_no,
+                        project_key=project_key,
+                        existing_match_key=project_key,
+                        raw_reg_no=reg_no,
+                    )
+                    continue
+                candidate_listing_rows += 1
+                log_daily_light_listing_progress(
+                    site_id,
+                    "Tamil Nadu",
+                    checked_rows=checked_listing_rows,
+                    existing_rows=existing_listing_rows,
+                    candidate_rows=candidate_listing_rows,
+                    reg_no=reg_no,
+                    project_key=project_key,
+                    raw_reg_no=reg_no,
+                )
+                if settings.LIGHT_SKIP_NEW_ADDITIONS and not target_regs:
+                    counts["projects_skipped"] += 1
+                    logger.info(
+                        "Skipping new candidate before detail fetch (--skip-new)",
+                        step="skip",
+                    )
+                    continue
 
             logger.set_project(
                 key=project_key,

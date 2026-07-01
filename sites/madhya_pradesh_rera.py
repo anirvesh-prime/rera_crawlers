@@ -21,7 +21,14 @@ from typing import Any
 from bs4 import BeautifulSoup, Tag
 
 from core.checkpoint import load_checkpoint, reset_checkpoint, save_checkpoint
-from core.crawler_base import SeleniumSession, generate_project_key, get_target_reg_nos, random_delay, safe_get
+from core.crawler_base import (
+    SeleniumSession,
+    generate_project_key,
+    get_target_reg_nos,
+    log_daily_light_listing_progress,
+    random_delay,
+    safe_get,
+)
 from core.db import get_project_by_key, insert_crawl_error, upsert_document, upsert_project, update_crawl_run_progress
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
@@ -828,6 +835,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     logger.info(f"Found {len(stubs)} active project stubs in listing")
     logger.timing("search", time.monotonic() - t0, rows=len(stubs))
     items_processed = 0
+    checked_listing_rows = 0
+    existing_listing_rows = 0
+    candidate_listing_rows = 0
 
     for stub in stubs:
         if item_limit and items_processed >= item_limit:
@@ -885,12 +895,47 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             key = generate_project_key(reg_no)
             logger.set_project(key=key, reg_no=reg_no, url=detail_url)
 
-            if mode == "daily_light" and get_project_by_key(key):
-                counts["projects_skipped"] += 1
-                logger.info("Skipping — already in DB (daily_light)")
-                done_regs.add(reg_no)
-                logger.clear_project()
-                continue
+            if mode == "daily_light":
+                checked_listing_rows += 1
+                existing = get_project_by_key(key)
+                if existing:
+                    existing_listing_rows += 1
+                    counts["projects_skipped"] += 1
+                    logger.info("Skipping — already in DB (daily_light)")
+                    done_regs.add(reg_no)
+                    log_daily_light_listing_progress(
+                        site_id,
+                        "Madhya Pradesh",
+                        checked_rows=checked_listing_rows,
+                        existing_rows=existing_listing_rows,
+                        candidate_rows=candidate_listing_rows,
+                        reg_no=reg_no,
+                        project_key=key,
+                        existing_match_key=key,
+                        raw_reg_no=reg_no,
+                    )
+                    logger.clear_project()
+                    continue
+                candidate_listing_rows += 1
+                log_daily_light_listing_progress(
+                    site_id,
+                    "Madhya Pradesh",
+                    checked_rows=checked_listing_rows,
+                    existing_rows=existing_listing_rows,
+                    candidate_rows=candidate_listing_rows,
+                    reg_no=reg_no,
+                    project_key=key,
+                    raw_reg_no=reg_no,
+                )
+                if settings.LIGHT_SKIP_NEW_ADDITIONS and not target_regs:
+                    counts["projects_skipped"] += 1
+                    logger.info(
+                        "Skipping new candidate after detail-derived registration check (--skip-new)",
+                        step="skip",
+                    )
+                    done_regs.add(reg_no)
+                    logger.clear_project()
+                    continue
 
             # Promoter
             promoter_data = _parse_promoter(soup)

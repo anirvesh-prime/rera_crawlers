@@ -32,6 +32,7 @@ from core.crawler_base import (
     SeleniumSession,
     generate_project_key,
     get_target_reg_nos,
+    log_daily_light_listing_progress,
     page_adapter,
     random_delay,
 )
@@ -1061,6 +1062,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
     t0 = time.monotonic()
     first_district_logged = False
     items_processed = 0
+    checked_listing_rows = 0
+    existing_listing_rows = 0
+    candidate_listing_rows = 0
 
     # Pre-compute the districts that still need processing (respecting checkpoint)
     pending_districts = [
@@ -1152,10 +1156,43 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
 
             # ── Dedup check ────────────────────────────────────────────────────
             existing = get_project_by_key(project_key)
-            if mode == "daily_light" and existing:
-                counts["projects_skipped"] += 1
-                save_checkpoint(site_id, mode, district_idx, project_key, run_id)
-                continue
+            if mode == "daily_light":
+                checked_listing_rows += 1
+                if existing:
+                    existing_listing_rows += 1
+                    counts["projects_skipped"] += 1
+                    log_daily_light_listing_progress(
+                        site_id,
+                        "Uttar Pradesh",
+                        checked_rows=checked_listing_rows,
+                        existing_rows=existing_listing_rows,
+                        candidate_rows=candidate_listing_rows,
+                        reg_no=reg_no,
+                        project_key=project_key,
+                        existing_match_key=project_key,
+                        raw_reg_no=reg_no,
+                    )
+                    save_checkpoint(site_id, mode, district_idx, project_key, run_id)
+                    continue
+                candidate_listing_rows += 1
+                log_daily_light_listing_progress(
+                    site_id,
+                    "Uttar Pradesh",
+                    checked_rows=checked_listing_rows,
+                    existing_rows=existing_listing_rows,
+                    candidate_rows=candidate_listing_rows,
+                    reg_no=reg_no,
+                    project_key=project_key,
+                    raw_reg_no=reg_no,
+                )
+                if settings.LIGHT_SKIP_NEW_ADDITIONS and not target_regs:
+                    counts["projects_skipped"] += 1
+                    logger.info(
+                        "Skipping new candidate before detail fetch (--skip-new)",
+                        step="skip",
+                    )
+                    save_checkpoint(site_id, mode, district_idx, project_key, run_id)
+                    continue
 
             # ── Deep crawl: fetch detail page ──────────────────────────────────
             logger.info(f"Deep crawling project {reg_no}", district=district)

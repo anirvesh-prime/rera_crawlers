@@ -13,6 +13,8 @@ Usage:
     python run_crawlers.py --sequential         # disable parallel execution
     python run_crawlers.py --test               # skip S3 uploads and DB writes (dry run)
     python run_crawlers.py --skip-documents     # skip document downloads/uploads
+    python run_crawlers.py --skip-new
+                                                # in daily_light, skip non-DB rows before detail pages
     python run_crawlers.py --test-logs          # like --test but still write log tables (visible on dashboard)
     python run_crawlers.py --site karnataka_rera --target-reg-no "PRM/KA/RERA/1251/446/PR/181122/005482"
                                                 # crawl only the matching project (skips sentinel)
@@ -431,6 +433,24 @@ def parse_args() -> argparse.Namespace:
             "upserts still run."
         ),
     )
+    parser.add_argument(
+        "--skip-new",
+        dest="skip_light_new_additions",
+        action="store_true",
+        default=False,
+        help=(
+            "Only affects --mode daily_light. After the listing-level DB check, "
+            "skip rows that are not already in DB instead of visiting their "
+            "detail pages. Useful for testing light-run listing/dedup behavior "
+            "without chasing new or stale portal rows."
+        ),
+    )
+    parser.add_argument(
+        "--skip-light-new-additions",
+        dest="skip_light_new_additions",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     return parser.parse_args()
 
 
@@ -609,6 +629,10 @@ def apply_runtime_overrides(args: argparse.Namespace) -> int:
         os.environ["SKIP_DOCUMENTS"] = "true"
         settings.SKIP_DOCUMENTS = True
 
+    if getattr(args, "skip_light_new_additions", False):
+        os.environ["LIGHT_SKIP_NEW_ADDITIONS"] = "true"
+        settings.LIGHT_SKIP_NEW_ADDITIONS = True
+
     if args.no_item_limit:
         os.environ.pop("CRAWL_ITEM_LIMIT", None)
         settings.CRAWL_ITEM_LIMIT = 0
@@ -660,6 +684,7 @@ def main() -> int:
         parallel=parallel,
         item_limit=item_limit or "unlimited",
         skip_documents=settings.SKIP_DOCUMENTS,
+        skip_light_new_additions=settings.LIGHT_SKIP_NEW_ADDITIONS,
         host=host,
     )
     write_orchestrator_state(
@@ -677,6 +702,8 @@ def main() -> int:
     print(f"  Workers   : {len(sites)}")
     print(f"  Item Limit: {item_limit or 'unlimited'}")
     print(f"  Documents : {'skipped' if settings.SKIP_DOCUMENTS else 'enabled'}")
+    if settings.LIGHT_SKIP_NEW_ADDITIONS:
+        print(f"  Light New : skipped before detail pages")
     print(f"  Host      : {host}")
     print(f"  States    : {', '.join(site_ids)}")
     if live_log_path:
