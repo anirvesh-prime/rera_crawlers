@@ -347,9 +347,14 @@ def get_connection() -> psycopg.Connection:
     global _conn, _schema_ensured
 
     # ── (re)connect if the socket is gone ────────────────────────────────────
-    if _conn is None or _conn.closed:
+    if _conn is None:
         _conn = psycopg.connect(settings.postgres_dsn, row_factory=dict_row)
         _schema_ensured = False
+    elif _conn.closed:
+        # Several call sites use ``with get_connection() as conn``; psycopg's
+        # connection context may close the connection on exit.  Reconnect
+        # without forcing another schema check if this process already did one.
+        _conn = psycopg.connect(settings.postgres_dsn, row_factory=dict_row)
     else:
         # Roll back any aborted transaction left by a previous unhandled error.
         # psycopg.pq.TransactionStatus.INERROR == 3
