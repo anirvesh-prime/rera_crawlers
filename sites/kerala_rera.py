@@ -1759,7 +1759,7 @@ def _process_card(
                     "Skipping new candidate before detail fetch (--skip-new)",
                     step="skip",
                 )
-                deltas["projects_skipped"] += 1
+                deltas["projects_new"] += 1
                 return deltas
 
         logger.info("Fetching detail page", step="detail_fetch")

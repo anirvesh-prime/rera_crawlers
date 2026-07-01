@@ -701,7 +701,7 @@ def _skip_existing_project_in_light_mode(
                 "Skipping new candidate before detail fetch (--skip-new)",
                 step="skip",
             )
-            counts["projects_skipped"] += 1
+            counts["projects_new"] += 1
             return True
     return False
 

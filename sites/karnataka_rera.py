@@ -1879,7 +1879,7 @@ def _process_candidate(
                 raw_reg_no=listing_reg_no,
             )
             if settings.LIGHT_SKIP_NEW_ADDITIONS and not (settings.TARGET_REG_NO or "").strip():
-                deltas["projects_skipped"] += 1
+                deltas["projects_new"] += 1
                 logger.info(
                     "Skipping new candidate before detail fetch (--skip-new)",
                     step="skip",
@@ -1943,7 +1943,7 @@ def _process_candidate(
                         raw_reg_no=reg_no,
                     )
                     if settings.LIGHT_SKIP_NEW_ADDITIONS and not (settings.TARGET_REG_NO or "").strip():
-                        deltas["projects_skipped"] += 1
+                        deltas["projects_new"] += 1
                         logger.info(
                             "Skipping new candidate after detail-derived registration check "
                             "(--skip-new)",

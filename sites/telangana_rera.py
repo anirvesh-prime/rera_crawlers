@@ -1612,7 +1612,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                                 "Skipping new candidate before detail fetch (--skip-new)",
                                 step="skip",
                             )
-                            counts["projects_skipped"] += 1
+                            counts["projects_new"] += 1
                             logger.clear_project()
                             continue
 
@@ -1769,7 +1769,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                                 "(--skip-new)",
                                 step="skip",
                             )
-                            counts["projects_skipped"] += 1
+                            counts["projects_new"] += 1
                             logger.clear_project()
                             continue
 

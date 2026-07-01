@@ -1879,7 +1879,7 @@ def _process_listing_card(
                     "Skipping new candidate before detail fetch (--skip-new)",
                     step="skip",
                 )
-                counts["projects_skipped"] += 1
+                counts["projects_new"] += 1
                 return
 
         detail = _scrape_detail_sections(page, card, mode, logger)

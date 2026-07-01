@@ -1123,7 +1123,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                         raw_reg_no=reg_no,
                     )
                     if settings.LIGHT_SKIP_NEW_ADDITIONS and not target_regs:
-                        counts["projects_skipped"] += 1
+                        counts["projects_new"] += 1
                         logger.info(
                             "Skipping new candidate before detail fetch (--skip-new)",
                             step="skip",
