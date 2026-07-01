@@ -665,7 +665,11 @@ def _scrape_project_list(
             logger.warning(f"Rajasthan listing progress update failed: {exc}", step="listing")
 
     try:
+        logger.info("Starting Rajasthan browser session", step="timing")
+        _flush_progress_logs(logger)
         page = page_adapter(_session())
+        logger.info("Rajasthan browser session ready", step="timing")
+        _flush_progress_logs(logger)
         _install_getprojects_tracker(page)
         logger.info("Starting Rajasthan listing scrape", step="timing")
         _flush_progress_logs(logger)

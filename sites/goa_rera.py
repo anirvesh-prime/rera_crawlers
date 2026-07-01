@@ -50,6 +50,7 @@ _CAPTCHA_MAX_TRIES    = 3   # solver attempts per captcha round (inner loop)
 _MAX_SERVER_REJECTS   = 5   # max server-side rejections before giving up entirely
 _CAPTCHA_READY_TIMEOUT_MS = 8_000
 _CAPTCHA_FETCH_TIMEOUT_MS = 5_000
+_CAPTCHA_SOLVER_TIMEOUT_S = 30
 _CAPTCHA_SELECTORS = [
     '#captcha_id',
     'img[name="imgCaptcha"]',
@@ -549,8 +550,15 @@ def _fetch_project_listing(
     _server_rejections = 0  # count server-side captcha rejections to avoid infinite loop
 
     page = page_adapter(_session())
+    logger.info("Starting Goa listing captcha search", step="timing")
 
     while True:
+        logger.info(
+            f"Goa listing page startFrom={start_from}: solving captcha",
+            step="timing",
+            start_from=start_from,
+            collected=len(all_cards),
+        )
         # ── Captcha retry loop ────────────────────────────────────────────
         solved = None
         for captcha_attempt in range(1, _CAPTCHA_MAX_TRIES + 1):
@@ -570,7 +578,17 @@ def _fetch_project_listing(
                 continue
 
             try:
-                candidate = captcha_to_text(captcha_data, default_captcha_source="model_captcha")
+                logger.info(
+                    f"Captcha solver request attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES}",
+                    step="timing",
+                    start_from=start_from,
+                    captcha_attempt=captcha_attempt,
+                )
+                candidate = captcha_to_text(
+                    captcha_data,
+                    default_captcha_source="model_captcha",
+                    time_out=_CAPTCHA_SOLVER_TIMEOUT_S,
+                )
             except Exception as e:
                 logger.warning(f"Captcha solver exception (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES}): {e}")
                 continue
