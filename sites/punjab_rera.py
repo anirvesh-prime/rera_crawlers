@@ -1143,12 +1143,11 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     site_id = config["id"]
 
     # ── Listing: try cache first, fall back to live fetch ────────────────────
-    # Targeted runs bypass the cache entirely (a one-row server response would
-    # poison the on-disk cache for the next full crawl) and push the reg-no
-    # into the search form so the server returns just that project.
+    # Targeted runs may use an existing full-listing cache, but never write a
+    # targeted server response back to disk.
     with _ClientAdapter(_session()) as session:
         t0 = time.monotonic()
-        rows = None if target_regs else _load_listing_cache(logger)
+        rows = _load_listing_cache(logger)
         if rows is not None and item_limit and len(rows) < item_limit:
             logger.warning(
                 f"Listing cache has only {len(rows)} rows but item_limit={item_limit}; re-fetching",

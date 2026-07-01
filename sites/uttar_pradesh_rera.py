@@ -1126,7 +1126,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:  # noqa: C901
             logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached", step="listing")
             break
         stubs_to_consider = stubs[:remaining] if item_limit else stubs
-        counts["projects_found"] += len(stubs_to_consider)
+        counts["projects_found"] += len(stubs)
         update_crawl_run_progress(run_id, counts)
         logger.info(
             f"Processing district: {district} ({district_idx + 1}/{len(_UP_DISTRICTS)}) "
