@@ -95,29 +95,37 @@ def _read_latest_runs_from_files() -> dict[str, dict]:
 
 def _read_latest_runs_from_db() -> dict[str, dict]:
     try:
-        from core.db import get_connection
+        import psycopg
+        from psycopg.rows import dict_row
 
-        conn = get_connection()
-        rows = conn.execute(
-            """
-            SELECT DISTINCT ON (site_id)
-                id AS run_id,
-                site_id,
-                run_type,
-                status,
-                started_at,
-                finished_at,
-                projects_found,
-                projects_new,
-                projects_updated,
-                projects_skipped,
-                documents_uploaded,
-                error_count,
-                sentinel_passed
-            FROM crawl_runs
-            ORDER BY site_id, started_at DESC NULLS LAST, id DESC
-            """
-        ).fetchall()
+        # Dashboard reads must not call core.db.get_connection(): that path
+        # runs ensure_schema() and can block behind crawler schema locks.
+        with psycopg.connect(
+            settings.postgres_dsn,
+            row_factory=dict_row,
+            connect_timeout=3,
+        ) as conn:
+            conn.execute("SET LOCAL statement_timeout = '5000ms'")
+            rows = conn.execute(
+                """
+                SELECT DISTINCT ON (site_id)
+                    id AS run_id,
+                    site_id,
+                    run_type,
+                    status,
+                    started_at,
+                    finished_at,
+                    projects_found,
+                    projects_new,
+                    projects_updated,
+                    projects_skipped,
+                    documents_uploaded,
+                    error_count,
+                    sentinel_passed
+                FROM crawl_runs
+                ORDER BY site_id, started_at DESC NULLS LAST, id DESC
+                """
+            ).fetchall()
     except Exception:
         return {}
     latest: dict[str, dict] = {}
@@ -264,7 +272,10 @@ def _build_orchestrator_info(latest_runs: dict[str, dict]) -> dict:
     if not latest_runs:
         return {}
     totals = {key: sum((run.get(key) or 0) for run in latest_runs.values()) for key in COUNT_KEYS}
-    most_recent = max(latest_runs.values(), key=lambda r: r.get("started_at") or "")
+    most_recent = max(
+        latest_runs.values(),
+        key=lambda r: _parse_dt(r.get("started_at")) or datetime.min.replace(tzinfo=timezone.utc),
+    )
     return {
         "mode": most_recent.get("run_type", "unknown"),
         "started": most_recent.get("started_at"),
@@ -1290,9 +1301,33 @@ _TEMPLATE = """<!DOCTYPE html>
 
 @app.route("/")
 def index():
-    data = _get_data()
+    try:
+        data = _get_data()
+    except Exception as exc:
+        app.logger.exception("Dashboard data probe failed")
+        data = {
+            "latest_runs": {},
+            "sentinel_data": {},
+            "errors_by_site": {
+                "__dashboard__": {
+                    "message": f"Dashboard data probe failed: {exc}",
+                    "step": "dashboard",
+                    "extra": {},
+                    "traceback": "",
+                    "registration_no": "",
+                }
+            },
+            "repair_by_site": {},
+            "orch_info": {},
+            "timing_by_site": {},
+            "source": "error",
+        }
     latest_runs = data.get("latest_runs", {})
-    process_state = _running_sites_from_processes(latest_runs)
+    try:
+        process_state = _running_sites_from_processes(latest_runs)
+    except Exception:
+        app.logger.exception("Dashboard process probe failed")
+        process_state = {}
     running_process_count = len({p["container"] for procs in process_state.values() for p in procs})
     return render_template_string(
         _TEMPLATE,

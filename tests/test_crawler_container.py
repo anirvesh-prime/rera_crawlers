@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from scripts.crawler_container import (
     assert_no_duplicate_normal_run,
@@ -54,7 +55,7 @@ class CrawlerContainerTests(unittest.TestCase):
         self.assertEqual(cmd[-6:], ["--mode", "daily_light", "--site", "kerala_rera", "--item-limit", "2"])
 
     def test_duplicate_normal_run_is_rejected_unless_allowed(self):
-        with unittest.mock.patch(
+        with mock.patch(
             "scripts.crawler_container._running_normal_crawler_containers",
             return_value=["abc123 rera-crawler-daily"],
         ):
@@ -64,10 +65,10 @@ class CrawlerContainerTests(unittest.TestCase):
             assert_no_duplicate_normal_run(["--tester", "--site", "kerala_rera"])
 
     def test_start_detached_does_not_duplicate_remove_argument(self):
-        result = unittest.mock.Mock(returncode=0, stdout="abcdef1234567890\n", stderr="")
+        result = mock.Mock(returncode=0, stdout="abcdef1234567890\n", stderr="")
         with tempfile.TemporaryDirectory() as tmp, \
-             unittest.mock.patch("scripts.crawler_container._running_normal_crawler_containers", return_value=[]), \
-             unittest.mock.patch("scripts.crawler_container.subprocess.run", return_value=result) as run:
+             mock.patch("scripts.crawler_container._running_normal_crawler_containers", return_value=[]), \
+             mock.patch("scripts.crawler_container.subprocess.run", return_value=result) as run:
             info = __import__("scripts.crawler_container", fromlist=["start_detached"]).start_detached(
                 ["--mode", "daily_light", "--site", "odisha_rera"],
                 image="test-image",
