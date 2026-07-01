@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
+import time
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 
@@ -373,6 +374,8 @@ def get_connection() -> psycopg.Connection:
 
 
 _SCHEMA_MIGRATION_LOCK_ID = 987_654_321
+_SCHEMA_LOCK_WAIT_ATTEMPTS = 10
+_SCHEMA_LOCK_WAIT_SECONDS = 0.5
 # Errors that mean the DDL object already exists — safe to skip when another
 # concurrent worker created it first.  UniqueViolation (23505) covers the
 # pg_class race where two workers both pass IF NOT EXISTS before either commits.
@@ -390,7 +393,22 @@ def ensure_schema(conn: psycopg.Connection):
     Each statement runs in its own savepoint so that a statement already
     applied by a concurrent worker can be skipped without aborting the rest.
     """
-    conn.execute("SELECT pg_advisory_lock(%s)", (_SCHEMA_MIGRATION_LOCK_ID,))
+    lock_acquired = False
+    for _attempt in range(_SCHEMA_LOCK_WAIT_ATTEMPTS):
+        row = conn.execute(
+            "SELECT pg_try_advisory_lock(%s) AS acquired",
+            (_SCHEMA_MIGRATION_LOCK_ID,),
+        ).fetchone()
+        if row and row.get("acquired"):
+            lock_acquired = True
+            break
+        time.sleep(_SCHEMA_LOCK_WAIT_SECONDS)
+    if not lock_acquired:
+        log.warning(
+            "db: schema migration lock is busy; skipping runtime schema check"
+        )
+        conn.rollback()
+        return
     try:
         for statement in _SCHEMA_DDL:
             try:
