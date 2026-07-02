@@ -433,40 +433,44 @@ def _parse_listing_cards(soup: BeautifulSoup) -> list[dict]:
     return cards
 
 
-def _parse_pagination_offsets(soup: BeautifulSoup) -> list[int]:
-    """Return startFrom offsets exposed by Goa's javascript:pagging(N) links."""
-    offsets: set[int] = set()
-    for anchor in soup.find_all("a", href=True):
-        match = re.search(r"pagging\((\d+)\)", anchor.get("href") or "", re.I)
-        if match:
-            offsets.add(int(match.group(1)))
-    return sorted(offsets)
-
-
 def _parse_next_numeric_pagination_offset(soup: BeautifulSoup) -> int | None:
     """Return the offset for the numeric page after Goa's active pagination page."""
-    active_li = soup.select_one("ul.pagination li.active")
-    if not active_li:
+    summary = _pagination_summary(soup)
+    if not summary["active_page"]:
         return None
-    active_text = active_li.get_text(strip=True)
-    if not active_text.isdigit():
-        return None
-    active_page = int(active_text)
+    active_page = int(summary["active_page"])
 
-    candidates: list[tuple[int, int]] = []
-    for anchor in soup.select("ul.pagination li:not(.active):not(.disabled) a[href]"):
-        text = anchor.get_text(strip=True)
-        if not text.isdigit():
-            continue
-        match = re.search(r"pagging\((\d+)\)", anchor.get("href") or "", re.I)
-        if not match:
-            continue
-        page_no = int(text)
-        if page_no > active_page:
-            candidates.append((page_no, int(match.group(1))))
+    candidates = [
+        (int(link["text"]), int(link["offset"]))
+        for link in summary["numeric_links"]
+        if int(link["text"]) > active_page
+    ]
     if not candidates:
         return None
     return min(candidates, key=lambda item: item[0])[1]
+
+
+def _pagination_summary(soup: BeautifulSoup) -> dict:
+    """Summarize Goa pagination controls for diagnostics and next-page choice."""
+    active_li = soup.select_one("ul.pagination li.active")
+    active_text = active_li.get_text(strip=True) if active_li else None
+    numeric_links: list[dict] = []
+    raw_links: list[str] = []
+    for anchor in soup.select("ul.pagination li:not(.active):not(.disabled) a[href]"):
+        text = anchor.get_text(strip=True)
+        href = anchor.get("href") or ""
+        raw_links.append(f"{text}->{href}")
+        if not text.isdigit():
+            continue
+        match = re.search(r"pagging\((\d+)\)", href, re.I)
+        if not match:
+            continue
+        numeric_links.append({"text": text, "offset": int(match.group(1))})
+    return {
+        "active_page": active_text if active_text and active_text.isdigit() else None,
+        "numeric_links": numeric_links,
+        "raw_links": raw_links,
+    }
 
 
 def _submit_goa_search(page, start_from: int, captcha_text: str) -> bool:
@@ -643,7 +647,13 @@ def _fetch_project_listing(
     while True:
         max_pages = settings.MAX_PAGES
         if max_pages and pages_fetched >= max_pages:
-            logger.info(f"Reached MAX_PAGES={max_pages}")
+            logger.info(
+                f"Reached MAX_PAGES={max_pages}",
+                step="timing",
+                start_from=start_from,
+                pages_fetched=pages_fetched,
+                collected=len(all_cards),
+            )
             break
 
         if not first_search_submitted:
@@ -764,9 +774,17 @@ def _fetch_project_listing(
                 f"No unseen cards at startFrom={start_from} — listing complete"
             )
             break
+        page_summary = _pagination_summary(soup)
         next_offset = _parse_next_numeric_pagination_offset(soup)
         if next_offset is None:
-            logger.info(f"No next numeric pagination link after startFrom={start_from} — listing complete")
+            logger.info(
+                f"No next numeric pagination link after startFrom={start_from} — listing complete",
+                step="timing",
+                start_from=start_from,
+                pages_fetched=pages_fetched,
+                collected=len(all_cards),
+                pagination=page_summary,
+            )
             break
         start_from = next_offset
 

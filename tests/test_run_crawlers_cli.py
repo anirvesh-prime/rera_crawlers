@@ -30,6 +30,8 @@ class RunCrawlersCliTests(unittest.TestCase):
         self.original_dry_run_s3 = settings.DRY_RUN_S3
         self.original_crawler_tester_env = os.environ.get("CRAWLER_TESTER")
         self.original_crawler_tester = settings.CRAWLER_TESTER
+        self.original_max_pages_env = os.environ.get("MAX_PAGES")
+        self.original_max_pages = settings.MAX_PAGES
 
     def tearDown(self) -> None:
         if self.original_env is None:
@@ -72,6 +74,11 @@ class RunCrawlersCliTests(unittest.TestCase):
         else:
             os.environ["CRAWLER_TESTER"] = self.original_crawler_tester_env
         settings.CRAWLER_TESTER = self.original_crawler_tester
+        if self.original_max_pages_env is None:
+            os.environ.pop("MAX_PAGES", None)
+        else:
+            os.environ["MAX_PAGES"] = self.original_max_pages_env
+        settings.MAX_PAGES = self.original_max_pages
 
     def test_apply_runtime_overrides_sets_item_limit(self):
         args = argparse.Namespace(item_limit=7, no_item_limit=False, delay_scale=None)
@@ -88,6 +95,20 @@ class RunCrawlersCliTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(settings.CRAWL_ITEM_LIMIT, 0)
         self.assertNotIn("CRAWL_ITEM_LIMIT", os.environ)
+
+    def test_apply_runtime_overrides_clears_max_pages(self):
+        os.environ["MAX_PAGES"] = "25"
+        settings.MAX_PAGES = 25
+        args = argparse.Namespace(
+            item_limit=None,
+            no_item_limit=False,
+            max_pages=None,
+            no_max_pages=True,
+            delay_scale=None,
+        )
+        apply_runtime_overrides(args)
+        self.assertIsNone(settings.MAX_PAGES)
+        self.assertNotIn("MAX_PAGES", os.environ)
 
     def test_apply_runtime_overrides_sets_delay_scale(self):
         args = argparse.Namespace(item_limit=None, no_item_limit=False, delay_scale=0.5)

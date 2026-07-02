@@ -366,6 +366,19 @@ def parse_args() -> argparse.Namespace:
         default=False,
         help="Ignore CRAWL_ITEM_LIMIT from env/config and run without an item limit for this run.",
     )
+    max_pages_group = parser.add_mutually_exclusive_group()
+    max_pages_group.add_argument(
+        "--max-pages",
+        type=_positive_int,
+        default=None,
+        help="Cap listing pagination to this many pages for the current run.",
+    )
+    max_pages_group.add_argument(
+        "--no-max-pages",
+        action="store_true",
+        default=False,
+        help="Ignore MAX_PAGES from env/config and run without a page cap for this run.",
+    )
     parser.add_argument(
         "--delay-scale",
         type=_non_negative_float,
@@ -642,6 +655,13 @@ def apply_runtime_overrides(args: argparse.Namespace) -> int:
         os.environ["CRAWL_ITEM_LIMIT"] = str(args.item_limit)
         settings.CRAWL_ITEM_LIMIT = args.item_limit
 
+    if getattr(args, "no_max_pages", False):
+        os.environ.pop("MAX_PAGES", None)
+        settings.MAX_PAGES = None
+    elif getattr(args, "max_pages", None) is not None:
+        os.environ["MAX_PAGES"] = str(args.max_pages)
+        settings.MAX_PAGES = args.max_pages
+
     return settings.CRAWL_ITEM_LIMIT
 
 
@@ -701,6 +721,7 @@ def main() -> int:
     print(f"  Execution : {'parallel' if parallel else 'sequential'}")
     print(f"  Workers   : {len(sites)}")
     print(f"  Item Limit: {item_limit or 'unlimited'}")
+    print(f"  Max Pages : {settings.MAX_PAGES or 'unlimited'}")
     print(f"  Documents : {'skipped' if settings.SKIP_DOCUMENTS else 'enabled'}")
     if settings.LIGHT_SKIP_NEW_ADDITIONS:
         print(f"  Light New : skipped before detail pages")

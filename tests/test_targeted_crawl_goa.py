@@ -255,6 +255,34 @@ class GoaTargetedCrawlTests(unittest.TestCase):
         )
         self.assertEqual(page.requested_offsets, [0, 10, 20, 30, 40, 50])
 
+    def test_next_numeric_pagination_stops_when_active_page_has_no_higher_number(self):
+        soup = goa_rera.BeautifulSoup(
+            _listing_html(
+                "PRGO00000009",
+                active_page=25,
+                page_links=(("«", 230), ("23", 220), ("24", 230), ("25", None), ("»", None)),
+            ),
+            "lxml",
+        )
+
+        self.assertIsNone(goa_rera._parse_next_numeric_pagination_offset(soup))
+        self.assertEqual(
+            goa_rera._pagination_summary(soup),
+            {
+                "active_page": "25",
+                "numeric_links": [
+                    {"text": "23", "offset": 220},
+                    {"text": "24", "offset": 230},
+                ],
+                "raw_links": [
+                    "«->javascript:pagging(230)",
+                    "23->javascript:pagging(220)",
+                    "24->javascript:pagging(230)",
+                    "»->javascript:void()",
+                ],
+            },
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
