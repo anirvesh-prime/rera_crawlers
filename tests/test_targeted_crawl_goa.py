@@ -66,7 +66,11 @@ class _FakeListingPage:
         return self.pages.get(self.start_from, "<html><body></body></html>")
 
 
-def _listing_html(*regs: str, offsets: tuple[int, ...] = ()) -> str:
+def _listing_html(
+    *regs: str,
+    active_page: int = 1,
+    page_links: tuple[tuple[str, int | None], ...] = (),
+) -> str:
     cards = []
     for reg in regs:
         cards.append(
@@ -79,11 +83,13 @@ def _listing_html(*regs: str, offsets: tuple[int, ...] = ()) -> str:
             </div>
             """
         )
-    links = "\n".join(
-        f'<li><a href="javascript:pagging({offset})">{index}</a></li>'
-        for index, offset in enumerate(offsets, start=1)
-    )
-    pagination = f'<ul class="pagination">{links}</ul>' if links else ""
+    links = []
+    for text, offset in page_links:
+        href = "javascript:void()" if offset is None else f"javascript:pagging({offset})"
+        css_class = ' class="active"' if text.isdigit() and int(text) == active_page else ""
+        links.append(f'<li{css_class}><a href="{href}">{text}</a></li>')
+    links_html = "\n".join(links)
+    pagination = f'<ul class="pagination">{links_html}</ul>' if links_html else ""
     return "<html><body>" + "\n".join(cards) + pagination + "</body></html>"
 
 
@@ -188,14 +194,31 @@ class GoaTargetedCrawlTests(unittest.TestCase):
             0: _listing_html(
                 "PRGO00000001",
                 "PRGO00000002",
-                offsets=(0, 10, 20),
+                active_page=1,
+                page_links=(("«", 0), ("1", None), ("2", 10), ("3", 20), ("»", None)),
             ),
             10: _listing_html(
                 "PRGO00000003",
                 "PRGO00000004",
-                offsets=(0, 10, 20),
+                active_page=2,
+                page_links=(("«", 0), ("1", 0), ("2", None), ("3", 20), ("4", 30), ("»", None)),
             ),
-            20: _listing_html("PRGO00000005", offsets=(0, 10, 20)),
+            20: _listing_html(
+                "PRGO00000005",
+                active_page=3,
+                page_links=(("«", 10), ("2", 10), ("3", None), ("4", 30), ("5", 40), ("»", None)),
+            ),
+            30: _listing_html(
+                "PRGO00000006",
+                active_page=4,
+                page_links=(("«", 20), ("3", 20), ("4", None), ("5", 40), ("6", 50), ("»", None)),
+            ),
+            40: _listing_html(
+                "PRGO00000007",
+                active_page=5,
+                page_links=(("«", 30), ("3", 20), ("4", 30), ("5", None), ("6", 50), ("7", 60), ("»", None)),
+            ),
+            50: _listing_html("PRGO00000008", active_page=6, page_links=(("«", 40), ("6", None), ("»", None))),
         })
         logger = mock.MagicMock()
 
@@ -225,9 +248,12 @@ class GoaTargetedCrawlTests(unittest.TestCase):
                 "PRGO00000003",
                 "PRGO00000004",
                 "PRGO00000005",
+                "PRGO00000006",
+                "PRGO00000007",
+                "PRGO00000008",
             ],
         )
-        self.assertEqual(page.requested_offsets, [0, 10, 20])
+        self.assertEqual(page.requested_offsets, [0, 10, 20, 30, 40, 50])
 
 
 if __name__ == "__main__":

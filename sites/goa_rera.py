@@ -443,6 +443,32 @@ def _parse_pagination_offsets(soup: BeautifulSoup) -> list[int]:
     return sorted(offsets)
 
 
+def _parse_next_numeric_pagination_offset(soup: BeautifulSoup) -> int | None:
+    """Return the offset for the numeric page after Goa's active pagination page."""
+    active_li = soup.select_one("ul.pagination li.active")
+    if not active_li:
+        return None
+    active_text = active_li.get_text(strip=True)
+    if not active_text.isdigit():
+        return None
+    active_page = int(active_text)
+
+    candidates: list[tuple[int, int]] = []
+    for anchor in soup.select("ul.pagination li:not(.active):not(.disabled) a[href]"):
+        text = anchor.get_text(strip=True)
+        if not text.isdigit():
+            continue
+        match = re.search(r"pagging\((\d+)\)", anchor.get("href") or "", re.I)
+        if not match:
+            continue
+        page_no = int(text)
+        if page_no > active_page:
+            candidates.append((page_no, int(match.group(1))))
+    if not candidates:
+        return None
+    return min(candidates, key=lambda item: item[0])[1]
+
+
 def _submit_goa_search(page, start_from: int, captcha_text: str) -> bool:
     """Submit the initial Goa search form with Regtype=Project and captcha."""
     page.evaluate(
@@ -738,12 +764,11 @@ def _fetch_project_listing(
                 f"No unseen cards at startFrom={start_from} — listing complete"
             )
             break
-        pagination_offsets = _parse_pagination_offsets(soup)
-        next_offsets = [offset for offset in pagination_offsets if offset > start_from]
-        if not next_offsets:
-            logger.info(f"No pagination offset after startFrom={start_from} — listing complete")
+        next_offset = _parse_next_numeric_pagination_offset(soup)
+        if next_offset is None:
+            logger.info(f"No next numeric pagination link after startFrom={start_from} — listing complete")
             break
-        start_from = next_offsets[0]
+        start_from = next_offset
 
     return all_cards
 
