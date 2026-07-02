@@ -52,7 +52,7 @@ APP_BASE    = "https://rera.goa.gov.in/reraApp"
 HOME_URL    = "https://rera.goa.gov.in/reraApp/home"
 SEARCH_URL  = "https://rera.goa.gov.in/reraApp/search"
 DOMAIN      = "rera.goa.gov.in"
-PAGE_SIZE          = 10   # rows per search-result page (approximate)
+PAGE_SIZE          = 10   # fallback rows per search-result page
 _CAPTCHA_MAX_TRIES    = 3   # solver attempts per captcha round (inner loop)
 _MAX_SERVER_REJECTS   = 5   # max server-side rejections before giving up entirely
 _CAPTCHA_READY_TIMEOUT_MS = 8_000
@@ -554,12 +554,18 @@ def _fetch_project_listing(
     all_cards: list[dict] = []
     seen_reg_nos: set[str] = set()
     start_from = 0
+    pages_fetched = 0
     _server_rejections = 0  # count server-side captcha rejections to avoid infinite loop
 
     page = page_adapter(_session())
     logger.info("Starting Goa listing captcha search", step="timing")
 
     while True:
+        max_pages = settings.MAX_PAGES
+        if max_pages and pages_fetched >= max_pages:
+            logger.info(f"Reached MAX_PAGES={max_pages}")
+            break
+
         logger.info(
             f"Goa listing page startFrom={start_from}: solving captcha",
             step="timing",
@@ -660,6 +666,7 @@ def _fetch_project_listing(
         if not cards:
             logger.info(f"No cards at startFrom={start_from} — listing complete")
             break
+        pages_fetched += 1
         new_cards = []
         for card in cards:
             reg_no = (card.get("project_registration_no") or "").strip().upper()
@@ -673,17 +680,12 @@ def _fetch_project_listing(
         )
         if item_limit and len(all_cards) >= item_limit:
             break
-
-        # Check for more pages
-        next_links = soup.find_all("a", string=re.compile(r"Next|>>", re.I))
-        if not next_links and not (item_limit and len(all_cards) < item_limit and new_cards):
+        if not new_cards:
+            logger.info(
+                f"No unseen cards at startFrom={start_from} — listing complete"
+            )
             break
-        start_from += PAGE_SIZE
-
-        max_pages = settings.MAX_PAGES
-        if max_pages and (start_from // PAGE_SIZE) >= max_pages:
-            logger.info(f"Reached MAX_PAGES={max_pages}")
-            break
+        start_from += len(cards) or PAGE_SIZE
 
     return all_cards
 

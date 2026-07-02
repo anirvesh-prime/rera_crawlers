@@ -26,6 +26,53 @@ class _FakeRecord:
         return self._d
 
 
+class _FakeListingPage:
+    def __init__(self, pages: dict[int, str]):
+        self.pages = pages
+        self.start_from = 0
+        self.requested_offsets: list[int] = []
+
+    def goto(self, *args, **kwargs):
+        return None
+
+    def wait_for_load_state(self, *args, **kwargs):
+        return None
+
+    def wait_for_timeout(self, *args, **kwargs):
+        return None
+
+    def fill(self, *args, **kwargs):
+        return None
+
+    def evaluate(self, script, *args):
+        if args and "startFrom" in script:
+            self.start_from = int(args[0])
+            self.requested_offsets.append(self.start_from)
+            return True
+        if "form.submit" in script:
+            return True
+        return None
+
+    def content(self):
+        return self.pages.get(self.start_from, "<html><body></body></html>")
+
+
+def _listing_html(*regs: str) -> str:
+    cards = []
+    for reg in regs:
+        cards.append(
+            f"""
+            <div class="no_pad_lft">
+              <h1>Project: {reg}</h1>
+              <span class="reg">RERA Registration No. : {reg}</span>
+              <table><tr><td>Promoter {reg}</td><td>Company</td></tr></table>
+              <a href="viewProjectDetailPage?projectID={reg}">View</a>
+            </div>
+            """
+        )
+    return "<html><body>" + "\n".join(cards) + "</body></html>"
+
+
 class GoaTargetedCrawlTests(unittest.TestCase):
     def setUp(self) -> None:
         self._orig_target = settings.TARGET_REG_NO
@@ -119,6 +166,46 @@ class GoaTargetedCrawlTests(unittest.TestCase):
             )
         sentinel.assert_called_once()
         self.assertFalse(counts["sentinel_passed"])
+
+    def test_listing_paginates_without_next_link(self):
+        original_max_pages = settings.MAX_PAGES
+        settings.MAX_PAGES = 0
+        page = _FakeListingPage({
+            0: _listing_html("PRGO00000001", "PRGO00000002"),
+            2: _listing_html("PRGO00000003", "PRGO00000004"),
+            4: _listing_html("PRGO00000005"),
+        })
+        logger = mock.MagicMock()
+
+        try:
+            with mock.patch.object(goa_rera, "_session", return_value=object()), \
+                    mock.patch.object(goa_rera, "page_adapter", return_value=page), \
+                    mock.patch.object(goa_rera, "_wait_for_captcha_selector", return_value="#captcha"), \
+                    mock.patch.object(
+                        goa_rera,
+                        "_captcha_data_url_from_page",
+                        return_value="data:image/png;base64," + ("x" * 100),
+                    ), \
+                    mock.patch("core.captcha_solver.captcha_to_text", return_value="1234"):
+                cards = goa_rera._fetch_project_listing(
+                    {"id": "goa_rera"},
+                    run_id=123,
+                    logger=logger,
+                )
+        finally:
+            settings.MAX_PAGES = original_max_pages
+
+        self.assertEqual(
+            [c["project_registration_no"] for c in cards],
+            [
+                "PRGO00000001",
+                "PRGO00000002",
+                "PRGO00000003",
+                "PRGO00000004",
+                "PRGO00000005",
+            ],
+        )
+        self.assertEqual(page.requested_offsets, [0, 2, 4, 5])
 
 
 if __name__ == "__main__":
