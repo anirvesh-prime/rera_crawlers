@@ -1217,14 +1217,22 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         )
 
     total_stubs = len(all_stubs)
+    process_stubs = all_stubs
     if item_limit and not target_regs:
-        all_stubs = all_stubs[:item_limit]
-    counts["projects_found"] = len(all_stubs)
+        process_stubs = all_stubs[:item_limit]
+    # projects_found is a listing coverage metric. Keep it at the full portal
+    # total even when an item limit caps detail processing for a test/light run.
+    counts["projects_found"] = total_stubs
     update_crawl_run_progress(run_id, counts)
-    logger.info("Total unique projects found", count=len(all_stubs), total_count=total_stubs)
-    logger.timing("search", time.monotonic() - t0, rows=len(all_stubs), total_rows=total_stubs)
+    logger.info(
+        "Total unique projects found",
+        count=len(process_stubs),
+        total_count=total_stubs,
+        item_limit=item_limit or "unlimited",
+    )
+    logger.timing("search", time.monotonic() - t0, rows=len(process_stubs), total_rows=total_stubs)
 
-    if not all_stubs:
+    if not process_stubs:
         logger.error("No projects found — aborting")
         return counts
 
@@ -1239,7 +1247,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     checked_listing_rows = 0
     existing_listing_rows = 0
     candidate_listing_rows = 0
-    for i, stub in enumerate(all_stubs):
+    for i, stub in enumerate(process_stubs):
         if item_limit and items_processed >= item_limit:
             logger.info(f"CRAWL_ITEM_LIMIT={item_limit} reached", step="listing")
             break
@@ -1397,7 +1405,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 # ── Checkpoint ───────────────────────────────────────────────────
                 if (i + 1) % 50 == 0:
                     save_checkpoint(site_id, mode, i, project_key, run_id)
-                    logger.info("Progress checkpoint saved", done=i + 1, total=len(all_stubs))
+                    logger.info("Progress checkpoint saved", done=i + 1, total=len(process_stubs))
 
             except Exception as exc:
                 logger.error("Unexpected error processing project", error=str(exc))

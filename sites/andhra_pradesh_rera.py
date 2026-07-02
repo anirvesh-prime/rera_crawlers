@@ -1,11 +1,10 @@
 """
 Andhra Pradesh RERA Crawler — rera.ap.gov.in
-Type: Static (ASP.NET WebForms, server-rendered HTML + jQuery DataTables)
+Type: ASP.NET WebForms + jQuery DataTables
 
 Strategy:
-- Listing page: GET ApprovedProjects.aspx → parse ASP.NET GridView table
-  (jQuery DataTables decorates the server-rendered table client-side — all rows
-   are present in the initial HTML response).
+- Listing page: open ApprovedProjects.aspx in Selenium, set the DataTables
+  page length to "All", then parse the rendered ASP.NET GridView table.
   Columns: serial#, APRERA Registration ID, Project Name, Place, Project Type,
            Status, Date of Approval, Expected Date of Completion.
   Each row has an onclick="openProject(enc)" attribute whose `enc` value is used
@@ -214,7 +213,87 @@ def _extract_label_values(soup: BeautifulSoup) -> dict[str, str]:
 # ── Listing page ──────────────────────────────────────────────────────────────
 
 def _fetch_listing(logger: CrawlerLogger) -> BeautifulSoup | None:
-    """Fetch the ApprovedProjects listing page and return parsed soup."""
+    """Fetch the ApprovedProjects listing page with the DataTables length set to All."""
+    from selenium.common.exceptions import TimeoutException, WebDriverException
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.support.ui import Select, WebDriverWait
+
+    try:
+        driver = _session().driver()
+        driver.set_page_load_timeout(120.0)
+        try:
+            driver.get(LISTING_URL)
+        except TimeoutException:
+            logger.warning(
+                "AP listing navigation timed out; using current browser DOM",
+                step="listing",
+            )
+            try:
+                driver.execute_script("window.stop();")
+            except Exception:
+                pass
+        wait = WebDriverWait(driver, 45)
+        wait.until(EC.presence_of_element_located((By.ID, _GRID_ID)))
+
+        selector = f"select[aria-controls='{_GRID_ID}'], select[name='{_GRID_ID}_length']"
+        length_select = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, selector)))
+        initial_rows = driver.execute_script(
+            "return document.querySelectorAll(arguments[0] + ' tbody tr').length;",
+            f"#{_GRID_ID}",
+        )
+
+        try:
+            Select(length_select).select_by_value("-1")
+        except Exception:
+            driver.execute_script(
+                """
+                const el = arguments[0];
+                el.value = '-1';
+                el.dispatchEvent(new Event('change', {bubbles: true}));
+                if (window.jQuery) {
+                  window.jQuery(el).trigger('change');
+                }
+                """,
+                length_select,
+            )
+
+        def all_rows_rendered(drv) -> bool:
+            return bool(drv.execute_script(
+                """
+                const table = document.getElementById(arguments[0]);
+                const sel = document.querySelector(arguments[1]);
+                if (!table || !sel || sel.value !== '-1') return false;
+                const rows = table.querySelectorAll('tbody tr');
+                if (rows.length > arguments[2]) return true;
+                const info = document.getElementById(arguments[0] + '_info');
+                return Boolean(info && /of\\s+[\\d,]+\\s+entries/i.test(info.textContent || ''));
+                """,
+                _GRID_ID,
+                selector,
+                initial_rows,
+            ))
+
+        try:
+            WebDriverWait(driver, 90).until(all_rows_rendered)
+        except TimeoutException:
+            logger.warning(
+                "Timed out waiting for AP listing All rows; parsing current DOM",
+                step="listing",
+            )
+
+        rendered_rows = driver.execute_script(
+            "return document.querySelectorAll(arguments[0] + ' tbody tr').length;",
+            f"#{_GRID_ID}",
+        )
+        logger.info("AP listing rendered", row_count=rendered_rows, step="listing")
+        return BeautifulSoup(driver.page_source or "", "lxml")
+    except (TimeoutException, WebDriverException) as exc:
+        logger.warning(
+            f"Browser listing expansion failed — falling back to current fetch: {exc.__class__.__name__}",
+            step="listing",
+        )
+
     resp = safe_get(LISTING_URL, headers=_LISTING_HEADERS, retries=3,
                     timeout=45, logger=logger)
     if not resp:

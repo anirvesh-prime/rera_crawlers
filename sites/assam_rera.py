@@ -6,7 +6,8 @@ Single listing URL:
   /admincontrol/registered_projects/1  →  all registered projects
 
 Strategy:
-- Listing page loads ALL projects in a single HTML response (DataTables, client-side).
+- Listing page is rendered through DataTables. Set the page length to 100,
+  paginate through the grid, and parse #compliant_hearing rows from each page.
 - Parse #compliant_hearing DataTable rows → collect stubs (reg_no, name, location, detail link).
 - For each stub: fetch /view_project/searchprojectDetail/{id}
     → extract project_id (acknowledgement_no), submitted_date, status, approval_date, cert_url,
@@ -168,6 +169,122 @@ def _clean_phone_val(val: str) -> str:
 
 def _fetch_listing(logger: CrawlerLogger) -> list[dict]:
     """Fetch Assam RERA listing page and return all project stubs."""
+    from selenium.common.exceptions import TimeoutException, WebDriverException
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.support.ui import Select, WebDriverWait
+
+    try:
+        driver = _session().driver()
+        driver.set_page_load_timeout(90.0)
+        driver.get(LISTING_URL)
+        wait = WebDriverWait(driver, 45)
+        wait.until(EC.presence_of_element_located((By.ID, "compliant_hearing")))
+
+        length_selector = (
+            "select[name='compliant_hearing_length'], "
+            "select[aria-controls='compliant_hearing']"
+        )
+        length_select = wait.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, length_selector))
+        )
+        try:
+            Select(length_select).select_by_value("100")
+        except Exception:
+            driver.execute_script(
+                """
+                const el = arguments[0];
+                el.value = '100';
+                el.dispatchEvent(new Event('change', {bubbles: true}));
+                if (window.jQuery) window.jQuery(el).trigger('change');
+                """,
+                length_select,
+            )
+
+        def page_length_applied(drv) -> bool:
+            return bool(drv.execute_script(
+                """
+                const sel = document.querySelector(arguments[0]);
+                const rows = document.querySelectorAll('#compliant_hearing tbody tr');
+                const info = document.getElementById('compliant_hearing_info');
+                if (!sel || sel.value !== '100' || !rows.length) return false;
+                if (rows.length >= 100) return true;
+                return Boolean(info && /of\\s+[\\d,]+\\s+entries/i.test(info.textContent || ''));
+                """,
+                length_selector,
+            ))
+
+        try:
+            WebDriverWait(driver, 45).until(page_length_applied)
+        except TimeoutException:
+            logger.warning(
+                "Timed out waiting for Assam listing page length=100; parsing current DOM",
+                step="listing",
+            )
+
+        results: list[dict] = []
+        seen: set[tuple[str, str]] = set()
+        page_no = 1
+
+        while True:
+            stubs = _parse_listing_rows(BeautifulSoup(driver.page_source or "", "lxml"))
+            for stub in stubs:
+                key = (
+                    (stub.get("project_registration_no") or "").strip().upper(),
+                    (stub.get("internal_id") or "").strip(),
+                )
+                if key in seen:
+                    continue
+                seen.add(key)
+                results.append(stub)
+
+            logger.info(
+                "Assam listing page parsed",
+                page=page_no,
+                rows=len(stubs),
+                total_collected=len(results),
+                step="listing",
+            )
+
+            next_button = driver.find_element(By.ID, "compliant_hearing_next")
+            next_classes = next_button.get_attribute("class") or ""
+            if "disabled" in next_classes or "ui-state-disabled" in next_classes:
+                break
+
+            previous_info = driver.execute_script(
+                """
+                const info = document.getElementById('compliant_hearing_info');
+                return info ? info.textContent : '';
+                """
+            )
+            driver.execute_script("arguments[0].click();", next_button)
+            page_no += 1
+
+            try:
+                WebDriverWait(driver, 45).until(
+                    lambda drv: drv.execute_script(
+                        """
+                        const info = document.getElementById('compliant_hearing_info');
+                        return info ? info.textContent : '';
+                        """
+                    ) != previous_info
+                )
+            except TimeoutException:
+                logger.warning(
+                    "Timed out waiting for Assam listing pagination redraw; stopping at current page",
+                    page=page_no,
+                    step="listing",
+                )
+                break
+
+        logger.info("Assam listing pagination complete", total=len(results), pages=page_no, step="listing")
+        return results
+    except (TimeoutException, WebDriverException) as exc:
+        logger.warning(
+            f"Browser listing pagination failed; falling back to current DOM fetch: {exc.__class__.__name__}",
+            step="listing",
+        )
+
     resp = safe_get(LISTING_URL, logger=logger, timeout=90.0)
     if not resp:
         logger.warning("Listing fetch failed", url=LISTING_URL)

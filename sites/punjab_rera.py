@@ -825,11 +825,19 @@ def _solve_listing_captcha(session, logger: CrawlerLogger) -> tuple[str | None, 
             logger.warning("Captcha image not found on listing page", step="captcha")
             return None, soup
         img_url = urljoin(LISTING_URL, captcha_img["src"])
+        sep = "&" if "?" in img_url else "?"
+        img_url = f"{img_url}{sep}_cb={time.time_ns()}"
         t_img = time.monotonic()
         # Use .download() (browser fetch API) to get real PNG bytes; .get()
         # is page-navigation and leaves .content empty, which would feed an
         # empty data URL to the captcha solver.
-        img_resp = session.download(img_url)
+        img_resp = session.download(
+            img_url,
+            headers={
+                "Cache-Control": "no-cache",
+                "Pragma": "no-cache",
+            },
+        )
         img_resp.raise_for_status()
         img_elapsed = time.monotonic() - t_img
         data_url = "data:image/png;base64," + base64.b64encode(img_resp.content).decode()
