@@ -52,7 +52,6 @@ APP_BASE    = "https://rera.goa.gov.in/reraApp"
 HOME_URL    = "https://rera.goa.gov.in/reraApp/home"
 SEARCH_URL  = "https://rera.goa.gov.in/reraApp/search"
 DOMAIN      = "rera.goa.gov.in"
-PAGE_SIZE          = 10   # fallback rows per search-result page
 _CAPTCHA_MAX_TRIES    = 3   # solver attempts per captcha round (inner loop)
 _MAX_SERVER_REJECTS   = 5   # max server-side rejections before giving up entirely
 _CAPTCHA_READY_TIMEOUT_MS = 8_000
@@ -434,6 +433,16 @@ def _parse_listing_cards(soup: BeautifulSoup) -> list[dict]:
     return cards
 
 
+def _parse_pagination_offsets(soup: BeautifulSoup) -> list[int]:
+    """Return startFrom offsets exposed by Goa's javascript:pagging(N) links."""
+    offsets: set[int] = set()
+    for anchor in soup.find_all("a", href=True):
+        match = re.search(r"pagging\((\d+)\)", anchor.get("href") or "", re.I)
+        if match:
+            offsets.add(int(match.group(1)))
+    return sorted(offsets)
+
+
 # ── Captcha + listing via Selenium ────────────────────────────────────────────
 
 def _wait_for_captcha_selector(page, logger: CrawlerLogger) -> str | None:
@@ -616,12 +625,29 @@ def _fetch_project_listing(
             logger.error(f"Captcha solve failed after {_CAPTCHA_MAX_TRIES} attempts — stopping")
             break
 
-        # Set startFrom for pagination and submit form
+        # Set the real Goa search controls and submit the captcha-gated form.
         try:
             page.evaluate(
                 """(value) => {
-                    const input = document.querySelector('[name=startFrom]');
+                    const regType = document.querySelector('#Regtype, [name=Regtype]');
+                    if (regType) {
+                        regType.value = 'Project';
+                        regType.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+
+                    let input = document.querySelector('[name=startFrom]');
+                    if (!input) {
+                        input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'startFrom';
+                        const form = document.getElementById('searchForm') || document.searchForm;
+                        if (form) form.appendChild(input);
+                    }
                     if (input) input.value = String(value);
+
+                    const pagination = document.querySelector('[name=isPagination]');
+                    if (pagination) pagination.value = value > 0 ? 'true' : '';
+
                     return Boolean(input);
                 }""",
                 start_from,
@@ -685,7 +711,12 @@ def _fetch_project_listing(
                 f"No unseen cards at startFrom={start_from} — listing complete"
             )
             break
-        start_from += len(cards) or PAGE_SIZE
+        pagination_offsets = _parse_pagination_offsets(soup)
+        next_offsets = [offset for offset in pagination_offsets if offset > start_from]
+        if not next_offsets:
+            logger.info(f"No pagination offset after startFrom={start_from} — listing complete")
+            break
+        start_from = next_offsets[0]
 
     return all_cards
 

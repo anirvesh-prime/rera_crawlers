@@ -57,7 +57,7 @@ class _FakeListingPage:
         return self.pages.get(self.start_from, "<html><body></body></html>")
 
 
-def _listing_html(*regs: str) -> str:
+def _listing_html(*regs: str, offsets: tuple[int, ...] = ()) -> str:
     cards = []
     for reg in regs:
         cards.append(
@@ -70,7 +70,12 @@ def _listing_html(*regs: str) -> str:
             </div>
             """
         )
-    return "<html><body>" + "\n".join(cards) + "</body></html>"
+    links = "\n".join(
+        f'<li><a href="javascript:pagging({offset})">{index}</a></li>'
+        for index, offset in enumerate(offsets, start=1)
+    )
+    pagination = f'<ul class="pagination">{links}</ul>' if links else ""
+    return "<html><body>" + "\n".join(cards) + pagination + "</body></html>"
 
 
 class GoaTargetedCrawlTests(unittest.TestCase):
@@ -167,13 +172,21 @@ class GoaTargetedCrawlTests(unittest.TestCase):
         sentinel.assert_called_once()
         self.assertFalse(counts["sentinel_passed"])
 
-    def test_listing_paginates_without_next_link(self):
+    def test_listing_paginates_with_pagging_offsets(self):
         original_max_pages = settings.MAX_PAGES
         settings.MAX_PAGES = 0
         page = _FakeListingPage({
-            0: _listing_html("PRGO00000001", "PRGO00000002"),
-            2: _listing_html("PRGO00000003", "PRGO00000004"),
-            4: _listing_html("PRGO00000005"),
+            0: _listing_html(
+                "PRGO00000001",
+                "PRGO00000002",
+                offsets=(0, 10, 20),
+            ),
+            10: _listing_html(
+                "PRGO00000003",
+                "PRGO00000004",
+                offsets=(0, 10, 20),
+            ),
+            20: _listing_html("PRGO00000005", offsets=(0, 10, 20)),
         })
         logger = mock.MagicMock()
 
@@ -205,7 +218,7 @@ class GoaTargetedCrawlTests(unittest.TestCase):
                 "PRGO00000005",
             ],
         )
-        self.assertEqual(page.requested_offsets, [0, 2, 4, 5])
+        self.assertEqual(page.requested_offsets, [0, 10, 20])
 
 
 if __name__ == "__main__":
