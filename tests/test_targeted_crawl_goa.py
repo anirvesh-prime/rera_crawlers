@@ -44,11 +44,20 @@ class _FakeListingPage:
     def fill(self, *args, **kwargs):
         return None
 
+    def click(self, selector, *, timeout=0):
+        match = goa_rera.re.search(r"pagging\((\d+)\)", selector)
+        if not match:
+            raise AssertionError(f"unexpected click selector: {selector}")
+        self.start_from = int(match.group(1))
+        self.requested_offsets.append(self.start_from)
+
     def evaluate(self, script, *args):
         if args and "startFrom" in script:
             self.start_from = int(args[0])
             self.requested_offsets.append(self.start_from)
             return True
+        if "pagging" in script:
+            raise AssertionError("pagination should click the anchor, not call pagging directly")
         if "form.submit" in script:
             return True
         return None

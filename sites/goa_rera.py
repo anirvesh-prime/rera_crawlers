@@ -443,6 +443,50 @@ def _parse_pagination_offsets(soup: BeautifulSoup) -> list[int]:
     return sorted(offsets)
 
 
+def _submit_goa_search(page, start_from: int, captcha_text: str) -> bool:
+    """Submit the initial Goa search form with Regtype=Project and captcha."""
+    page.evaluate(
+        """(value) => {
+            const regType = document.querySelector('#Regtype, [name=Regtype]');
+            if (regType) {
+                regType.value = 'Project';
+                regType.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+
+            let input = document.querySelector('[name=startFrom]');
+            if (!input) {
+                input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'startFrom';
+                const form = document.getElementById('searchForm') || document.searchForm;
+                if (form) form.appendChild(input);
+            }
+            if (input) input.value = String(value);
+
+            const pagination = document.querySelector('[name=isPagination]');
+            if (pagination) pagination.value = value > 0 ? 'true' : '';
+
+            return Boolean(input);
+        }""",
+        start_from,
+    )
+    page.fill('[name=captcha]', captcha_text)
+    return bool(page.evaluate(
+        """() => {
+            const form = document.getElementById('searchForm') || document.searchForm;
+            if (!form) return false;
+            form.submit();
+            return true;
+        }"""
+    ))
+
+
+def _click_goa_pagination(page, start_from: int) -> None:
+    """Click Goa's visible pagination anchor for the requested startFrom offset."""
+    selector = f'a[href="javascript:pagging({start_from})"]'
+    page.click(selector, timeout=10_000)
+
+
 # ── Captcha + listing via Selenium ────────────────────────────────────────────
 
 def _wait_for_captcha_selector(page, logger: CrawlerLogger) -> str | None:
@@ -565,6 +609,7 @@ def _fetch_project_listing(
     start_from = 0
     pages_fetched = 0
     _server_rejections = 0  # count server-side captcha rejections to avoid infinite loop
+    first_search_submitted = False
 
     page = page_adapter(_session())
     logger.info("Starting Goa listing captcha search", step="timing")
@@ -575,98 +620,78 @@ def _fetch_project_listing(
             logger.info(f"Reached MAX_PAGES={max_pages}")
             break
 
-        logger.info(
-            f"Goa listing page startFrom={start_from}: solving captcha",
-            step="timing",
-            start_from=start_from,
-            collected=len(all_cards),
-        )
-        # ── Captcha retry loop ────────────────────────────────────────────
-        solved = None
-        for captcha_attempt in range(1, _CAPTCHA_MAX_TRIES + 1):
-            try:
-                page.goto(HOME_URL, timeout=25_000, wait_until="domcontentloaded")
-                page.wait_for_load_state("domcontentloaded", timeout=10_000)
-            except Exception as e:
-                logger.error(f"Failed to load home page: {e}")
+        if not first_search_submitted:
+            logger.info(
+                f"Goa listing page startFrom={start_from}: solving captcha",
+                step="timing",
+                start_from=start_from,
+                collected=len(all_cards),
+            )
+            # ── Captcha retry loop ────────────────────────────────────────
+            solved = None
+            for captcha_attempt in range(1, _CAPTCHA_MAX_TRIES + 1):
+                try:
+                    page.goto(HOME_URL, timeout=25_000, wait_until="domcontentloaded")
+                    page.wait_for_load_state("domcontentloaded", timeout=10_000)
+                except Exception as e:
+                    logger.error(f"Failed to load home page: {e}")
+                    break
+
+                captcha_data = None
+                captcha_selector = _wait_for_captcha_selector(page, logger)
+                if captcha_selector:
+                    captcha_data = _captcha_data_url_from_page(page, captcha_selector, logger)
+                if not captcha_data or len(captcha_data) < 100:
+                    logger.warning(f"Captcha element screenshot failed (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES})")
+                    continue
+
+                try:
+                    logger.info(
+                        f"Captcha solver request attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES}",
+                        step="timing",
+                        start_from=start_from,
+                        captcha_attempt=captcha_attempt,
+                    )
+                    candidate = captcha_to_text(
+                        captcha_data,
+                        default_captcha_source="model_captcha",
+                        time_out=_CAPTCHA_SOLVER_TIMEOUT_S,
+                    )
+                except Exception as e:
+                    logger.warning(f"Captcha solver exception (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES}): {e}")
+                    continue
+
+                if candidate and len(candidate) >= 4:
+                    solved = candidate
+                    logger.info(f"Captcha solved on attempt {captcha_attempt}: {solved!r}")
+                    break
+                logger.warning(f"Captcha bad result {candidate!r} (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES})")
+
+            if not solved:
+                logger.error(f"Captcha solve failed after {_CAPTCHA_MAX_TRIES} attempts — stopping")
                 break
 
-            captcha_data = None
-            captcha_selector = _wait_for_captcha_selector(page, logger)
-            if captcha_selector:
-                captcha_data = _captcha_data_url_from_page(page, captcha_selector, logger)
-            if not captcha_data or len(captcha_data) < 100:
-                logger.warning(f"Captcha element screenshot failed (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES})")
-                continue
-
             try:
-                logger.info(
-                    f"Captcha solver request attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES}",
-                    step="timing",
-                    start_from=start_from,
-                    captcha_attempt=captcha_attempt,
-                )
-                candidate = captcha_to_text(
-                    captcha_data,
-                    default_captcha_source="model_captcha",
-                    time_out=_CAPTCHA_SOLVER_TIMEOUT_S,
-                )
+                submitted = _submit_goa_search(page, start_from, solved)
+                if not submitted:
+                    raise RuntimeError("search form not found")
+                page.wait_for_load_state("domcontentloaded", timeout=15_000)
             except Exception as e:
-                logger.warning(f"Captcha solver exception (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES}): {e}")
-                continue
-
-            if candidate and len(candidate) >= 4:
-                solved = candidate
-                logger.info(f"Captcha solved on attempt {captcha_attempt}: {solved!r}")
+                logger.error(f"Form submission failed: {e}")
                 break
-            logger.warning(f"Captcha bad result {candidate!r} (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES})")
-
-        if not solved:
-            logger.error(f"Captcha solve failed after {_CAPTCHA_MAX_TRIES} attempts — stopping")
-            break
-
-        # Set the real Goa search controls and submit the captcha-gated form.
-        try:
-            page.evaluate(
-                """(value) => {
-                    const regType = document.querySelector('#Regtype, [name=Regtype]');
-                    if (regType) {
-                        regType.value = 'Project';
-                        regType.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
-
-                    let input = document.querySelector('[name=startFrom]');
-                    if (!input) {
-                        input = document.createElement('input');
-                        input.type = 'hidden';
-                        input.name = 'startFrom';
-                        const form = document.getElementById('searchForm') || document.searchForm;
-                        if (form) form.appendChild(input);
-                    }
-                    if (input) input.value = String(value);
-
-                    const pagination = document.querySelector('[name=isPagination]');
-                    if (pagination) pagination.value = value > 0 ? 'true' : '';
-
-                    return Boolean(input);
-                }""",
-                start_from,
+        else:
+            logger.info(
+                f"Goa listing page startFrom={start_from}: paginating",
+                step="timing",
+                start_from=start_from,
+                collected=len(all_cards),
             )
-            page.fill('[name=captcha]', solved)
-            submitted = page.evaluate(
-                """() => {
-                    const form = document.getElementById('searchForm') || document.searchForm;
-                    if (!form) return false;
-                    form.submit();
-                    return true;
-                }"""
-            )
-            if not submitted:
-                raise RuntimeError("search form not found")
-            page.wait_for_load_state("domcontentloaded", timeout=15_000)
-        except Exception as e:
-            logger.error(f"Form submission failed: {e}")
-            break
+            try:
+                _click_goa_pagination(page, start_from)
+                page.wait_for_load_state("domcontentloaded", timeout=15_000)
+            except Exception as e:
+                logger.error(f"Pagination failed: {e}")
+                break
 
         # page.content() can fail if the page is mid-navigation; retry briefly
         html_content = None
@@ -687,7 +712,9 @@ def _fetch_project_listing(
             if _server_rejections >= _MAX_SERVER_REJECTS:
                 logger.error("Too many captcha rejections — stopping")
                 break
+            first_search_submitted = False
             continue  # restart outer while True loop to re-attempt captcha
+        first_search_submitted = True
         cards = _parse_listing_cards(soup)
         if not cards:
             logger.info(f"No cards at startFrom={start_from} — listing complete")
