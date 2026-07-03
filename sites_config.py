@@ -173,6 +173,10 @@ SITES: list[dict] = [
         "state": "haryana",
         "domain": "haryanarera.gov.in",
         "listing_url": "https://haryanarera.gov.in/admincontrol/registered_projects/2",
+        "listing_urls": [
+            "https://haryanarera.gov.in/admincontrol/registered_projects/1",
+            "https://haryanarera.gov.in/admincontrol/registered_projects/2",
+        ],
         "crawler_module": "sites.haryana_rera",
         "crawler_type": "selenium",
         "enabled": True,

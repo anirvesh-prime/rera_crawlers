@@ -220,12 +220,41 @@ def _extract_status_update(qpr_url: str) -> list[dict]:
 
 def _fetch_listing(url: str, logger: CrawlerLogger) -> list[dict]:
     """Fetch a Haryana RERA listing page and parse all project rows."""
-    resp = safe_get(url, logger=logger, timeout=60.0)
-    if not resp:
-        logger.warning("Listing fetch failed", url=url)
-        return []
-    soup = BeautifulSoup(resp.text, "lxml")
-    return _parse_listing_rows(soup, url)
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.support.ui import WebDriverWait
+
+    driver = _session().driver()
+    driver.set_page_load_timeout(90.0)
+    driver.get(url)
+    wait = WebDriverWait(driver, 45)
+    wait.until(EC.presence_of_element_located((By.ID, "compliant_hearing")))
+
+    all_datatable_rows = driver.execute_script(
+        """
+        const table = document.querySelector('#compliant_hearing');
+        const jq = window.jQuery || window.$;
+        if (!table || !jq || !jq.fn || !jq.fn.DataTable || !jq.fn.dataTable.isDataTable(table)) {
+            throw new Error('Haryana listing DataTable is not initialized');
+        }
+        const dt = jq(table).DataTable();
+        return dt.rows({search: 'applied'}).nodes().toArray().map(row => row.outerHTML);
+        """
+    )
+    soup = BeautifulSoup(
+        "<table id='compliant_hearing'><tbody>"
+        + "".join(all_datatable_rows or [])
+        + "</tbody></table>",
+        "lxml",
+    )
+    results = _parse_listing_rows(soup, url)
+    logger.info(
+        "Haryana listing collected from DataTables API",
+        url=url,
+        rows=len(results),
+        step="listing",
+    )
+    return results
 
 
 def _parse_listing_rows(soup: BeautifulSoup, listing_url: str) -> list[dict]:
@@ -1181,7 +1210,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         logger.timing("sentinel", time.monotonic() - t0)
 
     # ── Step 1: Collect stubs from both listing pages ─────────────────────────
-    listing_urls = LISTING_URLS
+    listing_urls = config.get("listing_urls") or LISTING_URLS
     logger.info("Starting Haryana RERA crawl", listing_count=len(listing_urls), mode=mode)
 
     t0 = time.monotonic()

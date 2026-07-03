@@ -625,15 +625,16 @@ class SeleniumSession:
         }
         opts.add_experimental_option("prefs", prefs)
         opts.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
-        chromedriver_bin = _first_existing_path(
-            os.environ.get("CHROMEDRIVER_BIN"),
-            shutil.which("chromedriver"),
-        )
+        chromedriver_bin = _first_existing_path(os.environ.get("CHROMEDRIVER_BIN"))
         if chromedriver_bin:
             service = _ChromeService(chromedriver_bin)
         else:
-            from webdriver_manager.chrome import ChromeDriverManager
-            service = _ChromeService(ChromeDriverManager().install())
+            from selenium.webdriver.common.selenium_manager import SeleniumManager
+            manager_args = ["--browser", "chrome", "--skip-driver-in-path"]
+            if opts.binary_location:
+                manager_args.extend(["--browser-path", opts.binary_location])
+            paths = SeleniumManager().binary_paths(manager_args)
+            service = _ChromeService(paths["driver_path"])
         driver = webdriver.Chrome(service=service, options=opts)
         # Sync urllib3's read timeout for the localhost->chromedriver socket so
         # chromedriver's page_load_timeout trips first (clean abort + quit())

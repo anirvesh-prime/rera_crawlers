@@ -58,7 +58,7 @@ BASE_URL = "https://hprera.nic.in"
 DOMAIN = "hprera.nic.in"
 PUBLIC_DASHBOARD_URL = f"{BASE_URL}/PublicDashboard"
 MAIN_CONTENT_URL = f"{BASE_URL}/PublicDashboard/GetMainContent"
-LISTING_URL = f"{BASE_URL}/PublicDashboard/GetFilteredProjectsPV"
+LISTING_URL = f"{BASE_URL}/PublicDashboard/Get FilteredProjectsPV"
 DETAIL_BASE = f"{BASE_URL}/Project/ProjectRegistration"
 
 _AJAX_HEADERS = {

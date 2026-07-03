@@ -26,6 +26,50 @@ class _FakeRecord:
         return self._d
 
 
+class _FakeDriver:
+    page_source = ""
+
+    def set_page_load_timeout(self, timeout):
+        self.timeout = timeout
+
+    def get(self, url):
+        self.url = url
+
+    def find_element(self, by, value):
+        return object()
+
+    def execute_script(self, script):
+        return [
+            """
+            <tr>
+              <td>1</td><td>RC-1</td><td><span>RERA-PKL-456-2019</span></td>
+              <td>Project One</td><td>Builder One</td><td>Address One</td>
+              <td>Panchkula</td><td>HRERA Panchkula</td>
+              <td><a href="/view_project/project_preview_open/456">View</a></td>
+              <td>31-Dec-2026</td>
+              <td><a href="/view_project/view_certificate/abc">Certificate</a></td>
+              <td><a href="/assistancecontrol/print_quarterly_schedules/x/y/z">QPR</a></td>
+            </tr>
+            """,
+            """
+            <tr>
+              <td>2</td><td>RC-2</td><td><span>RERA-GRG-741-2020</span></td>
+              <td>Project Two</td><td>Builder Two</td><td>Address Two</td>
+              <td>Gurugram</td><td>HRERA Gurugram</td>
+              <td><a href="/view_project/project_preview_open/741">View</a></td>
+              <td>30-Sep-2027</td>
+              <td><a href="/view_project/view_certificate/def">Certificate</a></td>
+              <td><a href="/assistancecontrol/print_quarterly_schedules/a/b/c">QPR</a></td>
+            </tr>
+            """,
+        ]
+
+
+class _FakeSession:
+    def driver(self):
+        return _FakeDriver()
+
+
 class HaryanaTargetedCrawlTests(unittest.TestCase):
     def setUp(self) -> None:
         self._orig_target = settings.TARGET_REG_NO
@@ -175,6 +219,27 @@ class HaryanaTargetedCrawlTests(unittest.TestCase):
         self.assertEqual(counts["projects_found"], 2)
         self.assertEqual(processed_regs, ["RC/REP/HARERA/GGM/001"])
         self.assertEqual(counts["projects_updated"], 1)
+
+    def test_fetch_listing_reads_all_datatables_rows(self):
+        logger = mock.MagicMock()
+        with mock.patch.object(haryana_rera, "_session", return_value=_FakeSession()):
+            stubs = haryana_rera._fetch_listing(
+                "https://haryanarera.gov.in/admincontrol/registered_projects/1",
+                logger,
+            )
+
+        self.assertEqual(
+            [stub["project_registration_no"] for stub in stubs],
+            ["RERA-PKL-456-2019", "RERA-GRG-741-2020"],
+        )
+        self.assertEqual(stubs[0]["internal_id"], "456")
+        self.assertEqual(stubs[1]["project_city"], "GURUGRAM")
+        logger.info.assert_any_call(
+            "Haryana listing collected from DataTables API",
+            url="https://haryanarera.gov.in/admincontrol/registered_projects/1",
+            rows=2,
+            step="listing",
+        )
 
 
 if __name__ == "__main__":
