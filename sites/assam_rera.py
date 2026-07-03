@@ -222,6 +222,32 @@ def _fetch_listing(logger: CrawlerLogger) -> list[dict]:
                 step="listing",
             )
 
+        all_datatable_rows = driver.execute_script(
+            """
+            const table = document.querySelector('#compliant_hearing');
+            const jq = window.jQuery || window.$;
+            if (!table || !jq || !jq.fn || !jq.fn.DataTable || !jq.fn.dataTable.isDataTable(table)) {
+                return null;
+            }
+            const dt = jq(table).DataTable();
+            return dt.rows({search: 'applied'}).nodes().toArray().map(row => row.outerHTML);
+            """
+        )
+        if all_datatable_rows:
+            soup = BeautifulSoup(
+                "<table id='compliant_hearing'><tbody>"
+                + "".join(all_datatable_rows)
+                + "</tbody></table>",
+                "lxml",
+            )
+            results = _parse_listing_rows(soup)
+            logger.info(
+                "Assam listing collected from DataTables API",
+                rows=len(results),
+                step="listing",
+            )
+            return results
+
         results: list[dict] = []
         seen: set[tuple[str, str]] = set()
         page_no = 1
@@ -251,28 +277,51 @@ def _fetch_listing(logger: CrawlerLogger) -> list[dict]:
             if "disabled" in next_classes or "ui-state-disabled" in next_classes:
                 break
 
-            previous_info = driver.execute_script(
+            previous_page = driver.execute_script(
                 """
-                const info = document.getElementById('compliant_hearing_info');
-                return info ? info.textContent : '';
+                const table = document.querySelector('#compliant_hearing');
+                const jq = window.jQuery || window.$;
+                if (!table || !jq || !jq.fn || !jq.fn.DataTable || !jq.fn.dataTable.isDataTable(table)) {
+                    const info = document.getElementById('compliant_hearing_info');
+                    return info ? info.textContent : '';
+                }
+                return jq(table).DataTable().page.info().page;
                 """
             )
-            driver.execute_script("arguments[0].click();", next_button)
+            advanced = driver.execute_script(
+                """
+                const table = document.querySelector('#compliant_hearing');
+                const jq = window.jQuery || window.$;
+                if (table && jq && jq.fn && jq.fn.DataTable && jq.fn.dataTable.isDataTable(table)) {
+                    jq(table).DataTable().page('next').draw('page');
+                    return true;
+                }
+                arguments[0].click();
+                return false;
+                """,
+                next_button,
+            )
             page_no += 1
 
             try:
                 WebDriverWait(driver, 45).until(
                     lambda drv: drv.execute_script(
                         """
-                        const info = document.getElementById('compliant_hearing_info');
-                        return info ? info.textContent : '';
+                        const table = document.querySelector('#compliant_hearing');
+                        const jq = window.jQuery || window.$;
+                        if (!table || !jq || !jq.fn || !jq.fn.DataTable || !jq.fn.dataTable.isDataTable(table)) {
+                            const info = document.getElementById('compliant_hearing_info');
+                            return info ? info.textContent : '';
+                        }
+                        return jq(table).DataTable().page.info().page;
                         """
-                    ) != previous_info
+                    ) != previous_page
                 )
             except TimeoutException:
                 logger.warning(
                     "Timed out waiting for Assam listing pagination redraw; stopping at current page",
                     page=page_no,
+                    datatables_api=bool(advanced),
                     step="listing",
                 )
                 break

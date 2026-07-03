@@ -57,6 +57,9 @@ _MAX_SERVER_REJECTS   = 5   # max server-side rejections before giving up entire
 _CAPTCHA_READY_TIMEOUT_MS = 8_000
 _CAPTCHA_FETCH_TIMEOUT_MS = 5_000
 _CAPTCHA_SOLVER_TIMEOUT_S = 30
+_PAGINATION_READY_TIMEOUT_MS = 20_000
+_CONTENT_READ_RETRIES = 20
+_CONTENT_READ_RETRY_DELAY_MS = 500
 _CAPTCHA_SELECTORS = [
     '#captcha_id',
     'img[name="imgCaptcha"]',
@@ -517,6 +520,62 @@ def _click_goa_pagination(page, start_from: int) -> None:
     page.click(selector, timeout=10_000)
 
 
+def _goa_page_number_for_offset(start_from: int) -> int:
+    """Map Goa's startFrom offset to its one-based pagination page number."""
+    return (start_from // 10) + 1
+
+
+def _wait_for_goa_listing_page(page, start_from: int, logger: CrawlerLogger) -> None:
+    """Wait until Goa's pagination marks the requested page active."""
+    expected_page = _goa_page_number_for_offset(start_from)
+    try:
+        page.wait_for_function(
+            """(expected) => {
+                const active = document.querySelector('ul.pagination li.active a');
+                if (!active) return false;
+                return (active.textContent || '').trim() === String(expected);
+            }""",
+            arg=expected_page,
+            timeout=_PAGINATION_READY_TIMEOUT_MS,
+        )
+    except Exception as exc:
+        logger.warning(
+            f"Timed out waiting for Goa pagination active page {expected_page}: {exc}",
+            step="timing",
+            start_from=start_from,
+            expected_page=expected_page,
+        )
+    try:
+        page.wait_for_function(
+            """() => document.querySelectorAll('div.no_pad_lft').length > 0 ||
+                    document.querySelector('input[name="captcha"]') !== null""",
+            timeout=5_000,
+        )
+    except Exception:
+        pass
+
+
+def _read_goa_page_content(page, start_from: int, logger: CrawlerLogger) -> str | None:
+    """Read page HTML, tolerating brief Selenium mid-navigation failures."""
+    last_exc: Exception | None = None
+    for attempt in range(1, _CONTENT_READ_RETRIES + 1):
+        try:
+            html_content = page.content()
+            if html_content:
+                return html_content
+        except Exception as exc:
+            last_exc = exc
+        page.wait_for_timeout(_CONTENT_READ_RETRY_DELAY_MS)
+    logger.warning(
+        f"Could not get page content at startFrom={start_from}; skipping page",
+        step="timing",
+        start_from=start_from,
+        attempts=_CONTENT_READ_RETRIES,
+        last_error=str(last_exc) if last_exc else None,
+    )
+    return None
+
+
 # ── Captcha + listing via Selenium ────────────────────────────────────────────
 
 def _wait_for_captcha_selector(page, logger: CrawlerLogger) -> str | None:
@@ -725,20 +784,15 @@ def _fetch_project_listing(
             try:
                 _click_goa_pagination(page, start_from)
                 page.wait_for_load_state("domcontentloaded", timeout=15_000)
+                _wait_for_goa_listing_page(page, start_from, logger)
             except Exception as e:
                 logger.error(f"Pagination failed: {e}")
                 break
 
-        # page.content() can fail if the page is mid-navigation; retry briefly
-        html_content = None
-        for _retry in range(3):
-            try:
-                html_content = page.content()
-                break
-            except Exception:
-                page.wait_for_timeout(250)
+        # page.content() can fail if the page is mid-navigation; retry long
+        # enough for Goa's server-rendered pagination to settle.
+        html_content = _read_goa_page_content(page, start_from, logger)
         if not html_content:
-            logger.warning(f"Could not get page content at startFrom={start_from}; skipping page")
             break
         soup = BeautifulSoup(html_content, "lxml")
         # Detect captcha rejection: server redirects back to home page (has captcha form again)

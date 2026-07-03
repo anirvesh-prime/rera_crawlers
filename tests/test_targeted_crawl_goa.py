@@ -27,10 +27,12 @@ class _FakeRecord:
 
 
 class _FakeListingPage:
-    def __init__(self, pages: dict[int, str]):
+    def __init__(self, pages: dict[int, str], content_failures: dict[int, int] | None = None):
         self.pages = pages
         self.start_from = 0
         self.requested_offsets: list[int] = []
+        self.content_failures = dict(content_failures or {})
+        self.waited_for_pages: list[int] = []
 
     def goto(self, *args, **kwargs):
         return None
@@ -39,6 +41,15 @@ class _FakeListingPage:
         return None
 
     def wait_for_timeout(self, *args, **kwargs):
+        return None
+
+    def wait_for_function(self, script, *, arg=None, timeout=0, **kwargs):
+        if "ul.pagination li.active a" in script:
+            self.waited_for_pages.append(int(arg))
+            soup = goa_rera.BeautifulSoup(self.content(), "lxml")
+            active = soup.select_one("ul.pagination li.active a")
+            if not active or active.get_text(strip=True) != str(arg):
+                raise TimeoutError(f"active page is not {arg}")
         return None
 
     def fill(self, *args, **kwargs):
@@ -63,6 +74,10 @@ class _FakeListingPage:
         return None
 
     def content(self):
+        failures_left = self.content_failures.get(self.start_from, 0)
+        if failures_left:
+            self.content_failures[self.start_from] = failures_left - 1
+            raise RuntimeError("simulated mid-navigation content failure")
         return self.pages.get(self.start_from, "<html><body></body></html>")
 
 
@@ -254,6 +269,20 @@ class GoaTargetedCrawlTests(unittest.TestCase):
             ],
         )
         self.assertEqual(page.requested_offsets, [0, 10, 20, 30, 40, 50])
+        self.assertEqual(page.waited_for_pages, [2, 3, 4, 5, 6])
+
+    def test_listing_content_read_retries_transient_navigation_failures(self):
+        page = _FakeListingPage(
+            {280: _listing_html("PRGO00000280", active_page=29)},
+            content_failures={280: 5},
+        )
+        page.start_from = 280
+        logger = mock.MagicMock()
+
+        html = goa_rera._read_goa_page_content(page, 280, logger)
+
+        self.assertIn("PRGO00000280", html)
+        logger.warning.assert_not_called()
 
     def test_next_numeric_pagination_stops_when_active_page_has_no_higher_number(self):
         soup = goa_rera.BeautifulSoup(
