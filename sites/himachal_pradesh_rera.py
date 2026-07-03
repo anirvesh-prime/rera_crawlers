@@ -71,7 +71,10 @@ _UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
-_HP_REG_NO_RE = re.compile(r"^RERAHP[A-Z]{3}\d{8}$", re.I)
+_HP_REG_NO_RE = re.compile(
+    r"^(?:RERAHP[A-Z]{3}\d{8}|HPRERA[A-Z0-9][A-Z0-9/-]*)$",
+    re.I,
+)
 
 
 # ── SeleniumSession wiring ────────────────────────────────────────────────────
@@ -169,6 +172,20 @@ def _clean(text) -> str:
     if text is None:
         return ""
     return re.sub(r"\s+", " ", str(text)).strip()
+
+
+def _reg_key(reg_no: str | None) -> str:
+    return _clean(reg_no).upper()
+
+
+def _marker_reg_no(marker: dict) -> str:
+    return _clean(
+        marker.get("reg_no")
+        or marker.get("RegistrationNo")
+        or marker.get("reg")
+        or marker.get("RegNo")
+        or ""
+    )
 
 
 def _clean_doc_label(raw: str) -> str:
@@ -818,7 +835,8 @@ def _sentinel_check(
 
     logger.info(f"Sentinel: using pre-fetched listing to find {sentinel_reg}", step="sentinel")
     try:
-        qs = qs_map.get(sentinel_reg, "")
+        qs_by_reg = {_reg_key(reg): token for reg, token in qs_map.items()}
+        qs = qs_map.get(sentinel_reg, "") or qs_by_reg.get(_reg_key(sentinel_reg), "")
         if not qs:
             logger.warning(f"Sentinel: {sentinel_reg!r} not found in listing qs_map — skipping",
                            step="sentinel")
@@ -827,13 +845,10 @@ def _sentinel_check(
         # Extract fields from listing marker (project_name, project_type, etc. live here)
         marker_by_reg: dict[str, dict] = {}
         for _mk in markers:
-            _r = (
-                _mk.get("reg_no") or _mk.get("RegistrationNo") or _mk.get("reg")
-                or _mk.get("RegNo") or ""
-            ).strip()
+            _r = _marker_reg_no(_mk)
             if _r:
-                marker_by_reg[_r] = _mk
-        _marker = marker_by_reg.get(sentinel_reg, {})
+                marker_by_reg[_reg_key(_r)] = _mk
+        _marker = marker_by_reg.get(_reg_key(sentinel_reg), {})
 
         def _m(*keys: str) -> str:
             for k in keys:
@@ -1001,12 +1016,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
         # Build marker lookup by registration number (try multiple key names)
         marker_by_reg: dict[str, dict] = {}
         for m in markers:
-            reg = (
-                m.get("reg_no") or m.get("RegistrationNo") or m.get("reg")
-                or m.get("RegNo") or ""
-            ).strip()
+            reg = _marker_reg_no(m)
             if reg:
-                marker_by_reg[reg] = m
+                marker_by_reg[_reg_key(reg)] = m
 
         all_reg_nos = list(qs_map.keys())
         # ── Targeted filtering ───────────────────────────────────────────────
@@ -1017,7 +1029,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 r for r in all_reg_nos
                 if (r or "").strip().upper() in target_regs
             ]
-            matched_regs.update((r or "").strip().upper() for r in all_reg_nos)
+            matched_regs.update(_reg_key(r) for r in all_reg_nos)
             for missing in sorted(target_regs - matched_regs):
                 logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
             logger.info(
@@ -1085,7 +1097,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     continue
 
             try:
-                marker = marker_by_reg.get(reg_no, {})
+                marker = marker_by_reg.get(_reg_key(reg_no), {})
 
                 # Fetch all detail sections
                 p_soup = _fetch_section(client, "PromotorDetails_PreviewPV", qs, logger)

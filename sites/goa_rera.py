@@ -53,13 +53,14 @@ HOME_URL    = "https://rera.goa.gov.in/reraApp/home"
 SEARCH_URL  = "https://rera.goa.gov.in/reraApp/search"
 DOMAIN      = "rera.goa.gov.in"
 _CAPTCHA_MAX_TRIES    = 3   # solver attempts per captcha round (inner loop)
-_MAX_SERVER_REJECTS   = 5   # max server-side rejections before giving up entirely
+_MAX_SERVER_REJECTS   = 10  # max server-side rejections before giving up entirely
 _CAPTCHA_READY_TIMEOUT_MS = 8_000
 _CAPTCHA_FETCH_TIMEOUT_MS = 5_000
 _CAPTCHA_SOLVER_TIMEOUT_S = 30
 _PAGINATION_READY_TIMEOUT_MS = 20_000
 _CONTENT_READ_RETRIES = 20
 _CONTENT_READ_RETRY_DELAY_MS = 500
+_PAGINATION_NAV_RETRIES = 3
 _CAPTCHA_SELECTORS = [
     '#captcha_id',
     'img[name="imgCaptcha"]',
@@ -525,6 +526,49 @@ def _goa_page_number_for_offset(start_from: int) -> int:
     return (start_from // 10) + 1
 
 
+def _goa_pagination_timeout_diagnostics(page) -> dict:
+    """Capture the current Goa listing DOM state after a pagination wait timeout."""
+    diagnostics = {
+        "url": None,
+        "ready_state": None,
+        "active_page_text": None,
+        "pagination_links": [],
+        "card_count": None,
+        "captcha_present": None,
+        "title": None,
+        "body_preview": None,
+        "error": None,
+    }
+    try:
+        data = page.evaluate(
+            """() => {
+                const clean = (value) => (value || '').replace(/\\s+/g, ' ').trim();
+                const active = document.querySelector('ul.pagination li.active a');
+                const links = Array.from(document.querySelectorAll('ul.pagination li a'))
+                    .map((a) => ({
+                        text: clean(a.textContent),
+                        href: a.getAttribute('href') || '',
+                        className: a.closest('li')?.className || '',
+                    }));
+                return {
+                    url: window.location.href,
+                    ready_state: document.readyState,
+                    active_page_text: active ? clean(active.textContent) : null,
+                    pagination_links: links,
+                    card_count: document.querySelectorAll('div.no_pad_lft').length,
+                    captcha_present: document.querySelector('input[name="captcha"]') !== null,
+                    title: document.title || null,
+                    body_preview: clean(document.body ? document.body.innerText : '').slice(0, 500),
+                };
+            }"""
+        )
+        if isinstance(data, dict):
+            diagnostics.update(data)
+    except Exception as exc:
+        diagnostics["error"] = str(exc)
+    return diagnostics
+
+
 def _wait_for_goa_listing_page(page, start_from: int, logger: CrawlerLogger) -> None:
     """Wait until Goa's pagination marks the requested page active."""
     expected_page = _goa_page_number_for_offset(start_from)
@@ -544,6 +588,7 @@ def _wait_for_goa_listing_page(page, start_from: int, logger: CrawlerLogger) -> 
             step="timing",
             start_from=start_from,
             expected_page=expected_page,
+            diagnostics=_goa_pagination_timeout_diagnostics(page),
         )
     try:
         page.wait_for_function(
@@ -555,7 +600,13 @@ def _wait_for_goa_listing_page(page, start_from: int, logger: CrawlerLogger) -> 
         pass
 
 
-def _read_goa_page_content(page, start_from: int, logger: CrawlerLogger) -> str | None:
+def _read_goa_page_content(
+    page,
+    start_from: int,
+    logger: CrawlerLogger,
+    *,
+    warn_on_failure: bool = True,
+) -> str | None:
     """Read page HTML, tolerating brief Selenium mid-navigation failures."""
     last_exc: Exception | None = None
     for attempt in range(1, _CONTENT_READ_RETRIES + 1):
@@ -566,13 +617,56 @@ def _read_goa_page_content(page, start_from: int, logger: CrawlerLogger) -> str 
         except Exception as exc:
             last_exc = exc
         page.wait_for_timeout(_CONTENT_READ_RETRY_DELAY_MS)
-    logger.warning(
-        f"Could not get page content at startFrom={start_from}; skipping page",
-        step="timing",
-        start_from=start_from,
-        attempts=_CONTENT_READ_RETRIES,
-        last_error=str(last_exc) if last_exc else None,
-    )
+    if warn_on_failure:
+        logger.warning(
+            f"Could not get page content at startFrom={start_from}; skipping page",
+            step="timing",
+            start_from=start_from,
+            attempts=_CONTENT_READ_RETRIES,
+            last_error=str(last_exc) if last_exc else None,
+        )
+    return None
+
+
+def _retry_goa_pagination_content(
+    page,
+    start_from: int,
+    previous_start_from: int | None,
+    logger: CrawlerLogger,
+) -> str | None:
+    """Retry a stuck Goa pagination click from the last successfully parsed page."""
+    for attempt in range(2, _PAGINATION_NAV_RETRIES + 1):
+        logger.warning(
+            f"Retrying Goa pagination startFrom={start_from} (attempt {attempt}/{_PAGINATION_NAV_RETRIES})",
+            step="timing",
+            start_from=start_from,
+            previous_start_from=previous_start_from,
+            attempt=attempt,
+        )
+        try:
+            if previous_start_from is not None and hasattr(page, "go_back"):
+                page.go_back(timeout=10_000)
+                page.wait_for_load_state("domcontentloaded", timeout=10_000)
+                _wait_for_goa_listing_page(page, previous_start_from, logger)
+            _click_goa_pagination(page, start_from)
+            page.wait_for_load_state("domcontentloaded", timeout=15_000)
+            _wait_for_goa_listing_page(page, start_from, logger)
+        except Exception as exc:
+            logger.warning(
+                f"Goa pagination retry navigation failed for startFrom={start_from}: {exc}",
+                step="timing",
+                start_from=start_from,
+                attempt=attempt,
+            )
+            continue
+        html_content = _read_goa_page_content(
+            page,
+            start_from,
+            logger,
+            warn_on_failure=attempt >= _PAGINATION_NAV_RETRIES,
+        )
+        if html_content:
+            return html_content
     return None
 
 
@@ -696,6 +790,7 @@ def _fetch_project_listing(
     all_cards: list[dict] = []
     seen_reg_nos: set[str] = set()
     start_from = 0
+    last_successful_start_from: int | None = None
     pages_fetched = 0
     _server_rejections = 0  # count server-side captcha rejections to avoid infinite loop
     first_search_submitted = False
@@ -715,6 +810,7 @@ def _fetch_project_listing(
             )
             break
 
+        paginating = first_search_submitted
         if not first_search_submitted:
             logger.info(
                 f"Goa listing page startFrom={start_from}: solving captcha",
@@ -791,7 +887,19 @@ def _fetch_project_listing(
 
         # page.content() can fail if the page is mid-navigation; retry long
         # enough for Goa's server-rendered pagination to settle.
-        html_content = _read_goa_page_content(page, start_from, logger)
+        html_content = _read_goa_page_content(
+            page,
+            start_from,
+            logger,
+            warn_on_failure=not paginating,
+        )
+        if not html_content and paginating:
+            html_content = _retry_goa_pagination_content(
+                page,
+                start_from,
+                last_successful_start_from,
+                logger,
+            )
         if not html_content:
             break
         soup = BeautifulSoup(html_content, "lxml")
@@ -809,6 +917,7 @@ def _fetch_project_listing(
         if not cards:
             logger.info(f"No cards at startFrom={start_from} — listing complete")
             break
+        last_successful_start_from = start_from
         pages_fetched += 1
         new_cards = []
         for card in cards:
@@ -951,7 +1060,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     site_id = config["id"]
     counts  = dict(projects_found=0, projects_new=0, projects_updated=0,
                    projects_skipped=0, documents_uploaded=0, error_count=0)
-    checkpoint  = load_checkpoint(site_id, mode) or {}
+    checkpoint  = {} if mode == "listing" else (load_checkpoint(site_id, mode) or {})
     done_regs: set[str] = set(checkpoint.get("done_regs", []))
     item_limit  = settings.CRAWL_ITEM_LIMIT or 0
     t_run = time.monotonic()
@@ -964,7 +1073,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     target_regs = get_target_reg_nos()
 
     # ── Sentinel health check ────────────────────────────────────────────────
-    if target_regs or mode == "daily_light":
+    if target_regs or mode in {"daily_light", "listing"}:
         logger.info("Sentinel skipped (targeted run via --target-reg-no)", step="sentinel")
         counts["sentinel_passed"] = True
     else:
@@ -1012,6 +1121,15 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     update_crawl_run_progress(run_id, counts)
     logger.info(f"Goa RERA: {len(cards)} projects to process")
     logger.timing("search", time.monotonic() - t0, rows=len(cards))
+
+    if mode == "listing":
+        logger.info(
+            f"Goa listing-only mode complete: {len(cards)} project cards found",
+            step="listing",
+            projects_found=len(cards),
+        )
+        logger.timing("total_run", time.monotonic() - t_run)
+        return counts
 
     machine_name, machine_ip = get_machine_context()
     checked_listing_rows = 0

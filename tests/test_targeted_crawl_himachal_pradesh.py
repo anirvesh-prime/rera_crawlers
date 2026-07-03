@@ -37,7 +37,11 @@ class HimachalPradeshTargetedCrawlTests(unittest.TestCase):
         settings.CRAWL_ITEM_LIMIT = self._orig_limit
 
     def _qs_map(self) -> dict[str, str]:
-        return {"RERAHP01210001": "qs1", "RERAHP01210002": "qs2"}
+        return {
+            "RERAHP01210001": "qs1",
+            "RERAHP01210002": "qs2",
+            "HPRERA2024ABC001": "qs3",
+        }
 
     def _run_with_target(self, target: str):
         settings.TARGET_REG_NO = target
@@ -92,6 +96,40 @@ class HimachalPradeshTargetedCrawlTests(unittest.TestCase):
     def test_targeted_run_is_case_insensitive(self):
         _, processed_regs, _ = self._run_with_target("rerahp01210002")
         self.assertEqual(processed_regs, ["RERAHP01210002"])
+
+    def test_targeted_run_accepts_hprera_prefix(self):
+        _, processed_regs, _ = self._run_with_target("hprera2024abc001")
+        self.assertEqual(processed_regs, ["HPRERA2024ABC001"])
+
+    def test_listing_extracts_both_hp_registration_prefixes(self):
+        class _Resp:
+            text = """
+                <div id="reg-Projects">
+                  <a title="View Application" data-qs="qs-old">RERAHPABC12345678</a>
+                  <a title="View Application" data-qs="qs-new">HPRERA2024ABC001</a>
+                  <a title="View Application" data-qs="qs-other">NOT-A-REG</a>
+                </div>
+                <script>var markers = [];</script>
+            """
+
+            def raise_for_status(self):
+                return None
+
+        class _Client:
+            def get(self, *args, **kwargs):
+                return _Resp()
+
+        logger = mock.MagicMock()
+        with mock.patch.object(hp, "_get_form_data", return_value=[]):
+            _, qs_map = hp._fetch_listing(_Client(), logger)
+
+        self.assertEqual(
+            qs_map,
+            {
+                "RERAHPABC12345678": "qs-old",
+                "HPRERA2024ABC001": "qs-new",
+            },
+        )
 
     def test_full_run_uses_sentinel(self):
         settings.TARGET_REG_NO = ""

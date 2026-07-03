@@ -33,12 +33,17 @@ class _FakeListingPage:
         self.requested_offsets: list[int] = []
         self.content_failures = dict(content_failures or {})
         self.waited_for_pages: list[int] = []
+        self.previous_start_from: int | None = None
 
     def goto(self, *args, **kwargs):
         return None
 
     def wait_for_load_state(self, *args, **kwargs):
         return None
+
+    def go_back(self, *args, **kwargs):
+        if self.previous_start_from is not None:
+            self.start_from = self.previous_start_from
 
     def wait_for_timeout(self, *args, **kwargs):
         return None
@@ -59,6 +64,7 @@ class _FakeListingPage:
         match = goa_rera.re.search(r"pagging\((\d+)\)", selector)
         if not match:
             raise AssertionError(f"unexpected click selector: {selector}")
+        self.previous_start_from = self.start_from
         self.start_from = int(match.group(1))
         self.requested_offsets.append(self.start_from)
 
@@ -67,6 +73,27 @@ class _FakeListingPage:
             self.start_from = int(args[0])
             self.requested_offsets.append(self.start_from)
             return True
+        if "document.readyState" in script and "pagination_links" in script:
+            soup = goa_rera.BeautifulSoup(self.content(), "lxml")
+            active = soup.select_one("ul.pagination li.active a")
+            links = []
+            for anchor in soup.select("ul.pagination li a"):
+                parent = anchor.find_parent("li")
+                links.append({
+                    "text": anchor.get_text(" ", strip=True),
+                    "href": anchor.get("href") or "",
+                    "className": " ".join(parent.get("class", [])) if parent else "",
+                })
+            return {
+                "url": "https://rera.goa.gov.in/reraApp/search",
+                "ready_state": "complete",
+                "active_page_text": active.get_text(strip=True) if active else None,
+                "pagination_links": links,
+                "card_count": len(soup.select("div.no_pad_lft")),
+                "captcha_present": bool(soup.select_one('input[name="captcha"]')),
+                "title": "Fake Goa",
+                "body_preview": soup.get_text(" ", strip=True)[:500],
+            }
         if "pagging" in script:
             raise AssertionError("pagination should click the anchor, not call pagging directly")
         if "form.submit" in script:
@@ -202,6 +229,33 @@ class GoaTargetedCrawlTests(unittest.TestCase):
         sentinel.assert_called_once()
         self.assertFalse(counts["sentinel_passed"])
 
+    def test_listing_mode_returns_after_listing_without_detail_or_db_work(self):
+        settings.TARGET_REG_NO = ""
+        sentinel = mock.MagicMock(return_value=True)
+        with mock.patch.object(goa_rera, "_sentinel_check", sentinel), \
+                mock.patch.object(goa_rera, "_fetch_project_listing", return_value=self._cards()), \
+                mock.patch.object(goa_rera, "load_checkpoint") as load_checkpoint, \
+                mock.patch.object(goa_rera, "update_crawl_run_progress"), \
+                mock.patch.object(goa_rera, "get_project_by_key") as get_project_by_key, \
+                mock.patch.object(goa_rera, "upsert_project") as upsert_project, \
+                mock.patch.object(goa_rera, "_parse_detail_page") as parse_detail, \
+                mock.patch.object(goa_rera, "_quit_driver"):
+            counts = goa_rera.run(
+                {"id": "goa_rera", "state": "Goa", "config_id": 1},
+                run_id=123,
+                mode="listing",
+            )
+
+        sentinel.assert_not_called()
+        load_checkpoint.assert_not_called()
+        get_project_by_key.assert_not_called()
+        upsert_project.assert_not_called()
+        parse_detail.assert_not_called()
+        self.assertTrue(counts["sentinel_passed"])
+        self.assertEqual(counts["projects_found"], 2)
+        self.assertEqual(counts["projects_new"], 0)
+        self.assertEqual(counts["projects_skipped"], 0)
+
     def test_listing_paginates_with_pagging_offsets(self):
         original_max_pages = settings.MAX_PAGES
         settings.MAX_PAGES = 0
@@ -283,6 +337,53 @@ class GoaTargetedCrawlTests(unittest.TestCase):
 
         self.assertIn("PRGO00000280", html)
         logger.warning.assert_not_called()
+
+    def test_pagination_retry_goes_back_and_clicks_same_next_page_again(self):
+        page = _FakeListingPage(
+            {
+                470: _listing_html(
+                    "PRGO00000470",
+                    active_page=48,
+                    page_links=(("47", 460), ("48", None), ("49", 480)),
+                ),
+                480: _listing_html("PRGO00000480", active_page=49),
+            },
+            content_failures={480: 3},
+        )
+        page.start_from = 480
+        page.previous_start_from = 470
+        logger = mock.MagicMock()
+
+        html = goa_rera._retry_goa_pagination_content(page, 480, 470, logger)
+
+        self.assertIn("PRGO00000480", html)
+        self.assertEqual(page.requested_offsets, [480])
+        self.assertIn(48, page.waited_for_pages)
+        self.assertIn(49, page.waited_for_pages)
+
+    def test_pagination_wait_timeout_logs_dom_diagnostics(self):
+        page = _FakeListingPage({
+            420: _listing_html(
+                "PRGO00000420",
+                active_page=42,
+                page_links=(("41", 400), ("42", None), ("43", 420), ("44", 430)),
+            )
+        })
+        page.start_from = 420
+        logger = mock.MagicMock()
+
+        goa_rera._wait_for_goa_listing_page(page, 420, logger)
+
+        logger.warning.assert_called_once()
+        _, kwargs = logger.warning.call_args
+        self.assertEqual(kwargs["step"], "timing")
+        self.assertEqual(kwargs["start_from"], 420)
+        self.assertEqual(kwargs["expected_page"], 43)
+        diagnostics = kwargs["diagnostics"]
+        self.assertEqual(diagnostics["active_page_text"], "42")
+        self.assertEqual(diagnostics["card_count"], 1)
+        self.assertFalse(diagnostics["captcha_present"])
+        self.assertIn({"text": "43", "href": "javascript:pagging(420)", "className": ""}, diagnostics["pagination_links"])
 
     def test_next_numeric_pagination_stops_when_active_page_has_no_higher_number(self):
         soup = goa_rera.BeautifulSoup(
