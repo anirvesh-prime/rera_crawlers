@@ -173,16 +173,6 @@
     {
       "amenity_detail": [
         {
-          "name": "Electrical meter room, Sub-station, Receiving station :",
-          "percent_completed": "0",
-          "remarks": "Only electric meter box"
-        },
-        {
-          "name": "Sewerage (Chamber, Lines, Septic tank, STP) :",
-          "percent_completed": "0",
-          "remarks": "Only STP"
-        },
-        {
           "name": "Visitors Parking :",
           "percent_completed": "0"
         },
@@ -192,9 +182,9 @@
           "remarks": "Only rain water harvesting"
         },
         {
-          "name": "Landscaping & Tree planting :",
+          "name": "Electrical meter room, Sub-station, Receiving station :",
           "percent_completed": "0",
-          "remarks": "TOT LOT"
+          "remarks": "Only electric meter box"
         },
         {
           "name": "Open parking :",
@@ -204,6 +194,16 @@
           "name": "Water supply :",
           "percent_completed": "0",
           "remarks": "Borewell"
+        },
+        {
+          "name": "Sewerage (Chamber, Lines, Septic tank, STP) :",
+          "percent_completed": "0",
+          "remarks": "Only STP"
+        },
+        {
+          "name": "Landscaping & Tree planting :",
+          "percent_completed": "0",
+          "remarks": "TOT LOT"
         }
       ]
     },
@@ -236,16 +236,10 @@
   "uploaded_documents": [
     {
       "link": "https://rera.kerala.gov.in/signed-certificate/1191",
-      "type": "Rera Registration Certificate",
-      "s3_link": "https://docs.primetenders.com/6087120247077897222/registration_certificate_1_0e48dd0ddd98.pdf"
-    }
-  ],
-  "document_urls": [
-    {
-      "link": "https://docs.primetenders.com/6087120247077897222/registration_certificate_1_0e48dd0ddd98.pdf",
       "type": "Rera Registration Certificate"
     }
   ],
+  "document_urls": null,
   "acknowledgement_no": null,
   "submitted_date": null,
   "approved_on_date": null,

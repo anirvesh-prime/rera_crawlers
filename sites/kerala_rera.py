@@ -1671,6 +1671,8 @@ def _collect_listing_cards(
         for card in cards:
             if card.get("cert_no_from_card"):
                 cards_with_page.append((page_num, card))
+                if item_limit and len(cards_with_page) >= item_limit:
+                    break
         save_checkpoint(site_id, mode, page_num, None, run_id)
         # Stream listing progress so the dashboard's projects_found climbs
         # page-by-page rather than jumping at the end.

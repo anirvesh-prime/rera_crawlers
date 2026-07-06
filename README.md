@@ -334,7 +334,7 @@ Run dry-run sample comparisons:
 
 ```bash
 ./venv/bin/python dry_run_compare.py
-./venv/bin/python dry_run_compare.py --site kerala_rera
+./venv/bin/python dry_run_compare.py kerala_rera
 ```
 
 Useful development checks:

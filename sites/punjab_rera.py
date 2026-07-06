@@ -37,6 +37,7 @@ from core.crawler_base import (
     generate_project_key,
     get_target_reg_nos,
     log_daily_light_listing_progress,
+    page_adapter,
     random_delay,
 )
 from core.config import settings
@@ -68,6 +69,8 @@ SEL_VIEW_BTN  = "a#modalOpenerButtonRegdProject"
 SEL_MODAL     = "#myModal"
 SEL_MODAL_VIS = "#myModal.show"
 SEL_CAPTCHA_IMG = "img.capcha-badge"
+SEL_PAGE_LENGTH = "select[name='dataTablePartialViewSearchRegdProject_length']"
+SEL_AJAX_LOADER = "img[src*='ajax-loader.gif'], #dataTablePartialViewSearchRegdProject_processing"
 
 
 # ── SeleniumSession wiring ────────────────────────────────────────────────────
@@ -890,48 +893,211 @@ def _serialize_search_form(soup: BeautifulSoup) -> list[tuple[str, str]]:
 def _search_projects(
     session, logger: CrawlerLogger, target_regs: set[str] | None = None,
 ) -> list[dict]:
+    """Load the listing through the rendered page and scrape DataTables pages.
+
+    Punjab's project list is populated only after the captcha/search action is
+    attempted. Once that first AJAX load completes, the DataTables length and
+    pagination controls can be used without revisiting captcha.
+    """
+    page = page_adapter(getattr(session, "_s", _session()))
+
     # When the run is targeted at a specific reg-no, push it into the search
     # form so the server returns only that project (avoids pulling the entire
-    # ~2k-row listing for a one-project crawl).
+    # listing for a one-project crawl).
     target_reg = next(iter(target_regs)) if target_regs and len(target_regs) == 1 else ""
-    for attempt in range(1, 21):
-        captcha_text, soup = _solve_listing_captcha(session, logger)
-        if not captcha_text or soup is None:
-            continue
-
-        payload = _serialize_search_form(soup)
-        payload = [(k, v) for k, v in payload if k not in (
-            "Input_RegdProject_CaptchaText",
-            "Input_RegdProject_RERAnumberRegistration",
-        )]
-        payload.append(("Input_RegdProject_CaptchaText", captcha_text))
-        payload.append(("Input_RegdProject_RERAnumberRegistration", target_reg))
-
+    for attempt in range(1, 4):
         try:
-            resp = session.post(
-                SEARCH_URL,
-                data=payload,
-                headers={
-                    "X-Requested-With": "XMLHttpRequest",
-                    "Referer": LISTING_URL,
-                },
+            logger.info(f"Opening Punjab listing page (attempt {attempt})", step="listing")
+            page.goto(LISTING_URL, timeout=90_000, wait_until="domcontentloaded")
+            page.wait_for_selector(SEL_CAPTCHA, state="visible", timeout=30_000)
+            page.evaluate(
+                """
+                (targetReg) => {
+                    const reg = document.querySelector(
+                        '[name="Input_RegdProject_RERAnumberRegistration"],'
+                        + '#Input_RegdProject_RERAnumberRegistration'
+                    );
+                    if (reg) {
+                        reg.value = targetReg || '';
+                        reg.dispatchEvent(new Event('input', {bubbles: true}));
+                        reg.dispatchEvent(new Event('change', {bubbles: true}));
+                    }
+                }
+                """,
+                target_reg,
             )
-            resp.raise_for_status()
+            page.fill(SEL_CAPTCHA, "ABC123", timeout=10_000)
+            page.click(SEL_SUBMIT, timeout=10_000)
+            _wait_for_listing_idle(page, logger, timeout=90_000)
+            page.wait_for_selector(SEL_TABLE, state="attached", timeout=60_000)
+            page_size = _set_listing_page_length_max(page, logger)
+            rows = _scrape_listing_pages(page, logger)
+            if rows:
+                logger.info(
+                    f"Search returned {len(rows)} rows"
+                    + (f" with page length {page_size}" if page_size else ""),
+                    step="listing",
+                )
+                return rows
+
+            page_text = page.evaluate("() => document.body ? document.body.innerText : ''") or ""
+            if "Invalid Capcha Text" in page_text:
+                logger.warning(f"Captcha rejected on attempt {attempt}", step="captcha")
+                continue
+            logger.warning(f"No listing rows found on attempt {attempt}", step="listing")
         except Exception as exc:
-            logger.warning(f"Search POST failed: {exc}", step="listing")
+            logger.warning(f"Punjab listing search failed on attempt {attempt}: {exc}", step="listing")
             continue
-
-        if "Invalid Capcha Text" in resp.text:
-            logger.warning(f"Captcha rejected on attempt {attempt}", step="captcha")
-            continue
-
-        rows = _parse_partial_rows(resp.text)
-        if rows:
-            logger.info(f"Search returned {len(rows)} rows", step="listing")
-            return rows
 
     logger.error("Sentinel: no project rows appeared after search", step="sentinel")
     return []
+
+
+def _wait_for_listing_idle(page, logger: CrawlerLogger, *, timeout: int = 60_000) -> None:
+    """Wait until Punjab's AJAX loader/DataTables processing overlay is idle."""
+    try:
+        page.wait_for_function(
+            """
+            (loaderSelector) => {
+                const visible = (el) => {
+                    if (!el) return false;
+                    const style = window.getComputedStyle(el);
+                    if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+                        return false;
+                    }
+                    const rect = el.getBoundingClientRect();
+                    return rect.width > 0 && rect.height > 0;
+                };
+                const loaders = Array.from(document.querySelectorAll(loaderSelector));
+                return loaders.every((el) => !visible(el)) && ((window.__augNetPending || 0) === 0);
+            }
+            """,
+            arg=SEL_AJAX_LOADER,
+            timeout=timeout,
+        )
+    except Exception as exc:
+        logger.warning(f"Timed out waiting for Punjab listing AJAX idle: {exc}", step="listing")
+
+
+def _set_listing_page_length_max(page, logger: CrawlerLogger) -> int | None:
+    """Select the largest DataTables page length option after the first load."""
+    try:
+        page.wait_for_selector(SEL_PAGE_LENGTH, state="visible", timeout=30_000)
+        selected = page.evaluate(
+            """
+            (selector) => {
+                const sel = document.querySelector(selector);
+                if (!sel) return null;
+                const values = Array.from(sel.options)
+                    .map((opt) => parseInt(opt.value, 10))
+                    .filter((value) => Number.isFinite(value) && value > 0);
+                if (!values.length) return null;
+                const max = Math.max(...values);
+                if (String(sel.value) !== String(max)) {
+                    if (window.jQuery) {
+                        window.jQuery(sel).val(String(max)).trigger('change');
+                    } else {
+                        sel.value = String(max);
+                        sel.dispatchEvent(new Event('change', {bubbles: true}));
+                    }
+                }
+                return max;
+            }
+            """,
+            SEL_PAGE_LENGTH,
+        )
+        _wait_for_listing_idle(page, logger, timeout=90_000)
+        if selected:
+            logger.info(f"Punjab listing page length set to {selected}", step="listing")
+            return int(selected)
+    except Exception as exc:
+        logger.warning(f"Could not set Punjab listing page length to max: {exc}", step="listing")
+    return None
+
+
+def _visible_listing_table_html(page) -> str:
+    return page.evaluate(
+        """
+        (selector) => {
+            const table = document.querySelector(selector);
+            return table ? table.outerHTML : '';
+        }
+        """,
+        SEL_TABLE,
+    ) or ""
+
+
+def _listing_page_signature(page) -> str:
+    return page.evaluate(
+        """
+        (selector) => Array.from(document.querySelectorAll(selector + ' tbody tr'))
+            .map((tr) => tr.innerText.trim())
+            .join('\\n')
+        """,
+        SEL_TABLE,
+    ) or ""
+
+
+def _click_listing_next(page) -> bool:
+    return bool(page.evaluate(
+        """
+        () => {
+            const next = document.querySelector(
+                '#dataTablePartialViewSearchRegdProject_next,'
+                + '.dataTables_paginate .next,'
+                + 'li.next'
+            );
+            if (!next) return false;
+            const classText = next.className || '';
+            if (/disabled/i.test(String(classText))) return false;
+            const clickable = next.matches('a,button') ? next : next.querySelector('a,button');
+            if (!clickable) return false;
+            clickable.click();
+            return true;
+        }
+        """
+    ))
+
+
+def _scrape_listing_pages(page, logger: CrawlerLogger) -> list[dict]:
+    rows: list[dict] = []
+    seen_keys: set[tuple[str, str, str, str]] = set()
+    previous_signature = ""
+
+    for page_no in range(1, 501):
+        html = _visible_listing_table_html(page)
+        page_rows = _parse_partial_rows(html)
+        added = 0
+        for row in page_rows:
+            key = (
+                row.get("project_registration_no", ""),
+                row.get("project_id", ""),
+                row.get("promoter_id", ""),
+                row.get("promoter_type", ""),
+            )
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+            rows.append(row)
+            added += 1
+        logger.info(
+            f"Punjab listing page {page_no}: {len(page_rows)} visible rows, {added} new",
+            step="listing",
+        )
+
+        signature = _listing_page_signature(page)
+        if not _click_listing_next(page):
+            break
+        _wait_for_listing_idle(page, logger, timeout=90_000)
+        new_signature = _listing_page_signature(page)
+        if new_signature == signature or new_signature == previous_signature:
+            logger.warning("Punjab listing pagination did not advance; stopping", step="listing")
+            break
+        previous_signature = signature
+    else:
+        logger.warning("Punjab listing pagination hit safety limit; stopping at 500 pages", step="listing")
+
+    return rows
 
 
 def _parse_partial_rows(html: str) -> list[dict]:

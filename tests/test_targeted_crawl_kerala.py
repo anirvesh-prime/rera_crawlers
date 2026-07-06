@@ -116,6 +116,30 @@ class KeralaTargetedCrawlTests(unittest.TestCase):
         sentinel.assert_called_once()
         self.assertFalse(counts["sentinel_passed"])
 
+    def test_collect_listing_cards_stops_at_item_limit(self):
+        progress = mock.MagicMock()
+        with mock.patch.object(kerala_rera, "_parse_explore_cards",
+                               return_value=[c for _, c in self._cards_with_page()]), \
+                mock.patch.object(kerala_rera, "save_checkpoint"):
+            cards, errors = kerala_rera._collect_listing_cards(
+                1,
+                1,
+                mock.MagicMock(),
+                mock.MagicMock(),
+                0,
+                0,
+                "kerala_rera",
+                123,
+                "weekly_deep",
+                item_limit=1,
+                on_progress=progress,
+            )
+
+        self.assertEqual(errors, 0)
+        self.assertEqual(len(cards), 1)
+        self.assertEqual(cards[0][1]["cert_no_from_card"], "K-RERA/PRJ/KKD/001/2023")
+        progress.assert_called_with(1)
+
 
 if __name__ == "__main__":
     unittest.main()
