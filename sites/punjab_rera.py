@@ -1229,6 +1229,7 @@ def _fetch_detail_fields(session, row: dict, logger: CrawlerLogger) -> dict:
 # ── Listing cache ────────────────────────────────────────────────────────────
 
 _LISTING_CACHE_TTL = 4 * 3600  # reuse fetched rows for up to 4 hours
+_MIN_FULL_LISTING_CACHE_ROWS = 101
 
 
 def _listing_cache_path() -> Path:
@@ -1249,6 +1250,13 @@ def _load_listing_cache(logger: CrawlerLogger) -> list[dict] | None:
             )
             return None
         rows = json.loads(path.read_text())
+        if not isinstance(rows, list) or len(rows) < _MIN_FULL_LISTING_CACHE_ROWS:
+            logger.warning(
+                f"Listing cache has only {len(rows) if isinstance(rows, list) else 'invalid'} rows; "
+                "treating as incomplete and re-fetching",
+                step="listing",
+            )
+            return None
         logger.warning(
             f"Listing cache HIT: {len(rows)} rows ({age:.0f}s old) — skipping search fetch",
             step="listing",
