@@ -62,15 +62,16 @@ DOMAIN        = "rera.punjab.gov.in"
 
 # CSS / text selectors (confirmed from live HTML)
 SEL_CAPTCHA   = "#Input_RegdProject_CaptchaText"
-SEL_SUBMIT    = "#btn_MapsProjectSubmit"
+SEL_SUBMIT    = "#btn_MapsProjectSubmit, #btn_SearchProjectSubmit, input[name='submit'][value='Search']"
 SEL_TABLE     = "table#dataTablePartialViewSearchRegdProject"
+SEL_LISTING_TABLES = "table#dataTablePartialViewSearchRegdProject, table#dataTableSearchProject"
 SEL_ROWS      = f"{SEL_TABLE} tbody tr"
 SEL_VIEW_BTN  = "a#modalOpenerButtonRegdProject"
 SEL_MODAL     = "#myModal"
 SEL_MODAL_VIS = "#myModal.show"
 SEL_CAPTCHA_IMG = "img.capcha-badge"
 SEL_PAGE_LENGTH = "select[name='dataTablePartialViewSearchRegdProject_length']"
-SEL_AJAX_LOADER = "img[src*='ajax-loader.gif'], #dataTablePartialViewSearchRegdProject_processing"
+SEL_AJAX_LOADER = ".loader-gif-img, img[src*='ajax-loader.gif'], #dataTablePartialViewSearchRegdProject_processing"
 
 
 # ── SeleniumSession wiring ────────────────────────────────────────────────────
@@ -82,7 +83,7 @@ def _session() -> SeleniumSession:
     """Return the active SeleniumSession, lazy-initialising on first use."""
     global _SESSION
     if _SESSION is None:
-        _SESSION = SeleniumSession(ignore_certificate_errors=True)
+        _SESSION = SeleniumSession(ignore_certificate_errors=True, block_images=False)
     return _SESSION
 
 
@@ -926,10 +927,11 @@ def _search_projects(
                 """,
                 target_reg,
             )
-            page.fill(SEL_CAPTCHA, "ABC123", timeout=10_000)
-            page.click(SEL_SUBMIT, timeout=10_000)
+            captcha_text = _solve_search_captcha(page, logger) or "ABC123"
+            page.fill(SEL_CAPTCHA, captcha_text, timeout=10_000)
+            _submit_listing_search(page)
             _wait_for_listing_idle(page, logger, timeout=90_000)
-            page.wait_for_selector(SEL_TABLE, state="attached", timeout=60_000)
+            _wait_for_listing_results(page, timeout=90_000)
             page_size = _set_listing_page_length_max(page, logger)
             rows = _scrape_listing_pages(page, logger)
             if rows:
@@ -951,6 +953,47 @@ def _search_projects(
 
     logger.error("Sentinel: no project rows appeared after search", step="sentinel")
     return []
+
+
+def _submit_listing_search(page) -> None:
+    clicked = page.evaluate(
+        """
+        (selector) => {
+            const visible = (el) => {
+                if (!el) return false;
+                const style = window.getComputedStyle(el);
+                if (style.display === 'none' || style.visibility === 'hidden') return false;
+                const rect = el.getBoundingClientRect();
+                return rect.width > 0 && rect.height > 0;
+            };
+            const buttons = Array.from(document.querySelectorAll(selector));
+            const btn = buttons.find(visible) || buttons[0];
+            if (!btn) return false;
+            btn.scrollIntoView({block: 'center', inline: 'center'});
+            btn.click();
+            return true;
+        }
+        """,
+        SEL_SUBMIT,
+    )
+    if clicked:
+        return
+    submitted = page.evaluate(
+        """
+        () => {
+            const form = document.querySelector('form#ProjectPVform') || document.querySelector('form');
+            if (!form) return false;
+            if (window.jQuery) {
+                window.jQuery(form).trigger('submit');
+            } else {
+                form.dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}));
+            }
+            return true;
+        }
+        """
+    )
+    if not submitted:
+        raise RuntimeError("Punjab listing submit button/form not found")
 
 
 def _wait_for_listing_idle(page, logger: CrawlerLogger, *, timeout: int = 60_000) -> None:
@@ -977,6 +1020,21 @@ def _wait_for_listing_idle(page, logger: CrawlerLogger, *, timeout: int = 60_000
         )
     except Exception as exc:
         logger.warning(f"Timed out waiting for Punjab listing AJAX idle: {exc}", step="listing")
+
+
+def _wait_for_listing_results(page, *, timeout: int = 60_000) -> None:
+    page.wait_for_function(
+        """
+        () => {
+            const result = document.querySelector('#viewProjectPVList');
+            if (!result) return false;
+            const text = result.innerText || '';
+            if (/Invalid Capcha Text/i.test(text)) return true;
+            return !!result.querySelector('table tbody tr');
+        }
+        """,
+        timeout=timeout,
+    )
 
 
 def _set_listing_page_length_max(page, logger: CrawlerLogger) -> int | None:
