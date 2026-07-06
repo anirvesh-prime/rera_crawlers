@@ -782,6 +782,12 @@ def upsert_project(data: dict[str, Any]) -> str:
     key = data["key"]
     if settings.CRAWLER_TESTER:
         _log_extracted_fields(data)
+        _log_test_skip(
+            "upsert rera_projects",
+            key=key,
+            reg=data.get("project_registration_no") or data.get("registration_no") or data.get("rera_no"),
+        )
+        return "new"
     with _db_lock:
         conn = get_connection()
 
