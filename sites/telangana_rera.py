@@ -380,12 +380,18 @@ def _goto_next_page(page: Any, fast: bool = False) -> bool:
     """
     try:
         current_page = _get_current_page(page)
-        next_link = page.query_selector(
-            "#btnNext:not([disabled]), "
-            "button[name='Command'][value='Next']:not([disabled]), "
-            "input[name='Command'][value='Next']:not([disabled]), "
-            "a:text-matches('^>$|^Next$|^»$', 'i')"
-        )
+        next_link = None
+        for selector in (
+            "#btnNext:not([disabled])",
+            "button[name='Command'][value='Next']:not([disabled])",
+            "input[name='Command'][value='Next']:not([disabled])",
+            "text=Next",
+            "text=>",
+            "text=»",
+        ):
+            next_link = page.query_selector(selector)
+            if next_link:
+                break
         if not next_link:
             return False
         next_link.click()
@@ -406,7 +412,7 @@ def _goto_next_page(page: Any, fast: bool = False) -> bool:
                     const current = parseInt(el.value || el.textContent || '0', 10);
                     return Number.isFinite(current) && current > prev;
                 }""",
-                current_page,
+                arg=current_page,
                 timeout=10_000 if fast else 30_000,
             )
         except Exception:

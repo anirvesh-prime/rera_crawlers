@@ -27,6 +27,46 @@ class _FakeRecord:
         return self._d
 
 
+class _FakeNextButton:
+    def __init__(self, page: "_FakePaginationPage"):
+        self.page = page
+
+    def click(self):
+        self.page.current_page += 1
+
+
+class _FakePaginationPage:
+    def __init__(self):
+        self.current_page = 1
+        self.queries: list[str] = []
+        self.wait_arg = None
+
+    def content(self) -> str:
+        return (
+            "<html><body>"
+            f"<input type='hidden' id='CurrentPage' value='{self.current_page}' />"
+            "<input type='hidden' id='TotalPages' value='2' />"
+            "</body></html>"
+        )
+
+    def query_selector(self, selector: str):
+        self.queries.append(selector)
+        if "text-matches" in selector:
+            raise AssertionError("Playwright text-matches selector should not be used")
+        if selector == "#btnNext:not([disabled])":
+            return _FakeNextButton(self)
+        return None
+
+    def wait_for_load_state(self, *args, **kwargs):
+        return None
+
+    def wait_for_function(self, script, *, arg=None, timeout=0, **kwargs):
+        self.wait_arg = arg
+        if arg is None:
+            raise AssertionError("current page must be passed as keyword arg")
+        return None
+
+
 class TelanganaTargetedCrawlTests(unittest.TestCase):
     def setUp(self) -> None:
         self._orig_target = settings.TARGET_REG_NO
@@ -144,6 +184,15 @@ class TelanganaTargetedCrawlTests(unittest.TestCase):
             ignore_certificate_errors=True,
             block_images=False,
         )
+
+    def test_goto_next_page_uses_selenium_safe_next_selector(self):
+        page = _FakePaginationPage()
+
+        self.assertTrue(telangana_rera._goto_next_page(page, fast=True))
+
+        self.assertEqual(page.current_page, 2)
+        self.assertEqual(page.queries, ["#btnNext:not([disabled])"])
+        self.assertEqual(page.wait_arg, 1)
 
 
 if __name__ == "__main__":
