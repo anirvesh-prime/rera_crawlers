@@ -930,8 +930,8 @@ def _search_projects(
             captcha_text = _solve_search_captcha(page, logger) or "ABC123"
             page.fill(SEL_CAPTCHA, captcha_text, timeout=10_000)
             _submit_listing_search(page)
-            _wait_for_listing_idle(page, logger, timeout=90_000)
-            _wait_for_listing_results(page, timeout=90_000)
+            _wait_for_listing_idle(page, logger, timeout=10_000, warn_timeout=False)
+            _wait_for_listing_results(page, timeout=150_000)
             page_size = _set_listing_page_length_max(page, logger)
             rows = _scrape_listing_pages(page, logger)
             if rows:
@@ -996,7 +996,13 @@ def _submit_listing_search(page) -> None:
         raise RuntimeError("Punjab listing submit button/form not found")
 
 
-def _wait_for_listing_idle(page, logger: CrawlerLogger, *, timeout: int = 60_000) -> None:
+def _wait_for_listing_idle(
+    page,
+    logger: CrawlerLogger,
+    *,
+    timeout: int = 60_000,
+    warn_timeout: bool = True,
+) -> None:
     """Wait until Punjab's AJAX loader/DataTables processing overlay is idle."""
     try:
         page.wait_for_function(
@@ -1012,14 +1018,15 @@ def _wait_for_listing_idle(page, logger: CrawlerLogger, *, timeout: int = 60_000
                     return rect.width > 0 && rect.height > 0;
                 };
                 const loaders = Array.from(document.querySelectorAll(loaderSelector));
-                return loaders.every((el) => !visible(el)) && ((window.__augNetPending || 0) === 0);
+                return loaders.every((el) => !visible(el));
             }
             """,
             arg=SEL_AJAX_LOADER,
             timeout=timeout,
         )
     except Exception as exc:
-        logger.warning(f"Timed out waiting for Punjab listing AJAX idle: {exc}", step="listing")
+        if warn_timeout:
+            logger.warning(f"Timed out waiting for Punjab listing AJAX idle: {exc}", step="listing")
 
 
 def _wait_for_listing_results(page, *, timeout: int = 60_000) -> None:
@@ -1100,6 +1107,18 @@ def _click_listing_next(page) -> bool:
     return bool(page.evaluate(
         """
         () => {
+            if (window.jQuery && window.jQuery.fn && window.jQuery.fn.DataTable) {
+                const table = window.jQuery('#dataTablePartialViewSearchRegdProject');
+                if (table.length && window.jQuery.fn.dataTable.isDataTable(table)) {
+                    const dt = table.DataTable();
+                    const info = dt.page.info();
+                    if (info && info.page < info.pages - 1) {
+                        dt.page('next').draw('page');
+                        return true;
+                    }
+                    return false;
+                }
+            }
             const next = document.querySelector(
                 '#dataTablePartialViewSearchRegdProject_next,'
                 + '.dataTables_paginate .next,'
@@ -1242,6 +1261,9 @@ def _load_listing_cache(logger: CrawlerLogger) -> list[dict] | None:
 
 def _save_listing_cache(rows: list[dict], logger: CrawlerLogger) -> None:
     """Persist listing rows to disk so a restarted run can skip the fetch."""
+    if settings.TEST_MODE or settings.CRAWLER_TESTER:
+        logger.info("Listing cache not saved in test mode", step="listing")
+        return
     path = _listing_cache_path()
     try:
         path.parent.mkdir(parents=True, exist_ok=True)

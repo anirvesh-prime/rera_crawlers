@@ -61,6 +61,8 @@ _PAGINATION_READY_TIMEOUT_MS = 20_000
 _CONTENT_READ_RETRIES = 20
 _CONTENT_READ_RETRY_DELAY_MS = 500
 _PAGINATION_NAV_RETRIES = 3
+_PAGINATION_SESSION_RECOVERIES = 2
+_CAPTCHA_RESULT_RE = re.compile(r"^[A-Za-z0-9]{6}$")
 _CAPTCHA_SELECTORS = [
     '#captcha_id',
     'img[name="imgCaptcha"]',
@@ -515,10 +517,53 @@ def _submit_goa_search(page, start_from: int, captcha_text: str) -> bool:
     ))
 
 
+def _submit_goa_pagination(page, start_from: int) -> bool:
+    """Submit Goa's listing form directly for the requested pagination offset."""
+    return bool(page.evaluate(
+        """(value) => {
+            const form = document.getElementById('searchForm') || document.searchForm;
+            if (!form) return false;
+
+            const regType = form.querySelector('#Regtype, [name=Regtype]');
+            if (regType) regType.value = 'Project';
+
+            let input = form.querySelector('[name=startFrom]');
+            if (!input) {
+                input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'startFrom';
+                form.appendChild(input);
+            }
+            input.value = String(value);
+
+            const searchTxt = form.querySelector('[name=searchTxt]');
+            if (searchTxt) searchTxt.value = '';
+
+            form.submit();
+            return true;
+        }""",
+        start_from,
+    ))
+
+
 def _click_goa_pagination(page, start_from: int) -> None:
     """Click Goa's visible pagination anchor for the requested startFrom offset."""
     selector = f'a[href="javascript:pagging({start_from})"]'
     page.click(selector, timeout=10_000)
+
+
+def _navigate_goa_pagination(page, start_from: int) -> None:
+    """Move to a Goa listing page, using the portal's own pagination hook."""
+    try:
+        _click_goa_pagination(page, start_from)
+        return
+    except Exception as click_exc:
+        try:
+            if _submit_goa_pagination(page, start_from):
+                return
+        except Exception:
+            pass
+        raise click_exc
 
 
 def _goa_page_number_for_offset(start_from: int) -> int:
@@ -634,7 +679,7 @@ def _retry_goa_pagination_content(
     previous_start_from: int | None,
     logger: CrawlerLogger,
 ) -> str | None:
-    """Retry a stuck Goa pagination click from the last successfully parsed page."""
+    """Retry a stuck Goa pagination request without relying on browser history."""
     for attempt in range(2, _PAGINATION_NAV_RETRIES + 1):
         logger.warning(
             f"Retrying Goa pagination startFrom={start_from} (attempt {attempt}/{_PAGINATION_NAV_RETRIES})",
@@ -644,11 +689,7 @@ def _retry_goa_pagination_content(
             attempt=attempt,
         )
         try:
-            if previous_start_from is not None and hasattr(page, "go_back"):
-                page.go_back(timeout=10_000)
-                page.wait_for_load_state("domcontentloaded", timeout=10_000)
-                _wait_for_goa_listing_page(page, previous_start_from, logger)
-            _click_goa_pagination(page, start_from)
+            _navigate_goa_pagination(page, start_from)
             page.wait_for_load_state("domcontentloaded", timeout=15_000)
             _wait_for_goa_listing_page(page, start_from, logger)
         except Exception as exc:
@@ -668,6 +709,36 @@ def _retry_goa_pagination_content(
         if html_content:
             return html_content
     return None
+
+
+def _recover_goa_listing_session(
+    start_from: int,
+    recoveries: dict[int, int],
+    logger: CrawlerLogger,
+    reason: str,
+) -> bool:
+    """Reset Chrome and let the outer loop solve CAPTCHA again at start_from."""
+    attempted = recoveries.get(start_from, 0)
+    if attempted >= _PAGINATION_SESSION_RECOVERIES:
+        logger.error(
+            f"Goa pagination startFrom={start_from} failed after "
+            f"{_PAGINATION_SESSION_RECOVERIES} fresh session recovery attempt(s)",
+            step="timing",
+            start_from=start_from,
+            reason=reason,
+        )
+        return False
+    recoveries[start_from] = attempted + 1
+    logger.warning(
+        f"Restarting Goa Selenium session at startFrom={start_from} after pagination failure",
+        step="timing",
+        start_from=start_from,
+        recovery_attempt=recoveries[start_from],
+        max_recoveries=_PAGINATION_SESSION_RECOVERIES,
+        reason=reason,
+    )
+    _quit_driver()
+    return True
 
 
 # ── Captcha + listing via Selenium ────────────────────────────────────────────
@@ -794,6 +865,7 @@ def _fetch_project_listing(
     pages_fetched = 0
     _server_rejections = 0  # count server-side captcha rejections to avoid infinite loop
     first_search_submitted = False
+    pagination_session_recoveries: dict[int, int] = {}
 
     page = page_adapter(_session())
     logger.info("Starting Goa listing captcha search", step="timing")
@@ -852,7 +924,8 @@ def _fetch_project_listing(
                     logger.warning(f"Captcha solver exception (attempt {captcha_attempt}/{_CAPTCHA_MAX_TRIES}): {e}")
                     continue
 
-                if candidate and len(candidate) >= 4:
+                candidate = re.sub(r"[^A-Za-z0-9]", "", candidate or "")
+                if _CAPTCHA_RESULT_RE.fullmatch(candidate):
                     solved = candidate
                     logger.info(f"Captcha solved on attempt {captcha_attempt}: {solved!r}")
                     break
@@ -878,11 +951,20 @@ def _fetch_project_listing(
                 collected=len(all_cards),
             )
             try:
-                _click_goa_pagination(page, start_from)
+                _navigate_goa_pagination(page, start_from)
                 page.wait_for_load_state("domcontentloaded", timeout=15_000)
                 _wait_for_goa_listing_page(page, start_from, logger)
             except Exception as e:
-                logger.error(f"Pagination failed: {e}")
+                logger.warning(f"Pagination failed at startFrom={start_from}: {e}", step="timing")
+                if _recover_goa_listing_session(
+                    start_from,
+                    pagination_session_recoveries,
+                    logger,
+                    reason=f"navigation failed: {e}",
+                ):
+                    page = page_adapter(_session())
+                    first_search_submitted = False
+                    continue
                 break
 
         # page.content() can fail if the page is mid-navigation; retry long
@@ -900,6 +982,16 @@ def _fetch_project_listing(
                 last_successful_start_from,
                 logger,
             )
+        if not html_content and paginating:
+            if _recover_goa_listing_session(
+                start_from,
+                pagination_session_recoveries,
+                logger,
+                reason="content unavailable after pagination retries",
+            ):
+                page = page_adapter(_session())
+                first_search_submitted = False
+                continue
         if not html_content:
             break
         soup = BeautifulSoup(html_content, "lxml")
@@ -915,8 +1007,24 @@ def _fetch_project_listing(
         first_search_submitted = True
         cards = _parse_listing_cards(soup)
         if not cards:
+            if not paginating:
+                _server_rejections += 1
+                body_preview = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))[:500]
+                logger.warning(
+                    f"Goa search returned no cards after CAPTCHA "
+                    f"(rejection #{_server_rejections}/{_MAX_SERVER_REJECTS}) — retrying",
+                    step="captcha",
+                    start_from=start_from,
+                    body_preview=body_preview,
+                )
+                if _server_rejections >= _MAX_SERVER_REJECTS:
+                    logger.error("Too many captcha/search rejections — stopping")
+                    break
+                first_search_submitted = False
+                continue
             logger.info(f"No cards at startFrom={start_from} — listing complete")
             break
+        _server_rejections = 0
         last_successful_start_from = start_from
         pages_fetched += 1
         new_cards = []

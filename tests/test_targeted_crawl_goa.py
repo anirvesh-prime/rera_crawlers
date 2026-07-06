@@ -300,7 +300,7 @@ class GoaTargetedCrawlTests(unittest.TestCase):
                         "_captcha_data_url_from_page",
                         return_value="data:image/png;base64," + ("x" * 100),
                     ), \
-                    mock.patch("core.captcha_solver.captcha_to_text", return_value="1234"):
+                    mock.patch("core.captcha_solver.captcha_to_text", return_value="123456"):
                 cards = goa_rera._fetch_project_listing(
                     {"id": "goa_rera"},
                     run_id=123,
@@ -338,7 +338,7 @@ class GoaTargetedCrawlTests(unittest.TestCase):
         self.assertIn("PRGO00000280", html)
         logger.warning.assert_not_called()
 
-    def test_pagination_retry_goes_back_and_clicks_same_next_page_again(self):
+    def test_pagination_retry_resubmits_same_next_page_without_history(self):
         page = _FakeListingPage(
             {
                 470: _listing_html(
@@ -358,8 +358,66 @@ class GoaTargetedCrawlTests(unittest.TestCase):
 
         self.assertIn("PRGO00000480", html)
         self.assertEqual(page.requested_offsets, [480])
-        self.assertIn(48, page.waited_for_pages)
         self.assertIn(49, page.waited_for_pages)
+
+    def test_listing_recovers_crashed_pagination_with_fresh_captcha_session(self):
+        original_max_pages = settings.MAX_PAGES
+        settings.MAX_PAGES = 0
+        first_page = _FakeListingPage(
+            {
+                0: _listing_html(
+                    "PRGO00000001",
+                    active_page=1,
+                    page_links=(("1", None), ("2", 10)),
+                ),
+                10: _listing_html(
+                    "PRGO00000002",
+                    active_page=2,
+                    page_links=(("1", 0), ("2", None), ("3", 20)),
+                ),
+                20: _listing_html("PRGO00000003", active_page=3),
+            },
+            content_failures={20: 100},
+        )
+        recovered_page = _FakeListingPage({
+            20: _listing_html("PRGO00000003", active_page=3),
+        })
+        logger = mock.MagicMock()
+
+        try:
+            with mock.patch.object(goa_rera, "_session", return_value=object()), \
+                    mock.patch.object(
+                        goa_rera,
+                        "page_adapter",
+                        side_effect=[first_page, recovered_page],
+                    ), \
+                    mock.patch.object(goa_rera, "_quit_driver") as quit_driver, \
+                    mock.patch.object(goa_rera, "_wait_for_captcha_selector", return_value="#captcha"), \
+                    mock.patch.object(
+                        goa_rera,
+                        "_captcha_data_url_from_page",
+                        return_value="data:image/png;base64," + ("x" * 100),
+                    ), \
+                    mock.patch("core.captcha_solver.captcha_to_text", return_value="123456"):
+                cards = goa_rera._fetch_project_listing(
+                    {"id": "goa_rera"},
+                    run_id=123,
+                    logger=logger,
+                )
+        finally:
+            settings.MAX_PAGES = original_max_pages
+
+        self.assertEqual(
+            [c["project_registration_no"] for c in cards],
+            ["PRGO00000001", "PRGO00000002", "PRGO00000003"],
+        )
+        self.assertEqual(first_page.requested_offsets, [0, 10, 20, 20, 20])
+        self.assertEqual(recovered_page.requested_offsets, [20])
+        quit_driver.assert_called_once()
+        self.assertTrue(any(
+            "Restarting Goa Selenium session at startFrom=20" in call.args[0]
+            for call in logger.warning.call_args_list
+        ))
 
     def test_pagination_wait_timeout_logs_dom_diagnostics(self):
         page = _FakeListingPage({
