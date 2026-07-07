@@ -63,6 +63,7 @@ class UttarPradeshTargetedCrawlTests(unittest.TestCase):
             mock.patch.object(uttar_pradesh_rera, "load_checkpoint", return_value={}),
             mock.patch.object(uttar_pradesh_rera, "save_checkpoint"),
             mock.patch.object(uttar_pradesh_rera, "reset_checkpoint"),
+            mock.patch.object(uttar_pradesh_rera, "update_crawl_run_progress"),
             mock.patch.object(uttar_pradesh_rera, "random_delay"),
             mock.patch.object(uttar_pradesh_rera, "_fetch_district_listing", return_value=self._stubs()),
             mock.patch.object(
@@ -123,6 +124,8 @@ class UttarPradeshTargetedCrawlTests(unittest.TestCase):
         sentinel = mock.MagicMock(return_value=True)
         with mock.patch.object(uttar_pradesh_rera, "_sentinel_check", sentinel), \
                 mock.patch.object(uttar_pradesh_rera, "load_checkpoint", return_value={}), \
+                mock.patch.object(uttar_pradesh_rera, "reset_checkpoint"), \
+                mock.patch.object(uttar_pradesh_rera, "update_crawl_run_progress"), \
                 mock.patch.object(uttar_pradesh_rera, "_UP_DISTRICTS", []):
             uttar_pradesh_rera.run(
                 {"id": "uttar_pradesh_rera", "config_id": 1},

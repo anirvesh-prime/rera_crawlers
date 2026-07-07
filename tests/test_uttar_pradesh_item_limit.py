@@ -48,6 +48,7 @@ class UttarPradeshItemLimitTests(unittest.TestCase):
             mock.patch.object(uttar_pradesh_rera, "load_checkpoint", return_value={}),
             mock.patch.object(uttar_pradesh_rera, "save_checkpoint"),
             mock.patch.object(uttar_pradesh_rera, "reset_checkpoint"),
+            mock.patch.object(uttar_pradesh_rera, "update_crawl_run_progress"),
             mock.patch.object(uttar_pradesh_rera, "random_delay"),
             mock.patch.object(uttar_pradesh_rera, "_fetch_district_listing", return_value=stubs),
             mock.patch.object(

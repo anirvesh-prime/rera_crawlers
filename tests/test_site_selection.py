@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from sites_config import parse_site_selection, select_sites
+from core.project_schema import CANONICAL_PROJECT_STATES
+from sites_config import SITES, parse_site_selection, select_sites
 
 
 class SiteSelectionTests(unittest.TestCase):
@@ -40,6 +41,15 @@ class SiteSelectionTests(unittest.TestCase):
         self.assertEqual(sites, [])
         self.assertEqual(unknown, ["missing_site"])
         self.assertEqual(disabled, [])
+
+    def test_configured_site_states_match_canonical_database_values(self):
+        allowed = set(CANONICAL_PROJECT_STATES)
+        mismatches = [
+            (site["id"], site.get("state"))
+            for site in SITES
+            if site.get("state") not in allowed
+        ]
+        self.assertEqual(mismatches, [])
 
 
 if __name__ == "__main__":

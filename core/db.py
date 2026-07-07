@@ -17,7 +17,13 @@ from psycopg.sql import SQL, Identifier
 from psycopg.types.json import Jsonb
 
 from core.config import settings
-from core.project_schema import JSONB_FIELDS, REQUIRED_PROJECT_FIELDS
+from core.project_schema import (
+    CANONICAL_PROJECT_STATES,
+    JSONB_FIELDS,
+    REQUIRED_PROJECT_FIELDS,
+    canonical_project_state,
+    normalize_project_state_key,
+)
 
 log = logging.getLogger(__name__)
 
@@ -43,6 +49,7 @@ _COMPARE_IGNORE: frozenset[str] = frozenset({
     "machine_name", "is_processed", "is_duplicate", "last_updated",
     "updated_fields", "old_updates", "iw_picked", "iw_processed",
     "last_crawled_date", "doc_ocr_url", "has_same_data", "url", "key",
+    "project_state",
 })
 
 # Values treated as empty/null (mirrors constants.none_list)
@@ -440,8 +447,12 @@ def _db_value(value: Any, column: str = "") -> Any:
 
 
 def _missing_required_project_fields(data: Mapping[str, Any]) -> list[str]:
+    required_fields = set(REQUIRED_PROJECT_FIELDS)
+    state_key = normalize_project_state_key(data.get("state") or data.get("project_state"))
+    if state_key == "telangana":
+        required_fields.discard("project_registration_no")
     missing: list[str] = []
-    for field in sorted(REQUIRED_PROJECT_FIELDS):
+    for field in sorted(required_fields):
         value = data.get(field)
         if isinstance(value, str):
             if not value.strip():
@@ -450,6 +461,19 @@ def _missing_required_project_fields(data: Mapping[str, Any]) -> list[str]:
         if _is_none_equiv(value):
             missing.append(field)
     return missing
+
+
+def _prepare_project_write_payload(data: Mapping[str, Any]) -> dict[str, Any]:
+    prepared = dict(data)
+    state_source = prepared.get("state") or prepared.get("project_state")
+    if state_source:
+        normalized_state = canonical_project_state(state_source)
+        if normalized_state is None:
+            expected = ", ".join(CANONICAL_PROJECT_STATES)
+            raise ValueError(f"Unknown project state {state_source!r}; expected one of: {expected}")
+        prepared["state"] = normalized_state
+    prepared.pop("project_state", None)
+    return prepared
 
 
 def _log_extracted_fields(data: Mapping[str, Any]) -> None:
@@ -718,8 +742,9 @@ def get_project_by_registration_no(
     params: list[str] = [reg_no]
     scope_clauses: list[str] = []
     if state:
-        scope_clauses.append("(lower(state) = lower(%s) OR lower(project_state) = lower(%s))")
-        params.extend([state, state])
+        scoped_state = canonical_project_state(state) or state
+        scope_clauses.append("lower(state) = lower(%s)")
+        params.append(scoped_state)
     if domain:
         scope_clauses.append("lower(domain) = lower(%s)")
         params.append(domain)
@@ -788,6 +813,8 @@ def upsert_project(data: dict[str, Any]) -> str:
             reg=data.get("project_registration_no") or data.get("registration_no") or data.get("rera_no"),
         )
         return "new"
+    data = _prepare_project_write_payload(data)
+    key = data["key"]
     with _db_lock:
         conn = get_connection()
 
@@ -885,6 +912,7 @@ def _parse_old_updates(raw: Any) -> list[dict]:
 
 def _insert_project(data: dict[str, Any], conn: psycopg.Connection):
     """Execute INSERT within the caller's transaction — no commit here."""
+    data = _prepare_project_write_payload(data)
     missing = _missing_required_project_fields(data)
     if missing:
         raise ValueError(
@@ -935,6 +963,7 @@ def _update_project_fields(
     _BOOKKEEPING = ["updated_fields", "last_updated", "last_crawled_date",
                     "old_updates", "config_id", "is_updated", "iw_processed",
                     "machine_name", "crawl_machine_ip"]
+    updated_fields = [field for field in updated_fields if field != "project_state"]
     # Deduplicate preserving order: changed fields first, then bookkeeping
     seen: set[str] = set()
     all_columns: list[str] = []

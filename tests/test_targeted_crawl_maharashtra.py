@@ -98,7 +98,7 @@ class MaharashtraTargetedCrawlTests(unittest.TestCase):
             for patcher in patches:
                 stack.enter_context(patcher)
             counts = maharashtra_rera.run(
-                {"id": "maharashtra_rera", "state": "Maharashtra", "config_id": 1},
+                {"id": "maharashtra_rera", "state": "MAHARASHTRA", "config_id": 1},
                 run_id=123,
                 mode="weekly_deep",
             )
@@ -122,7 +122,7 @@ class MaharashtraTargetedCrawlTests(unittest.TestCase):
         sentinel = mock.MagicMock(return_value=False)
         with mock.patch.object(maharashtra_rera, "_sentinel_check", sentinel):
             counts = maharashtra_rera.run(
-                {"id": "maharashtra_rera", "state": "Maharashtra", "config_id": 1},
+                {"id": "maharashtra_rera", "state": "MAHARASHTRA", "config_id": 1},
                 run_id=1,
                 mode="weekly_deep",
             )
@@ -183,7 +183,7 @@ class MaharashtraTargetedCrawlTests(unittest.TestCase):
             for patcher in patches:
                 stack.enter_context(patcher)
             counts = maharashtra_rera.run(
-                {"id": "maharashtra_rera", "state": "Maharashtra", "config_id": 1},
+                {"id": "maharashtra_rera", "state": "MAHARASHTRA", "config_id": 1},
                 run_id=123,
                 mode="weekly_deep",
             )
@@ -244,7 +244,7 @@ class MaharashtraTargetedCrawlTests(unittest.TestCase):
             for patcher in patches:
                 stack.enter_context(patcher)
             counts = maharashtra_rera.run(
-                {"id": "maharashtra_rera", "state": "Maharashtra", "config_id": 1},
+                {"id": "maharashtra_rera", "state": "MAHARASHTRA", "config_id": 1},
                 run_id=123,
                 mode="weekly_deep",
             )

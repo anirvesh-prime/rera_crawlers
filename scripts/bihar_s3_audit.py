@@ -22,14 +22,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from core.db import get_connection
 
-DEFAULT_STATE = "Bihar"
+DEFAULT_STATE = "bihar"
 DEFAULT_MACHINE = "anirveshs-g-2vcpu-8gb-blr1-01"
 
 
 def fetch_project_keys(conn, state: str, machine_name: str) -> list[str]:
     rows = conn.execute(
         "SELECT key FROM rera_projects "
-        "WHERE project_state = %s AND machine_name = %s "
+        "WHERE state = %s AND machine_name = %s "
         "ORDER BY key",
         (state, machine_name),
     ).fetchall()
@@ -41,7 +41,7 @@ def main(argv: list[str] | None = None) -> int:
         description="List rera_projects.key values for a (state, machine_name) pair.",
     )
     parser.add_argument("--state", default=DEFAULT_STATE,
-                        help=f"project_state filter (default: {DEFAULT_STATE!r}).")
+                        help=f"state filter (default: {DEFAULT_STATE!r}).")
     parser.add_argument("--machine-name", default=DEFAULT_MACHINE,
                         help=f"machine_name filter (default: {DEFAULT_MACHINE!r}).")
     parser.add_argument("--output", default="bihar_s3_audit/bihar_s3_audit_project_keys.txt",

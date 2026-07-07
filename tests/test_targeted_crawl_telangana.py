@@ -12,6 +12,7 @@ Fully offline: all network / DB / Selenium calls are mocked.
 from __future__ import annotations
 
 import unittest
+import base64
 from contextlib import ExitStack
 from unittest import mock
 
@@ -93,10 +94,12 @@ class TelanganaTargetedCrawlTests(unittest.TestCase):
 
     def _run_with_target(self, target: str):
         settings.TARGET_REG_NO = target
-        processed_regs: list[str] = []
+        processed_projects: list[str] = []
+        payloads: list[dict] = []
 
         def upsert_side_effect(payload: dict) -> str:
-            processed_regs.append(payload.get("project_registration_no"))
+            payloads.append(payload)
+            processed_projects.append(payload.get("project_name"))
             return "new"
 
         sentinel = mock.MagicMock(return_value=True)
@@ -113,7 +116,7 @@ class TelanganaTargetedCrawlTests(unittest.TestCase):
             mock.patch.object(
                 telangana_rera, "_scrape_print_preview",
                 side_effect=lambda soup, row: {
-                    "project_registration_no": row["_reg"],
+                    "plan_approval_number": row["_reg"],
                     "project_name": row["project_name"],
                     "promoter_name": row["promoter_name"],
                 },
@@ -130,7 +133,6 @@ class TelanganaTargetedCrawlTests(unittest.TestCase):
             mock.patch.object(telangana_rera, "insert_crawl_error"),
             mock.patch.object(telangana_rera, "get_machine_context",
                               return_value=("host", "127.0.0.1")),
-            mock.patch.object(telangana_rera, "ProjectRecord", _FakeRecord),
             mock.patch.object(telangana_rera, "_quit_driver"),
             mock.patch.object(
                 telangana_rera, "normalize_project_payload",
@@ -145,20 +147,22 @@ class TelanganaTargetedCrawlTests(unittest.TestCase):
                 run_id=123,
                 mode="weekly_deep",
             )
-        return counts, processed_regs, sentinel
+        return counts, processed_projects, payloads, sentinel
 
     def test_targeted_run_skips_sentinel_and_filters_detail(self):
-        counts, processed_regs, sentinel = self._run_with_target("P02400002")
+        counts, processed_projects, payloads, sentinel = self._run_with_target("P02400002")
 
         sentinel.assert_not_called()
         self.assertTrue(counts["sentinel_passed"])
-        self.assertEqual(processed_regs, ["P02400002"])
+        self.assertEqual(processed_projects, ["Beta"])
+        self.assertNotIn("project_registration_no", payloads[0])
         self.assertEqual(counts["projects_found"], 1)
         self.assertEqual(counts["projects_new"], 1)
 
     def test_targeted_run_is_case_insensitive(self):
-        _, processed_regs, _ = self._run_with_target("p02400002")
-        self.assertEqual(processed_regs, ["P02400002"])
+        _, processed_projects, payloads, _ = self._run_with_target("p02400002")
+        self.assertEqual(processed_projects, ["Beta"])
+        self.assertNotIn("project_registration_no", payloads[0])
 
     def test_full_run_uses_sentinel(self):
         settings.TARGET_REG_NO = ""
@@ -193,6 +197,57 @@ class TelanganaTargetedCrawlTests(unittest.TestCase):
         self.assertEqual(page.current_page, 2)
         self.assertEqual(page.queries, ["#btnNext:not([disabled])"])
         self.assertEqual(page.wait_arg, 1)
+
+    def test_doc_decoded_uses_project_id_and_user_id_only(self):
+        def enc(query: str) -> str:
+            return base64.b64encode(query.encode("utf-8")).decode("ascii").rstrip("=")
+
+        first = enc(
+            "ProjectID=4&Division=1&UserID=20287&RoleID=1&AppID=5&"
+            "Action=SEARCH&CharacterD=07&ExtAppID=&IsAbyence=0"
+        )
+        second = enc(
+            "ProjectID=4&Division=1&UserID=20287&RoleID=1&AppID=5&"
+            "Action=SEARCH&CharacterD=52&ExtAppID=999&IsAbyence=1"
+        )
+
+        self.assertEqual(telangana_rera._compute_doc_decoded(first), "420287")
+        self.assertEqual(telangana_rera._compute_doc_decoded(second), "420287")
+
+    def test_listing_parser_reads_sixth_cell_data_cert(self):
+        raw_cert = base64.b64encode(
+            b"ProjectID=4&Division=1&UserID=20287&RoleID=1&AppID=5&"
+            b"Action=SEARCH&CharacterD=07&ExtAppID=&IsAbyence=0"
+        ).decode("ascii").rstrip("=")
+        html = f"""
+        <table>
+          <thead>
+            <tr>
+              <th>Project Name</th><th>Promoter Name</th><th>A</th>
+              <th>B</th><th>C</th><th>Certificate</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>SKV S ANANDA VILAS</td>
+              <td>KACHAM RAJESHWAR</td>
+              <td></td><td></td>
+              <td><a href="/PrintPreview/PrintPreview?q=abc">View</a></td>
+              <td><a data-qstr="{raw_cert}">View Certificate</a></td>
+            </tr>
+          </tbody>
+        </table>
+        """
+
+        rows = telangana_rera._parse_listing_rows(html)
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["data_cert"], raw_cert)
+        self.assertEqual(rows[0]["project_id"], "4")
+        self.assertEqual(rows[0]["user_id"], "20287")
+        self.assertEqual(telangana_rera._compute_doc_decoded(rows[0]["data_cert"]), "420287")
+        self.assertIsNotNone(rows[0]["cert_url"])
+        self.assertIsNotNone(rows[0]["preview_pdf_url"])
 
 
 if __name__ == "__main__":

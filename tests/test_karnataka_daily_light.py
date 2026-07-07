@@ -58,6 +58,7 @@ class KarnatakaDailyLightTests(unittest.TestCase):
             mock.patch.object(karnataka_rera, "load_checkpoint", return_value={}),
             mock.patch.object(karnataka_rera, "save_checkpoint"),
             mock.patch.object(karnataka_rera, "reset_checkpoint"),
+            mock.patch.object(karnataka_rera, "update_crawl_run_progress"),
             mock.patch.object(karnataka_rera, "random_delay"),
             mock.patch.object(karnataka_rera, "_post_listing", return_value="page-1"),
             mock.patch.object(karnataka_rera, "_extract_listing_rows", return_value=[_listing_row()]),
@@ -100,7 +101,7 @@ class KarnatakaDailyLightTests(unittest.TestCase):
         self.assertEqual(counts["documents_uploaded"], 0)
         # Detail page must NOT be fetched when listing already has the reg_no
         # and the project is already in the DB.
-        fetch_detail_mock = mocks[9]   # _fetch_detail is base_patches[9]
+        fetch_detail_mock = mocks[10]  # _fetch_detail is base_patches[10]
         fetch_detail_mock.assert_not_called()
         mocks[-3].assert_not_called()  # _extract_documents
         mocks[-2].assert_not_called()  # upsert_project

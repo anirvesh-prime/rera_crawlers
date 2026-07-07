@@ -13,6 +13,7 @@ from core.crawler_base import generate_project_key
 from core.project_schema import (
     ARRAY_FIELDS,
     BOOLEAN_FIELDS,
+    CANONICAL_PROJECT_STATES,
     DATETIME_FIELDS,
     FLOAT_FIELDS,
     INTEGER_FIELDS,
@@ -20,6 +21,8 @@ from core.project_schema import (
     PROJECT_COLUMN_SET,
     REQUIRED_PROJECT_FIELDS,
     TEXT_FIELDS,
+    canonical_project_state,
+    normalize_project_state_key,
 )
 
 _JSON_FIELD_ALLOWED_KEYS: dict[str, set[str]] = {
@@ -211,8 +214,7 @@ def get_machine_context() -> tuple[str | None, str | None]:
 
 
 def normalize_state_key(value: Any) -> str:
-    text = clean_string(value) or ""
-    return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
+    return normalize_project_state_key(value)
 
 
 def clean_string(value: Any) -> str | None:
@@ -630,12 +632,19 @@ def normalize_project_payload(
 ) -> dict[str, Any]:
     data = copy.deepcopy(payload)
     raw_snapshot = data.pop("data", None)
-    state_key = normalize_state_key(config.get("state") or data.get("state"))
+    state_source = config.get("state") or data.get("state") or data.get("project_state")
+    state_key = normalize_state_key(state_source)
+    normalized_state = canonical_project_state(state_source)
+    if state_source and normalized_state is None:
+        expected = ", ".join(CANONICAL_PROJECT_STATES)
+        raise ValueError(f"Unknown project state {state_source!r}; expected one of: {expected}")
 
     normalized: dict[str, Any] = {}
     unmapped_fields: dict[str, Any] = {}
 
     for key, value in data.items():
+        if key == "project_state":
+            continue
         if key not in PROJECT_COLUMN_SET:
             unmapped_fields[key] = value
             continue
@@ -665,9 +674,8 @@ def normalize_project_payload(
             continue
         normalized[key] = cleaned
 
-    if config.get("state"):
-        normalized.setdefault("state", config["state"])
-        normalized.setdefault("project_state", normalized.get("project_state") or config["state"])
+    if normalized_state:
+        normalized["state"] = normalized_state
     if config.get("domain"):
         normalized.setdefault("domain", config["domain"])
     if config.get("config_id") is not None:
@@ -716,7 +724,10 @@ def normalize_project_payload(
         _now = datetime.now(UTC)
         normalized["is_live"] = _finish_date > _now
 
-    missing = [field for field in REQUIRED_PROJECT_FIELDS if not normalized.get(field)]
+    required_fields = set(REQUIRED_PROJECT_FIELDS)
+    if state_key == "telangana":
+        required_fields.discard("project_registration_no")
+    missing = [field for field in required_fields if not normalized.get(field)]
     if missing:
         raise ValueError(f"Missing required project fields after normalization: {', '.join(sorted(missing))}")
 

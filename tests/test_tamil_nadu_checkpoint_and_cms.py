@@ -23,7 +23,7 @@ from sites import tamil_nadu_rera
 
 _CONFIG = {
     "id": "tamil_nadu_rera",
-    "state": "tamil_nadu",
+    "state": "Tamil Nadu",
     "config_id": 14374,
     "domain": "rera.tn.gov.in",
     "state_code": "TN",
@@ -90,6 +90,7 @@ def _make_patches(
         mock.patch.object(tamil_nadu_rera, "upsert_project", return_value="updated"),
         mock.patch.object(tamil_nadu_rera, "get_project_by_key", return_value=None),
         mock.patch.object(tamil_nadu_rera, "insert_crawl_error"),
+        mock.patch.object(tamil_nadu_rera, "update_crawl_run_progress"),
         mock.patch.object(tamil_nadu_rera, "get_machine_context", return_value=("host", "127.0.0.1")),
         mock.patch.object(tamil_nadu_rera, "random_delay"),
         mock.patch.object(tamil_nadu_rera, "select_document_for_download", return_value=None),

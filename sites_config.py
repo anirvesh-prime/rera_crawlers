@@ -216,7 +216,7 @@ SITES: list[dict] = [
         "id": "tamil_nadu_rera",
         "name": "Tamil Nadu RERA",
         "state_code": "TN",
-        "state": "tamil_nadu",
+        "state": "Tamil Nadu",
         "domain": "rera.tn.gov.in",
         # Covers Building, Normal Layout, and Regularisation Layout projects.
         # The crawler auto-discovers year-listing URLs from three CMS index pages.

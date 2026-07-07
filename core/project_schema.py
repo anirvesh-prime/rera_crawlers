@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import re
+from typing import Any
+
 PROJECT_COLUMNS: tuple[str, ...] = (
     "key",
     "project_name",
@@ -196,3 +199,48 @@ UPDATE_IGNORED_FIELDS = {
     "updated_fields",
     "old_updates",
 }
+
+CANONICAL_PROJECT_STATES: tuple[str, ...] = (
+    "MAHARASHTRA",
+    "Tamil Nadu",
+    "andhra pradesh",
+    "assam",
+    "bihar",
+    "chhattisgarh",
+    "delhi",
+    "goa",
+    "gujarat",
+    "haryana",
+    "himachal pradesh",
+    "jharkhand",
+    "karnataka",
+    "kerala",
+    "madhya pradesh",
+    "odisha",
+    "puducherry",
+    "punjab",
+    "rajasthan",
+    "telangana",
+    "tripura",
+    "uttar pradesh",
+    "uttarakhand",
+    "west bengal",
+)
+
+
+def normalize_project_state_key(value: Any) -> str:
+    text = "" if value is None else str(value).strip().lower()
+    return re.sub(r"[^a-z0-9]+", "_", text).strip("_")
+
+
+_CANONICAL_PROJECT_STATE_BY_KEY: dict[str, str] = {
+    normalize_project_state_key(state): state
+    for state in CANONICAL_PROJECT_STATES
+}
+
+
+def canonical_project_state(value: Any) -> str | None:
+    key = normalize_project_state_key(value)
+    if not key:
+        return None
+    return _CANONICAL_PROJECT_STATE_BY_KEY.get(key)

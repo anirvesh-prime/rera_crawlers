@@ -1810,7 +1810,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                         **detail_fields,
                         "domain": DOMAIN,                                  # FIELD: domain <- module-level DOMAIN constant
                         "url":    project_url,                             # FIELD: url <- detail_url or listing url
-                        "state":  config.get("state", "Maharashtra"),      # FIELD: state <- config["state"] (default "Maharashtra")
+                        "state":  config.get("state", "MAHARASHTRA"),      # FIELD: state <- config["state"] (default "MAHARASHTRA")
                         "is_live": True,                                   # FIELD: is_live <- literal True
                     }
                     # Merge data JSONB sections (listing data + detail API raw data)

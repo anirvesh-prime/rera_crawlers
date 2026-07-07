@@ -60,6 +60,7 @@ class HimachalPradeshTargetedCrawlTests(unittest.TestCase):
             mock.patch.object(hp, "_fetch_section", return_value=None),
             mock.patch.object(hp, "load_checkpoint", return_value={}),
             mock.patch.object(hp, "save_checkpoint"),
+            mock.patch.object(hp, "reset_checkpoint"),
             mock.patch.object(hp, "random_delay"),
             mock.patch.object(hp, "update_crawl_run_progress"),
             mock.patch.object(hp, "get_project_by_key", return_value=None),
@@ -140,6 +141,7 @@ class HimachalPradeshTargetedCrawlTests(unittest.TestCase):
             mock.patch.object(hp, "_ClientAdapter", mock.MagicMock()),
             mock.patch.object(hp, "_fetch_listing", return_value=([], {})),
             mock.patch.object(hp, "load_checkpoint", return_value={}),
+            mock.patch.object(hp, "reset_checkpoint"),
             mock.patch.object(hp, "get_machine_context", return_value=("host", "127.0.0.1")),
             mock.patch.object(hp, "_quit_driver"),
         ]

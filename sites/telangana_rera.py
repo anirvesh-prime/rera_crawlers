@@ -38,7 +38,6 @@ from core.db import get_project_by_key, upsert_project, insert_crawl_error, upse
 from core.details_pool import get_detail_workers, process_details
 from core.document_policy import select_document_for_download
 from core.logger import CrawlerLogger
-from core.models import ProjectRecord
 from core.project_normalizer import (
     build_document_filename,
     build_document_urls,
@@ -144,33 +143,29 @@ def _decode_data_cert(b64: str) -> dict[str, str]:
         return {}
 
 
-# Stable params kept in doc_decoded and in rebuilt cert/preview URLs.  The
-# Telangana portal periodically appends new session-scoped trailers (originally
-# CharacterD + ExtAppID; later IsAbyence was added).  Pinning the set of kept
-# keys makes doc_decoded stable across those server-side additions so existing
-# DB keys are not invalidated whenever a new trailer appears.
-_STABLE_DOC_KEYS = ("ProjectID", "Division", "UserID", "RoleID", "AppID", "Action")
-
-
 def _compute_doc_decoded(raw_cert: str) -> str:
     """
-    Decode *raw_cert* (a base64 query-string) and keep only the canonical
-    stable parameters so the result is invariant across sessions and across
-    Telangana adding/removing trailing session-scoped params like CharacterD,
-    ExtAppID, IsAbyence.
+    Decode *raw_cert* and return Telangana's stable compact identity component:
+    ProjectID followed by UserID.
+
+    Session-scoped params such as CharacterD, ExtAppID, and IsAbyence are
+    intentionally ignored so the generated project key is stable.
     """
     try:
-        decoded = base64.b64decode(raw_cert + "==").decode("utf-8", errors="replace")
-        kept: list[str] = []
-        for pair in decoded.split("&"):
-            if "=" not in pair:
-                continue
-            k, _ = pair.split("=", 1)
-            if k in _STABLE_DOC_KEYS:
-                kept.append(pair)
-        return "&".join(kept)
+        decoded = base64.b64decode((raw_cert or "") + "==").decode("utf-8", errors="replace")
+        parsed = parse_qs(decoded)
+        project_id = parsed.get("ProjectID", [None])[0]
+        user_id = parsed.get("UserID", [None])[0]
+        if not project_id or not user_id:
+            return ""
+        return f"{project_id}{user_id}"
     except Exception:
         return ""
+
+
+# Stable params reused when building certificate/preview download URLs.  These
+# URLs require more than the compact key component.
+_STABLE_DOC_KEYS = ("ProjectID", "Division", "UserID", "RoleID", "AppID", "Action")
 
 
 def _build_cert_url(params: dict[str, str], char_d: int) -> str:
@@ -859,7 +854,7 @@ def _scrape_print_preview(soup: BeautifulSoup, row: dict) -> dict[str, Any]:
     data["project_name"]          = proj_lv(r"project\s*name")  # FIELD: project_name <- proj_sec "project name" label
     data["project_type"]          = proj_lv(r"project\s*type")  # FIELD: project_type <- proj_sec "project type" label
     data["status_of_the_project"] = proj_lv(r"project\s*status", r"\bstatus\b")  # FIELD: status_of_the_project <- proj_sec project status/status label
-    data["project_registration_no"] = lv(r"plan\s*approval\s*number")  # FIELD: project_registration_no <- doc "plan approval number" label
+    data["plan_approval_number"]    = lv(r"plan\s*approval\s*number")  # FIELD: data.plan_approval_number <- doc "plan approval number" label
     data["approved_on_date"]      = proj_lv(r"approved\s*date")  # FIELD: approved_on_date <- proj_sec "approved date" label
     data["estimated_finish_date"] = proj_lv(  # FIELD: estimated_finish_date <- proj_sec revised/proposed completion date
         r"revised\s*proposed\s*date",
@@ -1644,17 +1639,21 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     pp_soup = BeautifulSoup(pp_html, "lxml")
                     detail_data = _scrape_print_preview(pp_soup, row)
 
-                    # ── Store registration number (informational — not the key) ──
-                    reg_no = _clean(detail_data.get("project_registration_no"))
-                    if reg_no:
-                        detail_data["project_registration_no"] = reg_no  # FIELD: project_registration_no <- cleaned detail_data registration no
+                    # Telangana has no usable registration number in the listing
+                    # or detail payload. Keep the portal's plan approval number
+                    # as auxiliary data only; never write it to project_registration_no.
+                    detail_data.pop("project_registration_no", None)
+                    plan_approval_no = _clean(detail_data.get("plan_approval_number"))
+                    if plan_approval_no:
+                        detail_data["plan_approval_number"] = plan_approval_no
 
-                    # Targeted run: keep only the requested registration number(s).
+                    # Targeted run: Telangana has no reg-no, so this is a best-effort
+                    # match against the plan approval number when explicitly provided.
                     if target_regs:
-                        if (reg_no or "").strip().upper() not in target_regs:
+                        if (plan_approval_no or "").strip().upper() not in target_regs:
                             logger.clear_project()
                             continue
-                        found_targets.add((reg_no or "").strip().upper())
+                        found_targets.add((plan_approval_no or "").strip().upper())
                         counts["projects_found"] += 1
 
                     # ── Assemble document list ────────────────────────────────
@@ -1666,9 +1665,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     const_area_unit = detail_data.pop("_const_area_unit",
                                                       "Approved Built up Area (In Sqmts)")
 
-                    # doc_decoded: base64-decode data_cert and strip the last two
-                    # session-scoped parameters (CharacterD, ExtAppID) so it is
-                    # stable across crawl sessions.
+                    # doc_decoded: base64-decode data_cert and combine ProjectID
+                    # + UserID.  Session-scoped parameters are intentionally not
+                    # part of the key component.
                     raw_cert    = row.get("data_cert") or ""
                     doc_decoded = _compute_doc_decoded(raw_cert)
 
@@ -1732,7 +1731,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                             detail_promoter_name=promoter_name,
                         )
                         key = listing_key
-                    logger.set_project(key=key, reg_no=reg_no or "", url=pp_url, page=current_page)
+                    logger.set_project(key=key, url=pp_url, page=current_page)
 
                     if mode == "daily_light":
                         if not listing_key:
@@ -1750,10 +1749,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                                     checked_rows=checked_listing_rows,
                                     existing_rows=existing_listing_rows,
                                     candidate_rows=candidate_listing_rows,
-                                    reg_no=reg_no,
                                     project_key=key,
                                     existing_match_key=key,
-                                    raw_reg_no=reg_no or row.get("project_name"),
+                                    raw_reg_no=plan_approval_no or row.get("project_name"),
                                 )
                             logger.clear_project()
                             continue
@@ -1765,9 +1763,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                                 checked_rows=checked_listing_rows,
                                 existing_rows=existing_listing_rows,
                                 candidate_rows=candidate_listing_rows,
-                                reg_no=reg_no,
                                 project_key=key,
-                                raw_reg_no=reg_no or row.get("project_name"),
+                                raw_reg_no=plan_approval_no or row.get("project_name"),
                             )
                         if settings.LIGHT_SKIP_NEW_ADDITIONS and not target_regs:
                             logger.info(
@@ -1797,8 +1794,9 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                             detail_data, config,
                             machine_name=machine_name, machine_ip=machine_ip,
                         )
-                        record  = ProjectRecord(**normalized)
-                        db_dict = record.to_db_dict()
+                        # ProjectRecord requires project_registration_no globally,
+                        # but Telangana deliberately does not write that column.
+                        db_dict = normalized
                     except (ValidationError, ValueError) as ve:
                         logger.warning("Validation failed — using fallback", error=str(ve),
                                        step="normalize")
@@ -1847,8 +1845,6 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                             "url":                    db_dict.get("url"),  # FIELD: url <- db_dict.get("url")
                             "state":                  STATE,  # FIELD: state <- constant "telangana"
                             "domain":                 DOMAIN,  # FIELD: domain <- constant "rerait.telangana.gov.in"
-                            # FIELD: project_registration_no <- db_dict["project_registration_no"]
-                            "project_registration_no": db_dict["project_registration_no"],
                             "uploaded_documents":     uploaded_results,  # FIELD: uploaded_documents <- accumulated upload results
                             # FIELD: document_urls <- build_document_urls(uploaded_results)
                             "document_urls":          build_document_urls(uploaded_results),
@@ -1885,7 +1881,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
     if target_regs:
         for missing in sorted(target_regs - found_targets):
-            logger.warning(f"Target reg_no={missing!r} not found in listing", step="listing")
+            logger.warning(f"Target value={missing!r} not found in listing", step="listing")
         logger.info(
             f"Targeted run — {len(found_targets)} of {len(target_regs)} requested "
             f"project(s) matched", step="listing",
