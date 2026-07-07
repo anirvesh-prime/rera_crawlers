@@ -145,16 +145,16 @@ def _decode_data_cert(b64: str) -> dict[str, str]:
 
 def _compute_doc_decoded(raw_cert: str) -> str:
     """
-    Decode *raw_cert* and return the legacy Telangana doc_decoded value used
-    for project-key generation.
+    Decode *raw_cert* and return the stable Telangana doc_decoded value stored
+    in the DB data blob.
 
-    Historical rows used the decoded query string through CharacterD, while
-    dropping the trailing ExtAppID/IsAbyence params.
+    Historical rows kept the decoded query string through Action, while
+    dropping CharacterD and trailing session params such as ExtAppID/IsAbyence.
     """
     try:
         decoded = base64.b64decode((raw_cert or "") + "==").decode("utf-8", errors="replace")
         parsed = parse_qs(decoded)
-        keys = ("ProjectID", "Division", "UserID", "RoleID", "AppID", "Action", "CharacterD")
+        keys = ("ProjectID", "Division", "UserID", "RoleID", "AppID", "Action")
         kept: list[str] = []
         for key in keys:
             value = parsed.get(key, [None])[0]
@@ -170,8 +170,22 @@ def _compute_doc_decoded(raw_cert: str) -> str:
         return ""
 
 
+def _compute_key_doc_decoded(raw_cert: str) -> str:
+    """Return Telangana's legacy compact key component: ProjectID + UserID."""
+    try:
+        decoded = base64.b64decode((raw_cert or "") + "==").decode("utf-8", errors="replace")
+        parsed = parse_qs(decoded)
+        project_id = parsed.get("ProjectID", [None])[0]
+        user_id = parsed.get("UserID", [None])[0]
+        if not project_id or not user_id:
+            return ""
+        return f"{project_id}{user_id}"
+    except Exception:
+        return ""
+
+
 # Stable params reused when building certificate/preview download URLs.  These
-# URLs require more than the project-key doc_decoded component.
+# URLs require more than the project-key compact component.
 _STABLE_DOC_KEYS = ("ProjectID", "Division", "UserID", "RoleID", "AppID", "Action")
 
 
@@ -1468,7 +1482,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     # ── Targeted run handling ──────────────────────────────────────────────────
     # --target-reg-no restricts the run to one or more specific projects
     # (comma-separated, case-insensitive). Telangana's listing exposes no
-    # registration number (the key is project_name + promoter_name + state + doc_decoded),
+    # registration number (the key is project_name + promoter_name + state + ProjectID+UserID),
     # so each project is filtered after the detail fetch below, the page walk stops
     # once all targets are found, and the sentinel check is skipped.
     target_regs = get_target_reg_nos()
@@ -1578,12 +1592,12 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 # listing-side component is missing.
                 listing_project_name  = _clean(row.get("project_name"))
                 listing_promoter_name = _clean(row.get("promoter_name"))
-                listing_doc_decoded   = _compute_doc_decoded(row.get("data_cert") or "")
+                listing_key_doc_decoded = _compute_key_doc_decoded(row.get("data_cert") or "")
                 listing_key: str | None = None
-                if listing_project_name and listing_promoter_name and listing_doc_decoded:
+                if listing_project_name and listing_promoter_name and listing_key_doc_decoded:
                     listing_key_input = (
                         f"{listing_project_name}{listing_promoter_name}"
-                        f"{STATE}{listing_doc_decoded}"
+                        f"{STATE}{listing_key_doc_decoded}"
                     )
                     listing_key = generate_project_key(listing_key_input)
                     logger.set_project(key=listing_key, url=pp_url, page=current_page)
@@ -1673,10 +1687,11 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     const_area_unit = detail_data.pop("_const_area_unit",
                                                       "Approved Built up Area (In Sqmts)")
 
-                    # doc_decoded: base64-decode data_cert and keep the legacy
-                    # query-string component used by historical Telangana keys.
+                    # doc_decoded: base64-decode data_cert and keep the stable
+                    # query-string component written by historical Telangana rows.
                     raw_cert    = row.get("data_cert") or ""
                     doc_decoded = _compute_doc_decoded(raw_cert)
+                    key_doc_decoded = _compute_key_doc_decoded(raw_cert)
 
                     detail_data["data"] = {
                         "data_cert": raw_cert,  # FIELD: data.data_cert <- listing row data_cert (raw base64)
@@ -1693,17 +1708,17 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                         "construction_area_unit": const_area_unit,  # FIELD: land_area_details.construction_area_unit <- popped scratch unit string
                     }
 
-                    # ── Key: project_name + promoter_name + state + doc_decoded ──
+                    # ── Key: project_name + promoter_name + state + ProjectID+UserID ──
                     # Telangana is the sole exception to the single-reg-no formula.
                     # All four components are required — skip if any is absent.
                     project_name  = _clean(detail_data.get("project_name"))
                     promoter_name = _clean(detail_data.get("promoter_name"))
-                    if not project_name or not promoter_name or not doc_decoded:
+                    if not project_name or not promoter_name or not key_doc_decoded:
                         missing = [
                             f for f, v in [
                                 ("project_name",  project_name),
                                 ("promoter_name", promoter_name),
-                                ("doc_decoded",   doc_decoded),
+                                ("key_doc_decoded", key_doc_decoded),
                             ] if not v
                         ]
                         logger.error(
@@ -1719,7 +1734,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                         logger.clear_project()
                         continue
 
-                    key_input = f"{project_name}{promoter_name}{STATE}{doc_decoded}"
+                    key_input = f"{project_name}{promoter_name}{STATE}{key_doc_decoded}"
                     key = generate_project_key(key_input)
                     # When the listing exposed all key components, the listing-derived
                     # key must match the detail-derived key — otherwise daily_light will

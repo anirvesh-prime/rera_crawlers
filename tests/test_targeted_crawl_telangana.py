@@ -122,6 +122,7 @@ class TelanganaTargetedCrawlTests(unittest.TestCase):
                 },
             ),
             mock.patch.object(telangana_rera, "_compute_doc_decoded", return_value="decoded"),
+            mock.patch.object(telangana_rera, "_compute_key_doc_decoded", return_value="keydecoded"),
             mock.patch.object(telangana_rera, "_build_uploaded_documents", return_value=[]),
             mock.patch.object(telangana_rera, "load_checkpoint", return_value=None),
             mock.patch.object(telangana_rera, "save_checkpoint"),
@@ -198,7 +199,7 @@ class TelanganaTargetedCrawlTests(unittest.TestCase):
         self.assertEqual(page.queries, ["#btnNext:not([disabled])"])
         self.assertEqual(page.wait_arg, 1)
 
-    def test_doc_decoded_uses_legacy_query_string_through_character_d(self):
+    def test_doc_decoded_uses_legacy_query_string_through_action(self):
         def enc(query: str) -> str:
             return base64.b64encode(query.encode("utf-8")).decode("ascii").rstrip("=")
 
@@ -210,29 +211,31 @@ class TelanganaTargetedCrawlTests(unittest.TestCase):
         self.assertEqual(
             telangana_rera._compute_doc_decoded(raw_cert),
             "ProjectID=4&Division=1&UserID=20287&RoleID=1&AppID=5&"
-            "Action=SEARCH&CharacterD=07",
+            "Action=SEARCH",
         )
+        self.assertEqual(telangana_rera._compute_key_doc_decoded(raw_cert), "420287")
 
     def test_radha_meadows_legacy_key_reproduction(self):
         raw_cert = (
             "UHJvamVjdElEPTU1MDY0JkRpdmlzaW9uPTEmVXNlcklEPTE3MTU2NCZSb2xlSUQ9MSZ"
-            "BcHBJRD03MDM0MiZBY3Rpb249U0VBUkNIJkNoYXJhY3RlckQ9OTkmRXh0QXBwSUQ9Jk"
-            "lzQWJ5ZW5jZT0w"
+            "BcHBJRD03MDM0MiZBY3Rpb249U0VBUkNIJkNoYXJhY3RlckQ9NTQmRXh0QXBwSUQ9"
         )
         doc_decoded = telangana_rera._compute_doc_decoded(raw_cert)
+        key_doc_decoded = telangana_rera._compute_key_doc_decoded(raw_cert)
         key_input = (
             "RADHA MEADOWS"
             "STABLE VENTURES LLP"
             "telangana"
-            f"{doc_decoded}"
+            f"{key_doc_decoded}"
         )
 
         self.assertEqual(
             doc_decoded,
             "ProjectID=55064&Division=1&UserID=171564&RoleID=1&"
-            "AppID=70342&Action=SEARCH&CharacterD=99",
+            "AppID=70342&Action=SEARCH",
         )
-        self.assertEqual(telangana_rera.generate_project_key(key_input), "13046654106607487026")
+        self.assertEqual(key_doc_decoded, "55064171564")
+        self.assertEqual(telangana_rera.generate_project_key(key_input), "14269185127298480688")
 
     def test_listing_parser_reads_sixth_cell_data_cert(self):
         raw_cert = base64.b64encode(
@@ -268,7 +271,7 @@ class TelanganaTargetedCrawlTests(unittest.TestCase):
         self.assertEqual(
             telangana_rera._compute_doc_decoded(rows[0]["data_cert"]),
             "ProjectID=4&Division=1&UserID=20287&RoleID=1&AppID=5&"
-            "Action=SEARCH&CharacterD=07",
+            "Action=SEARCH",
         )
         self.assertIsNotNone(rows[0]["cert_url"])
         self.assertIsNotNone(rows[0]["preview_pdf_url"])
