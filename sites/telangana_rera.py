@@ -145,26 +145,33 @@ def _decode_data_cert(b64: str) -> dict[str, str]:
 
 def _compute_doc_decoded(raw_cert: str) -> str:
     """
-    Decode *raw_cert* and return Telangana's stable compact identity component:
-    ProjectID followed by UserID.
+    Decode *raw_cert* and return the legacy Telangana doc_decoded value used
+    for project-key generation.
 
-    Session-scoped params such as CharacterD, ExtAppID, and IsAbyence are
-    intentionally ignored so the generated project key is stable.
+    Historical rows used the decoded query string through CharacterD, while
+    dropping the trailing ExtAppID/IsAbyence params.
     """
     try:
         decoded = base64.b64decode((raw_cert or "") + "==").decode("utf-8", errors="replace")
         parsed = parse_qs(decoded)
-        project_id = parsed.get("ProjectID", [None])[0]
-        user_id = parsed.get("UserID", [None])[0]
-        if not project_id or not user_id:
+        keys = ("ProjectID", "Division", "UserID", "RoleID", "AppID", "Action", "CharacterD")
+        kept: list[str] = []
+        for key in keys:
+            value = parsed.get(key, [None])[0]
+            if value is None:
+                if key in {"ProjectID", "UserID"}:
+                    return ""
+                continue
+            kept.append(f"{key}={value}")
+        if not kept:
             return ""
-        return f"{project_id}{user_id}"
+        return "&".join(kept)
     except Exception:
         return ""
 
 
 # Stable params reused when building certificate/preview download URLs.  These
-# URLs require more than the compact key component.
+# URLs require more than the project-key doc_decoded component.
 _STABLE_DOC_KEYS = ("ProjectID", "Division", "UserID", "RoleID", "AppID", "Action")
 
 
@@ -1461,7 +1468,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
     # ── Targeted run handling ──────────────────────────────────────────────────
     # --target-reg-no restricts the run to one or more specific projects
     # (comma-separated, case-insensitive). Telangana's listing exposes no
-    # registration number (the key is project_name|promoter_name|state|doc_decoded),
+    # registration number (the key is project_name + promoter_name + state + doc_decoded),
     # so each project is filtered after the detail fetch below, the page walk stops
     # once all targets are found, and the sentinel check is skipped.
     target_regs = get_target_reg_nos()
@@ -1563,7 +1570,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
 
                 # ── Fast path: compute composite key from listing-row fields ──
                 # When the listing exposes project_name, promoter_name, and a
-                # decodable data_cert, the same composite key formula used
+                # decodable data_cert, the same legacy composite key formula used
                 # post-detail can run here, letting daily_light skip already-known
                 # projects without fetching the PrintPreview page.  All other
                 # components (STATE, doc_decoded) are derivable without the
@@ -1574,9 +1581,10 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                 listing_doc_decoded   = _compute_doc_decoded(row.get("data_cert") or "")
                 listing_key: str | None = None
                 if listing_project_name and listing_promoter_name and listing_doc_decoded:
-                    listing_key_input = "|".join([
-                        listing_project_name, listing_promoter_name, STATE, listing_doc_decoded,
-                    ])
+                    listing_key_input = (
+                        f"{listing_project_name}{listing_promoter_name}"
+                        f"{STATE}{listing_doc_decoded}"
+                    )
                     listing_key = generate_project_key(listing_key_input)
                     logger.set_project(key=listing_key, url=pp_url, page=current_page)
                     if mode == "daily_light":
@@ -1665,9 +1673,8 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                     const_area_unit = detail_data.pop("_const_area_unit",
                                                       "Approved Built up Area (In Sqmts)")
 
-                    # doc_decoded: base64-decode data_cert and combine ProjectID
-                    # + UserID.  Session-scoped parameters are intentionally not
-                    # part of the key component.
+                    # doc_decoded: base64-decode data_cert and keep the legacy
+                    # query-string component used by historical Telangana keys.
                     raw_cert    = row.get("data_cert") or ""
                     doc_decoded = _compute_doc_decoded(raw_cert)
 
@@ -1686,7 +1693,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                         "construction_area_unit": const_area_unit,  # FIELD: land_area_details.construction_area_unit <- popped scratch unit string
                     }
 
-                    # ── Key: project_name | promoter_name | state | doc_decoded ──
+                    # ── Key: project_name + promoter_name + state + doc_decoded ──
                     # Telangana is the sole exception to the single-reg-no formula.
                     # All four components are required — skip if any is absent.
                     project_name  = _clean(detail_data.get("project_name"))
@@ -1712,7 +1719,7 @@ def _run(config: dict, run_id: int, mode: str) -> dict:
                         logger.clear_project()
                         continue
 
-                    key_input = "|".join([project_name, promoter_name, STATE, doc_decoded])
+                    key_input = f"{project_name}{promoter_name}{STATE}{doc_decoded}"
                     key = generate_project_key(key_input)
                     # When the listing exposed all key components, the listing-derived
                     # key must match the detail-derived key — otherwise daily_light will
